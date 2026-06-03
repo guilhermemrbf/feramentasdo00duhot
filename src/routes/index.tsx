@@ -32,51 +32,69 @@ export const Route = createFileRoute("/")({
 
 type Format = "url" | "markdown" | "html" | "ai";
 
+interface UploadedImage {
+  id: string;
+  url: string;
+  fileName: string;
+  progress: number;
+  uploading: boolean;
+  error: string | null;
+  preview: string;
+}
+
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME as string;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET as string;
 const ACCEPTED = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 
 function Index() {
-  const [preview, setPreview] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string>("");
-  const [progress, setProgress] = useState(0);
-  const [uploading, setUploading] = useState(false);
-  const [url, setUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [uploads, setUploads] = useState<UploadedImage[]>([]);
   const [format, setFormat] = useState<Format>("url");
   const [dragOver, setDragOver] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
-    setPreview(null);
-    setFileName("");
-    setProgress(0);
-    setUploading(false);
-    setUrl(null);
-    setError(null);
-    setCopied(false);
+    setUploads([]);
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  const upload = useCallback((file: File) => {
+  const uploadFile = useCallback((file: File) => {
+    const id = Math.random().toString(36).substring(7);
+    const preview = URL.createObjectURL(file);
+
+    const newUpload: UploadedImage = {
+      id,
+      url: "",
+      fileName: file.name,
+      progress: 0,
+      uploading: true,
+      error: null,
+      preview,
+    };
+
+    setUploads((prev) => [newUpload, ...prev]);
+
     if (!ACCEPTED.includes(file.type)) {
-      setError("Formato inválido. Use PNG, JPG, GIF ou WEBP.");
-      return;
-    }
-    if (!CLOUD_NAME || !UPLOAD_PRESET || CLOUD_NAME === "your_cloud_name") {
-      setError(
-        "Configure VITE_CLOUDINARY_CLOUD_NAME e VITE_CLOUDINARY_UPLOAD_PRESET no .env",
+      setUploads((prev) =>
+        prev.map((u) =>
+          u.id === id
+            ? { ...u, uploading: false, error: "Formato inválido." }
+            : u,
+        ),
       );
       return;
     }
 
-    setError(null);
-    setUrl(null);
-    setFileName(file.name);
-    setPreview(URL.createObjectURL(file));
-    setUploading(true);
-    setProgress(0);
+    if (!CLOUD_NAME || !UPLOAD_PRESET || CLOUD_NAME === "your_cloud_name") {
+      setUploads((prev) =>
+        prev.map((u) =>
+          u.id === id
+            ? { ...u, uploading: false, error: "Erro de configuração (.env)." }
+            : u,
+        ),
+      );
+      return;
+    }
 
     const formData = new FormData();
     formData.append("file", file);
@@ -89,63 +107,99 @@ function Index() {
     );
 
     xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+      if (e.lengthComputable) {
+        const percent = Math.round((e.loaded / e.total) * 100);
+        setUploads((prev) =>
+          prev.map((u) => (u.id === id ? { ...u, progress: percent } : u)),
+        );
+      }
     };
 
     xhr.onload = () => {
-      setUploading(false);
       try {
         const res = JSON.parse(xhr.responseText);
         if (xhr.status >= 200 && xhr.status < 300 && res.secure_url) {
-          setUrl(res.secure_url);
-          setProgress(100);
+          setUploads((prev) =>
+            prev.map((u) =>
+              u.id === id
+                ? {
+                    ...u,
+                    url: res.secure_url,
+                    uploading: false,
+                    progress: 100,
+                  }
+                : u,
+            ),
+          );
         } else {
-          setError(res.error?.message || "Falha no upload. Verifique seu preset.");
+          setUploads((prev) =>
+            prev.map((u) =>
+              u.id === id
+                ? {
+                    ...u,
+                    uploading: false,
+                    error: res.error?.message || "Erro no upload.",
+                  }
+                : u,
+            ),
+          );
         }
       } catch {
-        setError("Resposta inválida do servidor.");
+        setUploads((prev) =>
+          prev.map((u) =>
+            u.id === id ? { ...u, uploading: false, error: "Erro na resposta." } : u,
+          ),
+        );
       }
     };
 
     xhr.onerror = () => {
-      setUploading(false);
-      setError("Erro de rede ao enviar a imagem.");
+      setUploads((prev) =>
+        prev.map((u) =>
+          u.id === id ? { ...u, uploading: false, error: "Erro de rede." } : u,
+        ),
+      );
     };
 
     xhr.send(formData);
   }, []);
 
+  const uploadFiles = (files: FileList | null) => {
+    if (!files) return;
+    Array.from(files).forEach((file) => uploadFile(file));
+  };
+
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) upload(file);
+    uploadFiles(e.dataTransfer.files);
   };
 
-  const formatted = (() => {
-    if (!url) return "";
+  const getFormatted = (item: UploadedImage) => {
+    if (!item.url) return "";
     switch (format) {
       case "markdown":
-        return `![${fileName}](${url})`;
+        return `![${item.fileName}](${item.url})`;
       case "html":
-        return `<img src="${url}" alt="${fileName}" />`;
+        return `<img src="${item.url}" alt="${item.fileName}" />`;
       case "ai":
-        return `Use this image as reference: ${url}`;
+        return `Use this image as reference: ${item.url}`;
       default:
-        return url;
+        return item.url;
     }
-  })();
+  };
 
-  const copy = async () => {
-    if (!formatted) return;
-    await navigator.clipboard.writeText(formatted);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+  const copy = async (item: UploadedImage) => {
+    const text = getFormatted(item);
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
+    setCopiedId(item.id);
+    setTimeout(() => setCopiedId(null), 1800);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary">
-      <main className="mx-auto max-w-2xl px-4 py-12 md:py-20">
+      <main className="mx-auto max-w-3xl px-4 py-12 md:py-20">
         <header className="mb-10 text-center">
           <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
             <ImageIcon className="h-6 w-6" />
@@ -154,157 +208,148 @@ function Index() {
             Image Link Generator
           </h1>
           <p className="mt-2 text-sm text-muted-foreground md:text-base">
-            Envie uma imagem e receba um link direto instantaneamente.
+            Envie múltiplas imagens e receba links diretos instantaneamente.
           </p>
         </header>
 
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
-          {!preview && (
-            <label
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={onDrop}
-              className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-16 text-center transition ${
-                dragOver
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-secondary/50"
-              }`}
-            >
-              <UploadCloud className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-base font-medium text-foreground">
-                Arraste a imagem aqui ou clique para selecionar
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                PNG, JPG, GIF ou WEBP
-              </p>
-              <input
-                ref={inputRef}
-                type="file"
-                accept={ACCEPTED.join(",")}
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) upload(f);
-                }}
-              />
-            </label>
-          )}
+        <div className="space-y-6">
+          <label
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-card px-6 py-12 text-center transition shadow-sm ${
+              dragOver
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-primary/50 hover:bg-secondary/50"
+            }`}
+          >
+            <UploadCloud className="mb-4 h-12 w-12 text-muted-foreground" />
+            <p className="text-base font-medium text-foreground">
+              Arraste as imagens aqui ou clique para selecionar
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              PNG, JPG, GIF ou WEBP (Múltiplos arquivos)
+            </p>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept={ACCEPTED.join(",")}
+              className="hidden"
+              onChange={(e) => uploadFiles(e.target.files)}
+            />
+          </label>
 
-          {preview && (
-            <div className="space-y-5">
-              <div className="overflow-hidden rounded-xl border border-border bg-secondary/30">
-                <img
-                  src={preview}
-                  alt={fileName}
-                  className="mx-auto max-h-80 w-auto object-contain"
-                />
+          {uploads.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ["url", "URL direta"],
+                    ["markdown", "Markdown"],
+                    ["html", "HTML"],
+                    ["ai", "Prompt IA"],
+                  ] as [Format, string][]
+                ).map(([k, label]) => (
+                  <button
+                    key={k}
+                    onClick={() => setFormat(k)}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                      format === k
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
+              <button
+                onClick={reset}
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-secondary"
+              >
+                <RotateCcw className="h-3 w-3" /> Limpar tudo
+              </button>
+            </div>
+          )}
 
-              {uploading && (
-                <div>
-                  <div className="mb-1.5 flex justify-between text-xs text-muted-foreground">
-                    <span>Enviando…</span>
-                    <span>{progress}%</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className="h-full bg-primary transition-all"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {uploads.map((item) => (
+              <div
+                key={item.id}
+                className="group relative flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md"
+              >
+                <div className="aspect-video overflow-hidden rounded-lg border border-border bg-secondary/30">
+                  <img
+                    src={item.preview}
+                    alt={item.fileName}
+                    className="h-full w-full object-contain"
+                  />
                 </div>
-              )}
 
-              {url && (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    {(
-                      [
-                        ["url", "URL direta"],
-                        ["markdown", "Markdown"],
-                        ["html", "HTML"],
-                        ["ai", "Prompt IA"],
-                      ] as [Format, string][]
-                    ).map(([k, label]) => (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <p className="truncate text-xs font-medium text-muted-foreground">
+                      {item.fileName}
+                    </p>
+                    {item.progress === 100 && !item.error && (
+                      <Check className="h-4 w-4 text-green-500" />
+                    )}
+                  </div>
+
+                  {item.uploading && (
+                    <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${item.progress}%` }}
+                      />
+                    </div>
+                  )}
+
+                  {item.error && (
+                    <div className="flex items-center gap-1.5 text-xs text-destructive">
+                      <AlertCircle className="h-3 w-3" />
+                      {item.error}
+                    </div>
+                  )}
+
+                  {item.url && (
+                    <div className="mt-1 flex gap-2">
                       <button
-                        key={k}
-                        onClick={() => setFormat(k)}
-                        className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                          format === k
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
-                        }`}
+                        onClick={() => copy(item)}
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition hover:bg-primary/90"
                       >
-                        {label}
+                        {copiedId === item.id ? (
+                          <>
+                            <Check className="h-3 w-3" /> Copiado!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3" /> Copiar
+                          </>
+                        )}
                       </button>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center gap-2 rounded-lg border border-border bg-secondary/50 p-2">
-                    <input
-                      readOnly
-                      value={formatted}
-                      onClick={(e) => e.currentTarget.select()}
-                      className="flex-1 bg-transparent px-2 text-sm text-foreground outline-none"
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={copy}
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="h-4 w-4" /> Copiado!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-4 w-4" /> Copiar link
-                        </>
-                      )}
-                    </button>
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition hover:bg-secondary"
-                    >
-                      <ExternalLink className="h-4 w-4" /> Abrir
-                    </a>
-                    <button
-                      onClick={reset}
-                      className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition hover:bg-secondary"
-                    >
-                      <RotateCcw className="h-4 w-4" /> Nova
-                    </button>
-                  </div>
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-foreground transition hover:bg-secondary"
+                        title="Abrir imagem"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    </div>
+                  )}
                 </div>
-              )}
-
-              {!url && !uploading && (
-                <button
-                  onClick={reset}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition hover:bg-secondary"
-                >
-                  <RotateCcw className="h-4 w-4" /> Nova imagem
-                </button>
-              )}
-            </div>
-          )}
-
-          {error && (
-            <div className="mt-4 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
+        <p className="mt-12 text-center text-xs text-muted-foreground">
           Hospedado via Cloudinary · As imagens enviadas ficam públicas
         </p>
       </main>
