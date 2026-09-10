@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { UploadCloud, Check, AlertCircle, RotateCcw } from "lucide-react";
+import { UploadCloud, Check, AlertCircle, RotateCcw, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ACCEPTED_IMAGE_TYPES, uploadToCloudinary } from "@/lib/cloudinary";
 
 interface ImageFieldProps {
@@ -45,15 +46,15 @@ export function ImageField({ label, step, hint, value, onChange }: ImageFieldPro
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-secondary text-xs text-primary">
             {step}
           </span>
           {label}
         </h2>
-        {value && <Check className="h-4 w-4 text-green-500" />}
+        {value && <span className="flex items-center gap-1 text-xs font-medium text-success"><Check className="h-4 w-4" /> Imagem pronta</span>}
       </div>
 
       <label
@@ -67,24 +68,24 @@ export function ImageField({ label, step, hint, value, onChange }: ImageFieldPro
           setDragOver(false);
           handleFile(e.dataTransfer.files[0]);
         }}
-        className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-6 text-center transition sm:flex-row sm:justify-start sm:text-left ${
+        className={`flex min-h-28 cursor-pointer items-center gap-4 rounded-md border border-dashed px-4 py-4 text-left transition ${
           dragOver
             ? "border-primary bg-primary/5"
-            : "border-border hover:border-primary/50 hover:bg-secondary/50"
+            : "border-border hover:border-primary/60 hover:bg-secondary/40"
         }`}
       >
         {preview ? (
           <img
             src={preview}
             alt={label}
-            className="h-20 w-20 shrink-0 rounded-lg border border-border object-cover"
+            className="h-20 w-20 shrink-0 rounded-md border border-border object-cover"
           />
         ) : (
-          <UploadCloud className="h-10 w-10 shrink-0 text-muted-foreground" />
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground"><UploadCloud className="h-5 w-5" /></span>
         )}
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-foreground">
-            {preview ? "Trocar imagem" : "Enviar imagem"}
+            {preview ? "Trocar imagem" : "Selecionar imagem"}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {hint ?? "PNG, JPG, GIF ou WEBP"}
@@ -97,11 +98,7 @@ export function ImageField({ label, step, hint, value, onChange }: ImageFieldPro
               />
             </div>
           )}
-          {value && (
-            <p className="mt-2 truncate text-xs text-muted-foreground" title={value}>
-              {value}
-            </p>
-          )}
+          {uploading && <p className="mt-2 flex items-center gap-1.5 text-xs text-primary"><Loader2 className="h-3 w-3 animate-spin" /> Processando imagem · {progress}%</p>}
           {error && (
             <p className="mt-2 flex items-center gap-1.5 text-xs text-destructive">
               <AlertCircle className="h-3 w-3" /> {error}
@@ -118,13 +115,15 @@ export function ImageField({ label, step, hint, value, onChange }: ImageFieldPro
       </label>
 
       {(preview || error) && (
-        <button
+        <Button
           type="button"
           onClick={clear}
-          className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-foreground"
+          variant="ghost"
+          size="sm"
+          className="mt-2 px-2 text-muted-foreground"
         >
           <RotateCcw className="h-3 w-3" /> Remover
-        </button>
+        </Button>
       )}
     </div>
   );
