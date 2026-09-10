@@ -128,6 +128,12 @@ function Index() {
           <p className="mt-2 text-sm text-muted-foreground md:text-base">
             Envie múltiplas imagens e receba links diretos instantaneamente.
           </p>
+          <Link
+            to="/criar-pagina"
+            className="mt-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/10"
+          >
+            <Sparkles className="h-4 w-4" /> Criar Minha Página
+          </Link>
         </header>
 
         <div className="space-y-6">
