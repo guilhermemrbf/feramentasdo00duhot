@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useRef, useState } from "react";
 import {
   UploadCloud,
@@ -8,7 +8,9 @@ import {
   RotateCcw,
   ImageIcon,
   AlertCircle,
+  Sparkles,
 } from "lucide-react";
+import { ACCEPTED_IMAGE_TYPES, uploadToCloudinary } from "@/lib/cloudinary";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -42,9 +44,7 @@ interface UploadedImage {
   preview: string;
 }
 
-const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME as string;
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET as string;
-const ACCEPTED = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+const ACCEPTED = ACCEPTED_IMAGE_TYPES;
 
 function Index() {
   const [uploads, setUploads] = useState<UploadedImage[]>([]);
@@ -74,94 +74,12 @@ function Index() {
 
     setUploads((prev) => [newUpload, ...prev]);
 
-    if (!ACCEPTED.includes(file.type)) {
-      setUploads((prev) =>
-        prev.map((u) =>
-          u.id === id
-            ? { ...u, uploading: false, error: "Formato inválido." }
-            : u,
-        ),
-      );
-      return;
-    }
+    const patch = (p: Partial<UploadedImage>) =>
+      setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...p } : u)));
 
-    if (!CLOUD_NAME || !UPLOAD_PRESET || CLOUD_NAME === "your_cloud_name") {
-      setUploads((prev) =>
-        prev.map((u) =>
-          u.id === id
-            ? { ...u, uploading: false, error: "Erro de configuração (.env)." }
-            : u,
-        ),
-      );
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", UPLOAD_PRESET);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open(
-      "POST",
-      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-    );
-
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        const percent = Math.round((e.loaded / e.total) * 100);
-        setUploads((prev) =>
-          prev.map((u) => (u.id === id ? { ...u, progress: percent } : u)),
-        );
-      }
-    };
-
-    xhr.onload = () => {
-      try {
-        const res = JSON.parse(xhr.responseText);
-        if (xhr.status >= 200 && xhr.status < 300 && res.secure_url) {
-          setUploads((prev) =>
-            prev.map((u) =>
-              u.id === id
-                ? {
-                    ...u,
-                    url: res.secure_url,
-                    uploading: false,
-                    progress: 100,
-                  }
-                : u,
-            ),
-          );
-        } else {
-          setUploads((prev) =>
-            prev.map((u) =>
-              u.id === id
-                ? {
-                    ...u,
-                    uploading: false,
-                    error: res.error?.message || "Erro no upload.",
-                  }
-                : u,
-            ),
-          );
-        }
-      } catch {
-        setUploads((prev) =>
-          prev.map((u) =>
-            u.id === id ? { ...u, uploading: false, error: "Erro na resposta." } : u,
-          ),
-        );
-      }
-    };
-
-    xhr.onerror = () => {
-      setUploads((prev) =>
-        prev.map((u) =>
-          u.id === id ? { ...u, uploading: false, error: "Erro de rede." } : u,
-        ),
-      );
-    };
-
-    xhr.send(formData);
+    uploadToCloudinary(file, (progress) => patch({ progress }))
+      .then((url) => patch({ url, uploading: false, progress: 100 }))
+      .catch((e: Error) => patch({ uploading: false, error: e.message }));
   }, []);
 
   const uploadFiles = (files: FileList | null) => {
