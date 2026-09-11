@@ -9,9 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ImageLinksRouteImport } from './routes/image-links'
 import { Route as CriarPaginaRouteImport } from './routes/criar-pagina'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ImageLinksRoute = ImageLinksRouteImport.update({
+  id: '/image-links',
+  path: '/image-links',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CriarPaginaRoute = CriarPaginaRouteImport.update({
   id: '/criar-pagina',
   path: '/criar-pagina',
@@ -26,31 +32,42 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/criar-pagina': typeof CriarPaginaRoute
+  '/image-links': typeof ImageLinksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/criar-pagina': typeof CriarPaginaRoute
+  '/image-links': typeof ImageLinksRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/criar-pagina': typeof CriarPaginaRoute
+  '/image-links': typeof ImageLinksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/criar-pagina'
+  fullPaths: '/' | '/criar-pagina' | '/image-links'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/criar-pagina'
-  id: '__root__' | '/' | '/criar-pagina'
+  to: '/' | '/criar-pagina' | '/image-links'
+  id: '__root__' | '/' | '/criar-pagina' | '/image-links'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CriarPaginaRoute: typeof CriarPaginaRoute
+  ImageLinksRoute: typeof ImageLinksRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/image-links': {
+      id: '/image-links'
+      path: '/image-links'
+      fullPath: '/image-links'
+      preLoaderRoute: typeof ImageLinksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/criar-pagina': {
       id: '/criar-pagina'
       path: '/criar-pagina'
@@ -71,6 +88,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CriarPaginaRoute: CriarPaginaRoute,
+  ImageLinksRoute: ImageLinksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
