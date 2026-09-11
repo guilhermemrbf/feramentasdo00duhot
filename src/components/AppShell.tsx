@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { to: "/" as const, label: "Início", icon: Home },
   { to: "/image-links" as const, label: "Image Links", icon: Image },
-  { to: "/criar-pagina" as const, label: "Criar Página", icon: PanelTop },
+  { to: "/criar-pagina" as const, label: "Tela Privacy", icon: PanelTop },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
