@@ -36,9 +36,9 @@ const tools = [
   {
     to: "/criar-pagina" as const,
     icon: PanelTop,
-    name: "Criar Minha Página",
+    name: "Criar Tela Privacy",
     description:
-      "Envie foto de perfil e capa, informe nome, @ e descrição, e receba o prompt completo pronto para colar.",
+      "Envie foto de perfil e capa, informe nome, @ e descrição e receba o prompt completo da tela Privacy pronto para colar.",
     action: "Começar agora",
   },
 ];
@@ -52,11 +52,11 @@ function Home() {
             <Zap className="size-3 text-primary" /> Scale Up Hub
           </span>
           <h1 className="mt-5 font-display text-4xl font-bold leading-tight text-foreground sm:text-5xl">
-            Ferramentas diretas para colocar sua página no ar.
+            Ferramentas diretas para escalar sua operação no digital.
           </h1>
           <p className="mt-4 text-base leading-7 text-muted-foreground">
-            Sem etapas desnecessárias: hospede suas imagens, gere os links e monte o prompt completo
-            da sua página em poucos minutos.
+            Hospede suas imagens em segundos e gere o prompt completo da sua tela Privacy sem
+            complicação. Tudo pronto para acelerar o seu próximo lançamento.
           </p>
         </section>
 
