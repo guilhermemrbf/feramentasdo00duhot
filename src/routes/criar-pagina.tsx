@@ -8,17 +8,17 @@ import { buildPrompt, type PageData } from "@/lib/prompt-template";
 export const Route = createFileRoute("/criar-pagina")({
   head: () => ({
     meta: [
-      { title: "Criar Minha Página — Scale Up Hub" },
+      { title: "Criar Tela Privacy — 00duHot" },
       {
         name: "description",
         content:
-          "Envie suas fotos, informe nome, @ e descrição e receba um prompt completo pronto para colar na Lovable.",
+          "Monte sua Tela Privacy com nome, imagens e descrição e gere o prompt completo para acelerar sua operação digital.",
       },
-      { property: "og:title", content: "Criar Minha Página — Scale Up Hub" },
+      { property: "og:title", content: "Criar Tela Privacy — 00duHot" },
       {
         property: "og:description",
         content:
-          "Envie suas fotos, informe nome, @ e descrição e receba um prompt completo pronto para colar na Lovable.",
+          "Monte sua Tela Privacy com nome, imagens e descrição e gere o prompt completo para acelerar sua operação digital.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -77,8 +77,8 @@ function CriarPagina() {
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
         <PageIntro
           eyebrow="Ferramenta"
-          title="Criar Minha Página"
-          description="Preencha as informações abaixo e receba o prompt completo, pronto para colar e gerar sua página."
+          title="Criar Tela Privacy"
+          description="Monte sua Tela Privacy com os dados do seu perfil e gere o prompt completo para acelerar sua operação digital."
         />
 
         <div className="mt-8">
