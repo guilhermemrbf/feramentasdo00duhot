@@ -16,11 +16,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-5 px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex min-w-0 items-center gap-3" aria-label="Scale Up Hub — início">
+          <Link to="/" className="flex min-w-0 items-center gap-3" aria-label="00duHot — início">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <Zap className="size-4" strokeWidth={2.4} />
             </span>
-            <span className="truncate font-display text-base font-bold">Scale Up Hub</span>
+            <span className="truncate font-display text-base font-bold">00duHot</span>
           </Link>
 
           <nav className="flex items-center gap-1" aria-label="Navegação principal">
