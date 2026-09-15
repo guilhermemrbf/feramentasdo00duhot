@@ -5,13 +5,13 @@ import { AppShell } from "@/components/AppShell";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Scale Up Hub — ferramentas para escalar páginas" },
+      { title: "00duHot — ferramentas para escalar páginas" },
       {
         name: "description",
         content:
           "Hub com duas ferramentas: gere links públicos de imagens e monte o prompt completo da sua página em minutos.",
       },
-      { property: "og:title", content: "Scale Up Hub — ferramentas para escalar páginas" },
+      { property: "og:title", content: "00duHot — ferramentas para escalar páginas" },
       {
         property: "og:description",
         content:
@@ -49,7 +49,7 @@ function Home() {
       <main className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
         <section className="max-w-2xl">
           <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-            <Zap className="size-3 text-primary" /> Scale Up Hub
+            <Zap className="size-3 text-primary" /> 00duHot
           </span>
           <h1 className="mt-5 font-display text-4xl font-bold leading-tight text-foreground sm:text-5xl">
             Ferramentas diretas para escalar sua operação no digital.
