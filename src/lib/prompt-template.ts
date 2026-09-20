@@ -44,6 +44,50 @@ Não altere elementos que não foram solicitados.
 
 Não remova funcionalidades existentes sem necessidade.
 
+IMPORTANTE: a clonagem deve considerar a trajetória COMPLETA da página, e não apenas a primeira tela. O resultado precisa preservar também as etapas e páginas que fazem parte do fluxo original, incluindo o Upsell 01.
+
+---
+
+# TRAJETÓRIA COMPLETA DA PÁGINA
+
+A implementação deve reproduzir a jornada completa existente no projeto de referência.
+
+Não limite o trabalho à página principal.
+
+Preserve o fluxo entre as etapas exatamente como existe no projeto original, incluindo:
+
+1. página principal / página de vendas;
+2. fluxo de pagamento Pix;
+3. confirmação do pagamento;
+4. continuação da jornada após o pagamento;
+5. página de Upsell 01 (/upsell01.html no projeto de referência).
+
+## UPSELL 01 — OBRIGATÓRIO
+
+O Upsell 01 faz parte da clonagem e NÃO pode ser ignorado.
+
+Reproduza a página de Upsell 01 do projeto de referência, preservando:
+
+* estrutura;
+* layout;
+* textos;
+* hierarquia visual;
+* imagens;
+* vídeo, quando existir;
+* botões;
+* links e navegação;
+* comportamento;
+* responsividade;
+* identidade visual.
+
+O Upsell 01 deve continuar conectado à trajetória principal, respeitando a navegação e os comportamentos existentes no projeto de referência.
+
+Não transforme o Upsell 01 em uma página genérica, simplificada ou apenas ilustrativa.
+
+Não substitua o Upsell 01 por uma nova criação.
+
+A regra é: CLONAR A TRAJETÓRIA COMPLETA, incluindo o Upsell 01.
+
 ---
 
 ## DADOS PARA PERSONALIZAÇÃO
@@ -80,6 +124,18 @@ Substitua a foto de perfil existente pela seguinte imagem:
 
 Utilize exatamente essa URL.
 
+A aplicação deve ajustar automaticamente a imagem para o espaço visual da foto de perfil, mantendo proporção, qualidade e enquadramento adequado.
+
+Não distorça a imagem.
+
+Não estique a imagem.
+
+Não altere a URL fornecida.
+
+Se o formato da imagem for diferente do espaço disponível, utilize o comportamento visual equivalente ao projeto original, como crop/cover ou posicionamento responsivo, para que a foto fique corretamente encaixada em desktop e mobile.
+
+Esse ajuste deve acontecer automaticamente, sem exigir configuração manual do usuário.
+
 ---
 
 ### FOTO DE CAPA
@@ -89,6 +145,18 @@ Substitua a foto de capa existente pela seguinte imagem:
 {{FOTO_CAPA_URL}}
 
 Utilize exatamente essa URL.
+
+A aplicação deve ajustar automaticamente a imagem para o espaço visual da capa, mantendo proporção, qualidade e enquadramento adequado.
+
+Não distorça a imagem.
+
+Não estique a imagem.
+
+Não altere a URL fornecida.
+
+Se o formato da imagem for diferente do espaço disponível, utilize o comportamento visual equivalente ao projeto original, como crop/cover, posicionamento e responsividade, para que a capa fique corretamente encaixada em desktop e mobile.
+
+Esse ajuste deve acontecer automaticamente, sem exigir configuração manual do usuário.
 
 ---
 
@@ -320,7 +388,12 @@ Verificar:
 * espaçamentos;
 * responsividade;
 * componentes;
-* animações.
+* animações;
+* fluxo completo da página;
+* navegação até o Upsell 01;
+* visual do Upsell 01;
+* ajuste automático da foto de perfil;
+* ajuste automático da foto de capa.
 
 ### PAGAMENTO
 
@@ -356,6 +429,12 @@ Faça exatamente o que foi solicitado.
 Não recrie o projeto.
 
 Não faça uma versão "inspirada".
+
+Não entregue somente a página principal.
+
+A trajetória completa deve estar funcional, incluindo o Upsell 01.
+
+As fotos de perfil e capa devem ser aplicadas automaticamente e adaptadas de forma responsiva ao espaço original.
 
 Não faça redesign.
 
