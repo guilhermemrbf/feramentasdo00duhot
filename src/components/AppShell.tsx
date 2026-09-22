@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { FileKey, Home, Image, PanelTop, Zap } from "lucide-react";
+import { FileKey, Home, Image, PanelTop, ShieldCheck, Zap } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +8,7 @@ const navItems = [
   { to: "/image-links" as const, label: "Image Links", icon: Image },
   { to: "/criar-pagina" as const, label: "Tela Privacy", icon: PanelTop },
   { to: "/limpar-metadados" as const, label: "Metadados", icon: FileKey },
+  { to: "/otimizar-criativos" as const, label: "Criativos", icon: ShieldCheck },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
