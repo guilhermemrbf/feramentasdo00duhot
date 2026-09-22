@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Image as ImageIcon, PanelTop, Zap } from "lucide-react";
+import { ArrowRight, FileKey, Image as ImageIcon, PanelTop, Zap } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 
 export const Route = createFileRoute("/")({
@@ -40,6 +40,13 @@ const tools = [
     description:
       "Envie foto de perfil e capa, informe nome, @ e descrição e receba o prompt completo da tela Privacy pronto para colar.",
     action: "Começar agora",
+  },
+  {
+    to: "/limpar-metadados" as const,
+    icon: FileKey,
+    name: "Limpar Metadados",
+    description: "Limpe metadados de várias fotos ou vídeos diretamente no navegador, sem enviar os arquivos para um servidor.",
+    action: "Abrir ferramenta",
   },
 ];
 
