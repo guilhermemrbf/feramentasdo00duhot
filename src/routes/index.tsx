@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, FileKey, Image as ImageIcon, PanelTop, Zap } from "lucide-react";
+import { ArrowRight, FileKey, Image as ImageIcon, PanelTop, ShieldCheck, Zap } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 
 export const Route = createFileRoute("/")({
@@ -9,13 +9,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Hub com duas ferramentas: gere links públicos de imagens e monte o prompt completo da sua página em minutos.",
+          "Hub com ferramentas para imagens, Tela Privacy, metadados e otimização de criativos para acelerar sua operação digital.",
       },
       { property: "og:title", content: "00duHot — ferramentas para escalar páginas" },
       {
         property: "og:description",
         content:
-          "Hub com duas ferramentas: gere links públicos de imagens e monte o prompt completo da sua página em minutos.",
+          "Hub com ferramentas para imagens, Tela Privacy, metadados e otimização de criativos para acelerar sua operação digital.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -45,7 +45,16 @@ const tools = [
     to: "/limpar-metadados" as const,
     icon: FileKey,
     name: "Limpar Metadados",
-    description: "Limpe metadados de várias fotos ou vídeos diretamente no navegador, sem enviar os arquivos para um servidor.",
+    description:
+      "Limpe metadados de várias fotos ou vídeos diretamente no navegador, sem enviar os arquivos para um servidor.",
+    action: "Abrir ferramenta",
+  },
+  {
+    to: "/otimizar-criativos" as const,
+    icon: ShieldCheck,
+    name: "Otimizar Criativos",
+    description:
+      "Reexporte imagens e vídeos localmente, aplique overlay visual de marca e gere versões otimizadas dos seus criativos.",
     action: "Abrir ferramenta",
   },
 ];
@@ -62,7 +71,7 @@ function Home() {
             Ferramentas diretas para escalar sua operação no digital.
           </h1>
           <p className="mt-4 text-base leading-7 text-muted-foreground">
-            Hospede suas imagens em segundos e gere o prompt completo da sua tela Privacy sem
+            Hospede suas imagens, gere sua Tela Privacy, limpe metadados e otimize seus criativos sem
             complicação. Tudo pronto para acelerar o seu próximo lançamento.
           </p>
         </section>
