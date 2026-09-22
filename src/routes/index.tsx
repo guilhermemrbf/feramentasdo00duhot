@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, FileKey, Image as ImageIcon, PanelTop, ShieldCheck, Zap } from "lucide-react";
+import { ArrowRight, FileKey, Image as ImageIcon, PanelTop, Scan, ShieldCheck, Zap } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 
 export const Route = createFileRoute("/")({
@@ -55,6 +55,14 @@ const tools = [
     name: "Otimizar Criativos",
     description:
       "Reexporte imagens e vídeos localmente, aplique overlay visual de marca e gere versões otimizadas dos seus criativos.",
+    action: "Abrir ferramenta",
+  },
+  {
+    to: "/gerar-preview" as const,
+    icon: Scan,
+    name: "Gerar Preview",
+    description:
+      "Gere previews completos de fotos e vídeos com blur ou pixelização, em intensidades leve, média ou pesada.",
     action: "Abrir ferramenta",
   },
 ];
