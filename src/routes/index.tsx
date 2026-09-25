@@ -1,24 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, FileKey, Image as ImageIcon, Instagram, PanelTop, Scan, ShieldCheck, Zap } from "lucide-react";
+import {
+  ArrowUpRight,
+  FileKey,
+  Image as ImageIcon,
+  Instagram,
+  PanelTop,
+  Scan,
+  ShieldCheck,
+  Zap,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "00duHot — ferramentas para escalar páginas" },
+      { title: "00duHot — central de ferramentas" },
       {
         name: "description",
-        content:
-          "Hub com ferramentas para imagens, Tela Privacy, metadados e otimização de criativos para acelerar sua operação digital.",
+        content: "Central interna de ferramentas para a operação digital 00duHot.",
       },
-      { property: "og:title", content: "00duHot — ferramentas para escalar páginas" },
-      {
-        property: "og:description",
-        content:
-          "Hub com ferramentas para imagens, Tela Privacy, metadados e otimização de criativos para acelerar sua operação digital.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Home,
@@ -29,86 +29,103 @@ const tools = [
     to: "/image-links" as const,
     icon: ImageIcon,
     name: "Image Links",
-    description:
-      "Envie várias imagens ao mesmo tempo e copie os links públicos em URL, Markdown, HTML ou prompt de IA.",
-    action: "Abrir ferramenta",
+    description: "Hospede imagens e gere URLs prontas para uso.",
+    detail: "Arquivos e links",
   },
   {
     to: "/criar-pagina" as const,
     icon: PanelTop,
-    name: "Criar Tela Privacy",
-    description:
-      "Envie foto de perfil e capa, informe nome, @ e descrição e receba o prompt completo da tela Privacy pronto para colar.",
-    action: "Começar agora",
+    name: "Tela Privacy",
+    description: "Monte prompts completos para recriar suas páginas.",
+    detail: "Páginas e prompts",
   },
   {
     to: "/limpar-metadados" as const,
     icon: FileKey,
-    name: "Limpar Metadados",
-    description:
-      "Limpe metadados de várias fotos ou vídeos diretamente no navegador, sem enviar os arquivos para um servidor.",
-    action: "Abrir ferramenta",
+    name: "Metadados",
+    description: "Limpe dados embutidos em fotos e vídeos.",
+    detail: "Higienização",
   },
   {
     to: "/otimizar-criativos" as const,
     icon: ShieldCheck,
-    name: "Otimizar Criativos",
-    description:
-      "Reexporte imagens e vídeos localmente, aplique overlay visual de marca e gere versões otimizadas dos seus criativos.",
-    action: "Abrir ferramenta",
+    name: "Criativos",
+    description: "Prepare novas versões dos seus materiais.",
+    detail: "Otimização",
   },
   {
     to: "/gerar-preview" as const,
     icon: Scan,
-    name: "Gerar Preview",
-    description:
-      "Gere previews completos de fotos e vídeos com blur ou pixelização, em intensidades leve, média ou pesada.",
-    action: "Abrir ferramenta",
+    name: "Preview",
+    description: "Gere versões com blur ou pixelização.",
+    detail: "Visualização",
+  },
+  {
+    to: "/automacao-instagram" as const,
+    icon: Instagram,
+    name: "Instagram",
+    description: "Organize contas, vídeos e a fila de Reels.",
+    detail: "Automação",
   },
 ];
 
 function Home() {
   return (
     <AppShell>
-      <main className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
-        <section className="max-w-2xl">
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-            <Zap className="size-3 text-primary" /> 00duHot
-          </span>
-          <h1 className="mt-5 font-display text-4xl font-bold leading-tight text-foreground sm:text-5xl">
-            Ferramentas diretas para escalar sua operação no digital.
-          </h1>
-          <p className="mt-4 text-base leading-7 text-muted-foreground">
-            Hospede suas imagens, gere sua Tela Privacy, limpe metadados e otimize seus criativos sem
-            complicação. Tudo pronto para acelerar o seu próximo lançamento.
-          </p>
+      <main className="mx-auto max-w-[1400px] px-4 py-7 sm:px-6 lg:px-10 lg:py-10">
+        <section className="relative overflow-hidden border-b border-border pb-9">
+          <div className="max-w-3xl">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs text-muted-foreground">
+              <span className="size-1.5 rounded-full bg-emerald-400" />
+              Ambiente de testes ativo
+            </div>
+            <h1 className="font-display text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">
+              Tudo que a operação precisa, em um só lugar.
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
+              O 00duHot reúne as ferramentas usadas pela equipe para preparar páginas, mídia,
+              criativos e automações. A estrutura foi pensada para crescer junto com o SaaS.
+            </p>
+          </div>
+          <div className="absolute right-0 top-0 hidden h-32 w-32 rounded-full bg-primary/5 blur-3xl sm:block" />
         </section>
 
-        <section className="mt-12 grid gap-4 sm:grid-cols-2">
+        <section className="mt-8 grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 xl:grid-cols-3">
           {tools.map((tool) => {
             const Icon = tool.icon;
             return (
               <Link
                 key={tool.to}
                 to={tool.to}
-                className="group flex flex-col rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/60"
+                className="group flex min-h-52 flex-col bg-card p-6 transition-colors hover:bg-accent/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               >
-                <span className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary">
-                  <Icon className="size-5" />
-                </span>
-                <h2 className="mt-4 font-display text-lg font-semibold text-foreground">
-                  {tool.name}
-                </h2>
-                <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">
-                  {tool.description}
-                </p>
-                <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
-                  {tool.action}
-                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-                </span>
+                <div className="flex items-start justify-between">
+                  <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-secondary text-primary">
+                    <Icon className="size-5" />
+                  </span>
+                  <ArrowUpRight className="size-4 text-muted-foreground/50 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                </div>
+                <div className="mt-auto pt-8">
+                  <p className="text-[11px] font-medium text-primary">{tool.detail}</p>
+                  <h2 className="mt-1 font-display text-lg font-semibold tracking-tight">{tool.name}</h2>
+                  <p className="mt-2 max-w-sm text-sm leading-5 text-muted-foreground">{tool.description}</p>
+                </div>
               </Link>
             );
           })}
+        </section>
+
+        <section className="mt-8 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold">Base do próximo estágio</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              O núcleo visual já está organizado para receber persistência, autenticação e integrações.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+            <Zap className="size-3.5 text-primary" />
+            00duHot · equipe interna
+          </div>
         </section>
       </main>
     </AppShell>
