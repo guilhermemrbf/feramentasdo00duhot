@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, FileKey, Image as ImageIcon, PanelTop, Scan, ShieldCheck, Zap } from "lucide-react";
+import { ArrowRight, FileKey, Image as ImageIcon, Instagram, PanelTop, Scan, ShieldCheck, Zap } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 
 export const Route = createFileRoute("/")({
