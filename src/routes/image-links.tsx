@@ -23,11 +23,11 @@ export const Route = createFileRoute("/image-links")({
         content:
           "Envie imagens e vídeos e receba links públicos diretos em URL, Markdown, HTML ou prompt de IA.",
       },
-      { property: "og:title", content: "Image Links — Scale Up Hub" },
+      { property: "og:title", content: "Image Links — 00duHot" },
       {
         property: "og:description",
         content:
-          "Envie várias imagens de uma vez e receba links públicos diretos em URL, Markdown, HTML ou prompt de IA.",
+          "Envie imagens e vídeos e receba links públicos diretos em URL, Markdown, HTML ou prompt de IA.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -91,8 +91,23 @@ function ImageLinks() {
     Array.from(files).forEach(uploadFile);
   };
 
-  const getFormatted = (item: UploadedImage) => {
-    if (!item.url) return "";\n\n    if (item.type === "video") {\n      switch (format) {\n        case "markdown":\n          return `[\\${item.fileName}](\\${item.url})`;\n        case "html":\n          return `<video src="\\${item.url}" controls></video>`;\n        case "ai":\n          return `Use this video as reference: \\${item.url}`;\n        default:\n          return item.url;\n      }\n    }\n\n    switch (format) {
+  const getFormatted = (item: UploadedMedia) => {
+    if (!item.url) return "";
+
+    if (item.type === "video") {
+      switch (format) {
+        case "markdown":
+          return `[${item.fileName}](${item.url})`;
+        case "html":
+          return `<video src="${item.url}" controls></video>`;
+        case "ai":
+          return `Use this video as reference: ${item.url}`;
+        default:
+          return item.url;
+      }
+    }
+
+    switch (format) {
       case "markdown":
         return `![${item.fileName}](${item.url})`;
       case "html":
@@ -104,7 +119,7 @@ function ImageLinks() {
     }
   };
 
-  const copy = async (item: UploadedImage) => {
+  const copy = async (item: UploadedMedia) => {
     const text = getFormatted(item);
     if (!text) return;
     await navigator.clipboard.writeText(text);
@@ -144,7 +159,7 @@ function ImageLinks() {
               <UploadCloud className="size-5" />
             </span>
             <p className="text-sm font-semibold text-foreground">
-              Arraste as imagens aqui ou clique para selecionar
+              Arraste imagens ou vídeos aqui ou clique para selecionar
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               PNG, JPG, GIF, WEBP, MP4, WEBM ou MOV · vários arquivos de uma vez
