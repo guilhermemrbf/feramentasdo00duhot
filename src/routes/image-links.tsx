@@ -8,19 +8,20 @@ import {
   RotateCcw,
   AlertCircle,
   Loader2,
+  Film,
 } from "lucide-react";
 import { AppShell, PageIntro } from "@/components/AppShell";
-import { ACCEPTED_IMAGE_TYPES, uploadToCloudinary } from "@/lib/cloudinary";
+import { ACCEPTED_MEDIA_TYPES, uploadToCloudinary } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/image-links")({
   head: () => ({
     meta: [
-      { title: "Image Links — Scale Up Hub" },
+      { title: "Image Links — 00duHot" },
       {
         name: "description",
         content:
-          "Envie várias imagens de uma vez e receba links públicos diretos em URL, Markdown, HTML ou prompt de IA.",
+          "Envie imagens e vídeos e receba links públicos diretos em URL, Markdown, HTML ou prompt de IA.",
       },
       { property: "og:title", content: "Image Links — Scale Up Hub" },
       {
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/image-links")({
 
 type Format = "url" | "markdown" | "html" | "ai";
 
-interface UploadedImage {
+interface UploadedMedia {
   id: string;
   url: string;
   fileName: string;
@@ -45,6 +46,7 @@ interface UploadedImage {
   uploading: boolean;
   error: string | null;
   preview: string;
+  type: "image" | "video";
 }
 
 const FORMATS: [Format, string][] = [
@@ -55,7 +57,7 @@ const FORMATS: [Format, string][] = [
 ];
 
 function ImageLinks() {
-  const [uploads, setUploads] = useState<UploadedImage[]>([]);
+  const [uploads, setUploads] = useState<UploadedMedia[]>([]);
   const [format, setFormat] = useState<Format>("url");
   const [dragOver, setDragOver] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -69,13 +71,14 @@ function ImageLinks() {
   const uploadFile = useCallback((file: File) => {
     const id = Math.random().toString(36).slice(2);
     const preview = URL.createObjectURL(file);
+    const type = file.type.startsWith("video/") ? "video" : "image";
 
     setUploads((prev) => [
-      { id, url: "", fileName: file.name, progress: 0, uploading: true, error: null, preview },
+      { id, url: "", fileName: file.name, progress: 0, uploading: true, error: null, preview, type },
       ...prev,
     ]);
 
-    const patch = (p: Partial<UploadedImage>) =>
+    const patch = (p: Partial<UploadedMedia>) =>
       setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...p } : u)));
 
     uploadToCloudinary(file, (progress) => patch({ progress }))
@@ -89,8 +92,7 @@ function ImageLinks() {
   };
 
   const getFormatted = (item: UploadedImage) => {
-    if (!item.url) return "";
-    switch (format) {
+    if (!item.url) return "";\n\n    if (item.type === "video") {\n      switch (format) {\n        case "markdown":\n          return `[\\${item.fileName}](\\${item.url})`;\n        case "html":\n          return `<video src="\\${item.url}" controls></video>`;\n        case "ai":\n          return `Use this video as reference: \\${item.url}`;\n        default:\n          return item.url;\n      }\n    }\n\n    switch (format) {
       case "markdown":
         return `![${item.fileName}](${item.url})`;
       case "html":
@@ -118,7 +120,7 @@ function ImageLinks() {
         <PageIntro
           eyebrow="Ferramenta"
           title="Image Links"
-          description="Envie várias imagens ao mesmo tempo e copie o link público de cada uma no formato que você precisa."
+          description="Envie imagens e vídeos ao mesmo tempo e copie o link público de cada arquivo no formato que você precisa."
         />
 
         <div className="mt-8 space-y-6">
@@ -145,13 +147,13 @@ function ImageLinks() {
               Arraste as imagens aqui ou clique para selecionar
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              PNG, JPG, GIF ou WEBP · vários arquivos de uma vez
+              PNG, JPG, GIF, WEBP, MP4, WEBM ou MOV · vários arquivos de uma vez
             </p>
             <input
               ref={inputRef}
               type="file"
               multiple
-              accept={ACCEPTED_IMAGE_TYPES.join(",")}
+              accept={ACCEPTED_MEDIA_TYPES.join(",")}
               className="hidden"
               onChange={(e) => uploadFiles(e.target.files)}
             />
@@ -196,11 +198,26 @@ function ImageLinks() {
                     className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3"
                   >
                     <div className="aspect-video overflow-hidden rounded-md border border-border bg-secondary/40">
-                      <img
-                        src={item.preview}
-                        alt={item.fileName}
-                        className="size-full object-contain"
-                      />
+                      {item.type === "video" ? (
+                        <video
+                          src={item.preview}
+                          controls
+                          muted
+                          preload="metadata"
+                          className="size-full object-contain"
+                        />
+                      ) : (
+                        <img
+                          src={item.preview}
+                          alt={item.fileName}
+                          className="size-full object-contain"
+                        />
+                      )}
+                      {item.type === "video" && (
+                        <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-md border border-white/10 bg-black/60 px-2 py-1 text-[10px] font-semibold text-white">
+                          <Film className="size-3" /> Vídeo
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between gap-2">
@@ -248,7 +265,7 @@ function ImageLinks() {
                           href={item.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          title="Abrir imagem"
+                          title={item.type === "video" ? "Abrir vídeo" : "Abrir imagem"}
                           className="inline-flex size-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:text-foreground"
                         >
                           <ExternalLink className="size-3.5" />
@@ -263,7 +280,7 @@ function ImageLinks() {
         </div>
 
         <p className="mt-12 text-xs text-muted-foreground">
-          As imagens ficam hospedadas publicamente no Cloudinary.
+          Imagens e vídeos ficam hospedados publicamente no Cloudinary.
         </p>
       </main>
     </AppShell>
