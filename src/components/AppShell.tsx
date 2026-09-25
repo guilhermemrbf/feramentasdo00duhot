@@ -21,13 +21,13 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { to: "/", label: "Visão geral", description: "Central da equipe", icon: Home },
-  { to: "/image-links", label: "Image Links", description: "Hospedagem e URLs", icon: Image },
-  { to: "/criar-pagina", label: "Tela Privacy", description: "Criador de páginas", icon: PanelTop },
-  { to: "/limpar-metadados", label: "Metadados", description: "Limpeza de arquivos", icon: FileKey },
-  { to: "/otimizar-criativos", label: "Criativos", description: "Otimização de mídia", icon: ShieldCheck },
-  { to: "/gerar-preview", label: "Preview", description: "Blur e pixelização", icon: Scan },
-  { to: "/automacao-instagram", label: "Instagram", description: "Fila de Reels", icon: Instagram },
+  { to: "/", label: "Início", description: "Todas as ferramentas", icon: Home },
+  { to: "/image-links", label: "Image Links", description: "Gerar links de imagens", icon: Image },
+  { to: "/criar-pagina", label: "Criar Tela Privacy", description: "Criar páginas Privacy", icon: PanelTop },
+  { to: "/limpar-metadados", label: "Limpar Metadados", description: "Limpar dados de arquivos", icon: FileKey },
+  { to: "/otimizar-criativos", label: "Otimizar Criativos", description: "Otimizar arquivos criativos", icon: ShieldCheck },
+  { to: "/gerar-preview", label: "Gerar Preview", description: "Gerar previews de mídia", icon: Scan },
+  { to: "/automacao-instagram", label: "Automação Instagram", description: "Automação de Reels", icon: Instagram },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
