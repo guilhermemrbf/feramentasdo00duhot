@@ -18,7 +18,7 @@ import {
   Users,
   Video,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { AppShell, PageIntro } from "@/components/AppShell";
 
 export const Route = createFileRoute("/automacao-instagram")({
@@ -95,7 +95,7 @@ const hashtags = ["#reels", "#instagram", "#conteudo", "#viral", "#dicas"];
 function AutomacaoInstagram() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [accounts, setAccounts] = useState(initialAccounts);
-  const [videos, setVideos] = useState(initialVideos);
+  const [videos] = useState(initialVideos);
   const [posts, setPosts] = useState<Post[]>(() => buildPreviewPosts());
   const [dailyLimit, setDailyLimit] = useState(5);
   const [interval, setInterval] = useState(120);
@@ -405,7 +405,7 @@ function Metric({ label, value, icon: Icon }: { label: string; value: number; ic
   return <div className="rounded-lg border border-border bg-card p-4"><div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">{label}</span><Icon className="size-4 text-primary" /></div><p className="mt-3 font-display text-2xl font-bold">{value}</p></div>;
 }
 
-function Panel({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+function Panel({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return <div className="rounded-lg border border-border bg-card p-5"><div className="flex items-center justify-between gap-4 border-b border-border pb-4"><h2 className="font-display text-base font-semibold">{title}</h2>{action}</div><div className="pt-4">{children}</div></div>;
 }
 
