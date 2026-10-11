@@ -9,13 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ImageLinksRouteImport } from './routes/image-links'
-import { Route as CriarPaginaRouteImport } from './routes/criar-pagina'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AutomacaoInstagramRouteImport } from './routes/automacao-instagram'
+import { Route as CriarPaginaRouteImport } from './routes/criar-pagina'
+import { Route as GerarPreviewRouteImport } from './routes/gerar-preview'
+import { Route as ImageLinksRouteImport } from './routes/image-links'
+import { Route as LimparMetadadosRouteImport } from './routes/limpar-metadados'
+import { Route as OtimizarCriativosRouteImport } from './routes/otimizar-criativos'
 
-const ImageLinksRoute = ImageLinksRouteImport.update({
-  id: '/image-links',
-  path: '/image-links',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AutomacaoInstagramRoute = AutomacaoInstagramRouteImport.update({
+  id: '/automacao-instagram',
+  path: '/automacao-instagram',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CriarPaginaRoute = CriarPaginaRouteImport.update({
@@ -23,49 +32,109 @@ const CriarPaginaRoute = CriarPaginaRouteImport.update({
   path: '/criar-pagina',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const GerarPreviewRoute = GerarPreviewRouteImport.update({
+  id: '/gerar-preview',
+  path: '/gerar-preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImageLinksRoute = ImageLinksRouteImport.update({
+  id: '/image-links',
+  path: '/image-links',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LimparMetadadosRoute = LimparMetadadosRouteImport.update({
+  id: '/limpar-metadados',
+  path: '/limpar-metadados',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OtimizarCriativosRoute = OtimizarCriativosRouteImport.update({
+  id: '/otimizar-criativos',
+  path: '/otimizar-criativos',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/criar-pagina': typeof CriarPaginaRoute
+  '/gerar-preview': typeof GerarPreviewRoute
   '/image-links': typeof ImageLinksRoute
+  '/limpar-metadados': typeof LimparMetadadosRoute
+  '/otimizar-criativos': typeof OtimizarCriativosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/criar-pagina': typeof CriarPaginaRoute
+  '/gerar-preview': typeof GerarPreviewRoute
   '/image-links': typeof ImageLinksRoute
+  '/limpar-metadados': typeof LimparMetadadosRoute
+  '/otimizar-criativos': typeof OtimizarCriativosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/criar-pagina': typeof CriarPaginaRoute
+  '/gerar-preview': typeof GerarPreviewRoute
   '/image-links': typeof ImageLinksRoute
+  '/limpar-metadados': typeof LimparMetadadosRoute
+  '/otimizar-criativos': typeof OtimizarCriativosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/criar-pagina' | '/image-links'
+  fullPaths:
+    | '/'
+    | '/automacao-instagram'
+    | '/criar-pagina'
+    | '/gerar-preview'
+    | '/image-links'
+    | '/limpar-metadados'
+    | '/otimizar-criativos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/criar-pagina' | '/image-links'
-  id: '__root__' | '/' | '/criar-pagina' | '/image-links'
+  to:
+    | '/'
+    | '/automacao-instagram'
+    | '/criar-pagina'
+    | '/gerar-preview'
+    | '/image-links'
+    | '/limpar-metadados'
+    | '/otimizar-criativos'
+  id:
+    | '__root__'
+    | '/'
+    | '/automacao-instagram'
+    | '/criar-pagina'
+    | '/gerar-preview'
+    | '/image-links'
+    | '/limpar-metadados'
+    | '/otimizar-criativos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AutomacaoInstagramRoute: typeof AutomacaoInstagramRoute
   CriarPaginaRoute: typeof CriarPaginaRoute
+  GerarPreviewRoute: typeof GerarPreviewRoute
   ImageLinksRoute: typeof ImageLinksRoute
+  LimparMetadadosRoute: typeof LimparMetadadosRoute
+  OtimizarCriativosRoute: typeof OtimizarCriativosRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/image-links': {
-      id: '/image-links'
-      path: '/image-links'
-      fullPath: '/image-links'
-      preLoaderRoute: typeof ImageLinksRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/automacao-instagram': {
+      id: '/automacao-instagram'
+      path: '/automacao-instagram'
+      fullPath: '/automacao-instagram'
+      preLoaderRoute: typeof AutomacaoInstagramRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/criar-pagina': {
@@ -75,11 +144,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CriarPaginaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/gerar-preview': {
+      id: '/gerar-preview'
+      path: '/gerar-preview'
+      fullPath: '/gerar-preview'
+      preLoaderRoute: typeof GerarPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/image-links': {
+      id: '/image-links'
+      path: '/image-links'
+      fullPath: '/image-links'
+      preLoaderRoute: typeof ImageLinksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/limpar-metadados': {
+      id: '/limpar-metadados'
+      path: '/limpar-metadados'
+      fullPath: '/limpar-metadados'
+      preLoaderRoute: typeof LimparMetadadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/otimizar-criativos': {
+      id: '/otimizar-criativos'
+      path: '/otimizar-criativos'
+      fullPath: '/otimizar-criativos'
+      preLoaderRoute: typeof OtimizarCriativosRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -87,8 +177,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AutomacaoInstagramRoute: AutomacaoInstagramRoute,
   CriarPaginaRoute: CriarPaginaRoute,
+  GerarPreviewRoute: GerarPreviewRoute,
   ImageLinksRoute: ImageLinksRoute,
+  LimparMetadadosRoute: LimparMetadadosRoute,
+  OtimizarCriativosRoute: OtimizarCriativosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

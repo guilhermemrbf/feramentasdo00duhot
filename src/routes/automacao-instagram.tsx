@@ -244,7 +244,7 @@ function AutomacaoInstagram() {
                     </div>
                     <div className="mt-4 flex gap-2">
                       {account.status !== "Conectada" && <button onClick={() => connectPlaceholder(account.id)} className="rounded-md border border-border px-3 py-2 text-xs font-semibold">Simular conexão</button>}
-                      {account.status === "Conectada" && <button onClick={() => toggleAccount(account.id)} className="rounded-md border border-border px-3 py-2 text-xs font-semibold">{account.status === "Pausada" ? "Reativar" : "Pausar"}</button>}
+                      {account.status === "Conectada" && <button onClick={() => toggleAccount(account.id)} className="rounded-md border border-border px-3 py-2 text-xs font-semibold">{(account.status as string) === "Pausada" ? "Reativar" : "Pausar"}</button>}
                     </div>
                   </div>
                 ))}

@@ -133,3 +133,7 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+#lovable-badge {
+  display: none !important;
+}
