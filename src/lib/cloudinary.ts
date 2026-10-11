@@ -46,7 +46,7 @@ export function uploadToCloudinary(
     const xhr = new XMLHttpRequest();
     xhr.open(
       "POST",
-      \`https://api.cloudinary.com/v1_1/\${CLOUD_NAME}/\${resourceType}/upload\`,
+      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`,
     );
 
     xhr.upload.onprogress = (e) => {
