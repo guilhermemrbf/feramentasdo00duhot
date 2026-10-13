@@ -130,11 +130,27 @@ function toMinutes(time: string): number {
   return hours * 60 + minutes;
 }
 
-function formatDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function dateInTimezone(date: Date, timezone: string): { date: string; minutes: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return {
+    date: `${values.year}-${values.month}-${values.day}`,
+    minutes: Number(values.hour) * 60 + Number(values.minute),
+  };
+}
+
+function dateAtOffset(date: string, offset: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  const result = new Date(Date.UTC(year, month - 1, day + offset));
+  return `${result.getUTCFullYear()}-${String(result.getUTCMonth() + 1).padStart(2, "0")}-${String(result.getUTCDate()).padStart(2, "0")}`;
 }
 
 function displayDate(date: string): string {
@@ -287,6 +303,11 @@ function AutomacaoInstagram() {
       setTab("contas");
       return;
     }
+    if (selectedAccount.status === "Pausada") {
+      setNotice("A conta selecionada está pausada. Reative-a ou escolha outra conta antes de gerar a fila.");
+      setTab("contas");
+      return;
+    }
     if (!media.length) {
       setNotice("Adicione pelo menos um arquivo à biblioteca antes de montar a fila.");
       setTab("biblioteca");
@@ -304,29 +325,33 @@ function AutomacaoInstagram() {
     const count = Math.max(1, Math.min(500, Math.floor(Number(settings.queueCount) || 1)));
     const limit = Math.max(1, Math.min(50, Math.floor(Number(settings.dailyLimit) || 1)));
     const interval = Math.max(1, Math.floor(Number(settings.interval) || 1));
-    const usableSlots = slots.filter((slot, index) => index === 0 || toMinutes(slot) - toMinutes(slots[index - 1]) >= interval);
+    const usableSlots = slots.reduce<string[]>((accepted, slot) => {
+      const previous = accepted[accepted.length - 1];
+      if (!previous || toMinutes(slot) - toMinutes(previous) >= interval) accepted.push(slot);
+      return accepted;
+    }, []);
     if (!usableSlots.length) {
       setNotice("Os horários não respeitam o intervalo mínimo configurado.");
       return;
     }
 
     const now = new Date();
+    const today = dateInTimezone(now, settings.timezone);
     const generated: Post[] = [];
     let dayOffset = 0;
     while (generated.length < count && dayOffset < 1000) {
-      const date = new Date(now);
-      date.setDate(now.getDate() + dayOffset);
+      const date = dateAtOffset(today.date, dayOffset);
       let addedToday = 0;
       for (const time of usableSlots) {
         if (generated.length >= count || addedToday >= limit) break;
-        if (dayOffset === 0 && toMinutes(time) <= now.getHours() * 60 + now.getMinutes()) continue;
+        if (dayOffset === 0 && toMinutes(time) <= today.minutes) continue;
         generated.push({
           id: createId("post"),
           accountId: selectedAccount.id,
           account: selectedAccount.username,
           mediaId: media[generated.length % media.length].id,
           video: media[generated.length % media.length].name,
-          date: formatDate(date),
+          date,
           time,
           status: "Prévia",
           caption: [settings.selectedCaption.trim(), settings.description.trim()].filter(Boolean).join("\n\n"),
