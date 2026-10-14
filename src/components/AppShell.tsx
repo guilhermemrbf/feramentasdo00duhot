@@ -23,7 +23,6 @@ type NavItem = {
     | "/limpar-metadados"
     | "/otimizar-criativos"
     | "/gerar-preview"
-    | "/automacao-instagram"
     | "/automacao-tiktok";
   label: string;
   description: string;
@@ -37,8 +36,7 @@ const navItems: NavItem[] = [
   { to: "/limpar-metadados", label: "Limpar Metadados", description: "Limpar dados de arquivos", icon: FileKey },
   { to: "/otimizar-criativos", label: "Otimizar Criativos", description: "Otimizar arquivos criativos", icon: ShieldCheck },
   { to: "/gerar-preview", label: "Gerar Preview", description: "Gerar previews de mídia", icon: Scan },
-  { to: "/automacao-instagram", label: "Automação Instagram", description: "Automação de Reels", icon: Instagram },
-  { to: "/automacao-tiktok", label: "Automação TikTok", description: "Automação de vídeos TikTok", icon: Music2 },
+  { to: "/automacao-tiktok", label: "Automatic Post", description: "TikTok e Instagram", icon: Zap },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -68,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <nav className="space-y-1" aria-label="Ferramentas do 00duHot">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+              const active = item.to === "/" ? pathname === "/" : item.label === "Automatic Post" ? pathname.startsWith("/automacao-tiktok") || pathname.startsWith("/automacao-instagram") : pathname.startsWith(item.to);
 
               return (
                 <Link
