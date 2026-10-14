@@ -1,4 +1,4 @@
-# PostKit — fundação do front-end TikTok
+# PostKit — Automatic Post: fundação do front-end TikTok e Instagram
 
 ## Objetivo
 
