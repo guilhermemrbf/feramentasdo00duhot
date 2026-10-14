@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  AlertCircle, CalendarDays, CheckCircle2, FileText, Hash, Library,
+  AlertCircle, CalendarDays, CheckCircle2, FileText, Hash, Instagram, Library,
   ListVideo, Music2, Plus, Settings2, Sparkles, Upload, Users, Video, X,
 } from "lucide-react";
 import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
@@ -103,8 +103,13 @@ function AutomacaoTikTok() {
   return (
     <AppShell>
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <PageIntro eyebrow="PostKit · Automação" title="Automação TikTok"
-          description="Prepare vídeos, organize conteúdos em lote e revise uma programação antes de conectar sua conta TikTok." />
+        <PageIntro eyebrow="PostKit · Publicação multiplataforma" title="Automatic Post"
+          description="Gerencie a preparação de vídeos para TikTok e Instagram em uma única área de trabalho." />
+        <div className="mt-5 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2" aria-label="Plataforma de publicação">
+          <span className="px-2 text-xs font-semibold text-muted-foreground">PLATAFORMA</span>
+          <span aria-current="page" className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"><Music2 className="size-4" /> TikTok</span>
+          <a href="/automacao-instagram" className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><Instagram className="size-4" /> Instagram</a>
+        </div>
         <div className="mt-5 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs leading-5">
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
           <p><strong>Modo de preparação:</strong> biblioteca, legendas e fila funcionam localmente nesta sessão. A conta ainda não está conectada, os arquivos não são enviados ao servidor e nenhuma publicação real é feita.</p>
