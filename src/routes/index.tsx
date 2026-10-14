@@ -135,7 +135,7 @@ function Home() {
 
               <div className="relative mt-8 flex flex-wrap items-center gap-x-7 gap-y-3 border-t border-border/70 pt-5">
                 <div>
-                  <p className="font-display text-lg font-bold">7</p>
+                  <p className="font-display text-lg font-bold">6</p>
                   <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">FERRAMENTAS DISPONÍVEIS</p>
                 </div>
                 <div className="h-7 w-px bg-border" />
