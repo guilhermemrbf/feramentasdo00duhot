@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  AlertCircle, CalendarDays, CheckCircle2, Clock3, FileText, Hash, Library,
+  AlertCircle, CalendarDays, CheckCircle2, FileText, Hash, Library,
   ListVideo, Music2, Plus, Settings2, Sparkles, Upload, Users, Video, X,
 } from "lucide-react";
 import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
