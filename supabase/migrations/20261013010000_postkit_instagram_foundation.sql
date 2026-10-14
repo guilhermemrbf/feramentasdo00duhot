@@ -207,7 +207,7 @@ create table public.posts (
   foreign key (media_asset_id, workspace_id)
     references public.media_assets(id, workspace_id) on delete restrict,
   foreign key (schedule_id, workspace_id)
-    references public.publishing_schedules(id, workspace_id) on delete set null,
+    references public.publishing_schedules(id, workspace_id) on delete restrict,
   unique (idempotency_key),
   unique (id, workspace_id)
 );
