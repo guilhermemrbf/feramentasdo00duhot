@@ -4,6 +4,7 @@ import {
   Home,
   Image,
   Instagram,
+  Music2,
   PanelTop,
   Scan,
   Settings2,
@@ -22,7 +23,8 @@ type NavItem = {
     | "/limpar-metadados"
     | "/otimizar-criativos"
     | "/gerar-preview"
-    | "/automacao-instagram";
+    | "/automacao-instagram"
+    | "/automacao-tiktok";
   label: string;
   description: string;
   icon: ComponentType<{ className?: string }>;
@@ -36,6 +38,7 @@ const navItems: NavItem[] = [
   { to: "/otimizar-criativos", label: "Otimizar Criativos", description: "Otimizar arquivos criativos", icon: ShieldCheck },
   { to: "/gerar-preview", label: "Gerar Preview", description: "Gerar previews de mídia", icon: Scan },
   { to: "/automacao-instagram", label: "Automação Instagram", description: "Automação de Reels", icon: Instagram },
+  { to: "/automacao-tiktok", label: "Automação TikTok", description: "Automação de vídeos TikTok", icon: Music2 },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
