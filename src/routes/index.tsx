@@ -62,7 +62,6 @@ const tools = [
     detail: "Ferramenta",
   },
   {
-  {
     to: "/automacao-tiktok" as const,
     icon: Music2,
     name: "Automatic Post",
