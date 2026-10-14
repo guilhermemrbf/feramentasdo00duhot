@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertCircle, CalendarDays, CheckCircle2, FileText, Hash, Instagram, Library,
   ListVideo, Music2, Plus, Settings2, Sparkles, Upload, Users, Video, X,
@@ -108,7 +108,7 @@ function AutomacaoTikTok() {
         <div className="mt-5 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2" aria-label="Plataforma de publicação">
           <span className="px-2 text-xs font-semibold text-muted-foreground">PLATAFORMA</span>
           <span aria-current="page" className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"><Music2 className="size-4" /> TikTok</span>
-          <a href="/automacao-instagram" className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><Instagram className="size-4" /> Instagram</a>
+          <Link to="/automacao-instagram" className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><Instagram className="size-4" /> Instagram</Link>
         </div>
         <div className="mt-5 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs leading-5">
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
