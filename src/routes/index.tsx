@@ -4,6 +4,7 @@ import {
   FileKey,
   Image as ImageIcon,
   Instagram,
+  Music2,
   PanelTop,
   Scan,
   ShieldCheck,
@@ -66,6 +67,13 @@ const tools = [
     icon: Instagram,
     name: "Automação Instagram",
     description: "Organize contas, vídeos e a fila de Reels.",
+    detail: "Ferramenta",
+  },
+  {
+    to: "/automacao-tiktok" as const,
+    icon: Music2,
+    name: "Automação TikTok",
+    description: "Organize vídeos, legendas e a programação do TikTok.",
     detail: "Ferramenta",
   },
 ];
@@ -134,7 +142,7 @@ function Home() {
 
               <div className="relative mt-8 flex flex-wrap items-center gap-x-7 gap-y-3 border-t border-border/70 pt-5">
                 <div>
-                  <p className="font-display text-lg font-bold">6</p>
+                  <p className="font-display text-lg font-bold">7</p>
                   <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">FERRAMENTAS DISPONÍVEIS</p>
                 </div>
                 <div className="h-7 w-px bg-border" />
