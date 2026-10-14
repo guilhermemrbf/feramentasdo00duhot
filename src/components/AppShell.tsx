@@ -134,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <nav className="flex items-center gap-1" aria-label="Navegação principal">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+              const active = item.to === "/" ? pathname === "/" : item.label === "Automatic Post" ? pathname.startsWith("/automacao-tiktok") || pathname.startsWith("/automacao-instagram") : pathname.startsWith(item.to);
 
               return (
                 <Link
