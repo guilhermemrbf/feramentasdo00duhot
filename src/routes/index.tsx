@@ -3,7 +3,6 @@ import {
   ArrowUpRight,
   FileKey,
   Image as ImageIcon,
-  Instagram,
   Music2,
   PanelTop,
   Scan,
@@ -63,17 +62,11 @@ const tools = [
     detail: "Ferramenta",
   },
   {
-    to: "/automacao-instagram" as const,
-    icon: Instagram,
-    name: "Automação Instagram",
-    description: "Organize contas, vídeos e a fila de Reels.",
-    detail: "Ferramenta",
-  },
   {
     to: "/automacao-tiktok" as const,
     icon: Music2,
-    name: "Automação TikTok",
-    description: "Organize vídeos, legendas e a programação do TikTok.",
+    name: "Automatic Post",
+    description: "Gerencie em uma única área as publicações de TikTok e Instagram.",
     detail: "Ferramenta",
   },
 ];
