@@ -72,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
+  '/automacao-tiktok': typeof AutomacaoTikTokRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/image-links': typeof ImageLinksRoute
@@ -82,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
+  '/automacao-tiktok': typeof AutomacaoTikTokRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/image-links': typeof ImageLinksRoute
@@ -103,6 +105,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/automacao-instagram'
+    | '/automacao-tiktok'
     | '/criar-pagina'
     | '/gerar-preview'
     | '/image-links'
@@ -112,6 +115,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/automacao-instagram'
+    | '/automacao-tiktok'
     | '/criar-pagina'
     | '/gerar-preview'
     | '/image-links'
