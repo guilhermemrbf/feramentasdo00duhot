@@ -11,7 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AutomacaoInstagramRouteImport } from './routes/automacao-instagram'
-import { Route as AutomacaoTikTokRouteImport } from './routes/automacao-tiktok'
+import { Route as AutomacaoTiktokRouteImport } from './routes/automacao-tiktok'
 import { Route as CriarPaginaRouteImport } from './routes/criar-pagina'
 import { Route as GerarPreviewRouteImport } from './routes/gerar-preview'
 import { Route as ImageLinksRouteImport } from './routes/image-links'
@@ -28,7 +28,7 @@ const AutomacaoInstagramRoute = AutomacaoInstagramRouteImport.update({
   path: '/automacao-instagram',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AutomacaoTikTokRoute = AutomacaoTikTokRouteImport.update({
+const AutomacaoTiktokRoute = AutomacaoTiktokRouteImport.update({
   id: '/automacao-tiktok',
   path: '/automacao-tiktok',
   getParentRoute: () => rootRouteImport,
@@ -62,7 +62,7 @@ const OtimizarCriativosRoute = OtimizarCriativosRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
-  '/automacao-tiktok': typeof AutomacaoTikTokRoute
+  '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/image-links': typeof ImageLinksRoute
@@ -72,7 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
-  '/automacao-tiktok': typeof AutomacaoTikTokRoute
+  '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/image-links': typeof ImageLinksRoute
@@ -83,7 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
-  '/automacao-tiktok': typeof AutomacaoTikTokRoute
+  '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/image-links': typeof ImageLinksRoute
@@ -126,7 +126,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AutomacaoInstagramRoute: typeof AutomacaoInstagramRoute
-  AutomacaoTikTokRoute: typeof AutomacaoTikTokRoute
+  AutomacaoTiktokRoute: typeof AutomacaoTiktokRoute
   CriarPaginaRoute: typeof CriarPaginaRoute
   GerarPreviewRoute: typeof GerarPreviewRoute
   ImageLinksRoute: typeof ImageLinksRoute
@@ -154,7 +154,7 @@ declare module '@tanstack/react-router' {
       id: '/automacao-tiktok'
       path: '/automacao-tiktok'
       fullPath: '/automacao-tiktok'
-      preLoaderRoute: typeof AutomacaoTikTokRouteImport
+      preLoaderRoute: typeof AutomacaoTiktokRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/criar-pagina': {
@@ -198,7 +198,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AutomacaoInstagramRoute: AutomacaoInstagramRoute,
-  AutomacaoTikTokRoute: AutomacaoTikTokRoute,
+  AutomacaoTiktokRoute: AutomacaoTiktokRoute,
   CriarPaginaRoute: CriarPaginaRoute,
   GerarPreviewRoute: GerarPreviewRoute,
   ImageLinksRoute: ImageLinksRoute,
