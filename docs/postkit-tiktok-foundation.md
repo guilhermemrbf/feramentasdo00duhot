@@ -2,11 +2,11 @@
 
 ## Objetivo
 
-Construir um módulo próprio para preparar vídeos, legendas e programação de conteúdo do TikTok, compartilhando padrões de navegação e experiência com a automação Instagram. A referência é funcional; não copiamos código, marca ou implementação privada de terceiros.
+Construir um módulo único chamado Automatic Post para preparar conteúdo de TikTok e Instagram. A navegação apresenta uma única entrada e o seletor interno alterna entre plataformas, mantendo rotas internas próprias. A referência é funcional; não copiamos código, marca ou implementação privada de terceiros.
 
 ## Estado do front-end
 
-A rota `/automacao-tiktok` foi criada com:
+A entrada `/automacao-tiktok` abre o Automatic Post com TikTok selecionado e oferece um seletor interno para Instagram. Ambas as plataformas aparecem sob uma única opção na navegação principal e um único cartão na central de ferramentas.\n\nA experiência de TikTok inclui:
 
 - Visão geral e indicadores que distinguem estado local de resultados reais.
 - Área de contas com o fluxo oficial de conexão marcado como pendente.
