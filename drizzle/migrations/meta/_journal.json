@@ -8,6 +8,13 @@
       "when": 1792048899646,
       "tag": "0000_postkit_instagram_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792048927529,
+      "tag": "0001_postkit_grants_storage_policies",
+      "breakpoints": true
     }
   ]
 }
