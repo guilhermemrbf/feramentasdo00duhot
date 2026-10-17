@@ -45,6 +45,23 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
 
         try {
           const { workspaceId, userId } = await verifyInstagramOAuthState(returnedState);
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const [{ data: workspace }, { data: membership }] = await Promise.all([
+            supabaseAdmin.from("workspaces").select("owner_id").eq("id", workspaceId).maybeSingle(),
+            supabaseAdmin
+              .from("workspace_members")
+              .select("role")
+              .eq("workspace_id", workspaceId)
+              .eq("user_id", userId)
+              .maybeSingle(),
+          ]);
+          if (
+            !workspace ||
+            (workspace.owner_id !== userId &&
+              !["owner", "admin", "editor"].includes(membership?.role ?? ""))
+          ) {
+            throw new Error("Workspace access was revoked during Instagram authorization.");
+          }
           const tokenResponse = await fetch("https://api.instagram.com/oauth/access_token", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -85,7 +102,6 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
           if (!instagramUserId || !profile.username)
             throw new Error("Instagram profile data is incomplete.");
 
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const expiry = new Date(
             Date.now() + (longToken.expires_in ?? 5_184_000) * 1000,
           ).toISOString();

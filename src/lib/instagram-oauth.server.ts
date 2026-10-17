@@ -29,9 +29,12 @@ function decodeBase64(value: string): Uint8Array<ArrayBuffer> {
 }
 
 async function hmacKey(usage: KeyUsage): Promise<CryptoKey> {
+  const secret = requiredEnv("INSTAGRAM_OAUTH_STATE_SECRET");
+  if (secret.length < 32)
+    throw new Error("Instagram OAuth state secret must be at least 32 characters.");
   return globalThis.crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(requiredEnv("INSTAGRAM_OAUTH_STATE_SECRET")),
+    new TextEncoder().encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
     [usage],
