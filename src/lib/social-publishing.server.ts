@@ -38,6 +38,13 @@ export type InstagramReelRequest = {
   shareToFeed?: boolean;
 };
 
+export class InstagramPublishAmbiguousError extends Error {
+  constructor() {
+    super("Instagram publish response was inconclusive; manual reconciliation is required.");
+    this.name = "InstagramPublishAmbiguousError";
+  }
+}
+
 /** Publishes one Reel using Meta's container -> processing check -> publish flow. */
 export async function publishInstagramReel(
   input: InstagramReelRequest,
@@ -84,11 +91,16 @@ export async function publishInstagramReel(
   // Do not retry this call automatically on a timeout: a missing response can
   // mean that Meta accepted the publish even though the client did not see it.
   const publishUrl = new URL(`${base}/${encodeURIComponent(input.instagramUserId)}/media_publish`);
-  const published = await instagramRequest<{ id: string }>(
-    publishUrl,
-    input.accessToken,
-    new URLSearchParams({ creation_id: container.id }),
-  );
+  let published: { id: string };
+  try {
+    published = await instagramRequest<{ id: string }>(
+      publishUrl,
+      input.accessToken,
+      new URLSearchParams({ creation_id: container.id }),
+    );
+  } catch {
+    throw new InstagramPublishAmbiguousError();
+  }
   if (!published.id) throw new Error("Instagram did not confirm a published media ID.");
   return { mediaId: published.id };
 }

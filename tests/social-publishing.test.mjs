@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { publishInstagramReel } from "../src/lib/social-publishing.server.ts";
+import {
+  InstagramPublishAmbiguousError,
+  publishInstagramReel,
+} from "../src/lib/social-publishing.server.ts";
 
 const originalFetch = globalThis.fetch;
 const originalMetaVersion = process.env.META_GRAPH_API_VERSION;
@@ -83,7 +86,7 @@ test("Instagram does not retry a publish request whose result is ambiguous", asy
       publicVideoUrl: "https://media.example/video.mp4",
       caption: "hello",
     }),
-    /network connection closed/i,
+    InstagramPublishAmbiguousError,
   );
   assert.equal(publishCalls, 1);
 });

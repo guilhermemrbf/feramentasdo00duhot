@@ -114,6 +114,9 @@ function AutomacaoTikTok() {
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
           <p><strong>Modo de preparação:</strong> biblioteca, legendas e fila funcionam localmente nesta sessão. A conta ainda não está conectada, os arquivos não são enviados ao servidor e nenhuma publicação real é feita.</p>
         </div>
+        <div className="mt-3 rounded-lg border border-border bg-secondary/40 p-3 text-xs leading-5 text-muted-foreground">
+          Publicação automática via Direct Post não está habilitada para este uso interno: as regras oficiais do TikTok não aceitam ferramentas privadas para publicar nas contas próprias ou da equipe. <a className="font-semibold text-primary underline" href="https://developers.tiktok.com/docs/en/content-sharing-guidelines" target="_blank" rel="noreferrer">Ver regras oficiais</a>.
+        </div>
         {notice && <div role="status" className="mt-4 flex items-start justify-between gap-3 rounded-md border border-border bg-secondary/50 px-4 py-3 text-xs">
           <span>{notice}</span><button aria-label="Fechar aviso" onClick={() => setNotice("")} className="text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
         </div>}
