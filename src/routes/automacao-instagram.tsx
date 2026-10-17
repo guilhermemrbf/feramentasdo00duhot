@@ -17,8 +17,11 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { AppShell, PageIntro } from "@/components/AppShell";
+import { WorkspaceGate, type Workspace } from "@/components/postkit/WorkspaceGate";
+import { supabase } from "@/integrations/supabase/client";
+import { startInstagramOAuth } from "@/lib/api/instagram-oauth.functions";
 
 export const Route = createFileRoute("/automacao-instagram")({
   head: () => ({
@@ -55,6 +58,10 @@ const tabItems = [
 ] as const;
 
 function AutomacaoInstagram() {
+  return <WorkspaceGate>{(workspace) => <InstagramWorkspacePage workspace={workspace} />}</WorkspaceGate>;
+}
+
+function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -66,7 +73,38 @@ function AutomacaoInstagram() {
   const [dailyLimit, setDailyLimit] = useState(3);
   const [intervalMinutes, setIntervalMinutes] = useState(120);
   const [notice, setNotice] = useState("");
+  const [connectedAccounts, setConnectedAccounts] = useState<Array<{ id: string; username: string; account_type: string | null; connection_status: string }>>([]);
+  const [connecting, setConnecting] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    void supabase
+      .from("instagram_accounts")
+      .select("id,username,account_type,connection_status")
+      .eq("workspace_id", workspace.id)
+      .then(({ data, error }) => {
+        if (error) setNotice("Não foi possível carregar as contas. Confira se as migrations do PostKit foram aplicadas no Supabase de desenvolvimento.");
+        else setConnectedAccounts(data ?? []);
+      });
+  }, [workspace.id]);
+
+  useEffect(() => {
+    const result = new URLSearchParams(window.location.search).get("instagram");
+    if (result === "connected") setNotice("Conta do Instagram conectada com sucesso.");
+    if (result === "connection_failed") setNotice("A conexão do Instagram não foi concluída. Revise as configurações Meta e tente novamente.");
+  }, []);
+
+  const connectInstagram = async () => {
+    setConnecting(true);
+    setNotice("");
+    try {
+      const { authorizationUrl } = await startInstagramOAuth({ data: { workspaceId: workspace.id } });
+      window.location.assign(authorizationUrl);
+    } catch {
+      setNotice("Não foi possível iniciar a conexão. Confirme o login, o acesso ao workspace e as configurações do servidor.");
+      setConnecting(false);
+    }
+  };
 
   const scheduledCount = queue.length;
   const videoCount = videos.length;
@@ -199,7 +237,7 @@ function AutomacaoInstagram() {
         {tab === "dashboard" && (
           <section className="mt-6 space-y-6">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Metric label="Contas conectadas" value="0" icon={Instagram} detail="Integração pendente" />
+              <Metric label="Contas conectadas" value={String(connectedAccounts.filter((account) => account.connection_status === "connected").length)} icon={Instagram} detail="Instagram profissional" />
               <Metric label="Vídeos nesta sessão" value={String(videoCount)} icon={Video} detail="Ainda não enviados ao servidor" />
               <Metric label="Itens na prévia" value={String(scheduledCount)} icon={CalendarDays} detail="Não são agendamentos reais" />
               <Metric label="Publicações realizadas" value="—" icon={CheckCircle2} detail="Disponível após integrar a Meta" />
@@ -229,17 +267,28 @@ function AutomacaoInstagram() {
         {tab === "contas" && (
           <section className="mt-6">
             <Panel title="Contas do Instagram">
-              <Empty icon={Instagram} title="Nenhuma conta conectada" text="A conexão será feita pelo fluxo oficial de autorização da Meta. Não informe sua senha do Instagram aqui." />
+              {connectedAccounts.length ? (
+                <div className="space-y-2">
+                  {connectedAccounts.map((account) => (
+                    <div key={account.id} className="flex items-center justify-between rounded-md border border-border px-4 py-3 text-sm">
+                      <span>@{account.username}</span>
+                      <span className="text-xs text-muted-foreground">{account.account_type ?? "Conta profissional"} · {account.connection_status}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Empty icon={Instagram} title="Nenhuma conta conectada" text="Conecte uma conta profissional pelo fluxo oficial da Meta. Não informe sua senha do Instagram aqui." />
+              )}
               <div className="mt-4 rounded-md border border-border bg-secondary/40 p-4">
                 <p className="text-sm font-semibold">O que será necessário</p>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-muted-foreground">
-                  <li>Aplicativo Meta configurado e autorizado para os produtos necessários.</li>
-                  <li>Fluxo OAuth, permissões e validação do tipo de conta compatível.</li>
-                  <li>Backend para guardar tokens com segurança e renovar/validar o acesso.</li>
+                  <li>Aplicativo Meta com Instagram Login e as permissões de publicação aprovadas.</li>
+                  <li>Domínio HTTPS e callback OAuth registrados no aplicativo Meta.</li>
+                  <li>Supabase de desenvolvimento configurado e migrations do PostKit aplicadas.</li>
                 </ul>
               </div>
-              <button disabled className="mt-4 inline-flex cursor-not-allowed items-center gap-2 rounded-md bg-primary/50 px-4 py-2 text-xs font-semibold text-primary-foreground" title="Será habilitado na fase de integração">
-                <Plus className="size-3" /> Conectar conta (backend pendente)
+              <button onClick={() => void connectInstagram()} disabled={connecting} className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">
+                <Plus className="size-3" /> {connecting ? "Abrindo autorização…" : "Conectar conta"}
               </button>
             </Panel>
           </section>

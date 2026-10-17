@@ -11,9 +11,9 @@
 
 1. Criar e configurar um app Meta para Instagram API com Instagram Login, com permissões `instagram_business_basic` e `instagram_business_content_publish` aprovadas para os usuários pretendidos.
 2. Definir o domínio HTTPS e cadastrar nele o URI OAuth de redirecionamento. O domínio fica configurável; não há um domínio de produção definido ainda.
-3. Configurar `META_GRAPH_API_VERSION`, `META_APP_ID`, `META_APP_SECRET`, `APP_BASE_URL` e uma chave forte de criptografia de tokens no ambiente de servidor. Segredos nunca devem usar prefixo `VITE_`.
+3. Configurar `META_GRAPH_API_VERSION`, `META_APP_ID`, `META_APP_SECRET`, `APP_BASE_URL`, `INSTAGRAM_OAUTH_STATE_SECRET` e `INSTAGRAM_TOKEN_ENCRYPTION_KEY` no ambiente de servidor. A chave de estado deve ter alta entropia; a chave dos tokens deve ser uma chave base64 de 32 bytes. Segredos nunca devem usar prefixo `VITE_`.
 4. Vincular contas profissionais (Creator ou Business), configurar o Supabase de desenvolvimento e aplicar as migrations depois de revisar o projeto Supabase alvo.
-5. Conectar OAuth, persistência de contas/tokens, biblioteca de mídia, fila agendada, worker e interface antes de considerar a funcionalidade pronta para usuários.
+5. O código agora tem início e callback OAuth com verificação de `state` vinculada a cookie, gravação cifrada dos tokens, renovação de tokens perto da expiração e tela de conexão por workspace. Ainda faltam o fluxo de mídia, fila agendada, worker e integração completa da interface antes de considerar a funcionalidade pronta para usuários.
 6. Configurar um agendador externo autenticado para chamar o worker no ambiente hospedado e validar o fluxo com uma conta de teste, sem publicar conteúdo real sem aprovação.
 
 ## TikTok: bloqueio de elegibilidade
@@ -24,4 +24,4 @@ Para reconsiderar TikTok, o produto teria que ser direcionado a criadores em ger
 
 ## O que ainda impede declarar “100% funcional”
 
-O adaptador do Instagram é uma peça de integração, não uma publicação ponta a ponta. OAuth seguro, criptografia e rotação de tokens, operações autenticadas de workspace, envio de mídia, persistência da fila, worker agendado, reconciliação, notificações, interface conectada e validação em ambiente de desenvolvimento ainda precisam ser integrados e exercitados. A migration existente prepara parte do modelo de dados, mas não foi aplicada a nenhum banco neste trabalho.
+O adaptador do Instagram e o vínculo OAuth estão implementados, mas ainda não formam publicação ponta a ponta. Envio de mídia, persistência da fila, worker agendado, reconciliação, notificações e o restante da interface ainda precisam ser integrados e exercitados. A migration existente prepara parte do modelo de dados, mas não foi aplicada a nenhum banco neste trabalho.
