@@ -163,43 +163,61 @@ function CriarPagina() {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Check className="size-4 text-success" /> Seu prompt está pronto
+                  <Check className="size-4 text-success" /> Seus prompts estão prontos
                 </h2>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setStage("form")}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <RotateCcw className="size-3" /> Editar dados
-                  </button>
+                <button
+                  onClick={() => setStage("form")}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <RotateCcw className="size-3" /> Editar dados
+                </button>
+              </div>
+
+              <section className="space-y-3 rounded-lg border border-border bg-card p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Etapa 1
+                    </p>
+                    <h2 className="mt-1 text-base font-bold text-foreground">
+                      Prompt 1 — Principal
+                    </h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Copie e envie este prompt para a IA primeiro.
+                    </p>
+                  </div>
                   <button
                     onClick={copy}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                    className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                   >
                     {copied ? (
                       <>
-                        <Check className="size-3.5" /> Prompt copiado!
+                        <Check className="size-4" /> Prompt 1 copiado!
                       </>
                     ) : (
                       <>
-                        <Copy className="size-3.5" /> Copiar prompt
+                        <Copy className="size-4" /> Copiar prompt 1
                       </>
                     )}
                   </button>
                 </div>
-              </div>
-              <section className="space-y-4 rounded-lg border-2 border-primary/50 bg-primary/5 p-4 sm:p-5">
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-background p-4 font-mono text-xs leading-relaxed text-foreground">
+                  {prompt}
+                </pre>
+              </section>
+
+              <section className="space-y-3 rounded-lg border-2 border-primary/50 bg-primary/5 p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wide text-primary">
-                      Próximo passo — depois que a IA concluir o primeiro prompt
+                      Etapa 2
                     </p>
                     <h2 className="mt-1 text-base font-bold text-foreground">
-                      Copie e envie o segundo prompt
+                      Prompt 2 — Revisão
                     </h2>
                     <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-                      Envie este complemento na mesma conversa com a inteligência artificial,
-                      somente depois que ela terminar de executar o prompt principal.
+                      Use somente depois que a IA concluir o Prompt 1. Envie este texto na mesma
+                      conversa.
                     </p>
                   </div>
                   <button
@@ -208,27 +226,19 @@ function CriarPagina() {
                   >
                     {copiedFollowUp ? (
                       <>
-                        <Check className="size-4" /> Segundo prompt copiado!
+                        <Check className="size-4" /> Prompt 2 copiado!
                       </>
                     ) : (
                       <>
-                        <Copy className="size-4" /> Copiar 2º prompt
+                        <Copy className="size-4" /> Copiar prompt 2
                       </>
                     )}
                   </button>
                 </div>
-                <ol className="grid gap-2 border-t border-primary/20 pt-3 text-sm text-foreground sm:grid-cols-3">
-                  <li><span className="font-bold text-primary">1.</span> Copie e envie o prompt principal acima.</li>
-                  <li><span className="font-bold text-primary">2.</span> Aguarde a IA concluir essa tarefa.</li>
-                  <li><span className="font-bold text-primary">3.</span> Copie e envie este 2º prompt na mesma conversa.</li>
-                </ol>
-                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-background p-4 font-mono text-xs leading-relaxed text-foreground">
+                <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-background p-4 font-mono text-xs leading-relaxed text-foreground">
                   {FOLLOW_UP_PROMPT}
                 </pre>
               </section>
-              <pre className="max-h-[30rem] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-card p-4 font-mono text-xs leading-relaxed text-foreground">
-                {prompt}
-              </pre>
             </div>
           )}
         </div>
