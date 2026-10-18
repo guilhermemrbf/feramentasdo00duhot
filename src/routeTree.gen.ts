@@ -17,6 +17,8 @@ import { Route as GerarPreviewRouteImport } from './routes/gerar-preview'
 import { Route as ImageLinksRouteImport } from './routes/image-links'
 import { Route as LimparMetadadosRouteImport } from './routes/limpar-metadados'
 import { Route as OtimizarCriativosRouteImport } from './routes/otimizar-criativos'
+import { Route as ApiInstagramWorkerRouteImport } from './routes/api.instagram.worker'
+import { Route as ApiInstagramOauthCallbackRouteImport } from './routes/api.instagram.oauth.callback'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -58,6 +60,17 @@ const OtimizarCriativosRoute = OtimizarCriativosRouteImport.update({
   path: '/otimizar-criativos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInstagramWorkerRoute = ApiInstagramWorkerRouteImport.update({
+  id: '/api/instagram/worker',
+  path: '/api/instagram/worker',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInstagramOauthCallbackRoute =
+  ApiInstagramOauthCallbackRouteImport.update({
+    id: '/api/instagram/oauth/callback',
+    path: '/api/instagram/oauth/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -68,6 +81,8 @@ export interface FileRoutesByFullPath {
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
+  '/api/instagram/worker': typeof ApiInstagramWorkerRoute
+  '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +93,8 @@ export interface FileRoutesByTo {
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
+  '/api/instagram/worker': typeof ApiInstagramWorkerRoute
+  '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +106,8 @@ export interface FileRoutesById {
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
+  '/api/instagram/worker': typeof ApiInstagramWorkerRoute
+  '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +120,8 @@ export interface FileRouteTypes {
     | '/image-links'
     | '/limpar-metadados'
     | '/otimizar-criativos'
+    | '/api/instagram/worker'
+    | '/api/instagram/oauth/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +132,8 @@ export interface FileRouteTypes {
     | '/image-links'
     | '/limpar-metadados'
     | '/otimizar-criativos'
+    | '/api/instagram/worker'
+    | '/api/instagram/oauth/callback'
   id:
     | '__root__'
     | '/'
@@ -121,6 +144,8 @@ export interface FileRouteTypes {
     | '/image-links'
     | '/limpar-metadados'
     | '/otimizar-criativos'
+    | '/api/instagram/worker'
+    | '/api/instagram/oauth/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -132,6 +157,8 @@ export interface RootRouteChildren {
   ImageLinksRoute: typeof ImageLinksRoute
   LimparMetadadosRoute: typeof LimparMetadadosRoute
   OtimizarCriativosRoute: typeof OtimizarCriativosRoute
+  ApiInstagramWorkerRoute: typeof ApiInstagramWorkerRoute
+  ApiInstagramOauthCallbackRoute: typeof ApiInstagramOauthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -192,6 +219,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OtimizarCriativosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/instagram/worker': {
+      id: '/api/instagram/worker'
+      path: '/api/instagram/worker'
+      fullPath: '/api/instagram/worker'
+      preLoaderRoute: typeof ApiInstagramWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/instagram/oauth/callback': {
+      id: '/api/instagram/oauth/callback'
+      path: '/api/instagram/oauth/callback'
+      fullPath: '/api/instagram/oauth/callback'
+      preLoaderRoute: typeof ApiInstagramOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -204,6 +245,8 @@ const rootRouteChildren: RootRouteChildren = {
   ImageLinksRoute: ImageLinksRoute,
   LimparMetadadosRoute: LimparMetadadosRoute,
   OtimizarCriativosRoute: OtimizarCriativosRoute,
+  ApiInstagramWorkerRoute: ApiInstagramWorkerRoute,
+  ApiInstagramOauthCallbackRoute: ApiInstagramOauthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
