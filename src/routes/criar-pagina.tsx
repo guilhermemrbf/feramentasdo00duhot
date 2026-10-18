@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Sparkles, Copy, Check, RotateCcw, Loader2 } from "lucide-react";
 import { AppShell, PageIntro } from "@/components/AppShell";
 import { ImageField } from "@/components/ImageField";
-import { buildPrompt, type PageData } from "@/lib/prompt-template";
+import { buildPrompt, FOLLOW_UP_PROMPT, type PageData } from "@/lib/prompt-template";
 
 export const Route = createFileRoute("/criar-pagina")({
   head: () => ({
@@ -45,16 +45,17 @@ function CriarPagina() {
   const [stage, setStage] = useState<Stage>("form");
   const [prompt, setPrompt] = useState("");
   const [copied, setCopied] = useState(false);
+  const [copiedFollowUp, setCopiedFollowUp] = useState(false);
 
   const set = <K extends keyof PageData>(key: K, value: PageData[K]) =>
     setData((d) => ({ ...d, [key]: value }));
 
   const ready = Boolean(
     data.fotoPerfilUrl &&
-      data.fotoCapaUrl &&
-      data.nomePerfil.trim() &&
-      data.arrobaPerfil.trim() &&
-      data.descricaoPerfil.trim(),
+    data.fotoCapaUrl &&
+    data.nomePerfil.trim() &&
+    data.arrobaPerfil.trim() &&
+    data.descricaoPerfil.trim(),
   );
 
   const generate = () => {
@@ -70,6 +71,12 @@ function CriarPagina() {
     await navigator.clipboard.writeText(prompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
+  };
+
+  const copyFollowUp = async () => {
+    await navigator.clipboard.writeText(FOLLOW_UP_PROMPT);
+    setCopiedFollowUp(true);
+    setTimeout(() => setCopiedFollowUp(false), 1800);
   };
 
   return (
@@ -184,6 +191,34 @@ function CriarPagina() {
               <pre className="max-h-[30rem] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-card p-4 font-mono text-xs leading-relaxed text-foreground">
                 {prompt}
               </pre>
+              <section className="space-y-3 rounded-lg border border-border bg-card p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Prompt secundário</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Use depois do prompt principal para ajustar as imagens e conferir o fluxo da
+                      oferta.
+                    </p>
+                  </div>
+                  <button
+                    onClick={copyFollowUp}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {copiedFollowUp ? (
+                      <>
+                        <Check className="size-3.5" /> Prompt secundário copiado!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="size-3.5" /> Copiar prompt secundário
+                      </>
+                    )}
+                  </button>
+                </div>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-background p-4 font-mono text-xs leading-relaxed text-foreground">
+                  {FOLLOW_UP_PROMPT}
+                </pre>
+              </section>
             </div>
           )}
         </div>

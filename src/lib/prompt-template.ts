@@ -6,6 +6,16 @@ export interface PageData {
   descricaoPerfil: string;
 }
 
+export const FOLLOW_UP_PROMPT = `PROMPT COMPLEMENTAR — AJUSTES E VALIDAÇÃO
+
+Ajuste as fotos de perfil e de capa usando as imagens fornecidas. Em seguida, valide o fluxo completo da oferta principal (a primeira oferta), incluindo:
+
+1. A navegação e o funcionamento do Upsell 01.
+2. A geração do pagamento via Pix.
+3. O funcionamento do front-end da oferta principal.
+
+Corrija os problemas encontrados e repita a validação de ponta a ponta. Não considere o trabalho concluído enquanto alguma dessas etapas estiver com falhas.`;
+
 const TEMPLATE = `PROMPT — CLONAR E PERSONALIZAR MINHA PÁGINA
 
 Quero que você utilize como base o meu próprio projeto/repositório:
