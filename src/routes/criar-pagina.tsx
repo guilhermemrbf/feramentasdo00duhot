@@ -188,9 +188,6 @@ function CriarPagina() {
                   </button>
                 </div>
               </div>
-              <pre className="max-h-[30rem] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-card p-4 font-mono text-xs leading-relaxed text-foreground">
-                {prompt}
-              </pre>
               <section className="space-y-3 rounded-lg border border-border bg-card p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -219,6 +216,9 @@ function CriarPagina() {
                   {FOLLOW_UP_PROMPT}
                 </pre>
               </section>
+              <pre className="max-h-[30rem] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-card p-4 font-mono text-xs leading-relaxed text-foreground">
+                {prompt}
+              </pre>
             </div>
           )}
         </div>
