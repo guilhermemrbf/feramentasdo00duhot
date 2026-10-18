@@ -212,9 +212,7 @@ function CriarPagina() {
                     <p className="text-xs font-bold uppercase tracking-wide text-primary">
                       Etapa 2
                     </p>
-                    <h2 className="mt-1 text-base font-bold text-foreground">
-                      Prompt 2 — Revisão
-                    </h2>
+                    <h2 className="mt-1 text-base font-bold text-foreground">Prompt 2 — Revisão</h2>
                     <p className="mt-1 max-w-xl text-sm text-muted-foreground">
                       Use somente depois que a IA concluir o Prompt 1. Envie este texto na mesma
                       conversa.
