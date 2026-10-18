@@ -188,30 +188,40 @@ function CriarPagina() {
                   </button>
                 </div>
               </div>
-              <section className="space-y-3 rounded-lg border border-border bg-card p-4">
+              <section className="space-y-4 rounded-lg border-2 border-primary/50 bg-primary/5 p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-sm font-semibold text-foreground">Prompt secundário</h2>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Use depois do prompt principal para ajustar as imagens e conferir o fluxo da
-                      oferta.
+                    <p className="text-xs font-bold uppercase tracking-wide text-primary">
+                      Próximo passo — depois que a IA concluir o primeiro prompt
+                    </p>
+                    <h2 className="mt-1 text-base font-bold text-foreground">
+                      Copie e envie o segundo prompt
+                    </h2>
+                    <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+                      Envie este complemento na mesma conversa com a inteligência artificial,
+                      somente depois que ela terminar de executar o prompt principal.
                     </p>
                   </div>
                   <button
                     onClick={copyFollowUp}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                    className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                   >
                     {copiedFollowUp ? (
                       <>
-                        <Check className="size-3.5" /> Prompt secundário copiado!
+                        <Check className="size-4" /> Segundo prompt copiado!
                       </>
                     ) : (
                       <>
-                        <Copy className="size-3.5" /> Copiar prompt secundário
+                        <Copy className="size-4" /> Copiar 2º prompt
                       </>
                     )}
                   </button>
                 </div>
+                <ol className="grid gap-2 border-t border-primary/20 pt-3 text-sm text-foreground sm:grid-cols-3">
+                  <li><span className="font-bold text-primary">1.</span> Copie e envie o prompt principal acima.</li>
+                  <li><span className="font-bold text-primary">2.</span> Aguarde a IA concluir essa tarefa.</li>
+                  <li><span className="font-bold text-primary">3.</span> Copie e envie este 2º prompt na mesma conversa.</li>
+                </ol>
                 <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-background p-4 font-mono text-xs leading-relaxed text-foreground">
                   {FOLLOW_UP_PROMPT}
                 </pre>
