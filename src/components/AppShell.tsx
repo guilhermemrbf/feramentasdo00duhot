@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   FileKey,
+  GitBranch,
   Home,
   Image,
   Instagram,
@@ -23,7 +24,8 @@ type NavItem = {
     | "/limpar-metadados"
     | "/otimizar-criativos"
     | "/gerar-preview"
-    | "/automacao-tiktok";
+    | "/automacao-tiktok"
+    | "/funil";
   label: string;
   description: string;
   icon: ComponentType<{ className?: string }>;
@@ -37,6 +39,7 @@ const navItems: NavItem[] = [
   { to: "/otimizar-criativos", label: "Otimizar Criativos", description: "Otimizar arquivos criativos", icon: ShieldCheck },
   { to: "/gerar-preview", label: "Gerar Preview", description: "Gerar previews de mídia", icon: Scan },
   { to: "/automacao-tiktok", label: "Automatic Post", description: "TikTok e Instagram", icon: Zap },
+  { to: "/funil", label: "Funil", description: "Visualizar e editar etapas", icon: GitBranch },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

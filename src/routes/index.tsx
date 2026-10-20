@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowUpRight,
   FileKey,
+  GitBranch,
   Image as ImageIcon,
   Music2,
   PanelTop,
@@ -66,6 +67,13 @@ const tools = [
     icon: Music2,
     name: "Automatic Post",
     description: "Gerencie em uma única área as publicações de TikTok e Instagram.",
+    detail: "Ferramenta",
+  },
+  {
+    to: "/funil" as const,
+    icon: GitBranch,
+    name: "Funil",
+    description: "Visualize e edite seus fluxos em etapas independentes.",
     detail: "Ferramenta",
   },
 ];
@@ -134,7 +142,7 @@ function Home() {
 
               <div className="relative mt-8 flex flex-wrap items-center gap-x-7 gap-y-3 border-t border-border/70 pt-5">
                 <div>
-                  <p className="font-display text-lg font-bold">6</p>
+                  <p className="font-display text-lg font-bold">7</p>
                   <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">FERRAMENTAS DISPONÍVEIS</p>
                 </div>
                 <div className="h-7 w-px bg-border" />

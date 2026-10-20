@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AutomacaoInstagramRouteImport } from './routes/automacao-instagram'
 import { Route as AutomacaoTiktokRouteImport } from './routes/automacao-tiktok'
 import { Route as CriarPaginaRouteImport } from './routes/criar-pagina'
+import { Route as FunilRouteImport } from './routes/funil'
 import { Route as GerarPreviewRouteImport } from './routes/gerar-preview'
 import { Route as ImageLinksRouteImport } from './routes/image-links'
 import { Route as LimparMetadadosRouteImport } from './routes/limpar-metadados'
@@ -38,6 +39,11 @@ const AutomacaoTiktokRoute = AutomacaoTiktokRouteImport.update({
 const CriarPaginaRoute = CriarPaginaRouteImport.update({
   id: '/criar-pagina',
   path: '/criar-pagina',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FunilRoute = FunilRouteImport.update({
+  id: '/funil',
+  path: '/funil',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GerarPreviewRoute = GerarPreviewRouteImport.update({
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/criar-pagina': typeof CriarPaginaRoute
+  '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/criar-pagina': typeof CriarPaginaRoute
+  '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/criar-pagina': typeof CriarPaginaRoute
+  '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/automacao-instagram'
     | '/automacao-tiktok'
     | '/criar-pagina'
+    | '/funil'
     | '/gerar-preview'
     | '/image-links'
     | '/limpar-metadados'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/automacao-instagram'
     | '/automacao-tiktok'
     | '/criar-pagina'
+    | '/funil'
     | '/gerar-preview'
     | '/image-links'
     | '/limpar-metadados'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/automacao-instagram'
     | '/automacao-tiktok'
     | '/criar-pagina'
+    | '/funil'
     | '/gerar-preview'
     | '/image-links'
     | '/limpar-metadados'
@@ -153,6 +165,7 @@ export interface RootRouteChildren {
   AutomacaoInstagramRoute: typeof AutomacaoInstagramRoute
   AutomacaoTiktokRoute: typeof AutomacaoTiktokRoute
   CriarPaginaRoute: typeof CriarPaginaRoute
+  FunilRoute: typeof FunilRoute
   GerarPreviewRoute: typeof GerarPreviewRoute
   ImageLinksRoute: typeof ImageLinksRoute
   LimparMetadadosRoute: typeof LimparMetadadosRoute
@@ -189,6 +202,13 @@ declare module '@tanstack/react-router' {
       path: '/criar-pagina'
       fullPath: '/criar-pagina'
       preLoaderRoute: typeof CriarPaginaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/funil': {
+      id: '/funil'
+      path: '/funil'
+      fullPath: '/funil'
+      preLoaderRoute: typeof FunilRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/gerar-preview': {
@@ -241,6 +261,7 @@ const rootRouteChildren: RootRouteChildren = {
   AutomacaoInstagramRoute: AutomacaoInstagramRoute,
   AutomacaoTiktokRoute: AutomacaoTiktokRoute,
   CriarPaginaRoute: CriarPaginaRoute,
+  FunilRoute: FunilRoute,
   GerarPreviewRoute: GerarPreviewRoute,
   ImageLinksRoute: ImageLinksRoute,
   LimparMetadadosRoute: LimparMetadadosRoute,
