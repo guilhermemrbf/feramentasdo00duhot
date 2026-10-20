@@ -8,6 +8,8 @@ import {
   CircleHelp,
   CirclePlus,
   Expand,
+  Maximize2,
+  Minimize2,
   FileImage,
   GitBranch,
   ImagePlus,
@@ -196,7 +198,7 @@ function FunnelPreview({ funnel }: { funnel: Funnel }) {
       viewBox={`${bounds.left - 70} ${bounds.top - 70} ${bounds.right - bounds.left + 140} ${bounds.bottom - bounds.top + 140}`}
       className="h-full w-full"
       aria-hidden="true"
-      style={{ background: funnel.theme === "light" ? "#f3f4f6" : "#10141d" }}
+      style={{ background: "#10141d" }}
     >
       {funnel.edges.map((edge) => {
         const from = funnel.nodes.find((item) => item.id === edge.from);
@@ -289,6 +291,9 @@ function FunilPage() {
   const [hydrated, setHydrated] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [pendingFit, setPendingFit] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [viewLabel, setViewLabel] = useState("Visão geral");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [connectMode, setConnectMode] = useState(false);
@@ -315,10 +320,14 @@ function FunilPage() {
   const [imageSources, setImageSources] = useState<Record<string, string>>({});
   const imageUrlsRef = useRef<Record<string, string>>({});
   const viewportRef = useRef<HTMLDivElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const nativeFullscreenRef = useRef(false);
+  const nodeClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draggedRef = useRef(false);
+  const fittedViewRef = useRef<{ ids: string[] | null; label: string } | null>(null);
   const savedViews = useRef<Record<string, { zoom: number; pan: { x: number; y: number } }>>({});
   const active = funnels.find((item) => item.id === openId) ?? null;
   const nodeCount = active?.nodes.length ?? 0;
-  const lightCanvas = active?.theme === "light";
   const verticalFlow = active?.direction === "vertical";
   const editingTarget = funnels.find((item) => item.id === editingFunnelId) ?? null;
   const imageSignature = JSON.stringify(
@@ -338,6 +347,105 @@ function FunilPage() {
     [active?.nodes, dragPreview, resizePreview],
   );
   const bounds = useMemo(() => getFlowBounds(visualNodes), [visualNodes]);
+  const hoveredNode = active?.nodes.find((item) => item.id === hoveredNodeId);
+  const highlightedNodeId = hoveredNodeId ?? selectedNodeId;
+  const sections = useMemo(() => {
+    if (!active) return [];
+    return [
+      {
+        id: "bio-site",
+        label: "Orgânico",
+        headings: ["section-organic", "tiktok-heading", "instagram-heading", "twitter-heading"],
+      },
+      {
+        id: "telegram-paid-entry",
+        label: "Tráfego pago",
+        headings: ["section-paid", "models-heading", "leaks-heading"],
+      },
+      { id: "group-unlocked", label: "Grupo liberado", headings: [] },
+    ]
+      .filter((section) => active.nodes.some((item) => item.id === section.id))
+      .map((section) => {
+        const ids = new Set([section.id, ...section.headings]);
+        const queue = [section.id];
+        for (let index = 0; index < queue.length; index++) {
+          for (const edge of active.edges) {
+            const neighbor =
+              edge.from === queue[index] ? edge.to : edge.to === queue[index] ? edge.from : null;
+            if (neighbor && !ids.has(neighbor)) {
+              ids.add(neighbor);
+              queue.push(neighbor);
+            }
+          }
+        }
+        return { ...section, ids: [...ids] };
+      });
+  }, [active]);
+
+  const exitFullscreen = useCallback(async () => {
+    if (document.fullscreenElement === workspaceRef.current) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        /* Keep the workspace exit available. */
+      }
+    }
+    nativeFullscreenRef.current = false;
+    setFullscreen(false);
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    if (fullscreen) {
+      await exitFullscreen();
+      return;
+    }
+    fittedViewRef.current = { ids: null, label: "Visão geral" };
+    setFullscreen(true);
+    try {
+      await workspaceRef.current?.requestFullscreen();
+      nativeFullscreenRef.current = document.fullscreenElement === workspaceRef.current;
+    } catch {
+      // Embedded browsers can still use the expanded workspace.
+    }
+  }, [fullscreen, exitFullscreen]);
+
+  useEffect(() => {
+    if (!active) {
+      void exitFullscreen();
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F11") {
+        event.preventDefault();
+        void toggleFullscreen();
+      }
+      if (event.key === "Escape" && fullscreen) {
+        event.preventDefault();
+        void exitFullscreen();
+      }
+    };
+    const onFullscreenChange = () => {
+      if (nativeFullscreenRef.current && document.fullscreenElement !== workspaceRef.current) {
+        nativeFullscreenRef.current = false;
+        setFullscreen(false);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+  }, [active, fullscreen, toggleFullscreen, exitFullscreen]);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [fullscreen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -397,6 +505,7 @@ function FunilPage() {
 
   useEffect(
     () => () => {
+      if (nodeClickTimerRef.current) clearTimeout(nodeClickTimerRef.current);
       Object.values(imageUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
     },
     [],
@@ -500,6 +609,10 @@ function FunilPage() {
   };
 
   const openFunnel = (id: string) => {
+    if (nodeClickTimerRef.current) clearTimeout(nodeClickTimerRef.current);
+    fittedViewRef.current = null;
+    setHoveredNodeId(null);
+    setViewLabel("Visão livre");
     if (openId) savedViews.current[openId] = { zoom, pan };
     const view = savedViews.current[id] ?? { zoom: 0.62, pan: { x: 28, y: 30 } };
     setPendingFit(
@@ -516,9 +629,11 @@ function FunilPage() {
   };
 
   const zoomAtCenter = (nextZoom: number) => {
+    fittedViewRef.current = null;
+    setViewLabel("Visão livre");
     const element = viewportRef.current;
     if (!element) {
-      setZoom(Math.min(1.5, Math.max(0.08, nextZoom)));
+      setZoom(Math.min(3, Math.max(0.04, nextZoom)));
       return;
     }
     const rect = element.getBoundingClientRect();
@@ -526,30 +641,50 @@ function FunilPage() {
     const cy = rect.height / 2;
     const worldX = (cx - pan.x) / zoom;
     const worldY = (cy - pan.y) / zoom;
-    const bounded = Math.min(1.5, Math.max(0.08, nextZoom));
+    const bounded = Math.min(3, Math.max(0.04, nextZoom));
     setZoom(bounded);
     setPan({ x: cx - worldX * bounded, y: cy - worldY * bounded });
   };
 
-  const fitFlow = useCallback(() => {
-    const element = viewportRef.current;
-    if (!element || nodeCount === 0) return;
-    const rect = element.getBoundingClientRect();
-    const contentWidth = bounds.right - bounds.left + 180;
-    const contentHeight = bounds.bottom - bounds.top + 180;
-    const fitted = Math.min(
-      0.9,
-      Math.max(
-        0.08,
-        Math.min((rect.width - 80) / contentWidth, (rect.height - 80) / contentHeight),
-      ),
-    );
-    setZoom(fitted);
-    setPan({
-      x: (rect.width - contentWidth * fitted) / 2 - (bounds.left - 90) * fitted,
-      y: (rect.height - contentHeight * fitted) / 2 - (bounds.top - 90) * fitted,
+  const fitNodes = useCallback(
+    (ids: string[] | null, label: string) => {
+      const element = viewportRef.current;
+      if (!element || nodeCount === 0) return;
+      const nodes = ids ? visualNodes.filter((item) => ids.includes(item.id)) : visualNodes;
+      if (!nodes.length) return;
+      const area = getFlowBounds(nodes);
+      const rect = element.getBoundingClientRect();
+      const contentWidth = area.right - area.left;
+      const contentHeight = area.bottom - area.top;
+      const fitted = Math.min(
+        ids?.length === 1 ? 1.5 : 1,
+        Math.max(
+          0.01,
+          Math.min((rect.width - 64) / contentWidth, (rect.height - 112) / contentHeight),
+        ),
+      );
+      fittedViewRef.current = { ids, label };
+      setViewLabel(label);
+      setZoom(fitted);
+      setPan({
+        x: (rect.width - contentWidth * fitted) / 2 - area.left * fitted,
+        y: 24 + (rect.height - 112 - contentHeight * fitted) / 2 - area.top * fitted,
+      });
+    },
+    [nodeCount, visualNodes],
+  );
+  const fitFlow = useCallback(() => fitNodes(null, "Visão geral"), [fitNodes]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const observer = new ResizeObserver(() => {
+      const target = fittedViewRef.current;
+      if (target) fitNodes(target.ids, target.label);
     });
-  }, [nodeCount, bounds]);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [fitNodes, openId, hydrated]);
 
   useEffect(() => {
     if (pendingFit && active) {
@@ -558,14 +693,41 @@ function FunilPage() {
     }
   }, [pendingFit, active, fitFlow]);
 
+  useEffect(() => {
+    if (!openId) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        (event.target as HTMLElement).closest("input,textarea,select,[contenteditable=true]") ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey
+      )
+        return;
+      if (event.key === "0") {
+        event.preventDefault();
+        fitFlow();
+      }
+      if (event.key === "+" || event.key === "=") {
+        event.preventDefault();
+        zoomAtCenter(zoom * 1.25);
+      }
+      if (event.key === "-") {
+        event.preventDefault();
+        zoomAtCenter(zoom / 1.25);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  });
+
   const startMoveNode = (event: ReactPointerEvent<HTMLElement>, item: FlowNode) => {
     if (connectMode || (event.target as HTMLElement).closest("button,input,textarea,select"))
       return;
     event.preventDefault();
     event.stopPropagation();
+    draggedRef.current = false;
+    if (nodeClickTimerRef.current) clearTimeout(nodeClickTimerRef.current);
     event.currentTarget.setPointerCapture(event.pointerId);
-    setSelectedNodeId(item.id);
-    setSelectedEdgeId(null);
     setMoving({
       type: "node",
       id: item.id,
@@ -586,6 +748,8 @@ function FunilPage() {
     event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
+    fittedViewRef.current = null;
+    setViewLabel("Visão livre");
     setMoving({
       type: "canvas",
       startX: event.clientX,
@@ -599,6 +763,11 @@ function FunilPage() {
     if (!moving) return;
     const dx = event.clientX - moving.startX;
     const dy = event.clientY - moving.startY;
+    if (Math.abs(dx) + Math.abs(dy) > 3) {
+      draggedRef.current = true;
+      fittedViewRef.current = null;
+      setViewLabel("Visão livre");
+    }
     if (moving.type === "canvas") setPan({ x: moving.originX + dx, y: moving.originY + dy });
     else if (moving.id && moving.type === "resize")
       setResizePreview({
@@ -615,7 +784,7 @@ function FunilPage() {
   };
 
   const finishPointerMove = () => {
-    if (moving?.type === "node" && moving.id && dragPreview) {
+    if (moving?.type === "node" && moving.id && dragPreview && draggedRef.current) {
       const { id, x, y } = dragPreview;
       updateNode(id, { x: Math.max(0, x), y: Math.max(0, y) });
     }
@@ -629,11 +798,13 @@ function FunilPage() {
   const handleWheel = useCallback(
     (event: WheelEvent) => {
       event.preventDefault();
+      fittedViewRef.current = null;
+      setViewLabel("Visão livre");
       if (!event.ctrlKey && !event.metaKey) {
         setPan((current) => ({ x: current.x - event.deltaX, y: current.y - event.deltaY }));
         return;
       }
-      const next = Math.min(1.5, Math.max(0.08, zoom * (event.deltaY < 0 ? 1.08 : 0.92)));
+      const next = Math.min(3, Math.max(0.04, zoom * Math.exp(-event.deltaY * 0.002)));
       const rect = viewportRef.current?.getBoundingClientRect();
       if (!rect) return;
       const px = event.clientX - rect.left;
@@ -707,7 +878,15 @@ function FunilPage() {
             {saveError}
           </div>
         )}
-        <div className="mx-auto flex min-h-screen max-w-[1720px] flex-col px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+        <div
+          ref={workspaceRef}
+          data-fullscreen={fullscreen}
+          className={
+            fullscreen && active
+              ? "fixed inset-0 z-[70] flex h-dvh w-full flex-col overflow-y-auto bg-[#0d1119] p-3 text-foreground"
+              : "mx-auto flex min-h-screen max-w-[1920px] flex-col px-4 py-5 sm:px-6 lg:px-8 lg:py-5"
+          }
+        >
           {!active ? (
             <>
               <header className="flex flex-wrap items-center justify-between gap-4">
@@ -838,18 +1017,38 @@ function FunilPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-2 text-[10px] text-muted-foreground">
-                  <span
-                    className={`size-2 rounded-full ${saveError ? "bg-amber-400" : "bg-emerald-400"}`}
-                  />{" "}
-                  {saveError
-                    ? "Alterações aguardando gravação"
-                    : "Salvo automaticamente neste navegador"}
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={() => void toggleFullscreen()}
+                    aria-keyshortcuts="F11"
+                    aria-pressed={fullscreen}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-400/40 bg-blue-500/15 px-4 py-2 text-sm font-semibold text-blue-200 transition hover:bg-blue-500/25"
+                  >
+                    {fullscreen ? (
+                      <Minimize2 className="size-5" />
+                    ) : (
+                      <Maximize2 className="size-5" />
+                    )}
+                    {fullscreen ? "Sair da tela cheia" : "Tela cheia"}
+                    <kbd className="rounded border border-white/15 px-1.5 py-0.5 text-xs">F11</kbd>
+                  </button>
+                  <div className="hidden items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-2 text-[10px] text-muted-foreground xl:flex">
+                    <span
+                      className={`size-2 rounded-full ${saveError ? "bg-amber-400" : "bg-emerald-400"}`}
+                    />{" "}
+                    {saveError
+                      ? "Alterações aguardando gravação"
+                      : "Salvo automaticamente neste navegador"}
+                  </div>
                 </div>
               </header>
 
               <div
-                className="mt-5 flex min-h-11 items-end gap-1 overflow-x-auto border-b border-border/80"
+                className={
+                  fullscreen
+                    ? "hidden"
+                    : "mt-4 flex min-h-11 items-end gap-1 overflow-x-auto border-b border-border/80"
+                }
                 role="tablist"
                 aria-label="Funis abertos"
               >
@@ -895,9 +1094,9 @@ function FunilPage() {
                     <button
                       key={kind}
                       onClick={() => addNode(kind, defaultTitle)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background/70 px-2.5 py-2 text-[11px] font-semibold transition hover:border-primary/30 hover:bg-primary/5"
+                      className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background/70 px-3.5 py-2.5 text-sm font-semibold transition hover:border-primary/50 hover:bg-primary/10"
                     >
-                      <Icon className="size-3.5 text-primary" />
+                      <Icon className="size-5 text-primary" />
                       {label}
                     </button>
                   ))}
@@ -909,43 +1108,76 @@ function FunilPage() {
                       setSelectedNodeId(null);
                       setSelectedEdgeId(null);
                     }}
-                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[11px] font-semibold transition ${connectMode ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/70 hover:border-primary/30 hover:bg-primary/5"}`}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-semibold transition ${connectMode ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/70 hover:border-primary/30 hover:bg-primary/5"}`}
                   >
-                    <Link2 className="size-3.5" />
+                    <Link2 className="size-5" />
                     {connectMode ? "Conexão ativa" : "Conectar"}
                   </button>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => zoomAtCenter(zoom - 0.1)}
+                    onClick={() => zoomAtCenter(zoom / 1.25)}
                     aria-label="Diminuir zoom"
-                    className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    className="flex size-11 items-center justify-center rounded-xl border border-border text-slate-200 hover:bg-secondary hover:text-white"
                   >
-                    <ZoomOut className="size-4" />
+                    <ZoomOut className="size-5" />
                   </button>
                   <button
                     onClick={() => zoomAtCenter(1)}
                     aria-label="Restaurar zoom em 100%"
-                    className="min-w-12 rounded-lg px-1 py-2 text-center text-[10px] font-semibold tabular-nums text-muted-foreground hover:bg-secondary"
+                    className="min-h-11 min-w-16 rounded-xl px-2 py-2 text-center text-sm font-semibold tabular-nums text-slate-200 hover:bg-secondary"
                   >
                     {Math.round(zoom * 100)}%
                   </button>
                   <button
                     onClick={fitFlow}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background/70 px-2.5 py-2 text-[10px] font-semibold hover:bg-secondary"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/10 px-3.5 py-2 text-sm font-semibold text-blue-200 hover:bg-blue-500/20"
                   >
-                    <Expand className="size-3.5" />
-                    Ajustar
+                    <Expand className="size-5" />
+                    Ver tudo
                   </button>
                   <button
-                    onClick={() => zoomAtCenter(zoom + 0.1)}
+                    onClick={() => zoomAtCenter(zoom * 1.25)}
                     aria-label="Aumentar zoom"
-                    className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    className="flex size-11 items-center justify-center rounded-xl border border-border text-slate-200 hover:bg-secondary hover:text-white"
                   >
-                    <ZoomIn className="size-4" />
+                    <ZoomIn className="size-5" />
                   </button>
                 </div>
               </section>
+
+              <nav
+                aria-label="Navegar pelo fluxo"
+                className="mt-2 flex shrink-0 flex-wrap items-center gap-2"
+              >
+                <span className="mr-1 text-xs font-medium text-slate-400">Explorar</span>
+                {sections.map((section) => (
+                  <button
+                    key={section.id}
+                    onClick={() => {
+                      setSelectedNodeId(null);
+                      setSelectedEdgeId(null);
+                      fitNodes(section.ids, section.label);
+                    }}
+                    aria-pressed={viewLabel === section.label}
+                    className={`min-h-10 rounded-xl border px-4 py-2 text-sm font-semibold transition ${viewLabel === section.label ? "border-blue-400/50 bg-blue-500/20 text-blue-200" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"}`}
+                  >
+                    {section.label}
+                  </button>
+                ))}
+                {selectedNode && (
+                  <button
+                    onClick={() => fitNodes([selectedNode.id], selectedNode.title)}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-blue-400/40 px-4 py-2 text-sm font-semibold text-blue-200"
+                  >
+                    <ZoomIn className="size-4" />
+                    Ampliar elemento
+                  </button>
+                )}
+                <span className="ml-auto hidden text-xs text-slate-400 sm:block">
+                  Duplo clique para ampliar · Esc para sair da tela cheia
+                </span>
+              </nav>
 
               {notice && (
                 <div
@@ -960,8 +1192,8 @@ function FunilPage() {
               )}
 
               <div
-                style={{ backgroundColor: lightCanvas ? "#f3f4f6" : "#0d1119" }}
-                className="relative mt-3 flex h-[calc(100dvh-300px)] min-h-[500px] flex-none overflow-clip rounded-2xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.2)] lg:h-[calc(100dvh-260px)]"
+                style={{ backgroundColor: "#0d1119" }}
+                className={`relative mt-3 flex overflow-clip rounded-2xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.2)] ${fullscreen ? "min-h-[220px] flex-1" : "h-[calc(100dvh-295px)] min-h-[500px] flex-none"}`}
               >
                 <div
                   ref={viewportRef}
@@ -978,15 +1210,16 @@ function FunilPage() {
                   }}
                 >
                   <div
-                    className="pointer-events-none absolute inset-0 opacity-55"
+                    className="pointer-events-none absolute inset-0"
                     style={{
                       backgroundImage:
-                        "radial-gradient(rgba(148,163,184,.22) 1px, transparent 1px)",
-                      backgroundSize: "22px 22px",
+                        "linear-gradient(rgba(148,163,184,.10) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.10) 1px, transparent 1px), radial-gradient(rgba(148,163,184,.28) 1px, transparent 1px)",
+                      backgroundSize: `${Math.max(16, 80 * zoom)}px ${Math.max(16, 80 * zoom)}px`,
+                      backgroundPosition: `${pan.x}px ${pan.y}px`,
                     }}
                   />
                   <div
-                    className="absolute left-0 top-0"
+                    className={`absolute left-0 top-0 ${moving ? "" : "motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out"}`}
                     style={{
                       width: Math.max(3600, bounds.right + 200),
                       height: Math.max(2100, bounds.bottom + 200),
@@ -1047,6 +1280,10 @@ function FunilPage() {
                           ? `M ${x1} ${y1} C ${x1} ${y1 + curve}, ${x2} ${y2 - curve}, ${x2} ${y2}`
                           : `M ${x1} ${y1} C ${x1 + signedCurve} ${y1}, ${x2 - signedCurve} ${y2}, ${x2} ${y2}`;
                         const selected = selectedEdgeId === edge.id;
+                        const highlighted =
+                          selected ||
+                          edge.from === highlightedNodeId ||
+                          edge.to === highlightedNodeId;
                         return (
                           <g
                             key={edge.id}
@@ -1071,11 +1308,24 @@ function FunilPage() {
                             <path
                               d={path}
                               fill="none"
-                              stroke={selected ? "#4786e9" : lightCanvas ? "#8e969e" : "#73829b"}
-                              strokeWidth={selected ? "3" : "2"}
-                              strokeOpacity={selected ? "1" : ".74"}
+                              stroke={highlighted ? "#70b5ff" : "#91a3bd"}
+                              strokeWidth={highlighted ? "3" : "1.5"}
+                              vectorEffect="non-scaling-stroke"
+                              strokeOpacity={highlighted ? "1" : highlightedNodeId ? ".3" : ".8"}
+                              strokeDasharray={highlighted ? "8 8" : undefined}
                               markerEnd="url(#flow-arrow)"
-                            />
+                            >
+                              {highlighted && (
+                                <animate
+                                  attributeName="stroke-dashoffset"
+                                  from="32"
+                                  to="0"
+                                  dur="1.2s"
+                                  repeatCount="indefinite"
+                                  className="motion-reduce:hidden"
+                                />
+                              )}
+                            </path>
                             {edge.label && (
                               <text
                                 x={(x1 + x2) / 2}
@@ -1103,6 +1353,18 @@ function FunilPage() {
                           key={item.id}
                           aria-label={`Elemento ${item.title || "sem título"}`}
                           data-node-id={item.id}
+                          onMouseEnter={() => setHoveredNodeId(item.id)}
+                          onMouseLeave={() => setHoveredNodeId(null)}
+                          onDoubleClick={(event) => {
+                            if ((event.target as HTMLElement).closest("button")) return;
+                            event.stopPropagation();
+                            if (nodeClickTimerRef.current) clearTimeout(nodeClickTimerRef.current);
+                            if (!connectMode) {
+                              setSelectedNodeId(item.id);
+                              setSelectedEdgeId(null);
+                              fitNodes([item.id], item.title);
+                            }
+                          }}
                           tabIndex={0}
                           onKeyDown={(event) => {
                             if (event.target !== event.currentTarget) return;
@@ -1121,8 +1383,12 @@ function FunilPage() {
                               connectNodes(item.id);
                               return;
                             }
-                            setSelectedNodeId(item.id);
-                            setSelectedEdgeId(null);
+                            if (draggedRef.current) return;
+                            if (nodeClickTimerRef.current) clearTimeout(nodeClickTimerRef.current);
+                            nodeClickTimerRef.current = setTimeout(() => {
+                              setSelectedNodeId(item.id);
+                              setSelectedEdgeId(null);
+                            }, 240);
                           }}
                           style={{
                             left: item.x,
@@ -1132,14 +1398,22 @@ function FunilPage() {
                             ...(customAppearance
                               ? {
                                   background: item.background ?? "#ffffff",
-                                  color: item.textColor ?? "#17202a",
+                                  color:
+                                    (item.appearance === "label" || item.appearance === "brand") &&
+                                    (!item.textColor || item.textColor === "#17202a")
+                                      ? "#e2e8f0"
+                                      : (item.textColor ?? "#17202a"),
                                   borderRadius:
                                     item.appearance === "telegram"
                                       ? "50%"
                                       : item.appearance === "account"
                                         ? 3
                                         : 0,
-                                  boxShadow: "none",
+                                  boxShadow: selected
+                                    ? "0 0 0 3px #60a5fa"
+                                    : item.appearance === "label" || item.appearance === "brand"
+                                      ? "none"
+                                      : "0 5px 20px #0006",
                                   borderColor: selected
                                     ? "#60a5fa"
                                     : item.appearance === "label" || item.appearance === "brand"
@@ -1249,15 +1523,26 @@ function FunilPage() {
                       );
                     })}
                   </div>
-                  <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-2 rounded-lg border border-white/10 bg-[#111722]/90 px-3 py-2 text-[10px] text-slate-400 backdrop-blur">
-                    <Move className="size-3.5" />
-                    Arraste o fundo para mover · Ctrl + roda para zoom
+                  {hoveredNode && !moving && (
+                    <div className="pointer-events-none absolute left-4 top-4 z-20 max-w-[300px] rounded-xl border border-blue-400/30 bg-[#151e2d]/95 px-4 py-3 text-sm text-slate-100 shadow-xl backdrop-blur">
+                      <p className="font-semibold">{hoveredNode.title}</p>
+                      {(hoveredNode.description || hoveredNode.body) && (
+                        <p className="mt-1 line-clamp-3 text-xs text-slate-300">
+                          {hoveredNode.description || hoveredNode.body}
+                        </p>
+                      )}
+                      <p className="mt-2 text-xs text-blue-300">Duplo clique para ampliar</p>
+                    </div>
+                  )}
+                  <div className="pointer-events-none absolute bottom-3 left-3 mr-3 flex max-w-[calc(100%-24px)] flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#111722]/90 px-3 py-2 text-xs text-slate-300 backdrop-blur md:max-w-[calc(100%-280px)]">
+                    <Move className="size-4" />
+                    Arraste para mover · Ctrl + roda para zoom · 0 para ver tudo
                     {connectMode && (
                       <span className="text-emerald-300">· Escolha dois pontos para conectar</span>
                     )}
                   </div>
-                  <div className="absolute bottom-3 right-3 hidden w-[184px] overflow-hidden rounded-lg border border-white/15 bg-[#111722]/95 shadow-lg backdrop-blur md:block">
-                    <div className="flex items-center justify-between px-2 py-1 text-[9px] text-slate-400">
+                  <div className="absolute bottom-3 right-3 hidden w-[240px] overflow-hidden rounded-xl border border-white/15 bg-[#111722]/95 shadow-lg backdrop-blur md:block">
+                    <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-300">
                       <span>MAPA DO FUNIL</span>
                       <button
                         onClick={fitFlow}
@@ -1270,7 +1555,7 @@ function FunilPage() {
                     <svg
                       viewBox={`${bounds.left - 70} ${bounds.top - 70} ${bounds.right - bounds.left + 140} ${bounds.bottom - bounds.top + 140}`}
                       preserveAspectRatio="none"
-                      className="h-[70px] w-full cursor-pointer"
+                      className="h-[110px] w-full cursor-pointer"
                       role="button"
                       aria-label="Minimapa: clique para navegar pelo fluxo"
                       tabIndex={0}
@@ -1280,6 +1565,8 @@ function FunilPage() {
                       }}
                       onClick={(event) => {
                         event.stopPropagation();
+                        fittedViewRef.current = null;
+                        setViewLabel("Visão livre");
                         const rect = event.currentTarget.getBoundingClientRect();
                         const x =
                           bounds.left -
@@ -1676,7 +1963,13 @@ function FunilPage() {
                   </aside>
                 )}
               </div>
-              <footer className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-[10px] text-muted-foreground/70">
+              <footer
+                className={
+                  fullscreen
+                    ? "hidden"
+                    : "flex flex-wrap items-center justify-between gap-2 py-2.5 text-xs text-muted-foreground/70"
+                }
+              >
                 <span>
                   Arraste elementos para organizar. Use “Conectar” e selecione dois pontos para
                   ligar etapas.
@@ -1694,16 +1987,15 @@ function FunilPage() {
               </footer>
             </>
           )}
+          {editingTarget && (
+            <FunnelDetailsDialog
+              key={editingTarget.id}
+              funnel={editingTarget}
+              onClose={() => setEditingFunnelId(null)}
+              onSave={updateFunnelMetadata}
+            />
+          )}
         </div>
-
-        {editingTarget && (
-          <FunnelDetailsDialog
-            key={editingTarget.id}
-            funnel={editingTarget}
-            onClose={() => setEditingFunnelId(null)}
-            onSave={updateFunnelMetadata}
-          />
-        )}
       </main>
     </AppShell>
   );
