@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { arrangeFunnelForReading } from "../src/lib/funnel-layout.ts";
 import {
   createStarterFunnels,
   migrateLegacyFunnels,
@@ -21,6 +22,58 @@ function reachable(funnel, source) {
   }
   return visited;
 }
+
+test("reading layout improves the whole-flow fit without changing content or connections", () => {
+  const [funnel] = createStarterFunnels();
+  const snapshot = structuredClone(funnel);
+  const nodes = arrangeFunnelForReading(funnel, 1500, 650);
+  const fit = (items) =>
+    Math.min(
+      (1500 - 64) /
+        (Math.max(...items.map((item) => item.x + item.width)) -
+          Math.min(...items.map((item) => item.x))),
+      (650 - 112) /
+        (Math.max(...items.map((item) => item.y + item.height)) -
+          Math.min(...items.map((item) => item.y))),
+    );
+  assert.ok(fit(nodes) > fit(funnel.nodes) * 1.5);
+  assert.equal(new Set(nodes.map((node) => node.id)).size, 88);
+  for (const node of nodes) {
+    const old = funnel.nodes.find((item) => item.id === node.id);
+    const { x, y, ...content } = node;
+    const { x: oldX, y: oldY, ...oldContent } = old;
+    assert.deepEqual(content, oldContent);
+    assert.ok(Number.isFinite(x) && x >= 0 && Number.isFinite(y) && y >= 0);
+    for (const edge of funnel.edges.filter((edge) => edge.from === node.id)) {
+      const target = nodes.find((item) => item.id === edge.to);
+      const oldTarget = funnel.nodes.find((item) => item.id === edge.to);
+      assert.equal(target.x - x, oldTarget.x - oldX);
+      assert.equal(target.y - y, oldTarget.y - oldY);
+    }
+  }
+  assert.deepEqual(funnel, snapshot);
+});
+
+test("reading layout handles empty, single, disconnected and cyclic flows", () => {
+  const [funnel] = createStarterFunnels();
+  assert.deepEqual(arrangeFunnelForReading({ ...funnel, nodes: [], edges: [] }, 300, 300), []);
+  const nodes = funnel.nodes.slice(0, 4);
+  for (const edges of [
+    [],
+    [
+      { id: "a", from: nodes[0].id, to: nodes[1].id },
+      { id: "b", from: nodes[1].id, to: nodes[0].id },
+    ],
+  ]) {
+    const result = arrangeFunnelForReading({ ...funnel, nodes, edges }, 300, 500);
+    assert.equal(result.length, nodes.length);
+    assert.equal(new Set(result.map((node) => node.id)).size, nodes.length);
+    assert.ok(result.every((node) => Number.isFinite(node.x) && Number.isFinite(node.y)));
+  }
+  assert.deepEqual(arrangeFunnelForReading({ ...funnel, nodes: [nodes[0]], edges: [] }, 300, 300), [
+    nodes[0],
+  ]);
+});
 
 test("Fluxo Hot matches the reference's accounts, campaign groups and separate journeys", () => {
   const funnels = createStarterFunnels();
