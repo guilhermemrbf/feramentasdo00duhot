@@ -15,10 +15,12 @@ import {
   ImagePlus,
   Instagram,
   Link2,
+  LayoutGrid,
   MousePointer2,
   Music2,
   Move,
   Plus,
+  RotateCcw,
   Save,
   Send,
   Settings2,
@@ -41,6 +43,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { AppShell } from "@/components/AppShell";
+import { arrangeFunnelForReading } from "@/lib/funnel-layout";
 import {
   createNewFunnel,
   createStarterFunnels,
@@ -234,7 +237,7 @@ function FunnelPreview({ funnel }: { funnel: Funnel }) {
   );
 }
 
-function ReferenceNodeContent({ node }: { node: FlowNode }) {
+function ReferenceNodeContent({ node, zoom }: { node: FlowNode; zoom: number }) {
   if (node.appearance === "telegram")
     return (
       <div className="flex size-full items-center justify-center" title={node.title}>
@@ -248,17 +251,19 @@ function ReferenceNodeContent({ node }: { node: FlowNode }) {
         title={node.title}
         className="flex size-full flex-col items-center justify-center gap-1 overflow-hidden px-0.5 py-1 text-center"
       >
-        <span className="text-[17px] font-bold leading-5">{node.displayLabel || node.title}</span>
+        <span className="text-[24px] font-extrabold leading-7">
+          {node.displayLabel || node.title}
+        </span>
         {node.platform === "tiktok" ? (
-          <Music2 className="size-6 shrink-0" />
+          <Music2 className="size-7 shrink-0" />
         ) : node.platform === "instagram" ? (
-          <Instagram className="size-6 shrink-0" />
+          <Instagram className="size-7 shrink-0" />
         ) : node.platform === "x" ? (
           <b className="text-[23px]">X</b>
         ) : (
           <MousePointer2 className="size-4 shrink-0" />
         )}
-        {node.description && (
+        {node.description && zoom >= 0.5 && (
           <span className="line-clamp-3 text-[9px] leading-3">{node.description}</span>
         )}
       </div>
@@ -272,12 +277,12 @@ function ReferenceNodeContent({ node }: { node: FlowNode }) {
   if (node.appearance === "label")
     return (
       <div className="flex size-full items-center overflow-hidden px-2">
-        <h3 className="text-[25px] font-bold">{node.title}</h3>
+        <h3 className="text-[36px] font-extrabold leading-tight">{node.title}</h3>
       </div>
     );
   return (
     <div className="flex size-full flex-col items-center justify-center gap-2 overflow-hidden px-4 py-2 text-center">
-      <h3 className="whitespace-pre-wrap break-words text-[23px] font-semibold leading-[1.3]">
+      <h3 className="whitespace-pre-wrap break-words text-[30px] font-bold leading-[1.2]">
         {node.title}
       </h3>
       {node.description && <p className="text-[16px] leading-5">{node.description}</p>}
@@ -297,6 +302,11 @@ function FunilPage() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [connectMode, setConnectMode] = useState(false);
+  const [navigationMode, setNavigationMode] = useState(false);
+  const [layoutUndo, setLayoutUndo] = useState<{
+    funnelId: string;
+    positions: Map<string, { x: number; y: number }>;
+  } | null>(null);
   const [connectionStart, setConnectionStart] = useState<string | null>(null);
   const [zoom, setZoom] = useState(0.62);
   const [pan, setPan] = useState({ x: 28, y: 30 });
@@ -525,6 +535,45 @@ function FunilPage() {
     }));
   };
 
+  const organizeForReading = () => {
+    if (!active || !viewportRef.current) return;
+    const { width, height } = viewportRef.current.getBoundingClientRect();
+    setLayoutUndo({
+      funnelId: active.id,
+      positions: new Map(active.nodes.map((node) => [node.id, { x: node.x, y: node.y }])),
+    });
+    const nodes = arrangeFunnelForReading(active, width, height);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    updateFunnel((funnel) => ({ ...funnel, nodes }));
+    setPendingFit(true);
+    setNotice("Blocos organizados para aproveitar a tela. Você pode desfazer a organização.");
+  };
+
+  const undoLayout = () => {
+    if (!active || layoutUndo?.funnelId !== active.id) return;
+    updateFunnel((funnel) => ({
+      ...funnel,
+      nodes: funnel.nodes.map((node) => ({ ...node, ...layoutUndo.positions.get(node.id) })),
+    }));
+    setLayoutUndo(null);
+    setPendingFit(true);
+    setNotice("Posições anteriores restauradas.");
+  };
+
+  const changeMouseMode = (navigate: boolean) => {
+    if (nodeClickTimerRef.current) clearTimeout(nodeClickTimerRef.current);
+    setNavigationMode(navigate);
+    setMoving(null);
+    setDragPreview(null);
+    setResizePreview(null);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    setHoveredNodeId(null);
+    setConnectMode(false);
+    setConnectionStart(null);
+  };
+
   const createFunnel = () => {
     const funnel = createNewFunnel(`Funil ${String(funnels.length + 1).padStart(2, "0")}`);
     setFunnels((current) => [...current, funnel]);
@@ -721,7 +770,11 @@ function FunilPage() {
   });
 
   const startMoveNode = (event: ReactPointerEvent<HTMLElement>, item: FlowNode) => {
-    if (connectMode || (event.target as HTMLElement).closest("button,input,textarea,select"))
+    if (
+      navigationMode ||
+      connectMode ||
+      (event.target as HTMLElement).closest("button,input,textarea,select")
+    )
       return;
     event.preventDefault();
     event.stopPropagation();
@@ -800,11 +853,21 @@ function FunilPage() {
       event.preventDefault();
       fittedViewRef.current = null;
       setViewLabel("Visão livre");
-      if (!event.ctrlKey && !event.metaKey) {
+      if (!navigationMode && !event.ctrlKey && !event.metaKey) {
         setPan((current) => ({ x: current.x - event.deltaX, y: current.y - event.deltaY }));
         return;
       }
-      const next = Math.min(3, Math.max(0.04, zoom * Math.exp(-event.deltaY * 0.002)));
+      const delta =
+        event.deltaY *
+        (event.deltaMode === 1
+          ? 16
+          : event.deltaMode === 2
+            ? (viewportRef.current?.clientHeight ?? 600)
+            : 1);
+      const next = Math.min(
+        3,
+        Math.max(0.04, zoom * Math.exp(-Math.max(-500, Math.min(500, delta)) * 0.002)),
+      );
       const rect = viewportRef.current?.getBoundingClientRect();
       if (!rect) return;
       const px = event.clientX - rect.left;
@@ -814,7 +877,7 @@ function FunilPage() {
       setZoom(next);
       setPan({ x: px - worldX * next, y: py - worldY * next });
     },
-    [zoom, pan],
+    [zoom, pan, navigationMode],
   );
 
   useEffect(() => {
@@ -1086,13 +1149,16 @@ function FunilPage() {
                 className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-card/75 px-3 py-2.5 shadow-sm"
                 aria-label="Ferramentas do fluxo"
               >
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div
+                  className={`flex flex-wrap items-center gap-1.5 ${navigationMode ? "opacity-40" : ""}`}
+                >
                   <span className="mr-1 hidden text-[10px] font-bold tracking-[0.12em] text-muted-foreground sm:block">
                     ADICIONAR
                   </span>
                   {kinds.map(({ kind, label, icon: Icon, defaultTitle }) => (
                     <button
                       key={kind}
+                      disabled={navigationMode}
                       onClick={() => addNode(kind, defaultTitle)}
                       className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background/70 px-3.5 py-2.5 text-sm font-semibold transition hover:border-primary/50 hover:bg-primary/10"
                     >
@@ -1102,6 +1168,7 @@ function FunilPage() {
                   ))}
                   <span className="mx-1 hidden h-6 w-px bg-border md:block" />
                   <button
+                    disabled={navigationMode}
                     onClick={() => {
                       setConnectMode((value) => !value);
                       setConnectionStart(null);
@@ -1150,6 +1217,45 @@ function FunilPage() {
                 aria-label="Navegar pelo fluxo"
                 className="mt-2 flex shrink-0 flex-wrap items-center gap-2"
               >
+                <div
+                  role="group"
+                  aria-label="Modo do mouse"
+                  className="flex rounded-xl border border-white/15 bg-[#101722] p-1"
+                >
+                  <button
+                    onClick={() => changeMouseMode(false)}
+                    aria-pressed={!navigationMode}
+                    className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${!navigationMode ? "bg-blue-500/20 text-blue-200 ring-1 ring-blue-400/40" : "text-slate-400 hover:text-slate-200"}`}
+                  >
+                    <MousePointer2 className="size-4" />
+                    Editar elementos
+                  </button>
+                  <button
+                    onClick={() => changeMouseMode(true)}
+                    aria-pressed={navigationMode}
+                    title="Roda do mouse: zoom. Arraste em qualquer ponto para mover o quadro."
+                    className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${navigationMode ? "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/40" : "text-slate-400 hover:text-slate-200"}`}
+                  >
+                    <Move className="size-4" />
+                    Navegar com mouse
+                  </button>
+                </div>
+                <button
+                  onClick={organizeForReading}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/10 px-3 py-2 text-sm font-semibold text-blue-200 hover:bg-blue-500/20"
+                >
+                  <LayoutGrid className="size-4" />
+                  Organizar para leitura
+                </button>
+                {layoutUndo?.funnelId === active.id && (
+                  <button
+                    onClick={undoLayout}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-white/10"
+                  >
+                    <RotateCcw className="size-4" />
+                    Desfazer organização
+                  </button>
+                )}
                 <span className="mr-1 text-xs font-medium text-slate-400">Explorar</span>
                 {sections.map((section) => (
                   <button
@@ -1175,7 +1281,9 @@ function FunilPage() {
                   </button>
                 )}
                 <span className="ml-auto hidden text-xs text-slate-400 sm:block">
-                  Duplo clique para ampliar · Esc para sair da tela cheia
+                  {navigationMode
+                    ? "Roda do mouse: zoom · Arraste o quadro para mover"
+                    : "Duplo clique para ampliar · Ctrl + roda: zoom"}
                 </span>
               </nav>
 
@@ -1219,7 +1327,8 @@ function FunilPage() {
                     }}
                   />
                   <div
-                    className={`absolute left-0 top-0 ${moving ? "" : "motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out"}`}
+                    inert={navigationMode}
+                    className={`absolute left-0 top-0 ${navigationMode ? "pointer-events-none" : ""} ${moving ? "" : "motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out"}`}
                     style={{
                       width: Math.max(3600, bounds.right + 200),
                       height: Math.max(2100, bounds.bottom + 200),
@@ -1448,7 +1557,7 @@ function FunilPage() {
                             className={`absolute z-20 size-3 rounded-full border-2 border-slate-400 ${verticalFlow ? "-bottom-[7px] left-1/2 -translate-x-1/2" : "-right-[7px] top-1/2 -translate-y-1/2"} ${connectMode ? "bg-emerald-400" : "bg-slate-500 opacity-0 group-hover:opacity-100"}`}
                           />
                           {customAppearance ? (
-                            <ReferenceNodeContent node={item} />
+                            <ReferenceNodeContent node={item} zoom={zoom} />
                           ) : (
                             <>
                               <div
@@ -1536,7 +1645,9 @@ function FunilPage() {
                   )}
                   <div className="pointer-events-none absolute bottom-3 left-3 mr-3 flex max-w-[calc(100%-24px)] flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#111722]/90 px-3 py-2 text-xs text-slate-300 backdrop-blur md:max-w-[calc(100%-280px)]">
                     <Move className="size-4" />
-                    Arraste para mover · Ctrl + roda para zoom · 0 para ver tudo
+                    {navigationMode
+                      ? "Navegação ativa · Roda: zoom · Arraste: mover · Elementos protegidos"
+                      : "Edição ativa · Arraste elementos · Ctrl + roda: zoom · 0: ver tudo"}
                     {connectMode && (
                       <span className="text-emerald-300">· Escolha dois pontos para conectar</span>
                     )}
