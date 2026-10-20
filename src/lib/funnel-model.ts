@@ -1,3 +1,5 @@
+import { createFluxoHot } from "./fluxo-hot.ts";
+
 export type FlowNodeKind =
   "source" | "page" | "telegram" | "offer" | "decision" | "text" | "image" | "end";
 
@@ -13,6 +15,11 @@ export type FlowNode = {
   y: number;
   width: number;
   height: number;
+  appearance?: "default" | "label" | "solid" | "telegram" | "account" | "brand";
+  platform?: "tiktok" | "instagram" | "x" | "telegram" | "privacy";
+  displayLabel?: string;
+  background?: string;
+  textColor?: string;
 };
 
 export type FlowEdge = { id: string; from: string; to: string; label?: string };
@@ -20,6 +27,8 @@ export type Funnel = {
   id: string;
   name: string;
   description: string;
+  direction?: "horizontal" | "vertical";
+  theme?: "dark" | "light";
   nodes: FlowNode[];
   edges: FlowEdge[];
 };
@@ -35,168 +44,7 @@ const node = (
 ): FlowNode => ({ id, kind, title, description, body, x, y, width: 250, height: 188 });
 
 export function createStarterFunnels(): Funnel[] {
-  const nodes = [
-    node(
-      "organic-tiktok",
-      "source",
-      "Contas TikTok",
-      "Conteúdo orgânico e perfis de entrada.",
-      64,
-      100,
-      "Contas 02 · 04 · 06 · 08 · 10",
-    ),
-    node(
-      "organic-instagram",
-      "source",
-      "Contas Instagram",
-      "Reels, Stories e mensagens diretas.",
-      64,
-      320,
-      "Contas 01 · 03 · 05 · 07 · 09 · 10",
-    ),
-    node(
-      "organic-x",
-      "source",
-      "Contas X / Twitter",
-      "Distribuição e descoberta orgânica.",
-      64,
-      540,
-      "Perfis e publicações",
-    ),
-    node(
-      "bio-link",
-      "page",
-      "Link na bio, Stories e DM",
-      "Pontos de entrada para o próximo passo.",
-      360,
-      320,
-    ),
-    node("bio-site", "page", "Bio / site", "Página central com os caminhos do funil.", 656, 320),
-    node(
-      "privacy",
-      "page",
-      "Página Privacy",
-      "Página de inscrição e assinatura.",
-      952,
-      148,
-      "Assinante pago · acesso inicial",
-    ),
-    node(
-      "telegram-organic",
-      "telegram",
-      "Telegram orgânico",
-      "Canal de relacionamento e distribuição.",
-      952,
-      480,
-    ),
-    node(
-      "paid-models",
-      "source",
-      "Campanhas modelos",
-      "Tráfego pago segmentado por campanha.",
-      656,
-      900,
-      "Anúncios e criativos por modelo",
-    ),
-    node(
-      "paid-leaks",
-      "source",
-      "Campanhas vazados",
-      "Campanhas de aquisição para a oferta.",
-      952,
-      1130,
-      "Anúncios · públicos · criativos",
-    ),
-    node(
-      "telegram-paid",
-      "telegram",
-      "Telegram pago",
-      "Entrada para o fluxo de tráfego pago.",
-      1248,
-      920,
-    ),
-    node("subscription", "offer", "Assinante pago", "Primeira conversão da jornada.", 1248, 148),
-    node("upsells", "offer", "UP 01 + UP 02", "Ofertas adicionais após a compra.", 1248, 360),
-    node(
-      "retention",
-      "decision",
-      "Entraves / LTV",
-      "Relacionamento, retenção e valor do cliente.",
-      1248,
-      588,
-    ),
-    node(
-      "main-offer",
-      "offer",
-      "Oferta matadora",
-      "Oferta principal com o material gratuito.",
-      1544,
-      420,
-      "Defina promessa, bônus e chamada para ação.",
-    ),
-    node(
-      "group",
-      "telegram",
-      "Grupo liberado",
-      "Comunidade e continuidade do relacionamento.",
-      1840,
-      420,
-    ),
-    node(
-      "front",
-      "page",
-      "Front vazados",
-      "Oferta de entrada e apresentação do produto.",
-      2136,
-      420,
-    ),
-    node(
-      "paid-upsell",
-      "offer",
-      "Assinatura + upsells",
-      "Assinatura paga e ofertas UP 01 / UP 02.",
-      2432,
-      420,
-    ),
-    node(
-      "delivery",
-      "end",
-      "Entrega + LTV",
-      "Entrega do produto e próxima etapa do cliente.",
-      2728,
-      420,
-    ),
-  ];
-  const edges: FlowEdge[] = [
-    { id: "e-tiktok-bio", from: "organic-tiktok", to: "bio-link" },
-    { id: "e-instagram-bio", from: "organic-instagram", to: "bio-link" },
-    { id: "e-x-bio", from: "organic-x", to: "bio-link" },
-    { id: "e-link-site", from: "bio-link", to: "bio-site" },
-    { id: "e-site-privacy", from: "bio-site", to: "privacy" },
-    { id: "e-site-telegram", from: "bio-site", to: "telegram-organic" },
-    { id: "e-privacy-subscription", from: "privacy", to: "subscription" },
-    { id: "e-subscription-upsells", from: "subscription", to: "upsells" },
-    { id: "e-telegram-upsells", from: "telegram-organic", to: "upsells" },
-    { id: "e-upsells-retention", from: "upsells", to: "retention" },
-    { id: "e-retention-offer", from: "retention", to: "main-offer" },
-    { id: "e-offer-group", from: "main-offer", to: "group" },
-    { id: "e-group-front", from: "group", to: "front" },
-    { id: "e-front-upsell", from: "front", to: "paid-upsell" },
-    { id: "e-upsell-delivery", from: "paid-upsell", to: "delivery" },
-    { id: "e-models-telegram", from: "paid-models", to: "telegram-paid" },
-    { id: "e-leaks-telegram", from: "paid-leaks", to: "telegram-paid" },
-    { id: "e-paid-offer", from: "telegram-paid", to: "main-offer", label: "tráfego pago" },
-  ];
-  return [
-    {
-      id: "funnel-01",
-      name: "Funil 01",
-      description:
-        "Jornada completa do primeiro contato até a entrega, retenção e valor do cliente.",
-      nodes,
-      edges,
-    },
-  ];
+  return [createFluxoHot()];
 }
 
 export function createNewFunnel(name: string, id = `funnel-${Date.now().toString(36)}`): Funnel {
@@ -338,4 +186,25 @@ export function normalizeFunnels(value: unknown): Funnel[] {
   if (value.length === 0) return [];
   const valid = value.filter(isFunnel);
   return valid.length ? valid : createStarterFunnels();
+}
+
+export const FUNNEL_STORAGE_KEY = "00duhot:funnel-flow-workspace:v2";
+export const HOT_PRESET_KEY = "00duhot:fluxo-hot:reference-v1";
+
+export function loadFunnelWorkspace(storage: Pick<Storage, "getItem" | "setItem" | "removeItem">): {
+  funnels: Funnel[];
+  replaced: boolean;
+} {
+  if (storage.getItem(HOT_PRESET_KEY) !== "installed") {
+    const funnels = createStarterFunnels();
+    storage.setItem(FUNNEL_STORAGE_KEY, JSON.stringify(funnels));
+    storage.removeItem("00duhot:funnel-workspace:v1");
+    storage.setItem(HOT_PRESET_KEY, "installed");
+    return { funnels, replaced: true };
+  }
+  const saved = storage.getItem(FUNNEL_STORAGE_KEY);
+  return {
+    funnels: saved ? normalizeFunnels(JSON.parse(saved)) : createStarterFunnels(),
+    replaced: false,
+  };
 }

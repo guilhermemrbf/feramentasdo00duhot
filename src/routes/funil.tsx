@@ -11,11 +11,14 @@ import {
   FileImage,
   GitBranch,
   ImagePlus,
+  Instagram,
   Link2,
   MousePointer2,
+  Music2,
   Move,
   Plus,
   Save,
+  Send,
   Settings2,
   Shapes,
   Sparkles,
@@ -39,8 +42,8 @@ import { AppShell } from "@/components/AppShell";
 import {
   createNewFunnel,
   createStarterFunnels,
-  migrateLegacyFunnels,
-  normalizeFunnels,
+  loadFunnelWorkspace,
+  FUNNEL_STORAGE_KEY,
   type FlowEdge,
   type FlowNode,
   type FlowNodeKind,
@@ -57,8 +60,7 @@ export const Route = createFileRoute("/funil")({
   component: FunilPage,
 });
 
-const STORAGE_KEY = "00duhot:funnel-flow-workspace:v2";
-const LEGACY_STORAGE_KEY = "00duhot:funnel-workspace:v1";
+const STORAGE_KEY = FUNNEL_STORAGE_KEY;
 const IMAGE_DB = "00duhot-funnel-media";
 const IMAGE_STORE = "images";
 const createId = (prefix: string) =>
@@ -137,17 +139,27 @@ async function removeImage(key: string) {
   }
 }
 
-function readWorkspace(): Funnel[] {
+async function readWorkspace(): Promise<Funnel[]> {
   try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved) return normalizeFunnels(JSON.parse(saved));
-    const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (legacy)
-      return [...createStarterFunnels(), ...(migrateLegacyFunnels(JSON.parse(legacy)) ?? [])];
+    const workspace = loadFunnelWorkspace(window.localStorage);
+    if (workspace.replaced) {
+      try {
+        const database = await openImageDatabase();
+        await new Promise<void>((resolve, reject) => {
+          const transaction = database.transaction(IMAGE_STORE, "readwrite");
+          transaction.objectStore(IMAGE_STORE).clear();
+          transaction.oncomplete = () => resolve();
+          transaction.onerror = () => reject(transaction.error);
+        });
+        database.close();
+      } catch {
+        /* Old media must not prevent loading the new workspace. */
+      }
+    }
+    return workspace.funnels;
   } catch {
     return createStarterFunnels();
   }
-  return createStarterFunnels();
 }
 
 function makeNode(kind: FlowNodeKind, title: string, x: number, y: number): FlowNode {
@@ -177,10 +189,106 @@ function getFlowBounds(nodes: FlowNode[]) {
   );
 }
 
+function FunnelPreview({ funnel }: { funnel: Funnel }) {
+  const bounds = getFlowBounds(funnel.nodes);
+  return (
+    <svg
+      viewBox={`${bounds.left - 70} ${bounds.top - 70} ${bounds.right - bounds.left + 140} ${bounds.bottom - bounds.top + 140}`}
+      className="h-full w-full"
+      aria-hidden="true"
+      style={{ background: funnel.theme === "light" ? "#f3f4f6" : "#10141d" }}
+    >
+      {funnel.edges.map((edge) => {
+        const from = funnel.nodes.find((item) => item.id === edge.from);
+        const to = funnel.nodes.find((item) => item.id === edge.to);
+        return from && to ? (
+          <line
+            key={edge.id}
+            x1={from.x + from.width / 2}
+            y1={from.y + from.height / 2}
+            x2={to.x + to.width / 2}
+            y2={to.y + to.height / 2}
+            stroke="#7f8b9b"
+            strokeWidth="10"
+          />
+        ) : null;
+      })}
+      {funnel.nodes
+        .filter((item) => item.appearance !== "label")
+        .map((item) => (
+          <rect
+            key={item.id}
+            x={item.x}
+            y={item.y}
+            width={item.width}
+            height={item.height}
+            rx={item.appearance === "telegram" ? item.width / 2 : 4}
+            fill={item.background ?? "#5688ff"}
+            stroke="#7f8b9b"
+            strokeWidth="3"
+          />
+        ))}
+    </svg>
+  );
+}
+
+function ReferenceNodeContent({ node }: { node: FlowNode }) {
+  if (node.appearance === "telegram")
+    return (
+      <div className="flex size-full items-center justify-center" title={node.title}>
+        <Send className="size-[62%] -translate-x-0.5" fill="currentColor" strokeWidth={1} />
+        <span className="sr-only">{node.title}</span>
+      </div>
+    );
+  if (node.appearance === "account")
+    return (
+      <div
+        title={node.title}
+        className="flex size-full flex-col items-center justify-center gap-1 overflow-hidden px-0.5 py-1 text-center"
+      >
+        <span className="text-[17px] font-bold leading-5">{node.displayLabel || node.title}</span>
+        {node.platform === "tiktok" ? (
+          <Music2 className="size-6 shrink-0" />
+        ) : node.platform === "instagram" ? (
+          <Instagram className="size-6 shrink-0" />
+        ) : node.platform === "x" ? (
+          <b className="text-[23px]">X</b>
+        ) : (
+          <MousePointer2 className="size-4 shrink-0" />
+        )}
+        {node.description && (
+          <span className="line-clamp-3 text-[9px] leading-3">{node.description}</span>
+        )}
+      </div>
+    );
+  if (node.appearance === "brand")
+    return (
+      <div className="flex size-full items-center justify-center overflow-hidden px-2">
+        <h3 className="text-[58px] font-extrabold tracking-[-0.06em]">{node.title}</h3>
+      </div>
+    );
+  if (node.appearance === "label")
+    return (
+      <div className="flex size-full items-center overflow-hidden px-2">
+        <h3 className="text-[25px] font-bold">{node.title}</h3>
+      </div>
+    );
+  return (
+    <div className="flex size-full flex-col items-center justify-center gap-2 overflow-hidden px-4 py-2 text-center">
+      <h3 className="whitespace-pre-wrap break-words text-[23px] font-semibold leading-[1.3]">
+        {node.title}
+      </h3>
+      {node.description && <p className="text-[16px] leading-5">{node.description}</p>}
+      {node.body && <p className="whitespace-pre-wrap text-[17px] leading-6">{node.body}</p>}
+    </div>
+  );
+}
+
 function FunilPage() {
   const [funnels, setFunnels] = useState<Funnel[]>(() => createStarterFunnels());
   const [hydrated, setHydrated] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [pendingFit, setPendingFit] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [connectMode, setConnectMode] = useState(false);
@@ -209,6 +317,9 @@ function FunilPage() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const savedViews = useRef<Record<string, { zoom: number; pan: { x: number; y: number } }>>({});
   const active = funnels.find((item) => item.id === openId) ?? null;
+  const nodeCount = active?.nodes.length ?? 0;
+  const lightCanvas = active?.theme === "light";
+  const verticalFlow = active?.direction === "vertical";
   const editingTarget = funnels.find((item) => item.id === editingFunnelId) ?? null;
   const imageSignature = JSON.stringify(
     active?.nodes.flatMap((item) => (item.imageKey ? [item.imageKey] : [])) ?? [],
@@ -229,9 +340,16 @@ function FunilPage() {
   const bounds = useMemo(() => getFlowBounds(visualNodes), [visualNodes]);
 
   useEffect(() => {
-    const loaded = readWorkspace();
-    setFunnels(loaded);
-    setHydrated(true);
+    let cancelled = false;
+    void readWorkspace().then((loaded) => {
+      if (!cancelled) {
+        setFunnels(loaded);
+        setHydrated(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -384,6 +502,10 @@ function FunilPage() {
   const openFunnel = (id: string) => {
     if (openId) savedViews.current[openId] = { zoom, pan };
     const view = savedViews.current[id] ?? { zoom: 0.62, pan: { x: 28, y: 30 } };
+    setPendingFit(
+      !savedViews.current[id] &&
+        funnels.find((funnel) => funnel.id === id)?.direction === "vertical",
+    );
     setZoom(view.zoom);
     setPan(view.pan);
     setOpenId(id);
@@ -396,7 +518,7 @@ function FunilPage() {
   const zoomAtCenter = (nextZoom: number) => {
     const element = viewportRef.current;
     if (!element) {
-      setZoom(Math.min(1.5, Math.max(0.28, nextZoom)));
+      setZoom(Math.min(1.5, Math.max(0.08, nextZoom)));
       return;
     }
     const rect = element.getBoundingClientRect();
@@ -404,21 +526,21 @@ function FunilPage() {
     const cy = rect.height / 2;
     const worldX = (cx - pan.x) / zoom;
     const worldY = (cy - pan.y) / zoom;
-    const bounded = Math.min(1.5, Math.max(0.28, nextZoom));
+    const bounded = Math.min(1.5, Math.max(0.08, nextZoom));
     setZoom(bounded);
     setPan({ x: cx - worldX * bounded, y: cy - worldY * bounded });
   };
 
-  const fitFlow = () => {
+  const fitFlow = useCallback(() => {
     const element = viewportRef.current;
-    if (!element || !active?.nodes.length) return;
+    if (!element || nodeCount === 0) return;
     const rect = element.getBoundingClientRect();
     const contentWidth = bounds.right - bounds.left + 180;
     const contentHeight = bounds.bottom - bounds.top + 180;
     const fitted = Math.min(
       0.9,
       Math.max(
-        0.28,
+        0.08,
         Math.min((rect.width - 80) / contentWidth, (rect.height - 80) / contentHeight),
       ),
     );
@@ -427,7 +549,14 @@ function FunilPage() {
       x: (rect.width - contentWidth * fitted) / 2 - (bounds.left - 90) * fitted,
       y: (rect.height - contentHeight * fitted) / 2 - (bounds.top - 90) * fitted,
     });
-  };
+  }, [nodeCount, bounds]);
+
+  useEffect(() => {
+    if (pendingFit && active) {
+      fitFlow();
+      setPendingFit(false);
+    }
+  }, [pendingFit, active, fitFlow]);
 
   const startMoveNode = (event: ReactPointerEvent<HTMLElement>, item: FlowNode) => {
     if (connectMode || (event.target as HTMLElement).closest("button,input,textarea,select"))
@@ -474,8 +603,8 @@ function FunilPage() {
     else if (moving.id && moving.type === "resize")
       setResizePreview({
         id: moving.id,
-        width: Math.round(Math.min(600, Math.max(180, moving.originX + dx / zoom))),
-        height: Math.round(Math.min(600, Math.max(128, moving.originY + dy / zoom))),
+        width: Math.round(Math.min(1600, Math.max(32, moving.originX + dx / zoom))),
+        height: Math.round(Math.min(1200, Math.max(32, moving.originY + dy / zoom))),
       });
     else if (moving.id)
       setDragPreview({
@@ -504,7 +633,7 @@ function FunilPage() {
         setPan((current) => ({ x: current.x - event.deltaX, y: current.y - event.deltaY }));
         return;
       }
-      const next = Math.min(1.5, Math.max(0.28, zoom * (event.deltaY < 0 ? 1.08 : 0.92)));
+      const next = Math.min(1.5, Math.max(0.08, zoom * (event.deltaY < 0 ? 1.08 : 0.92)));
       const rect = viewportRef.current?.getBoundingClientRect();
       if (!rect) return;
       const px = event.clientX - rect.left;
@@ -614,29 +743,7 @@ function FunilPage() {
                       className="block h-40 w-full overflow-hidden border-b border-border/70 bg-[#10141d] p-4 text-left"
                       aria-label={`Prévia de ${funnel.name}`}
                     >
-                      <svg viewBox="0 0 420 150" className="h-full w-full" aria-hidden="true">
-                        <g fill="none" stroke="rgba(112,156,255,.52)" strokeWidth="2">
-                          <path d="M22 35 C90 35 90 75 158 75" />
-                          <path d="M22 75 C90 75 90 75 158 75" />
-                          <path d="M22 115 C90 115 90 75 158 75" />
-                          <path d="M158 75 C220 75 220 42 286 42" />
-                          <path d="M158 75 C220 75 220 108 286 108" />
-                          <path d="M286 42 C340 42 340 75 398 75" />
-                          <path d="M286 108 C340 108 340 75 398 75" />
-                        </g>
-                        {[22, 158, 286, 398].map((x, nodeIndex) => (
-                          <circle
-                            key={`${x}-${nodeIndex}`}
-                            cx={x}
-                            cy={nodeIndex === 1 ? 75 : nodeIndex === 2 ? 42 : 75}
-                            r="8"
-                            fill={
-                              nodeIndex === 0 ? "#36b7df" : nodeIndex === 3 ? "#39ca7a" : "#5688ff"
-                            }
-                          />
-                        ))}
-                        <circle cx="286" cy="108" r="8" fill="#8458f5" />
-                      </svg>
+                      <FunnelPreview funnel={funnel} />
                     </button>
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-2">
@@ -852,7 +959,10 @@ function FunilPage() {
                 </div>
               )}
 
-              <div className="relative mt-3 flex h-[calc(100dvh-300px)] min-h-[500px] flex-none overflow-clip rounded-2xl border border-border bg-[#0d1119] shadow-[0_20px_60px_rgba(0,0,0,0.2)] lg:h-[calc(100dvh-260px)]">
+              <div
+                style={{ backgroundColor: lightCanvas ? "#f3f4f6" : "#0d1119" }}
+                className="relative mt-3 flex h-[calc(100dvh-300px)] min-h-[500px] flex-none overflow-clip rounded-2xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.2)] lg:h-[calc(100dvh-260px)]"
+              >
                 <div
                   ref={viewportRef}
                   className={`relative min-w-0 flex-1 overflow-clip touch-none ${connectMode ? "cursor-crosshair" : moving?.type === "canvas" ? "cursor-grabbing" : "cursor-grab"}`}
@@ -878,16 +988,16 @@ function FunilPage() {
                   <div
                     className="absolute left-0 top-0"
                     style={{
-                      width: 3600,
-                      height: 2100,
+                      width: Math.max(3600, bounds.right + 200),
+                      height: Math.max(2100, bounds.bottom + 200),
                       transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                       transformOrigin: "0 0",
                     }}
                   >
                     <svg
                       className="absolute left-0 top-0 overflow-visible"
-                      width="3600"
-                      height="2100"
+                      width={Math.max(3600, bounds.right + 200)}
+                      height={Math.max(2100, bounds.bottom + 200)}
                       aria-label="Conexões do fluxo"
                       role="group"
                     >
@@ -913,12 +1023,29 @@ function FunilPage() {
                         const from = visualNodes.find((item) => item.id === edge.from);
                         const to = visualNodes.find((item) => item.id === edge.to);
                         if (!from || !to) return null;
-                        const x1 = from.x + from.width;
-                        const y1 = from.y + from.height / 2;
-                        const x2 = to.x;
-                        const y2 = to.y + to.height / 2;
-                        const curve = Math.max(70, Math.abs(x2 - x1) * 0.45);
-                        const path = `M ${x1} ${y1} C ${x1 + curve} ${y1}, ${x2 - curve} ${y2}, ${x2} ${y2}`;
+                        const sameRow =
+                          Math.abs(to.y + to.height / 2 - (from.y + from.height / 2)) <
+                          Math.max(from.height, to.height) * 0.65;
+                        const verticalConnection = verticalFlow && !sameRow;
+                        const rightward = to.x + to.width / 2 >= from.x + from.width / 2;
+                        const x1 = verticalConnection
+                          ? from.x + from.width / 2
+                          : from.x + (rightward ? from.width : 0);
+                        const y1 = verticalConnection
+                          ? from.y + from.height
+                          : from.y + from.height / 2;
+                        const x2 = verticalConnection
+                          ? to.x + to.width / 2
+                          : to.x + (rightward ? 0 : to.width);
+                        const y2 = verticalConnection ? to.y : to.y + to.height / 2;
+                        const curve = Math.max(
+                          40,
+                          Math.abs(verticalConnection ? y2 - y1 : x2 - x1) * 0.45,
+                        );
+                        const signedCurve = rightward ? curve : -curve;
+                        const path = verticalConnection
+                          ? `M ${x1} ${y1} C ${x1} ${y1 + curve}, ${x2} ${y2 - curve}, ${x2} ${y2}`
+                          : `M ${x1} ${y1} C ${x1 + signedCurve} ${y1}, ${x2 - signedCurve} ${y2}, ${x2} ${y2}`;
                         const selected = selectedEdgeId === edge.id;
                         return (
                           <g
@@ -944,7 +1071,7 @@ function FunilPage() {
                             <path
                               d={path}
                               fill="none"
-                              stroke={selected ? "#7aa5ff" : "#73829b"}
+                              stroke={selected ? "#4786e9" : lightCanvas ? "#8e969e" : "#73829b"}
                               strokeWidth={selected ? "3" : "2"}
                               strokeOpacity={selected ? "1" : ".74"}
                               markerEnd="url(#flow-arrow)"
@@ -969,6 +1096,7 @@ function FunilPage() {
                       const style = kindStyles[item.kind];
                       const Icon = style.icon;
                       const selected = selectedNodeId === item.id;
+                      const customAppearance = item.appearance && item.appearance !== "default";
                       const image = imageFor(item);
                       return (
                         <article
@@ -1001,6 +1129,24 @@ function FunilPage() {
                             top: item.y,
                             width: item.width,
                             height: item.height,
+                            ...(customAppearance
+                              ? {
+                                  background: item.background ?? "#ffffff",
+                                  color: item.textColor ?? "#17202a",
+                                  borderRadius:
+                                    item.appearance === "telegram"
+                                      ? "50%"
+                                      : item.appearance === "account"
+                                        ? 3
+                                        : 0,
+                                  boxShadow: "none",
+                                  borderColor: selected
+                                    ? "#60a5fa"
+                                    : item.appearance === "label" || item.appearance === "brand"
+                                      ? "transparent"
+                                      : "#b2b7bd",
+                                }
+                              : {}),
                           }}
                           className={`group absolute z-10 flex flex-col overflow-visible rounded-xl border bg-[#171d29] text-left shadow-[0_10px_26px_rgba(0,0,0,0.35)] transition-[box-shadow,border-color] ${selected ? "border-blue-400 ring-2 ring-blue-400/25" : "border-slate-600/80 hover:border-slate-400"} ${connectionStart === item.id ? "ring-2 ring-emerald-400" : ""} ${connectMode ? "cursor-crosshair" : "cursor-grab active:cursor-grabbing"}`}
                         >
@@ -1015,7 +1161,7 @@ function FunilPage() {
                                 );
                               }
                             }}
-                            className={`absolute -left-[7px] top-1/2 z-20 size-3 -translate-y-1/2 rounded-full border-2 border-[#111722] ${connectMode ? "bg-emerald-400" : "bg-slate-500"}`}
+                            className={`absolute z-20 size-3 rounded-full border-2 border-slate-400 ${verticalFlow ? "-top-[7px] left-1/2 -translate-x-1/2" : "-left-[7px] top-1/2 -translate-y-1/2"} ${connectMode ? "bg-emerald-400" : "bg-slate-500 opacity-0 group-hover:opacity-100"}`}
                           />
                           <button
                             aria-label={`Conectar a partir de ${item.title}`}
@@ -1025,49 +1171,55 @@ function FunilPage() {
                               setConnectMode(true);
                               setNotice("Agora escolha a entrada do próximo elemento.");
                             }}
-                            className={`absolute -right-[7px] top-1/2 z-20 size-3 -translate-y-1/2 rounded-full border-2 border-[#111722] ${connectMode ? "bg-emerald-400" : "bg-slate-500"}`}
+                            className={`absolute z-20 size-3 rounded-full border-2 border-slate-400 ${verticalFlow ? "-bottom-[7px] left-1/2 -translate-x-1/2" : "-right-[7px] top-1/2 -translate-y-1/2"} ${connectMode ? "bg-emerald-400" : "bg-slate-500 opacity-0 group-hover:opacity-100"}`}
                           />
-                          <div
-                            className={`flex items-center gap-2 rounded-t-[11px] border-b border-white/10 px-3 py-2 ${style.color === "sky" ? "bg-sky-500/20" : style.color === "blue" ? "bg-blue-500/20" : style.color === "cyan" ? "bg-cyan-500/20" : style.color === "amber" ? "bg-amber-500/20" : style.color === "violet" ? "bg-violet-500/20" : style.color === "pink" ? "bg-pink-500/20" : style.color === "emerald" ? "bg-emerald-500/20" : "bg-slate-500/15"}`}
-                          >
-                            <span
-                              className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${style.color === "sky" ? "bg-sky-400/20 text-sky-300" : style.color === "blue" ? "bg-blue-400/20 text-blue-300" : style.color === "cyan" ? "bg-cyan-400/20 text-cyan-300" : style.color === "amber" ? "bg-amber-400/20 text-amber-300" : style.color === "violet" ? "bg-violet-400/20 text-violet-300" : style.color === "pink" ? "bg-pink-400/20 text-pink-300" : style.color === "emerald" ? "bg-emerald-400/20 text-emerald-300" : "bg-slate-400/15 text-slate-300"}`}
-                            >
-                              <Icon className="size-3.5" />
-                            </span>
-                            <span className="truncate text-[9px] font-bold uppercase tracking-[0.13em] text-slate-300">
-                              {style.label}
-                            </span>
-                            {selected && <Move className="ml-auto size-3.5 text-slate-500" />}
-                          </div>
-                          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3">
-                            <h3 className="line-clamp-2 shrink-0 text-[15px] font-bold leading-5 text-slate-100">
-                              {item.title || "Sem título"}
-                            </h3>
-                            {item.description && (
-                              <p className="mt-1 line-clamp-2 shrink-0 text-[12px] leading-4 text-slate-400">
-                                {item.description}
-                              </p>
-                            )}
-                            {item.body && (
-                              <p className="mt-2 min-h-0 overflow-hidden whitespace-pre-wrap rounded-md bg-black/20 p-2 text-[11px] leading-4 text-slate-300">
-                                {item.body}
-                              </p>
-                            )}
-                            {item.kind === "image" &&
-                              (image ? (
-                                <img
-                                  src={image}
-                                  alt={item.title}
-                                  className="mt-2 min-h-0 w-full flex-1 rounded-md border border-white/10 object-contain"
-                                  draggable={false}
-                                />
-                              ) : (
-                                <div className="mt-2 flex h-20 items-center justify-center rounded-md border border-dashed border-slate-600 text-slate-500">
-                                  <ImagePlus className="size-5" />
-                                </div>
-                              ))}
-                          </div>
+                          {customAppearance ? (
+                            <ReferenceNodeContent node={item} />
+                          ) : (
+                            <>
+                              <div
+                                className={`flex items-center gap-2 rounded-t-[11px] border-b border-white/10 px-3 py-2 ${style.color === "sky" ? "bg-sky-500/20" : style.color === "blue" ? "bg-blue-500/20" : style.color === "cyan" ? "bg-cyan-500/20" : style.color === "amber" ? "bg-amber-500/20" : style.color === "violet" ? "bg-violet-500/20" : style.color === "pink" ? "bg-pink-500/20" : style.color === "emerald" ? "bg-emerald-500/20" : "bg-slate-500/15"}`}
+                              >
+                                <span
+                                  className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${style.color === "sky" ? "bg-sky-400/20 text-sky-300" : style.color === "blue" ? "bg-blue-400/20 text-blue-300" : style.color === "cyan" ? "bg-cyan-400/20 text-cyan-300" : style.color === "amber" ? "bg-amber-400/20 text-amber-300" : style.color === "violet" ? "bg-violet-400/20 text-violet-300" : style.color === "pink" ? "bg-pink-400/20 text-pink-300" : style.color === "emerald" ? "bg-emerald-400/20 text-emerald-300" : "bg-slate-400/15 text-slate-300"}`}
+                                >
+                                  <Icon className="size-3.5" />
+                                </span>
+                                <span className="truncate text-[9px] font-bold uppercase tracking-[0.13em] text-slate-300">
+                                  {style.label}
+                                </span>
+                                {selected && <Move className="ml-auto size-3.5 text-slate-500" />}
+                              </div>
+                              <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3">
+                                <h3 className="line-clamp-2 shrink-0 text-[15px] font-bold leading-5 text-slate-100">
+                                  {item.title || "Sem título"}
+                                </h3>
+                                {item.description && (
+                                  <p className="mt-1 line-clamp-2 shrink-0 text-[12px] leading-4 text-slate-400">
+                                    {item.description}
+                                  </p>
+                                )}
+                                {item.body && (
+                                  <p className="mt-2 min-h-0 overflow-hidden whitespace-pre-wrap rounded-md bg-black/20 p-2 text-[11px] leading-4 text-slate-300">
+                                    {item.body}
+                                  </p>
+                                )}
+                                {item.kind === "image" &&
+                                  (image ? (
+                                    <img
+                                      src={image}
+                                      alt={item.title}
+                                      className="mt-2 min-h-0 w-full flex-1 rounded-md border border-white/10 object-contain"
+                                      draggable={false}
+                                    />
+                                  ) : (
+                                    <div className="mt-2 flex h-20 items-center justify-center rounded-md border border-dashed border-slate-600 text-slate-500">
+                                      <ImagePlus className="size-5" />
+                                    </div>
+                                  ))}
+                              </div>
+                            </>
+                          )}
                           <button
                             aria-label={`Redimensionar ${item.title}`}
                             onClick={(event) => event.stopPropagation()}
@@ -1089,7 +1241,7 @@ function FunilPage() {
                                 height: item.height,
                               });
                             }}
-                            className="absolute bottom-0 right-0 flex size-6 cursor-se-resize items-center justify-center text-slate-500 hover:text-blue-300"
+                            className="absolute bottom-0 right-0 flex size-6 cursor-se-resize items-center justify-center text-slate-500 opacity-0 hover:text-blue-300 group-hover:opacity-100"
                           >
                             <Expand className="size-3 rotate-90" />
                           </button>
@@ -1171,11 +1323,12 @@ function FunilPage() {
                           fill={
                             selectedNodeId === item.id
                               ? "#86b3ff"
-                              : item.kind === "end"
-                                ? "#32bd87"
-                                : item.kind === "offer"
-                                  ? "#bc963a"
-                                  : "#3c648b"
+                              : (item.background ??
+                                (item.kind === "end"
+                                  ? "#32bd87"
+                                  : item.kind === "offer"
+                                    ? "#bc963a"
+                                    : "#3c648b"))
                           }
                         />
                       ))}
@@ -1240,6 +1393,87 @@ function FunilPage() {
                             ))}
                           </select>
                         </label>
+                        <label className="block text-[11px] font-semibold text-slate-300">
+                          Visual do elemento
+                          <select
+                            value={selectedNode.appearance ?? "default"}
+                            onChange={(event) =>
+                              updateNode(selectedNode.id, {
+                                appearance: event.target.value as FlowNode["appearance"],
+                              })
+                            }
+                            className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#0d1119] px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
+                          >
+                            <option value="default">Cartão com detalhes</option>
+                            <option value="solid">Bloco colorido</option>
+                            <option value="label">Título de seção</option>
+                            <option value="telegram">Telegram</option>
+                            <option value="account">Conta ou campanha</option>
+                            <option value="brand">Marca em texto</option>
+                          </select>
+                        </label>
+                        {selectedNode.appearance && selectedNode.appearance !== "default" && (
+                          <div className="grid grid-cols-2 gap-3">
+                            <label className="text-[11px] font-semibold text-slate-300">
+                              Cor de fundo
+                              <input
+                                type="color"
+                                value={
+                                  selectedNode.background?.startsWith("#")
+                                    ? selectedNode.background
+                                    : "#ffffff"
+                                }
+                                onChange={(event) =>
+                                  updateNode(selectedNode.id, { background: event.target.value })
+                                }
+                                className="mt-1.5 h-8 w-full rounded border border-slate-600 bg-transparent"
+                              />
+                            </label>
+                            <label className="text-[11px] font-semibold text-slate-300">
+                              Cor do texto
+                              <input
+                                type="color"
+                                value={selectedNode.textColor ?? "#17202a"}
+                                onChange={(event) =>
+                                  updateNode(selectedNode.id, { textColor: event.target.value })
+                                }
+                                className="mt-1.5 h-8 w-full rounded border border-slate-600 bg-transparent"
+                              />
+                            </label>
+                          </div>
+                        )}
+                        {selectedNode.appearance === "account" && (
+                          <>
+                            <label className="block text-[11px] font-semibold text-slate-300">
+                              Número ou rótulo curto
+                              <input
+                                value={selectedNode.displayLabel ?? ""}
+                                onChange={(event) =>
+                                  updateNode(selectedNode.id, { displayLabel: event.target.value })
+                                }
+                                className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#0d1119] px-3 py-2.5 text-xs text-white"
+                              />
+                            </label>
+                            <label className="block text-[11px] font-semibold text-slate-300">
+                              Ícone
+                              <select
+                                value={selectedNode.platform ?? ""}
+                                onChange={(event) =>
+                                  updateNode(selectedNode.id, {
+                                    platform:
+                                      (event.target.value as FlowNode["platform"]) || undefined,
+                                  })
+                                }
+                                className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#0d1119] px-3 py-2.5 text-xs text-white"
+                              >
+                                <option value="">Campanha</option>
+                                <option value="tiktok">TikTok</option>
+                                <option value="instagram">Instagram</option>
+                                <option value="x">X / Twitter</option>
+                              </select>
+                            </label>
+                          </>
+                        )}
                         <label className="block text-[11px] font-semibold text-slate-300">
                           Título
                           <input
@@ -1333,9 +1567,9 @@ function FunilPage() {
                             Largura
                             <input
                               type="range"
-                              min="180"
-                              max="600"
-                              step="10"
+                              min="32"
+                              max="1600"
+                              step="1"
                               value={selectedNode.width}
                               onChange={(event) =>
                                 updateNode(selectedNode.id, { width: Number(event.target.value) })
@@ -1347,9 +1581,9 @@ function FunilPage() {
                             Altura
                             <input
                               type="range"
-                              min="128"
-                              max="600"
-                              step="8"
+                              min="32"
+                              max="1200"
+                              step="1"
                               value={selectedNode.height}
                               onChange={(event) =>
                                 updateNode(selectedNode.id, { height: Number(event.target.value) })
