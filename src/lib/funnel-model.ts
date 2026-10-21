@@ -1,7 +1,14 @@
 import { createFluxoHot } from "./fluxo-hot.ts";
 
 export type FlowNodeKind =
-  "source" | "page" | "telegram" | "offer" | "decision" | "text" | "image" | "end";
+  | "source"
+  | "page"
+  | "telegram"
+  | "offer"
+  | "decision"
+  | "text"
+  | "image"
+  | "end";
 
 export type FlowNode = {
   id: string;
@@ -198,6 +205,10 @@ export function normalizeFunnels(value: unknown): Funnel[] {
 
 export const FUNNEL_STORAGE_KEY = "00duhot:funnel-flow-workspace:v2";
 export const HOT_PRESET_KEY = "00duhot:fluxo-hot:reference-v1";
+
+export function saveFunnelWorkspace(storage: Pick<Storage, "setItem">, funnels: Funnel[]): void {
+  storage.setItem(FUNNEL_STORAGE_KEY, JSON.stringify(funnels));
+}
 
 export function loadFunnelWorkspace(storage: Pick<Storage, "getItem" | "setItem" | "removeItem">): {
   funnels: Funnel[];
