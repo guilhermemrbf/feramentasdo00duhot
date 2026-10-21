@@ -1,5 +1,27 @@
 # Hot Profiles — arquitetura
 
+## Revisão vigente: execução na nuvem (2026-10-21)
+
+O usuário mudou o requisito: sem execução no computador do visitante. Mantidos React/TanStack Start/Tailwind e Supabase existentes. Três tabelas na migração `20261021010000_hot_profiles_cloud.sql`: perfis, proxies e sessões; UUIDs, donos, FKs compostas para impedir referência entre contas, índices e datas UTC. Somente servidor tem permissão de acesso. Um JWT validado identifica o dono e uma lista de UUIDs autorizados restringe consumo de serviços pagos.
+
+Interface `/hot-profiles` → server functions autenticadas → Supabase/Browserbase/Genymotion oficiais. Senhas de proxy AES-GCM no servidor; segredos e IDs de controle dos provedores não chegam ao estado público. Contexto do navegador por perfil; Android SaaS descartável nesta integração. Contratos, configuração e limites em [guia da nuvem](../docs/hot-profiles-cloud.md).
+
+| Operação            | Acesso                        | Resultado                                                            |
+| ------------------- | ----------------------------- | -------------------------------------------------------------------- |
+| getHotCloudSetup    | Público                       | Presença de configuração, sem segredos nem promessa de conectividade |
+| workspace           | Conta autorizada              | Cadastros e sessões do próprio dono, sem credenciais                 |
+| save/delete-profile | Conta autorizada              | Cadastro validado; mutação serializada; sem alteração em execução    |
+| save/delete-proxy   | Conta autorizada              | Segredo criptografado; referência e uso ativo protegidos             |
+| start               | Conta autorizada              | Reserva única por perfil, limites e inicialização no provedor        |
+| sync                | Dono da sessão                | Estado real e recuperação de criação ambígua                         |
+| viewer              | Dono da sessão em execução    | Link de Live View ou token WebRTC limitado à instância               |
+| navigate            | Dono de navegador em execução | Nova aba HTTP/HTTPS por CDP, sem execução de código genérico         |
+| stop                | Dono da sessão                | Pedido de encerramento e confirmação posterior do provedor           |
+
+Riscos pendentes: aplicação da migração e credenciais reais; rede e persistência Android; validação real multiusuário e de custos dos provedores. Não é possível executar Android dentro de um Cloudflare Worker: esse processo ocorre na infraestrutura Genymotion. Sem reuso de endpoints privados ou código do Dolphin.
+
+## Arquitetura local anterior (histórico)
+
 ## Escolhas
 
 - Web: React, TanStack Start e Tailwind já utilizados pelo 00duHot; rota /hot-profiles.

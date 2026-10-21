@@ -59,11 +59,14 @@ npm run dev
 
 ## Hot Profiles
 
-Nova área em `/hot-profiles`: perfis de navegador com dados separados, proxies e sessões Android em abas. O site é o painel; o conector local executa Chrome/Edge e se comunica com o emulador instalado, sem importar perfis pessoais.
+Área em `/hot-profiles`: perfis, proxies e sessões em abas com execução na nuvem. A interface principal agora usa autenticação Supabase, cadastro no servidor, Browserbase e Genymotion SaaS. Não exige um emulador ou conector no computador do visitante.
+
+**Ativação e limitações:** [guia da nuvem](docs/hot-profiles-cloud.md) e [.env.example](.env.example). Aplicar a migração, liberar as contas autorizadas e configurar os provedores antes de usar. Android nesta base é temporário; Android com proxy automática e armazenamento persistente ainda depende de infraestrutura adicional.
+
+### Implementação local anterior (preservada)
 
 - `npm run profiles:bridge`: inicia o conector local (Node.js 22+).
 - `npm run profiles:package`: gera `public/hot-profiles-connector.zip`, disponível no botão de conexão do painel. Execute novamente após alterar os arquivos do conector.
-- No Windows, extraia o ZIP e abra **Iniciar Hot Profiles.cmd**. Digite no painel o código mostrado na janela.
-- Para Android, crie uma instância independente no gerenciador oficial BlueStacks, habilite ADB e associe a instância ao perfil.
+- A UI anterior foi preservada em `src/components/hot-profiles/LegacyLocalWorkspace.tsx`; não é a interface da rota principal.
 
-Configuração, privacidade dos dados, uso de proxies e limites desta primeira base: [guia do conector](tools/hot-profiles/LEIA-ME.md). Pesquisa e arquitetura: [replica/recon.md](replica/recon.md) e [replica/architecture.md](replica/architecture.md).
+Guia histórico do conector: [LEIA-ME](tools/hot-profiles/LEIA-ME.md). Dados e emuladores locais anteriores não são apagados ou migrados automaticamente.

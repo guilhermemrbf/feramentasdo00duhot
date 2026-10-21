@@ -2,6 +2,12 @@
 
 Data: 2026-10-21. Escopo autorizado: acrescentar ao 00duHot uma central própria de perfis de navegador e Android, com proxies e sessões em abas. Público: operação do usuário. A interface e o código são originais; nenhum executável, recurso ou endpoint privado do Dolphin foi copiado.
 
+## Revisão de escopo: nuvem
+
+O usuário solicitou frontend/backend de proxy e execução web sem BlueStacks/conector local. Informou não possuir infraestrutura e escolheu preparar a integração recomendada. Investigação atual: Browserbase API/Contexts/Live View e Genymotion SaaS API/SDK oficiais, documentados em `docs/hot-profiles-cloud.md`. Novo fluxo: acesso por e-mail → perfil/proxy no banco por dono → sessão no provedor → tela interativa no site → encerramento confirmado. Estados novos: serviço não configurado, conta não autorizada, criação ambígua e Android temporário. Proxy automática/persistência Android permanecem pendentes e visíveis.
+
+As seções abaixo documentam a investigação da implementação local anterior.
+
 ## Fontes públicas
 
 | Fonte                                     | URL                                                                                                                | Uso                                    |

@@ -446,10 +446,12 @@ export function ProxyForm({
   proxy,
   onSave,
   onClose,
+  storage = "local",
 }: {
   proxy?: HotProxy;
   onSave: (input: unknown, id?: string) => Promise<void>;
   onClose: () => void;
+  storage?: "local" | "cloud";
 }) {
   const [name, setName] = useState(proxy?.name ?? ""),
     [protocol, setProtocol] = useState(proxy?.protocol ?? "http");
@@ -463,7 +465,16 @@ export function ProxyForm({
   const [paste, setPaste] = useState("");
   function parsePaste() {
     try {
-      const url = new URL(paste.includes("://") ? paste : `http://${paste}`);
+      const value = paste.trim();
+      const parts = !value.includes("://")
+        ? value.match(/^([^:\s]+):(\d{1,5}):([^:]*):(.*)$/)
+        : null;
+      const address = parts
+        ? `http://${encodeURIComponent(parts[3])}:${encodeURIComponent(parts[4])}@${parts[1]}:${parts[2]}`
+        : value.includes("://")
+          ? value
+          : `http://${value}`;
+      const url = new URL(address);
       const scheme = url.protocol.slice(0, -1);
       if (!["http", "https", "socks5"].includes(scheme) || !url.hostname) throw new Error();
       setProtocol(scheme as HotProxy["protocol"]);
@@ -474,7 +485,7 @@ export function ProxyForm({
       setPaste("");
       setError("");
     } catch {
-      setError("Use protocolo://usuario:senha@host:porta ou host:porta.");
+      setError("Use protocolo://usuario:senha@host:porta, host:porta ou host:porta:usuario:senha.");
     }
   }
   async function save(event: FormEvent) {
@@ -495,7 +506,11 @@ export function ProxyForm({
   return (
     <HotDialog
       title={proxy ? "Editar proxy" : "Adicionar proxy"}
-      description="As credenciais ficam criptografadas no conector do seu computador."
+      description={
+        storage === "cloud"
+          ? "Credenciais protegidas no servidor. A senha salva nunca é devolvida ao navegador."
+          : "As credenciais ficam criptografadas no conector do seu computador."
+      }
       onClose={onClose}
       busy={busy}
     >
@@ -504,7 +519,7 @@ export function ProxyForm({
           <summary className="cursor-pointer font-semibold">Preencher colando um endereço</summary>
           <label className="mt-3 block space-y-2">
             <span className="text-xs text-muted-foreground">
-              protocolo://usuario:senha@host:porta
+              protocolo://usuario:senha@host:porta ou host:porta:usuario:senha
             </span>
             <input
               type="password"
@@ -554,6 +569,13 @@ export function ProxyForm({
             />
           </label>
         </div>
+        {storage === "cloud" && (
+          <p className="text-xs leading-5 text-muted-foreground">
+            Navegadores na nuvem aceitam HTTP e HTTPS. SOCKS5 pode ser cadastrado, mas não pode ser
+            usado neste provedor. No Android, a aplicação automática da proxy depende de um serviço
+            de rede dedicado.
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block space-y-2 text-sm font-semibold">
             <span>Porta</span>
