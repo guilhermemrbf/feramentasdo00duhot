@@ -7,6 +7,7 @@ import {
   Handle,
   Position,
   ConnectionMode,
+  SelectionMode,
   MarkerType,
   NodeResizer,
   NodeToolbar,
@@ -31,6 +32,7 @@ type CanvasNode = Node<
   {
     node: FlowNode;
     image?: string;
+    multiple: boolean;
     onResize: (id: string, patch: Partial<FlowNode>) => void;
     onNext: (id: string) => void;
     onImage: (node: FlowNode, file: File) => void;
@@ -41,10 +43,12 @@ export type FunnelCanvasApi = ReactFlowInstance<CanvasNode, Edge>;
 export type AddAt = { position?: XYPosition; from?: string; sourceHandle?: string };
 type Props = {
   funnel: Funnel;
-  selectedNodeId: string | null;
+  selectedNodeIds: string[];
   selectedEdgeId: string | null;
   imageSources: Record<string, string>;
   onSelect: (nodeId: string | null, edgeId: string | null) => void;
+  onSelectNodes: (ids: string[]) => void;
+  onMoveNodes: (positions: { id: string; x: number; y: number }[]) => void;
   onUpdateNode: (id: string, patch: Partial<FlowNode>) => void;
   onConnect: (edge: Omit<FlowEdge, "id">) => void;
   onAdd: (kind: FlowNodeKind, title: string, at?: AddAt) => FlowNode | undefined;
@@ -104,7 +108,7 @@ const FunnelNode = memo(function FunnelNode({ data, selected, id }: NodeProps<Ca
       }}
     >
       <NodeResizer
-        isVisible={selected}
+        isVisible={selected && !data.multiple}
         minWidth={32}
         minHeight={32}
         maxWidth={1600}
@@ -216,7 +220,7 @@ const FunnelNode = memo(function FunnelNode({ data, selected, id }: NodeProps<Ca
           )}
         </div>
       )}
-      <NodeToolbar isVisible={selected} position={Position.Bottom} offset={16}>
+      <NodeToolbar isVisible={selected && !data.multiple} position={Position.Bottom} offset={16}>
         <button
           onClick={(event) => {
             event.stopPropagation();
@@ -232,13 +236,17 @@ const FunnelNode = memo(function FunnelNode({ data, selected, id }: NodeProps<Ca
   );
 });
 const nodeTypes = { funnel: FunnelNode };
+const initialFitOptions = { padding: 0.15, maxZoom: 0.9 };
+const multiSelectionKeys = ["Control", "Meta"];
 
 export function FunnelCanvas({
   funnel,
-  selectedNodeId,
+  selectedNodeIds,
   selectedEdgeId,
   imageSources,
   onSelect,
+  onSelectNodes,
+  onMoveNodes,
   onUpdateNode,
   onConnect,
   onAdd,
@@ -256,6 +264,20 @@ export function FunnelCanvas({
   const apiRef = useRef<FunnelCanvasApi | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const selecting = useRef(false);
+  const selectedNodeId = selectedNodeIds.length === 1 ? selectedNodeIds[0] : null;
+  const selectionChanged = useCallback(
+    ({ nodes }: { nodes: CanvasNode[] }) => {
+      if (!selecting.current) onSelectNodes(nodes.map((node) => node.id));
+    },
+    [onSelectNodes],
+  );
+  const savePositions = useCallback(
+    (moved: CanvasNode[]) => {
+      onMoveNodes(moved.map((node) => ({ id: node.id, x: node.position.x, y: node.position.y })));
+    },
+    [onMoveNodes],
+  );
   const addNext = useCallback(
     (id: string) => {
       const source = funnel.nodes.find((node) => node.id === id);
@@ -285,9 +307,10 @@ export function FunnelCanvas({
           width: node.width,
           height: node.height,
           style: { width: node.width, height: node.height },
-          selected: node.id === selectedNodeId,
+          selected: selectedNodeIds.includes(node.id),
           data: {
             node,
+            multiple: selectedNodeIds.length > 1,
             image: node.imageKey ? imageSources[node.imageKey] : node.imageUrl,
             onResize: onUpdateNode,
             onNext: addNext,
@@ -296,7 +319,7 @@ export function FunnelCanvas({
         };
       }),
     );
-  }, [funnel.nodes, selectedNodeId, imageSources, onUpdateNode, addNext, onImage]);
+  }, [funnel.nodes, selectedNodeIds, imageSources, onUpdateNode, addNext, onImage]);
   useEffect(() => {
     const focus = hovered ?? selectedNodeId;
     setEdges(
@@ -394,17 +417,34 @@ export function FunnelCanvas({
         }}
         defaultViewport={initialViewport}
         fitView={!initialViewport}
-        fitViewOptions={{ padding: 0.15, maxZoom: 0.9 }}
+        fitViewOptions={initialFitOptions}
         minZoom={0.04}
         maxZoom={3}
         zoomOnScroll
         zoomOnPinch
         zoomOnDoubleClick={false}
         panOnScroll={false}
-        panOnDrag={[0, 1]}
+        panOnDrag={[1]}
         panActivationKeyCode="Space"
-        selectionKeyCode="Shift"
-        multiSelectionKeyCode={null}
+        selectionOnDrag
+        selectionMode={SelectionMode.Partial}
+        selectionKeyCode={null}
+        multiSelectionKeyCode={multiSelectionKeys}
+        onSelectionChange={selectionChanged}
+        onSelectionStart={() => {
+          selecting.current = true;
+          setMenu(null);
+          onNavigate();
+        }}
+        onSelectionEnd={() => {
+          selecting.current = false;
+          onSelectNodes(
+            apiRef.current
+              ?.getNodes()
+              .filter((node) => node.selected)
+              .map((node) => node.id) ?? [],
+          );
+        }}
         deleteKeyCode={null}
         nodeDragThreshold={5}
         connectionMode={ConnectionMode.Loose}
@@ -443,15 +483,21 @@ export function FunnelCanvas({
             state.fromHandle?.id ?? undefined,
           );
         }}
-        onNodeDragStop={(_, node) =>
-          onUpdateNode(node.id, {
-            x: Math.max(0, node.position.x),
-            y: Math.max(0, node.position.y),
-          })
-        }
-        onNodeClick={(_, node) => {
+        onNodeDragStop={(_, node, moved) => savePositions(moved.length ? moved : [node])}
+        onSelectionDragStop={(_, moved) => savePositions(moved)}
+        onNodeClick={(event, node) => {
           setMenu(null);
-          onSelect(node.id, null);
+          if (event.ctrlKey || event.metaKey) {
+            const ids = selectedNodeIds.includes(node.id)
+              ? selectedNodeIds.filter((id) => id !== node.id)
+              : [...selectedNodeIds, node.id];
+            setNodes((current) =>
+              current.map((item) => ({ ...item, selected: ids.includes(item.id) })),
+            );
+            onSelectNodes(ids);
+          } else if (selectedNodeIds.length <= 1 || !selectedNodeIds.includes(node.id)) {
+            onSelect(node.id, null);
+          }
         }}
         onNodeDoubleClick={(_, node) => {
           onSelect(node.id, null);
@@ -479,7 +525,7 @@ export function FunnelCanvas({
           }
         }}
         onMove={(_, viewport) => onZoom(viewport.zoom)}
-        aria-label="Fluxo: arraste o fundo para navegar, use a roda para zoom e arraste os pontos para conectar"
+        aria-label="Fluxo: arraste o botão esquerdo para selecionar; Espaço e arrastar para mover; roda para zoom"
       >
         <Background
           id="grid"
@@ -508,7 +554,8 @@ export function FunnelCanvas({
         />
       </ReactFlow>
       <div className="pointer-events-none absolute bottom-3 left-3 max-w-[calc(100%-24px)] rounded-xl border border-white/10 bg-[#111722]/90 px-3 py-2 text-xs text-slate-300 sm:max-w-[calc(100%-240px)]">
-        Roda: zoom · Fundo: mover · Bloco: editar · Pontos: arraste para conectar
+        Arraste: selecionar · Espaço + arraste: mover · Roda: zoom · Ctrl + clique: adicionar à
+        seleção
       </div>
       {menu && (
         <div

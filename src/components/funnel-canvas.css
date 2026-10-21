@@ -36,10 +36,19 @@
   vector-effect: non-scaling-stroke;
 }
 .funnel-canvas .react-flow__pane {
-  cursor: grab;
+  cursor: crosshair;
+}
+.funnel-canvas .react-flow__selection,
+.funnel-canvas .react-flow__nodesselection-rect {
+  border: 1px solid #60a5fa;
+  background: #3b82f61a;
+  border-radius: 6px;
 }
 .funnel-canvas .react-flow__pane.dragging {
   cursor: grabbing;
+}
+.funnel-canvas .react-flow__nodesselection-rect {
+  pointer-events: none;
 }
 .funnel-canvas .react-flow__node.selected {
   outline: none;
