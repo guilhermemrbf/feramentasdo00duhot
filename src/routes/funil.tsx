@@ -13,16 +13,12 @@ import {
   FileImage,
   GitBranch,
   ImagePlus,
-  Instagram,
   Link2,
   LayoutGrid,
   MousePointer2,
-  Music2,
-  Move,
   Plus,
   RotateCcw,
   Save,
-  Send,
   Settings2,
   Shapes,
   Sparkles,
@@ -34,16 +30,11 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { canConnect } from "@/lib/funnel-connections";
+import { FunnelCanvas, type FunnelCanvasApi, type AddAt } from "@/components/FunnelCanvas";
 import { AppShell } from "@/components/AppShell";
-import { arrangeFunnelForReading } from "@/lib/funnel-layout";
+import { arrangeFunnelForReading, findFreeNodePosition } from "@/lib/funnel-layout";
 import {
   createNewFunnel,
   createStarterFunnels,
@@ -176,8 +167,8 @@ function makeNode(kind: FlowNodeKind, title: string, x: number, y: number): Flow
     body: "",
     x,
     y,
-    width: kind === "image" ? 260 : 232,
-    height: kind === "image" ? 228 : kind === "text" ? 184 : 156,
+    width: 320,
+    height: kind === "image" ? 320 : kind === "text" ? 220 : 240,
   };
 }
 
@@ -237,92 +228,19 @@ function FunnelPreview({ funnel }: { funnel: Funnel }) {
   );
 }
 
-function ReferenceNodeContent({ node, zoom }: { node: FlowNode; zoom: number }) {
-  if (node.appearance === "telegram")
-    return (
-      <div className="flex size-full items-center justify-center" title={node.title}>
-        <Send className="size-[62%] -translate-x-0.5" fill="currentColor" strokeWidth={1} />
-        <span className="sr-only">{node.title}</span>
-      </div>
-    );
-  if (node.appearance === "account")
-    return (
-      <div
-        title={node.title}
-        className="flex size-full flex-col items-center justify-center gap-1 overflow-hidden px-0.5 py-1 text-center"
-      >
-        <span className="text-[24px] font-extrabold leading-7">
-          {node.displayLabel || node.title}
-        </span>
-        {node.platform === "tiktok" ? (
-          <Music2 className="size-7 shrink-0" />
-        ) : node.platform === "instagram" ? (
-          <Instagram className="size-7 shrink-0" />
-        ) : node.platform === "x" ? (
-          <b className="text-[23px]">X</b>
-        ) : (
-          <MousePointer2 className="size-4 shrink-0" />
-        )}
-        {node.description && zoom >= 0.5 && (
-          <span className="line-clamp-3 text-[9px] leading-3">{node.description}</span>
-        )}
-      </div>
-    );
-  if (node.appearance === "brand")
-    return (
-      <div className="flex size-full items-center justify-center overflow-hidden px-2">
-        <h3 className="text-[58px] font-extrabold tracking-[-0.06em]">{node.title}</h3>
-      </div>
-    );
-  if (node.appearance === "label")
-    return (
-      <div className="flex size-full items-center overflow-hidden px-2">
-        <h3 className="text-[36px] font-extrabold leading-tight">{node.title}</h3>
-      </div>
-    );
-  return (
-    <div className="flex size-full flex-col items-center justify-center gap-2 overflow-hidden px-4 py-2 text-center">
-      <h3 className="whitespace-pre-wrap break-words text-[30px] font-bold leading-[1.2]">
-        {node.title}
-      </h3>
-      {node.description && <p className="text-[16px] leading-5">{node.description}</p>}
-      {node.body && <p className="whitespace-pre-wrap text-[17px] leading-6">{node.body}</p>}
-    </div>
-  );
-}
-
 function FunilPage() {
   const [funnels, setFunnels] = useState<Funnel[]>(() => createStarterFunnels());
   const [hydrated, setHydrated] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [pendingFit, setPendingFit] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [viewLabel, setViewLabel] = useState("Visão geral");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
-  const [connectMode, setConnectMode] = useState(false);
-  const [navigationMode, setNavigationMode] = useState(false);
+  const [zoom, setZoom] = useState(0.62);
   const [layoutUndo, setLayoutUndo] = useState<{
     funnelId: string;
     positions: Map<string, { x: number; y: number }>;
-  } | null>(null);
-  const [connectionStart, setConnectionStart] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(0.62);
-  const [pan, setPan] = useState({ x: 28, y: 30 });
-  const [dragPreview, setDragPreview] = useState<{ id: string; x: number; y: number } | null>(null);
-  const [resizePreview, setResizePreview] = useState<{
-    id: string;
-    width: number;
-    height: number;
-  } | null>(null);
-  const [moving, setMoving] = useState<{
-    type: "node" | "canvas" | "resize";
-    id?: string;
-    startX: number;
-    startY: number;
-    originX: number;
-    originY: number;
   } | null>(null);
   const [editingFunnelId, setEditingFunnelId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
@@ -332,33 +250,17 @@ function FunilPage() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const nativeFullscreenRef = useRef(false);
-  const nodeClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const draggedRef = useRef(false);
+  const canvasRef = useRef<FunnelCanvasApi | null>(null);
   const fittedViewRef = useRef<{ ids: string[] | null; label: string } | null>(null);
-  const savedViews = useRef<Record<string, { zoom: number; pan: { x: number; y: number } }>>({});
+  const savedViews = useRef<Record<string, { zoom: number; x: number; y: number }>>({});
   const active = funnels.find((item) => item.id === openId) ?? null;
   const nodeCount = active?.nodes.length ?? 0;
-  const verticalFlow = active?.direction === "vertical";
   const editingTarget = funnels.find((item) => item.id === editingFunnelId) ?? null;
   const imageSignature = JSON.stringify(
     active?.nodes.flatMap((item) => (item.imageKey ? [item.imageKey] : [])) ?? [],
   );
   const selectedNode = active?.nodes.find((item) => item.id === selectedNodeId) ?? null;
   const selectedEdge = active?.edges.find((item) => item.id === selectedEdgeId) ?? null;
-  const visualNodes = useMemo(
-    () =>
-      (active?.nodes ?? []).map((item) => ({
-        ...item,
-        ...(dragPreview?.id === item.id ? { x: dragPreview.x, y: dragPreview.y } : {}),
-        ...(resizePreview?.id === item.id
-          ? { width: resizePreview.width, height: resizePreview.height }
-          : {}),
-      })),
-    [active?.nodes, dragPreview, resizePreview],
-  );
-  const bounds = useMemo(() => getFlowBounds(visualNodes), [visualNodes]);
-  const hoveredNode = active?.nodes.find((item) => item.id === hoveredNodeId);
-  const highlightedNodeId = hoveredNodeId ?? selectedNodeId;
   const sections = useMemo(() => {
     if (!active) return [];
     return [
@@ -515,8 +417,8 @@ function FunilPage() {
 
   useEffect(
     () => () => {
-      if (nodeClickTimerRef.current) clearTimeout(nodeClickTimerRef.current);
       Object.values(imageUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
+      imageUrlsRef.current = {};
     },
     [],
   );
@@ -528,12 +430,15 @@ function FunilPage() {
     [openId],
   );
 
-  const updateNode = (id: string, patch: Partial<FlowNode>) => {
-    updateFunnel((funnel) => ({
-      ...funnel,
-      nodes: funnel.nodes.map((item) => (item.id === id ? { ...item, ...patch } : item)),
-    }));
-  };
+  const updateNode = useCallback(
+    (id: string, patch: Partial<FlowNode>) => {
+      updateFunnel((funnel) => ({
+        ...funnel,
+        nodes: funnel.nodes.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+      }));
+    },
+    [updateFunnel],
+  );
 
   const organizeForReading = () => {
     if (!active || !viewportRef.current) return;
@@ -561,27 +466,16 @@ function FunilPage() {
     setNotice("Posições anteriores restauradas.");
   };
 
-  const changeMouseMode = (navigate: boolean) => {
-    if (nodeClickTimerRef.current) clearTimeout(nodeClickTimerRef.current);
-    setNavigationMode(navigate);
-    setMoving(null);
-    setDragPreview(null);
-    setResizePreview(null);
-    setSelectedNodeId(null);
-    setSelectedEdgeId(null);
-    setHoveredNodeId(null);
-    setConnectMode(false);
-    setConnectionStart(null);
-  };
-
   const createFunnel = () => {
+    if (openId && canvasRef.current) savedViews.current[openId] = canvasRef.current.getViewport();
+    canvasRef.current = null;
     const funnel = createNewFunnel(`Funil ${String(funnels.length + 1).padStart(2, "0")}`);
     setFunnels((current) => [...current, funnel]);
     setOpenId(funnel.id);
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
     setZoom(0.8);
-    setPan({ x: 70, y: 40 });
+    setPendingFit(true);
   };
 
   const deleteFunnel = (id: string) => {
@@ -595,24 +489,63 @@ function FunilPage() {
     if (openId === id) setOpenId(null);
   };
 
-  const addNode = (kind: FlowNodeKind, title: string) => {
-    if (!active || !viewportRef.current) return;
-    const rect = viewportRef.current.getBoundingClientRect();
-    const centerX = (rect.width / 2 - pan.x) / zoom;
-    const centerY = (rect.height / 2 - pan.y) / zoom;
-    const offset = (active.nodes.length % 5) * 32;
-    const item = makeNode(
-      kind,
-      title,
-      Math.max(24, centerX - 116 + offset),
-      Math.max(24, centerY - 78 + offset),
-    );
-    updateFunnel((funnel) => ({ ...funnel, nodes: [...funnel.nodes, item] }));
-    setSelectedNodeId(item.id);
-    setSelectedEdgeId(null);
-    setConnectMode(false);
-    setConnectionStart(null);
-  };
+  const addNode = useCallback(
+    (kind: FlowNodeKind, title: string, at?: AddAt) => {
+      if (!active || !viewportRef.current) return;
+      const rect = viewportRef.current.getBoundingClientRect();
+      const center = at?.position ??
+        canvasRef.current?.screenToFlowPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        }) ?? { x: 100, y: 100 };
+      const item = makeNode(
+        kind,
+        title,
+        Math.max(0, center.x - (at?.position ? 0 : 160)),
+        Math.max(0, center.y - (at?.position ? 0 : 120)),
+      );
+      Object.assign(item, findFreeNodePosition(active.nodes, item, item.width, item.height));
+      updateFunnel((funnel) => ({
+        ...funnel,
+        nodes: [...funnel.nodes, item],
+        edges:
+          at?.from && funnel.nodes.some((node) => node.id === at.from)
+            ? [
+                ...funnel.edges,
+                {
+                  id: createId("edge"),
+                  from: at.from,
+                  to: item.id,
+                  sourceHandle: at.sourceHandle,
+                  targetHandle:
+                    at.sourceHandle === "bottom"
+                      ? "top"
+                      : at.sourceHandle === "top"
+                        ? "bottom"
+                        : at.sourceHandle === "left"
+                          ? "right"
+                          : "left",
+                },
+              ]
+            : funnel.edges,
+      }));
+      fittedViewRef.current = null;
+      setSelectedNodeId(item.id);
+      setSelectedEdgeId(null);
+      void canvasRef.current?.setCenter(
+        item.x +
+          item.width / 2 +
+          (rect.width >= 640 ? 175 / Math.max(0.65, Math.min(canvasRef.current.getZoom(), 1)) : 0),
+        item.y + item.height / 2,
+        {
+          zoom: Math.max(0.65, Math.min(canvasRef.current.getZoom(), 1)),
+          duration: 150,
+        },
+      );
+      return item;
+    },
+    [active, updateFunnel],
+  );
 
   const deleteNode = (id: string) => {
     const target = active?.nodes.find((item) => item.id === id);
@@ -630,99 +563,95 @@ function FunilPage() {
     setSelectedEdgeId(null);
   };
 
-  const connectNodes = (id: string) => {
-    if (!active) return;
-    if (!connectionStart) {
-      setConnectionStart(id);
-      setNotice("Agora escolha o ponto de destino para concluir a conexão.");
-      return;
-    }
-    if (connectionStart === id) {
-      setConnectionStart(null);
-      return;
-    }
-    const exists = active.edges.some((edge) => edge.from === connectionStart && edge.to === id);
-    if (exists) {
-      setNotice("Esses pontos já estão conectados.");
-      setConnectionStart(null);
-      setConnectMode(false);
-      return;
-    }
-    const edge: FlowEdge = { id: createId("edge"), from: connectionStart, to: id };
-    updateFunnel((funnel) => ({ ...funnel, edges: [...funnel.edges, edge] }));
-    setConnectionStart(null);
-    setConnectMode(false);
-    setSelectedEdgeId(edge.id);
-    setSelectedNodeId(null);
-    setNotice("Conexão adicionada ao fluxo.");
-  };
+  const connectNodes = useCallback(
+    (edge: Omit<FlowEdge, "id">) => {
+      updateFunnel((funnel) =>
+        canConnect(funnel, edge.from, edge.to)
+          ? { ...funnel, edges: [...funnel.edges, { ...edge, id: createId("edge") }] }
+          : funnel,
+      );
+    },
+    [updateFunnel],
+  );
+
+  const reconnectNodes = useCallback(
+    (id: string, edge: Omit<FlowEdge, "id">) => {
+      updateFunnel((funnel) =>
+        canConnect(
+          { ...funnel, edges: funnel.edges.filter((item) => item.id !== id) },
+          edge.from,
+          edge.to,
+        )
+          ? {
+              ...funnel,
+              edges: funnel.edges.map((item) => (item.id === id ? { ...item, ...edge } : item)),
+            }
+          : funnel,
+      );
+    },
+    [updateFunnel],
+  );
 
   const openFunnel = (id: string) => {
-    if (nodeClickTimerRef.current) clearTimeout(nodeClickTimerRef.current);
+    if (id === openId) return;
+    if (openId && canvasRef.current) savedViews.current[openId] = canvasRef.current.getViewport();
+    canvasRef.current = null;
     fittedViewRef.current = null;
-    setHoveredNodeId(null);
-    setViewLabel("Visão livre");
-    if (openId) savedViews.current[openId] = { zoom, pan };
-    const view = savedViews.current[id] ?? { zoom: 0.62, pan: { x: 28, y: 30 } };
-    setPendingFit(
-      !savedViews.current[id] &&
-        funnels.find((funnel) => funnel.id === id)?.direction === "vertical",
-    );
-    setZoom(view.zoom);
-    setPan(view.pan);
     setOpenId(id);
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
-    setConnectMode(false);
-    setConnectionStart(null);
+    setViewLabel("Visão geral");
   };
 
   const zoomAtCenter = (nextZoom: number) => {
     fittedViewRef.current = null;
     setViewLabel("Visão livre");
-    const element = viewportRef.current;
-    if (!element) {
-      setZoom(Math.min(3, Math.max(0.04, nextZoom)));
-      return;
-    }
-    const rect = element.getBoundingClientRect();
-    const cx = rect.width / 2;
-    const cy = rect.height / 2;
-    const worldX = (cx - pan.x) / zoom;
-    const worldY = (cy - pan.y) / zoom;
-    const bounded = Math.min(3, Math.max(0.04, nextZoom));
-    setZoom(bounded);
-    setPan({ x: cx - worldX * bounded, y: cy - worldY * bounded });
+    void canvasRef.current?.zoomTo(Math.min(3, Math.max(0.04, nextZoom)), { duration: 120 });
   };
 
   const fitNodes = useCallback(
     (ids: string[] | null, label: string) => {
-      const element = viewportRef.current;
-      if (!element || nodeCount === 0) return;
-      const nodes = ids ? visualNodes.filter((item) => ids.includes(item.id)) : visualNodes;
-      if (!nodes.length) return;
-      const area = getFlowBounds(nodes);
-      const rect = element.getBoundingClientRect();
-      const contentWidth = area.right - area.left;
-      const contentHeight = area.bottom - area.top;
-      const fitted = Math.min(
-        ids?.length === 1 ? 1.5 : 1,
-        Math.max(
-          0.01,
-          Math.min((rect.width - 64) / contentWidth, (rect.height - 112) / contentHeight),
-        ),
-      );
+      if (!canvasRef.current || !nodeCount) return;
       fittedViewRef.current = { ids, label };
       setViewLabel(label);
-      setZoom(fitted);
-      setPan({
-        x: (rect.width - contentWidth * fitted) / 2 - area.left * fitted,
-        y: 24 + (rect.height - 112 - contentHeight * fitted) / 2 - area.top * fitted,
+      if (ids?.length === 1 && viewportRef.current) {
+        const node = canvasRef.current.getNode(ids[0]);
+        if (!node) return;
+        const rect = viewportRef.current.getBoundingClientRect();
+        const width = rect.width - (rect.width >= 640 ? 350 : 0);
+        const scale = Math.max(
+          0.04,
+          Math.min(
+            1.25,
+            (width - 48) / (node.width ?? 320),
+            (rect.height - 100) / (node.height ?? 240),
+          ),
+        );
+        void canvasRef.current.setViewport(
+          {
+            zoom: scale,
+            x: (width - (node.width ?? 320) * scale) / 2 - node.position.x * scale,
+            y: (rect.height - 60 - (node.height ?? 240) * scale) / 2 - node.position.y * scale,
+          },
+          { duration: 180 },
+        );
+        return;
+      }
+      void canvasRef.current.fitView({
+        nodes: ids?.map((id) => ({ id })),
+        padding: 0.15,
+        minZoom: 0.04,
+        maxZoom: ids?.length === 1 ? 1.25 : 1,
+        duration: 180,
       });
     },
-    [nodeCount, visualNodes],
+    [nodeCount],
   );
-  const fitFlow = useCallback(() => fitNodes(null, "Visão geral"), [fitNodes]);
+  const fitFlow = useCallback(() => {
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    fitNodes(null, "Visão geral");
+  }, [fitNodes]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -769,139 +698,72 @@ function FunilPage() {
     return () => document.removeEventListener("keydown", onKeyDown);
   });
 
-  const startMoveNode = (event: ReactPointerEvent<HTMLElement>, item: FlowNode) => {
-    if (
-      navigationMode ||
-      connectMode ||
-      (event.target as HTMLElement).closest("button,input,textarea,select")
-    )
-      return;
-    event.preventDefault();
-    event.stopPropagation();
-    draggedRef.current = false;
-    if (nodeClickTimerRef.current) clearTimeout(nodeClickTimerRef.current);
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setMoving({
-      type: "node",
-      id: item.id,
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: item.x,
-      originY: item.y,
-    });
-    setDragPreview({ id: item.id, x: item.x, y: item.y });
-  };
-
-  const handleCanvasPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (
-      event.button !== 0 ||
-      (event.target as HTMLElement).closest("button,input,textarea,select,article")
-    )
-      return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setSelectedNodeId(null);
-    setSelectedEdgeId(null);
+  const selectElement = useCallback((nodeId: string | null, edgeId: string | null) => {
+    fittedViewRef.current = null;
+    setSelectedNodeId(nodeId);
+    setSelectedEdgeId(edgeId);
+    const api = canvasRef.current;
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const node = nodeId ? api?.getNode(nodeId) : null;
+    if (!api || !rect || !node || rect.width < 640) return;
+    const point = api.flowToScreenPosition(node.position);
+    const dx = Math.min(0, rect.right - 350 - 24 - point.x - (node.width ?? 320) * api.getZoom());
+    if (dx < 0) {
+      const view = api.getViewport();
+      void api.setViewport({ ...view, x: view.x + dx }, { duration: 150 });
+    }
+  }, []);
+  const focusElement = useCallback(
+    (id: string) => {
+      fitNodes([id], "Elemento ampliado");
+    },
+    [fitNodes],
+  );
+  const navigateCanvas = useCallback(() => {
     fittedViewRef.current = null;
     setViewLabel("Visão livre");
-    setMoving({
-      type: "canvas",
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: pan.x,
-      originY: pan.y,
-    });
-  };
+  }, []);
+  const canvasReady = useCallback((api: FunnelCanvasApi) => {
+    canvasRef.current = api;
+  }, []);
 
-  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!moving) return;
-    const dx = event.clientX - moving.startX;
-    const dy = event.clientY - moving.startY;
-    if (Math.abs(dx) + Math.abs(dy) > 3) {
-      draggedRef.current = true;
-      fittedViewRef.current = null;
-      setViewLabel("Visão livre");
-    }
-    if (moving.type === "canvas") setPan({ x: moving.originX + dx, y: moving.originY + dy });
-    else if (moving.id && moving.type === "resize")
-      setResizePreview({
-        id: moving.id,
-        width: Math.round(Math.min(1600, Math.max(32, moving.originX + dx / zoom))),
-        height: Math.round(Math.min(1200, Math.max(32, moving.originY + dy / zoom))),
-      });
-    else if (moving.id)
-      setDragPreview({
-        id: moving.id,
-        x: Math.max(0, moving.originX + dx / zoom),
-        y: Math.max(0, moving.originY + dy / zoom),
-      });
-  };
-
-  const finishPointerMove = () => {
-    if (moving?.type === "node" && moving.id && dragPreview && draggedRef.current) {
-      const { id, x, y } = dragPreview;
-      updateNode(id, { x: Math.max(0, x), y: Math.max(0, y) });
-    }
-    if (moving?.type === "resize" && resizePreview)
-      updateNode(resizePreview.id, { width: resizePreview.width, height: resizePreview.height });
-    setMoving(null);
-    setDragPreview(null);
-    setResizePreview(null);
-  };
-
-  const handleWheel = useCallback(
-    (event: WheelEvent) => {
-      event.preventDefault();
-      fittedViewRef.current = null;
-      setViewLabel("Visão livre");
-      if (!navigationMode && !event.ctrlKey && !event.metaKey) {
-        setPan((current) => ({ x: current.x - event.deltaX, y: current.y - event.deltaY }));
+  const handleImageFile = useCallback(
+    async (item: FlowNode, file?: File) => {
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        setNotice("Escolha um arquivo de imagem.");
         return;
       }
-      const delta =
-        event.deltaY *
-        (event.deltaMode === 1
-          ? 16
-          : event.deltaMode === 2
-            ? (viewportRef.current?.clientHeight ?? 600)
-            : 1);
-      const next = Math.min(
-        3,
-        Math.max(0.04, zoom * Math.exp(-Math.max(-500, Math.min(500, delta)) * 0.002)),
-      );
-      const rect = viewportRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const px = event.clientX - rect.left;
-      const py = event.clientY - rect.top;
-      const worldX = (px - pan.x) / zoom;
-      const worldY = (py - pan.y) / zoom;
-      setZoom(next);
-      setPan({ x: px - worldX * next, y: py - worldY * next });
+      if (!file.size) {
+        setNotice("A imagem está vazia. Selecione um arquivo válido do dispositivo.");
+        return;
+      }
+      try {
+        const preview = URL.createObjectURL(file);
+        try {
+          const probe = new Image();
+          probe.src = preview;
+          await probe.decode();
+        } finally {
+          URL.revokeObjectURL(preview);
+        }
+        await saveImage(item.id, file);
+        registerImage(item.id, file);
+        updateNode(item.id, {
+          imageKey: item.id,
+          imageUrl: "",
+          width: Math.max(280, item.width),
+          height: Math.max(320, item.height),
+        });
+        setNotice("Imagem adicionada ao cartão.");
+      } catch {
+        setNotice(
+          "Não foi possível abrir ou salvar a imagem. Escolha um arquivo de imagem válido.",
+        );
+      }
     },
-    [zoom, pan, navigationMode],
+    [registerImage, updateNode],
   );
-
-  useEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-    viewport.addEventListener("wheel", handleWheel, { passive: false });
-    return () => viewport.removeEventListener("wheel", handleWheel);
-  }, [handleWheel, openId, hydrated]);
-
-  const handleImageFile = async (item: FlowNode, file?: File) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setNotice("Escolha um arquivo de imagem.");
-      return;
-    }
-    try {
-      await saveImage(item.id, file);
-      registerImage(item.id, file);
-      updateNode(item.id, { imageKey: item.id, imageUrl: "" });
-      setNotice("Imagem adicionada ao cartão.");
-    } catch {
-      setNotice("Não foi possível salvar a imagem neste navegador.");
-    }
-  };
 
   const imageFor = (item: FlowNode) =>
     item.imageKey ? (imageSources[item.imageKey] ?? "") : (item.imageUrl ?? "");
@@ -1149,16 +1011,22 @@ function FunilPage() {
                 className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-card/75 px-3 py-2.5 shadow-sm"
                 aria-label="Ferramentas do fluxo"
               >
-                <div
-                  className={`flex flex-wrap items-center gap-1.5 ${navigationMode ? "opacity-40" : ""}`}
-                >
+                <div className="flex flex-wrap items-center gap-1.5">
                   <span className="mr-1 hidden text-[10px] font-bold tracking-[0.12em] text-muted-foreground sm:block">
                     ADICIONAR
                   </span>
                   {kinds.map(({ kind, label, icon: Icon, defaultTitle }) => (
                     <button
                       key={kind}
-                      disabled={navigationMode}
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData(
+                          "application/00duhot-node",
+                          JSON.stringify({ kind, title: defaultTitle }),
+                        );
+                        event.dataTransfer.effectAllowed = "copy";
+                      }}
+                      title="Clique ou arraste para o quadro"
                       onClick={() => addNode(kind, defaultTitle)}
                       className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background/70 px-3.5 py-2.5 text-sm font-semibold transition hover:border-primary/50 hover:bg-primary/10"
                     >
@@ -1166,20 +1034,6 @@ function FunilPage() {
                       {label}
                     </button>
                   ))}
-                  <span className="mx-1 hidden h-6 w-px bg-border md:block" />
-                  <button
-                    disabled={navigationMode}
-                    onClick={() => {
-                      setConnectMode((value) => !value);
-                      setConnectionStart(null);
-                      setSelectedNodeId(null);
-                      setSelectedEdgeId(null);
-                    }}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-semibold transition ${connectMode ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/70 hover:border-primary/30 hover:bg-primary/5"}`}
-                  >
-                    <Link2 className="size-5" />
-                    {connectMode ? "Conexão ativa" : "Conectar"}
-                  </button>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
@@ -1217,29 +1071,6 @@ function FunilPage() {
                 aria-label="Navegar pelo fluxo"
                 className="mt-2 flex shrink-0 flex-wrap items-center gap-2"
               >
-                <div
-                  role="group"
-                  aria-label="Modo do mouse"
-                  className="flex rounded-xl border border-white/15 bg-[#101722] p-1"
-                >
-                  <button
-                    onClick={() => changeMouseMode(false)}
-                    aria-pressed={!navigationMode}
-                    className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${!navigationMode ? "bg-blue-500/20 text-blue-200 ring-1 ring-blue-400/40" : "text-slate-400 hover:text-slate-200"}`}
-                  >
-                    <MousePointer2 className="size-4" />
-                    Editar elementos
-                  </button>
-                  <button
-                    onClick={() => changeMouseMode(true)}
-                    aria-pressed={navigationMode}
-                    title="Roda do mouse: zoom. Arraste em qualquer ponto para mover o quadro."
-                    className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${navigationMode ? "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/40" : "text-slate-400 hover:text-slate-200"}`}
-                  >
-                    <Move className="size-4" />
-                    Navegar com mouse
-                  </button>
-                </div>
                 <button
                   onClick={organizeForReading}
                   className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/10 px-3 py-2 text-sm font-semibold text-blue-200 hover:bg-blue-500/20"
@@ -1281,9 +1112,7 @@ function FunilPage() {
                   </button>
                 )}
                 <span className="ml-auto hidden text-xs text-slate-400 sm:block">
-                  {navigationMode
-                    ? "Roda do mouse: zoom · Arraste o quadro para mover"
-                    : "Duplo clique para ampliar · Ctrl + roda: zoom"}
+                  Roda: zoom · Fundo: mover · Duplo clique no fundo: adicionar
                 </span>
               </nav>
 
@@ -1303,452 +1132,30 @@ function FunilPage() {
                 style={{ backgroundColor: "#0d1119" }}
                 className={`relative mt-3 flex overflow-clip rounded-2xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.2)] ${fullscreen ? "min-h-[220px] flex-1" : "h-[calc(100dvh-295px)] min-h-[500px] flex-none"}`}
               >
-                <div
-                  ref={viewportRef}
-                  className={`relative min-w-0 flex-1 overflow-clip touch-none ${connectMode ? "cursor-crosshair" : moving?.type === "canvas" ? "cursor-grabbing" : "cursor-grab"}`}
-                  onPointerDown={handleCanvasPointerDown}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={finishPointerMove}
-                  onPointerCancel={finishPointerMove}
-                  onClick={(event) => {
-                    if (event.target === event.currentTarget) {
-                      setSelectedNodeId(null);
-                      setSelectedEdgeId(null);
-                    }
-                  }}
-                >
-                  <div
-                    className="pointer-events-none absolute inset-0"
-                    style={{
-                      backgroundImage:
-                        "linear-gradient(rgba(148,163,184,.10) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.10) 1px, transparent 1px), radial-gradient(rgba(148,163,184,.28) 1px, transparent 1px)",
-                      backgroundSize: `${Math.max(16, 80 * zoom)}px ${Math.max(16, 80 * zoom)}px`,
-                      backgroundPosition: `${pan.x}px ${pan.y}px`,
-                    }}
+                <div ref={viewportRef} className="relative min-w-0 flex-1 overflow-hidden">
+                  <FunnelCanvas
+                    key={active.id}
+                    funnel={active}
+                    selectedNodeId={selectedNodeId}
+                    selectedEdgeId={selectedEdgeId}
+                    imageSources={imageSources}
+                    onSelect={selectElement}
+                    onUpdateNode={updateNode}
+                    onConnect={connectNodes}
+                    onAdd={addNode}
+                    onImage={handleImageFile}
+                    onReconnect={reconnectNodes}
+                    onReady={canvasReady}
+                    onZoom={setZoom}
+                    onNavigate={navigateCanvas}
+                    onFocus={focusElement}
+                    initialViewport={savedViews.current[active.id]}
                   />
-                  <div
-                    inert={navigationMode}
-                    className={`absolute left-0 top-0 ${navigationMode ? "pointer-events-none" : ""} ${moving ? "" : "motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out"}`}
-                    style={{
-                      width: Math.max(3600, bounds.right + 200),
-                      height: Math.max(2100, bounds.bottom + 200),
-                      transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                      transformOrigin: "0 0",
-                    }}
-                  >
-                    <svg
-                      className="absolute left-0 top-0 overflow-visible"
-                      width={Math.max(3600, bounds.right + 200)}
-                      height={Math.max(2100, bounds.bottom + 200)}
-                      aria-label="Conexões do fluxo"
-                      role="group"
-                    >
-                      <defs>
-                        <marker
-                          id="flow-arrow"
-                          markerWidth="11"
-                          markerHeight="11"
-                          refX="8"
-                          refY="5.5"
-                          orient="auto"
-                          markerUnits="strokeWidth"
-                        >
-                          <path
-                            d="M1,1 L9,5.5 L1,10"
-                            fill="none"
-                            stroke="context-stroke"
-                            strokeWidth="1.6"
-                          />
-                        </marker>
-                      </defs>
-                      {active.edges.map((edge) => {
-                        const from = visualNodes.find((item) => item.id === edge.from);
-                        const to = visualNodes.find((item) => item.id === edge.to);
-                        if (!from || !to) return null;
-                        const sameRow =
-                          Math.abs(to.y + to.height / 2 - (from.y + from.height / 2)) <
-                          Math.max(from.height, to.height) * 0.65;
-                        const verticalConnection = verticalFlow && !sameRow;
-                        const rightward = to.x + to.width / 2 >= from.x + from.width / 2;
-                        const x1 = verticalConnection
-                          ? from.x + from.width / 2
-                          : from.x + (rightward ? from.width : 0);
-                        const y1 = verticalConnection
-                          ? from.y + from.height
-                          : from.y + from.height / 2;
-                        const x2 = verticalConnection
-                          ? to.x + to.width / 2
-                          : to.x + (rightward ? 0 : to.width);
-                        const y2 = verticalConnection ? to.y : to.y + to.height / 2;
-                        const curve = Math.max(
-                          40,
-                          Math.abs(verticalConnection ? y2 - y1 : x2 - x1) * 0.45,
-                        );
-                        const signedCurve = rightward ? curve : -curve;
-                        const path = verticalConnection
-                          ? `M ${x1} ${y1} C ${x1} ${y1 + curve}, ${x2} ${y2 - curve}, ${x2} ${y2}`
-                          : `M ${x1} ${y1} C ${x1 + signedCurve} ${y1}, ${x2 - signedCurve} ${y2}, ${x2} ${y2}`;
-                        const selected = selectedEdgeId === edge.id;
-                        const highlighted =
-                          selected ||
-                          edge.from === highlightedNodeId ||
-                          edge.to === highlightedNodeId;
-                        return (
-                          <g
-                            key={edge.id}
-                            role="button"
-                            tabIndex={0}
-                            aria-label={`Editar conexão de ${from.title} para ${to.title}`}
-                            onPointerDown={(event) => event.stopPropagation()}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                setSelectedEdgeId(edge.id);
-                                setSelectedNodeId(null);
-                              }
-                            }}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setSelectedEdgeId(edge.id);
-                              setSelectedNodeId(null);
-                            }}
-                            className="cursor-pointer"
-                          >
-                            <path d={path} fill="none" stroke="transparent" strokeWidth="20" />
-                            <path
-                              d={path}
-                              fill="none"
-                              stroke={highlighted ? "#70b5ff" : "#91a3bd"}
-                              strokeWidth={highlighted ? "3" : "1.5"}
-                              vectorEffect="non-scaling-stroke"
-                              strokeOpacity={highlighted ? "1" : highlightedNodeId ? ".3" : ".8"}
-                              strokeDasharray={highlighted ? "8 8" : undefined}
-                              markerEnd="url(#flow-arrow)"
-                            >
-                              {highlighted && (
-                                <animate
-                                  attributeName="stroke-dashoffset"
-                                  from="32"
-                                  to="0"
-                                  dur="1.2s"
-                                  repeatCount="indefinite"
-                                  className="motion-reduce:hidden"
-                                />
-                              )}
-                            </path>
-                            {edge.label && (
-                              <text
-                                x={(x1 + x2) / 2}
-                                y={(y1 + y2) / 2 - 10}
-                                fill="#aebbd0"
-                                fontSize="12"
-                                textAnchor="middle"
-                              >
-                                {edge.label}
-                              </text>
-                            )}
-                          </g>
-                        );
-                      })}
-                    </svg>
-
-                    {visualNodes.map((item) => {
-                      const style = kindStyles[item.kind];
-                      const Icon = style.icon;
-                      const selected = selectedNodeId === item.id;
-                      const customAppearance = item.appearance && item.appearance !== "default";
-                      const image = imageFor(item);
-                      return (
-                        <article
-                          key={item.id}
-                          aria-label={`Elemento ${item.title || "sem título"}`}
-                          data-node-id={item.id}
-                          onMouseEnter={() => setHoveredNodeId(item.id)}
-                          onMouseLeave={() => setHoveredNodeId(null)}
-                          onDoubleClick={(event) => {
-                            if ((event.target as HTMLElement).closest("button")) return;
-                            event.stopPropagation();
-                            if (nodeClickTimerRef.current) clearTimeout(nodeClickTimerRef.current);
-                            if (!connectMode) {
-                              setSelectedNodeId(item.id);
-                              setSelectedEdgeId(null);
-                              fitNodes([item.id], item.title);
-                            }
-                          }}
-                          tabIndex={0}
-                          onKeyDown={(event) => {
-                            if (event.target !== event.currentTarget) return;
-                            if (event.key === "Enter") {
-                              if (connectMode) connectNodes(item.id);
-                              else {
-                                setSelectedNodeId(item.id);
-                                setSelectedEdgeId(null);
-                              }
-                            }
-                          }}
-                          onPointerDown={(event) => startMoveNode(event, item)}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            if (connectMode) {
-                              connectNodes(item.id);
-                              return;
-                            }
-                            if (draggedRef.current) return;
-                            if (nodeClickTimerRef.current) clearTimeout(nodeClickTimerRef.current);
-                            nodeClickTimerRef.current = setTimeout(() => {
-                              setSelectedNodeId(item.id);
-                              setSelectedEdgeId(null);
-                            }, 240);
-                          }}
-                          style={{
-                            left: item.x,
-                            top: item.y,
-                            width: item.width,
-                            height: item.height,
-                            ...(customAppearance
-                              ? {
-                                  background: item.background ?? "#ffffff",
-                                  color:
-                                    (item.appearance === "label" || item.appearance === "brand") &&
-                                    (!item.textColor || item.textColor === "#17202a")
-                                      ? "#e2e8f0"
-                                      : (item.textColor ?? "#17202a"),
-                                  borderRadius:
-                                    item.appearance === "telegram"
-                                      ? "50%"
-                                      : item.appearance === "account"
-                                        ? 3
-                                        : 0,
-                                  boxShadow: selected
-                                    ? "0 0 0 3px #60a5fa"
-                                    : item.appearance === "label" || item.appearance === "brand"
-                                      ? "none"
-                                      : "0 5px 20px #0006",
-                                  borderColor: selected
-                                    ? "#60a5fa"
-                                    : item.appearance === "label" || item.appearance === "brand"
-                                      ? "transparent"
-                                      : "#b2b7bd",
-                                }
-                              : {}),
-                          }}
-                          className={`group absolute z-10 flex flex-col overflow-visible rounded-xl border bg-[#171d29] text-left shadow-[0_10px_26px_rgba(0,0,0,0.35)] transition-[box-shadow,border-color] ${selected ? "border-blue-400 ring-2 ring-blue-400/25" : "border-slate-600/80 hover:border-slate-400"} ${connectionStart === item.id ? "ring-2 ring-emerald-400" : ""} ${connectMode ? "cursor-crosshair" : "cursor-grab active:cursor-grabbing"}`}
-                        >
-                          <button
-                            aria-label={`Conectar para ${item.title}`}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              if (connectionStart) connectNodes(item.id);
-                              else {
-                                setNotice(
-                                  "Escolha primeiro a saída de outro elemento ou use Conectar na barra de ferramentas.",
-                                );
-                              }
-                            }}
-                            className={`absolute z-20 size-3 rounded-full border-2 border-slate-400 ${verticalFlow ? "-top-[7px] left-1/2 -translate-x-1/2" : "-left-[7px] top-1/2 -translate-y-1/2"} ${connectMode ? "bg-emerald-400" : "bg-slate-500 opacity-0 group-hover:opacity-100"}`}
-                          />
-                          <button
-                            aria-label={`Conectar a partir de ${item.title}`}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setConnectionStart(item.id);
-                              setConnectMode(true);
-                              setNotice("Agora escolha a entrada do próximo elemento.");
-                            }}
-                            className={`absolute z-20 size-3 rounded-full border-2 border-slate-400 ${verticalFlow ? "-bottom-[7px] left-1/2 -translate-x-1/2" : "-right-[7px] top-1/2 -translate-y-1/2"} ${connectMode ? "bg-emerald-400" : "bg-slate-500 opacity-0 group-hover:opacity-100"}`}
-                          />
-                          {customAppearance ? (
-                            <ReferenceNodeContent node={item} zoom={zoom} />
-                          ) : (
-                            <>
-                              <div
-                                className={`flex items-center gap-2 rounded-t-[11px] border-b border-white/10 px-3 py-2 ${style.color === "sky" ? "bg-sky-500/20" : style.color === "blue" ? "bg-blue-500/20" : style.color === "cyan" ? "bg-cyan-500/20" : style.color === "amber" ? "bg-amber-500/20" : style.color === "violet" ? "bg-violet-500/20" : style.color === "pink" ? "bg-pink-500/20" : style.color === "emerald" ? "bg-emerald-500/20" : "bg-slate-500/15"}`}
-                              >
-                                <span
-                                  className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${style.color === "sky" ? "bg-sky-400/20 text-sky-300" : style.color === "blue" ? "bg-blue-400/20 text-blue-300" : style.color === "cyan" ? "bg-cyan-400/20 text-cyan-300" : style.color === "amber" ? "bg-amber-400/20 text-amber-300" : style.color === "violet" ? "bg-violet-400/20 text-violet-300" : style.color === "pink" ? "bg-pink-400/20 text-pink-300" : style.color === "emerald" ? "bg-emerald-400/20 text-emerald-300" : "bg-slate-400/15 text-slate-300"}`}
-                                >
-                                  <Icon className="size-3.5" />
-                                </span>
-                                <span className="truncate text-[9px] font-bold uppercase tracking-[0.13em] text-slate-300">
-                                  {style.label}
-                                </span>
-                                {selected && <Move className="ml-auto size-3.5 text-slate-500" />}
-                              </div>
-                              <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3">
-                                <h3 className="line-clamp-2 shrink-0 text-[15px] font-bold leading-5 text-slate-100">
-                                  {item.title || "Sem título"}
-                                </h3>
-                                {item.description && (
-                                  <p className="mt-1 line-clamp-2 shrink-0 text-[12px] leading-4 text-slate-400">
-                                    {item.description}
-                                  </p>
-                                )}
-                                {item.body && (
-                                  <p className="mt-2 min-h-0 overflow-hidden whitespace-pre-wrap rounded-md bg-black/20 p-2 text-[11px] leading-4 text-slate-300">
-                                    {item.body}
-                                  </p>
-                                )}
-                                {item.kind === "image" &&
-                                  (image ? (
-                                    <img
-                                      src={image}
-                                      alt={item.title}
-                                      className="mt-2 min-h-0 w-full flex-1 rounded-md border border-white/10 object-contain"
-                                      draggable={false}
-                                    />
-                                  ) : (
-                                    <div className="mt-2 flex h-20 items-center justify-center rounded-md border border-dashed border-slate-600 text-slate-500">
-                                      <ImagePlus className="size-5" />
-                                    </div>
-                                  ))}
-                              </div>
-                            </>
-                          )}
-                          <button
-                            aria-label={`Redimensionar ${item.title}`}
-                            onClick={(event) => event.stopPropagation()}
-                            onPointerDown={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              event.currentTarget.setPointerCapture(event.pointerId);
-                              setMoving({
-                                type: "resize",
-                                id: item.id,
-                                startX: event.clientX,
-                                startY: event.clientY,
-                                originX: item.width,
-                                originY: item.height,
-                              });
-                              setResizePreview({
-                                id: item.id,
-                                width: item.width,
-                                height: item.height,
-                              });
-                            }}
-                            className="absolute bottom-0 right-0 flex size-6 cursor-se-resize items-center justify-center text-slate-500 opacity-0 hover:text-blue-300 group-hover:opacity-100"
-                          >
-                            <Expand className="size-3 rotate-90" />
-                          </button>
-                        </article>
-                      );
-                    })}
-                  </div>
-                  {hoveredNode && !moving && (
-                    <div className="pointer-events-none absolute left-4 top-4 z-20 max-w-[300px] rounded-xl border border-blue-400/30 bg-[#151e2d]/95 px-4 py-3 text-sm text-slate-100 shadow-xl backdrop-blur">
-                      <p className="font-semibold">{hoveredNode.title}</p>
-                      {(hoveredNode.description || hoveredNode.body) && (
-                        <p className="mt-1 line-clamp-3 text-xs text-slate-300">
-                          {hoveredNode.description || hoveredNode.body}
-                        </p>
-                      )}
-                      <p className="mt-2 text-xs text-blue-300">Duplo clique para ampliar</p>
-                    </div>
-                  )}
-                  <div className="pointer-events-none absolute bottom-3 left-3 mr-3 flex max-w-[calc(100%-24px)] flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#111722]/90 px-3 py-2 text-xs text-slate-300 backdrop-blur md:max-w-[calc(100%-280px)]">
-                    <Move className="size-4" />
-                    {navigationMode
-                      ? "Navegação ativa · Roda: zoom · Arraste: mover · Elementos protegidos"
-                      : "Edição ativa · Arraste elementos · Ctrl + roda: zoom · 0: ver tudo"}
-                    {connectMode && (
-                      <span className="text-emerald-300">· Escolha dois pontos para conectar</span>
-                    )}
-                  </div>
-                  <div className="absolute bottom-3 right-3 hidden w-[240px] overflow-hidden rounded-xl border border-white/15 bg-[#111722]/95 shadow-lg backdrop-blur md:block">
-                    <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-300">
-                      <span>MAPA DO FUNIL</span>
-                      <button
-                        onClick={fitFlow}
-                        className="text-blue-300 hover:text-blue-200"
-                        aria-label="Ajustar fluxo completo"
-                      >
-                        Ver tudo
-                      </button>
-                    </div>
-                    <svg
-                      viewBox={`${bounds.left - 70} ${bounds.top - 70} ${bounds.right - bounds.left + 140} ${bounds.bottom - bounds.top + 140}`}
-                      preserveAspectRatio="none"
-                      className="h-[110px] w-full cursor-pointer"
-                      role="button"
-                      aria-label="Minimapa: clique para navegar pelo fluxo"
-                      tabIndex={0}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") fitFlow();
-                      }}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        fittedViewRef.current = null;
-                        setViewLabel("Visão livre");
-                        const rect = event.currentTarget.getBoundingClientRect();
-                        const x =
-                          bounds.left -
-                          70 +
-                          ((event.clientX - rect.left) / rect.width) *
-                            (bounds.right - bounds.left + 140);
-                        const y =
-                          bounds.top -
-                          70 +
-                          ((event.clientY - rect.top) / rect.height) *
-                            (bounds.bottom - bounds.top + 140);
-                        setPan({
-                          x: (viewportRef.current?.clientWidth ?? 800) / 2 - x * zoom,
-                          y: (viewportRef.current?.clientHeight ?? 500) / 2 - y * zoom,
-                        });
-                      }}
-                    >
-                      {active.edges.map((edge) => {
-                        const a = visualNodes.find((item) => item.id === edge.from);
-                        const b = visualNodes.find((item) => item.id === edge.to);
-                        return a && b ? (
-                          <line
-                            key={edge.id}
-                            x1={a.x + a.width / 2}
-                            y1={a.y + a.height / 2}
-                            x2={b.x + b.width / 2}
-                            y2={b.y + b.height / 2}
-                            stroke="#586a84"
-                            strokeWidth="9"
-                          />
-                        ) : null;
-                      })}
-                      {visualNodes.map((item) => (
-                        <rect
-                          key={item.id}
-                          x={item.x}
-                          y={item.y}
-                          width={item.width}
-                          height={item.height}
-                          rx="14"
-                          fill={
-                            selectedNodeId === item.id
-                              ? "#86b3ff"
-                              : (item.background ??
-                                (item.kind === "end"
-                                  ? "#32bd87"
-                                  : item.kind === "offer"
-                                    ? "#bc963a"
-                                    : "#3c648b"))
-                          }
-                        />
-                      ))}
-                      <rect
-                        x={-pan.x / zoom}
-                        y={-pan.y / zoom}
-                        width={(viewportRef.current?.clientWidth ?? 800) / zoom}
-                        height={(viewportRef.current?.clientHeight ?? 500) / zoom}
-                        fill="rgba(112,156,255,.07)"
-                        stroke="#8db9ff"
-                        strokeWidth="10"
-                      />
-                    </svg>
-                    <p className="px-2 py-1 text-[9px] tabular-nums text-slate-500">
-                      {active.nodes.length} elementos · {active.edges.length} conexões
-                    </p>
-                  </div>
                 </div>
 
                 {(selectedNode || selectedEdge) && (
                   <aside
-                    className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-slate-700 bg-[#141a25] shadow-2xl sm:relative sm:w-[320px] sm:shrink-0"
+                    className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-slate-700 bg-[#141a25] shadow-2xl sm:w-[350px]"
                     aria-label={selectedNode ? "Editar elemento" : "Editar conexão"}
                   >
                     <div className="flex items-start justify-between border-b border-slate-700 px-4 py-4">
@@ -1810,7 +1217,35 @@ function FunilPage() {
                             <option value="brand">Marca em texto</option>
                           </select>
                         </label>
-                        {selectedNode.appearance && selectedNode.appearance !== "default" && (
+                        <fieldset className="space-y-2">
+                          <legend className="mb-2 text-xs font-semibold text-slate-300">
+                            Cores rápidas
+                          </legend>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              ["Azul", "#2563eb", "#ffffff"],
+                              ["Verde", "#22c55e", "#102018"],
+                              ["Roxo", "#7c3aed", "#ffffff"],
+                              ["Rosa", "#db2777", "#ffffff"],
+                              ["Amarelo", "#facc15", "#17202a"],
+                              ["Vermelho", "#dc2626", "#ffffff"],
+                              ["Escuro", "#172337", "#e2e8f0"],
+                              ["Claro", "#f1f5f9", "#17202a"],
+                            ].map(([name, background, textColor]) => (
+                              <button
+                                key={name}
+                                aria-label={`Usar cor ${name}`}
+                                title={name}
+                                onClick={() =>
+                                  updateNode(selectedNode.id, { background, textColor })
+                                }
+                                className="size-8 rounded-lg border-2 border-white/25 transition hover:scale-110 focus-visible:ring-2 focus-visible:ring-blue-300"
+                                style={{ background }}
+                              />
+                            ))}
+                          </div>
+                        </fieldset>
+                        {selectedNode && (
                           <div className="grid grid-cols-2 gap-3">
                             <label className="text-[11px] font-semibold text-slate-300">
                               Cor de fundo
@@ -1819,7 +1254,7 @@ function FunilPage() {
                                 value={
                                   selectedNode.background?.startsWith("#")
                                     ? selectedNode.background
-                                    : "#ffffff"
+                                    : "#172337"
                                 }
                                 onChange={(event) =>
                                   updateNode(selectedNode.id, { background: event.target.value })
@@ -1831,7 +1266,7 @@ function FunilPage() {
                               Cor do texto
                               <input
                                 type="color"
-                                value={selectedNode.textColor ?? "#17202a"}
+                                value={selectedNode.textColor ?? "#e2e8f0"}
                                 onChange={(event) =>
                                   updateNode(selectedNode.id, { textColor: event.target.value })
                                 }
@@ -1895,7 +1330,7 @@ function FunilPage() {
                             className="mt-1.5 w-full resize-y rounded-lg border border-slate-600 bg-[#0d1119] px-3 py-2.5 text-xs leading-5 text-white outline-none focus:border-blue-400"
                           />
                         </label>
-                        {selectedNode.kind !== "image" && (
+                        {selectedNode && (
                           <label className="block text-[11px] font-semibold text-slate-300">
                             Texto e anotações
                             <textarea
@@ -1909,7 +1344,7 @@ function FunilPage() {
                             />
                           </label>
                         )}
-                        {selectedNode.kind === "image" && (
+                        {selectedNode && (
                           <div className="space-y-3">
                             <label className="block text-[11px] font-semibold text-slate-300">
                               Link da imagem
@@ -1926,6 +1361,8 @@ function FunilPage() {
                                   updateNode(selectedNode.id, {
                                     imageUrl: event.target.value,
                                     imageKey: undefined,
+                                    width: Math.max(280, selectedNode.width),
+                                    height: Math.max(320, selectedNode.height),
                                   });
                                 }}
                                 placeholder="https://..."
@@ -1945,6 +1382,39 @@ function FunilPage() {
                                 className="sr-only"
                               />
                             </label>
+                            {imageFor(selectedNode) && (
+                              <div className="flex items-center gap-2">
+                                <label className="flex-1 text-xs text-slate-300">
+                                  Exibição da imagem
+                                  <select
+                                    aria-label="Exibição da imagem"
+                                    value={selectedNode.imageFit ?? "cover"}
+                                    onChange={(event) =>
+                                      updateNode(selectedNode.id, {
+                                        imageFit: event.target.value as "cover" | "contain",
+                                      })
+                                    }
+                                    className="mt-1 block w-full rounded-lg border border-slate-600 bg-[#0d1119] p-2"
+                                  >
+                                    <option value="cover">Preencher</option>
+                                    <option value="contain">Imagem inteira</option>
+                                  </select>
+                                </label>
+                                <button
+                                  onClick={() => {
+                                    if (selectedNode.imageKey)
+                                      void removeImage(selectedNode.imageKey);
+                                    updateNode(selectedNode.id, {
+                                      imageKey: undefined,
+                                      imageUrl: "",
+                                    });
+                                  }}
+                                  className="mt-4 rounded-lg px-2 py-2 text-xs text-rose-300 hover:bg-rose-500/10"
+                                >
+                                  Remover imagem
+                                </button>
+                              </div>
+                            )}
                             {imageFor(selectedNode) && (
                               <img
                                 src={imageFor(selectedNode)}
@@ -2082,8 +1552,8 @@ function FunilPage() {
                 }
               >
                 <span>
-                  Arraste elementos para organizar. Use “Conectar” e selecione dois pontos para
-                  ligar etapas.
+                  Arraste os pontos para conectar. Clique no bloco para editar; no fundo para voltar
+                  a navegar.
                 </span>
                 <button
                   onClick={() => {
