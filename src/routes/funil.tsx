@@ -33,6 +33,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { canConnect } from "@/lib/funnel-connections";
 import { FunnelCanvas, type FunnelCanvasApi, type AddAt } from "@/components/FunnelCanvas";
+import { FunnelSizePanel } from "@/components/FunnelSizePanel";
+import { resizeFlowNodes, type SizeAdjustment } from "@/lib/funnel-sizing";
 import { AppShell } from "@/components/AppShell";
 import { arrangeFunnelForReading, findFreeNodePosition } from "@/lib/funnel-layout";
 import {
@@ -235,8 +237,17 @@ function FunilPage() {
   const [pendingFit, setPendingFit] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [viewLabel, setViewLabel] = useState("Visão geral");
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+  const selectedNodeId = selectedNodeIds.length === 1 ? selectedNodeIds[0] : null;
+  const setSelectedNodeId = useCallback(
+    (id: string | null) => setSelectedNodeIds(id ? [id] : []),
+    [],
+  );
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [sizeUndo, setSizeUndo] = useState<{
+    funnelId: string;
+    sizes: Map<string, Pick<FlowNode, "width" | "height" | "x" | "y">>;
+  } | null>(null);
   const [zoom, setZoom] = useState(0.62);
   const [layoutUndo, setLayoutUndo] = useState<{
     funnelId: string;
@@ -251,7 +262,11 @@ function FunilPage() {
   const workspaceRef = useRef<HTMLDivElement>(null);
   const nativeFullscreenRef = useRef(false);
   const canvasRef = useRef<FunnelCanvasApi | null>(null);
-  const fittedViewRef = useRef<{ ids: string[] | null; label: string } | null>(null);
+  const fittedViewRef = useRef<{
+    ids: string[] | null;
+    label: string;
+    reserveEditor?: boolean;
+  } | null>(null);
   const savedViews = useRef<Record<string, { zoom: number; x: number; y: number }>>({});
   const active = funnels.find((item) => item.id === openId) ?? null;
   const nodeCount = active?.nodes.length ?? 0;
@@ -260,6 +275,7 @@ function FunilPage() {
     active?.nodes.flatMap((item) => (item.imageKey ? [item.imageKey] : [])) ?? [],
   );
   const selectedNode = active?.nodes.find((item) => item.id === selectedNodeId) ?? null;
+  const selectedNodes = active?.nodes.filter((item) => selectedNodeIds.includes(item.id)) ?? [];
   const selectedEdge = active?.edges.find((item) => item.id === selectedEdgeId) ?? null;
   const sections = useMemo(() => {
     if (!active) return [];
@@ -440,6 +456,51 @@ function FunilPage() {
     [updateFunnel],
   );
 
+  const selectNodes = useCallback((ids: string[]) => {
+    if (ids.length) fittedViewRef.current = null;
+    setSelectedNodeIds((current) =>
+      current.length === ids.length && current.every((id) => ids.includes(id)) ? current : ids,
+    );
+    if (ids.length) setSelectedEdgeId(null);
+  }, []);
+
+  const moveNodes = useCallback(
+    (positions: { id: string; x: number; y: number }[]) => {
+      const moved = new Map(positions.map(({ id, x, y }) => [id, { x, y }]));
+      updateFunnel((funnel) => ({
+        ...funnel,
+        nodes: funnel.nodes.map((node) =>
+          moved.has(node.id) ? { ...node, ...moved.get(node.id) } : node,
+        ),
+      }));
+    },
+    [updateFunnel],
+  );
+
+  const resizeSelected = (adjustment: SizeAdjustment) => {
+    if (!active || !selectedNodes.length) return;
+    fittedViewRef.current = null;
+    setSizeUndo({
+      funnelId: active.id,
+      sizes: new Map(
+        selectedNodes.map(({ id, width, height, x, y }) => [id, { width, height, x, y }]),
+      ),
+    });
+    updateFunnel((funnel) => ({
+      ...funnel,
+      nodes: resizeFlowNodes(funnel.nodes, selectedNodeIds, adjustment),
+    }));
+  };
+
+  const undoSize = () => {
+    if (!active || sizeUndo?.funnelId !== active.id) return;
+    updateFunnel((funnel) => ({
+      ...funnel,
+      nodes: funnel.nodes.map((node) => ({ ...node, ...sizeUndo.sizes.get(node.id) })),
+    }));
+    setSizeUndo(null);
+  };
+
   const organizeForReading = () => {
     if (!active || !viewportRef.current) return;
     const { width, height } = viewportRef.current.getBoundingClientRect();
@@ -544,7 +605,7 @@ function FunilPage() {
       );
       return item;
     },
-    [active, updateFunnel],
+    [active, updateFunnel, setSelectedNodeId],
   );
 
   const deleteNode = (id: string) => {
@@ -610,28 +671,27 @@ function FunilPage() {
   };
 
   const fitNodes = useCallback(
-    (ids: string[] | null, label: string) => {
+    (ids: string[] | null, label: string, reserveEditor = false) => {
       if (!canvasRef.current || !nodeCount) return;
-      fittedViewRef.current = { ids, label };
+      fittedViewRef.current = { ids, label, reserveEditor };
       setViewLabel(label);
-      if (ids?.length === 1 && viewportRef.current) {
-        const node = canvasRef.current.getNode(ids[0]);
-        if (!node) return;
+      if (ids?.length && (ids.length === 1 || reserveEditor) && viewportRef.current) {
+        const bounds = canvasRef.current.getNodesBounds(ids);
         const rect = viewportRef.current.getBoundingClientRect();
         const width = rect.width - (rect.width >= 640 ? 350 : 0);
         const scale = Math.max(
           0.04,
           Math.min(
             1.25,
-            (width - 48) / (node.width ?? 320),
-            (rect.height - 100) / (node.height ?? 240),
+            (width - 48) / Math.max(1, bounds.width),
+            (rect.height - 100) / Math.max(1, bounds.height),
           ),
         );
         void canvasRef.current.setViewport(
           {
             zoom: scale,
-            x: (width - (node.width ?? 320) * scale) / 2 - node.position.x * scale,
-            y: (rect.height - 60 - (node.height ?? 240) * scale) / 2 - node.position.y * scale,
+            x: (width - bounds.width * scale) / 2 - bounds.x * scale,
+            y: (rect.height - 60 - bounds.height * scale) / 2 - bounds.y * scale,
           },
           { duration: 180 },
         );
@@ -651,14 +711,14 @@ function FunilPage() {
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
     fitNodes(null, "Visão geral");
-  }, [fitNodes]);
+  }, [fitNodes, setSelectedNodeId]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
     const observer = new ResizeObserver(() => {
       const target = fittedViewRef.current;
-      if (target) fitNodes(target.ids, target.label);
+      if (target) fitNodes(target.ids, target.label, target.reserveEditor);
     });
     observer.observe(viewport);
     return () => observer.disconnect();
@@ -698,21 +758,24 @@ function FunilPage() {
     return () => document.removeEventListener("keydown", onKeyDown);
   });
 
-  const selectElement = useCallback((nodeId: string | null, edgeId: string | null) => {
-    fittedViewRef.current = null;
-    setSelectedNodeId(nodeId);
-    setSelectedEdgeId(edgeId);
-    const api = canvasRef.current;
-    const rect = viewportRef.current?.getBoundingClientRect();
-    const node = nodeId ? api?.getNode(nodeId) : null;
-    if (!api || !rect || !node || rect.width < 640) return;
-    const point = api.flowToScreenPosition(node.position);
-    const dx = Math.min(0, rect.right - 350 - 24 - point.x - (node.width ?? 320) * api.getZoom());
-    if (dx < 0) {
-      const view = api.getViewport();
-      void api.setViewport({ ...view, x: view.x + dx }, { duration: 150 });
-    }
-  }, []);
+  const selectElement = useCallback(
+    (nodeId: string | null, edgeId: string | null) => {
+      fittedViewRef.current = null;
+      setSelectedNodeId(nodeId);
+      setSelectedEdgeId(edgeId);
+      const api = canvasRef.current;
+      const rect = viewportRef.current?.getBoundingClientRect();
+      const node = nodeId ? api?.getNode(nodeId) : null;
+      if (!api || !rect || !node || rect.width < 640) return;
+      const point = api.flowToScreenPosition(node.position);
+      const dx = Math.min(0, rect.right - 350 - 24 - point.x - (node.width ?? 320) * api.getZoom());
+      if (dx < 0) {
+        const view = api.getViewport();
+        void api.setViewport({ ...view, x: view.x + dx }, { duration: 150 });
+      }
+    },
+    [setSelectedNodeId],
+  );
   const focusElement = useCallback(
     (id: string) => {
       fitNodes([id], "Elemento ampliado");
@@ -1111,8 +1174,14 @@ function FunilPage() {
                     Ampliar elemento
                   </button>
                 )}
+                <button
+                  onClick={() => selectNodes(active.nodes.map((node) => node.id))}
+                  className="min-h-10 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-white/10"
+                >
+                  Selecionar todos
+                </button>
                 <span className="ml-auto hidden text-xs text-slate-400 sm:block">
-                  Roda: zoom · Fundo: mover · Duplo clique no fundo: adicionar
+                  Arraste: selecionar · Espaço + arraste: mover · Roda: zoom
                 </span>
               </nav>
 
@@ -1136,10 +1205,12 @@ function FunilPage() {
                   <FunnelCanvas
                     key={active.id}
                     funnel={active}
-                    selectedNodeId={selectedNodeId}
+                    selectedNodeIds={selectedNodeIds}
                     selectedEdgeId={selectedEdgeId}
                     imageSources={imageSources}
                     onSelect={selectElement}
+                    onSelectNodes={selectNodes}
+                    onMoveNodes={moveNodes}
                     onUpdateNode={updateNode}
                     onConnect={connectNodes}
                     onAdd={addNode}
@@ -1153,6 +1224,71 @@ function FunilPage() {
                   />
                 </div>
 
+                {selectedNodes.length > 1 && (
+                  <aside
+                    aria-label="Editar seleção"
+                    className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-slate-700 bg-[#141a25] shadow-2xl sm:w-[350px]"
+                  >
+                    <header className="flex items-start justify-between border-b border-slate-700 p-4">
+                      <div>
+                        <h2 className="font-semibold text-white">
+                          {selectedNodes.length} elementos selecionados
+                        </h2>
+                        <p className="mt-1 text-xs text-slate-400">
+                          As alterações são salvas automaticamente.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => selectNodes([])}
+                        aria-label="Limpar seleção"
+                        className="rounded-lg p-2 text-slate-400 hover:bg-white/10"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </header>
+                    <div className="flex-1 space-y-4 overflow-y-auto p-4">
+                      <button
+                        onClick={() => fitNodes(selectedNodeIds, "Seleção ampliada", true)}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-400/40 px-3 py-3 text-sm font-semibold text-blue-200 hover:bg-blue-500/15"
+                      >
+                        <ZoomIn className="size-4" />
+                        Ampliar seleção
+                      </button>
+                      <p className="text-xs leading-5 text-slate-300">
+                        Arraste um dos blocos selecionados para mover todos juntos. Use Ctrl ou ⌘ +
+                        clique para incluir ou retirar elementos.
+                      </p>
+                      <FunnelSizePanel
+                        key={selectedNodeIds.slice().sort().join(",")}
+                        nodes={selectedNodes}
+                        onResize={resizeSelected}
+                        onUndo={undoSize}
+                        canUndo={sizeUndo?.funnelId === active.id}
+                      />
+                      <details className="rounded-xl border border-slate-700 p-3 text-xs text-slate-300">
+                        <summary className="cursor-pointer font-semibold">
+                          Elementos na seleção ({selectedNodes.length})
+                        </summary>
+                        <ul className="mt-2 space-y-2">
+                          {selectedNodes.map((node) => (
+                            <li key={node.id} className="flex items-center justify-between gap-3">
+                              <span className="truncate">{node.title}</span>
+                              <span className="shrink-0 text-slate-400">
+                                {node.width} × {node.height}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    </div>
+                    <button
+                      onClick={() => selectNodes([])}
+                      className="m-4 rounded-xl bg-blue-500 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-400"
+                    >
+                      Concluir seleção
+                    </button>
+                  </aside>
+                )}
                 {(selectedNode || selectedEdge) && (
                   <aside
                     className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-slate-700 bg-[#141a25] shadow-2xl sm:w-[350px]"
@@ -1424,42 +1560,13 @@ function FunilPage() {
                             )}
                           </div>
                         )}
-                        <div className="rounded-xl border border-slate-700 bg-[#0d1119]/70 p-3">
-                          <div className="mb-2 flex items-center justify-between text-[10px] font-semibold text-slate-300">
-                            <span>Tamanho do elemento</span>
-                            <span>
-                              {selectedNode.width} × {selectedNode.height}
-                            </span>
-                          </div>
-                          <label className="block text-[10px] text-slate-400">
-                            Largura
-                            <input
-                              type="range"
-                              min="32"
-                              max="1600"
-                              step="1"
-                              value={selectedNode.width}
-                              onChange={(event) =>
-                                updateNode(selectedNode.id, { width: Number(event.target.value) })
-                              }
-                              className="mt-1 w-full accent-blue-400"
-                            />
-                          </label>
-                          <label className="mt-3 block text-[10px] text-slate-400">
-                            Altura
-                            <input
-                              type="range"
-                              min="32"
-                              max="1200"
-                              step="1"
-                              value={selectedNode.height}
-                              onChange={(event) =>
-                                updateNode(selectedNode.id, { height: Number(event.target.value) })
-                              }
-                              className="mt-1 w-full accent-blue-400"
-                            />
-                          </label>
-                        </div>
+                        <FunnelSizePanel
+                          key={selectedNode.id}
+                          nodes={[selectedNode]}
+                          onResize={resizeSelected}
+                          onUndo={undoSize}
+                          canUndo={sizeUndo?.funnelId === active.id}
+                        />
                         <div className="grid grid-cols-2 gap-2">
                           <label className="text-[10px] text-slate-400">
                             Posição X
@@ -1552,8 +1659,8 @@ function FunilPage() {
                 }
               >
                 <span>
-                  Arraste os pontos para conectar. Clique no bloco para editar; no fundo para voltar
-                  a navegar.
+                  Arraste o botão esquerdo no fundo para selecionar vários. Espaço + arraste ou
+                  botão do meio para mover o quadro. Roda para zoom.
                 </span>
                 <button
                   onClick={() => {
