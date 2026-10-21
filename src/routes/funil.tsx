@@ -1369,6 +1369,22 @@ function FunilPage() {
                     onFocus={focusElement}
                     initialViewport={savedViews.current[active.id]}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShareMode("export")}
+                    aria-haspopup="dialog"
+                    aria-label="Compartilhar fluxo"
+                    title="Compartilhar em PDF, imagem ou código"
+                    className="absolute top-3 right-3 z-20 inline-flex min-h-12 items-center gap-3 rounded-xl border border-blue-300/40 bg-blue-600 px-4 py-3 text-left text-white shadow-lg shadow-black/30 transition hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-300"
+                  >
+                    <Share2 aria-hidden="true" className="size-5 shrink-0" />
+                    <span>
+                      <span className="block text-sm font-bold">Compartilhar</span>
+                      <span className="hidden text-[11px] text-blue-100 sm:block">
+                        PDF, imagem e código
+                      </span>
+                    </span>
+                  </button>
                 </div>
 
                 {selectedNodes.length > 1 && (
