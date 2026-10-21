@@ -43,6 +43,7 @@ export type FunnelCanvasApi = ReactFlowInstance<CanvasNode, Edge>;
 export type AddAt = { position?: XYPosition; from?: string; sourceHandle?: string };
 type Props = {
   funnel: Funnel;
+  mouseMode: "move" | "select";
   selectedNodeIds: string[];
   selectedEdgeId: string | null;
   imageSources: Record<string, string>;
@@ -241,6 +242,7 @@ const multiSelectionKeys = ["Control", "Meta"];
 
 export function FunnelCanvas({
   funnel,
+  mouseMode,
   selectedNodeIds,
   selectedEdgeId,
   imageSources,
@@ -361,6 +363,7 @@ export function FunnelCanvas({
     <div
       ref={containerRef}
       className="funnel-canvas relative size-full"
+      data-mouse-mode={mouseMode}
       aria-label="Quadro interativo do funil"
       onDragOver={(event) => {
         if (
@@ -424,11 +427,11 @@ export function FunnelCanvas({
         zoomOnPinch
         zoomOnDoubleClick={false}
         panOnScroll={false}
-        panOnDrag={[1]}
+        panOnDrag={mouseMode === "move" ? [0, 1] : [1]}
         panActivationKeyCode="Space"
-        selectionOnDrag
+        selectionOnDrag={mouseMode === "select"}
         selectionMode={SelectionMode.Partial}
-        selectionKeyCode={null}
+        selectionKeyCode="Shift"
         multiSelectionKeyCode={multiSelectionKeys}
         onSelectionChange={selectionChanged}
         onSelectionStart={() => {
@@ -525,7 +528,11 @@ export function FunnelCanvas({
           }
         }}
         onMove={(_, viewport) => onZoom(viewport.zoom)}
-        aria-label="Fluxo: arraste o botão esquerdo para selecionar; Espaço e arrastar para mover; roda para zoom"
+        aria-label={
+          mouseMode === "move"
+            ? "Fluxo: arraste o fundo para mover; roda para zoom; Shift e arrastar para selecionar"
+            : "Fluxo: arraste o botão esquerdo para selecionar; Espaço e arrastar para mover; roda para zoom"
+        }
       >
         <Background
           id="grid"
@@ -554,8 +561,10 @@ export function FunnelCanvas({
         />
       </ReactFlow>
       <div className="pointer-events-none absolute bottom-3 left-3 max-w-[calc(100%-24px)] rounded-xl border border-white/10 bg-[#111722]/90 px-3 py-2 text-xs text-slate-300 sm:max-w-[calc(100%-240px)]">
-        Arraste: selecionar · Espaço + arraste: mover · Roda: zoom · Ctrl + clique: adicionar à
-        seleção
+        {mouseMode === "move"
+          ? "Arraste o fundo: mover · Shift + arraste: selecionar"
+          : "Arraste o fundo: selecionar · Espaço + arraste: mover"}{" "}
+        · Roda: zoom · Ctrl + clique: seleção múltipla
       </div>
       {menu && (
         <div

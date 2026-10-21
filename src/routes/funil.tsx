@@ -4,6 +4,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
+  Code2,
   ChevronDown,
   CircleHelp,
   CirclePlus,
@@ -12,6 +13,7 @@ import {
   Minimize2,
   FileImage,
   GitBranch,
+  Hand,
   ImagePlus,
   Link2,
   LayoutGrid,
@@ -20,6 +22,7 @@ import {
   RotateCcw,
   Save,
   Settings2,
+  Share2,
   Shapes,
   Sparkles,
   StickyNote,
@@ -34,6 +37,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { canConnect } from "@/lib/funnel-connections";
 import { FunnelCanvas, type FunnelCanvasApi, type AddAt } from "@/components/FunnelCanvas";
 import { FunnelSizePanel } from "@/components/FunnelSizePanel";
+import { FunnelShareDialog } from "@/components/FunnelShareDialog";
 import { resizeFlowNodes, type SizeAdjustment } from "@/lib/funnel-sizing";
 import { AppShell } from "@/components/AppShell";
 import { arrangeFunnelForReading, findFreeNodePosition } from "@/lib/funnel-layout";
@@ -41,6 +45,7 @@ import {
   createNewFunnel,
   createStarterFunnels,
   loadFunnelWorkspace,
+  saveFunnelWorkspace,
   FUNNEL_STORAGE_KEY,
   type FlowEdge,
   type FlowNode,
@@ -61,8 +66,7 @@ export const Route = createFileRoute("/funil")({
 const STORAGE_KEY = FUNNEL_STORAGE_KEY;
 const IMAGE_DB = "00duhot-funnel-media";
 const IMAGE_STORE = "images";
-const createId = (prefix: string) =>
-  `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+const createId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 
 const kinds: Array<{
   kind: FlowNodeKind;
@@ -254,7 +258,10 @@ function FunilPage() {
     positions: Map<string, { x: number; y: number }>;
   } | null>(null);
   const [editingFunnelId, setEditingFunnelId] = useState<string | null>(null);
+  const [deletingFunnelId, setDeletingFunnelId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [shareMode, setShareMode] = useState<"export" | "import" | null>(null);
+  const [mouseMode, setMouseMode] = useState<"move" | "select">("move");
   const [saveError, setSaveError] = useState("");
   const [imageSources, setImageSources] = useState<Record<string, string>>({});
   const imageUrlsRef = useRef<Record<string, string>>({});
@@ -271,6 +278,7 @@ function FunilPage() {
   const active = funnels.find((item) => item.id === openId) ?? null;
   const nodeCount = active?.nodes.length ?? 0;
   const editingTarget = funnels.find((item) => item.id === editingFunnelId) ?? null;
+  const deletingTarget = funnels.find((item) => item.id === deletingFunnelId) ?? null;
   const imageSignature = JSON.stringify(
     active?.nodes.flatMap((item) => (item.imageKey ? [item.imageKey] : [])) ?? [],
   );
@@ -388,20 +396,26 @@ function FunilPage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    const save = () => {
+  const persistWorkspace = useCallback(
+    (announce = false) => {
+      if (!hydrated) return;
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(funnels));
+        saveFunnelWorkspace(window.localStorage, funnels);
         setSaveError("");
+        if (announce)
+          setNotice("Fluxo salvo neste navegador. Para compartilhar uma cópia, use Compartilhar.");
       } catch {
         setSaveError(
           "Não foi possível salvar neste navegador. Verifique o espaço de armazenamento disponível.",
         );
       }
-    };
-    save();
-  }, [funnels, hydrated]);
+    },
+    [funnels, hydrated],
+  );
+
+  useEffect(() => {
+    persistWorkspace();
+  }, [persistWorkspace]);
 
   const registerImage = useCallback((key: string, blob: Blob) => {
     const previous = imageUrlsRef.current[key];
@@ -533,6 +547,7 @@ function FunilPage() {
     const funnel = createNewFunnel(`Funil ${String(funnels.length + 1).padStart(2, "0")}`);
     setFunnels((current) => [...current, funnel]);
     setOpenId(funnel.id);
+    setMouseMode("move");
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
     setZoom(0.8);
@@ -540,14 +555,18 @@ function FunilPage() {
   };
 
   const deleteFunnel = (id: string) => {
+    setDeletingFunnelId(id);
+  };
+
+  const confirmDeleteFunnel = (id: string) => {
     const funnel = funnels.find((item) => item.id === id);
-    if (!funnel || !window.confirm(`Excluir “${funnel.name}” e todos os elementos deste fluxo?`))
-      return;
+    if (!funnel) return;
     funnel.nodes.forEach((item) => {
       if (item.imageKey) void removeImage(item.imageKey);
     });
     setFunnels((current) => current.filter((item) => item.id !== id));
     if (openId === id) setOpenId(null);
+    setDeletingFunnelId(null);
   };
 
   const addNode = useCallback(
@@ -659,6 +678,7 @@ function FunilPage() {
     canvasRef.current = null;
     fittedViewRef.current = null;
     setOpenId(id);
+    setMouseMode("move");
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
     setViewLabel("Visão geral");
@@ -831,6 +851,75 @@ function FunilPage() {
   const imageFor = (item: FlowNode) =>
     item.imageKey ? (imageSources[item.imageKey] ?? "") : (item.imageUrl ?? "");
 
+  const importFunnel = async (source: Funnel) => {
+    const id = createId("funnel");
+    const ids = new Map(source.nodes.map((node) => [node.id, createId("node")]));
+    const media: { key: string; file: File }[] = [];
+    const nodes: FlowNode[] = [];
+    for (const node of source.nodes) {
+      const next = { ...node, id: ids.get(node.id)! };
+      if (node.imageUrl?.startsWith("data:")) {
+        try {
+          const blob = await (await fetch(node.imageUrl)).blob();
+          const preview = URL.createObjectURL(blob);
+          try {
+            const image = new Image();
+            image.src = preview;
+            await image.decode();
+          } finally {
+            URL.revokeObjectURL(preview);
+          }
+          media.push({
+            key: next.id,
+            file: new File([blob], `${next.id}.image`, { type: blob.type }),
+          });
+          next.imageKey = next.id;
+          next.imageUrl = "";
+        } catch {
+          throw new Error(`A imagem de “${node.title}” é inválida. Nenhum projeto foi importado.`);
+        }
+      }
+      nodes.push(next);
+    }
+    const imported: Funnel = {
+      ...source,
+      id,
+      name: `${source.name.slice(0, 480)} (importado)`,
+      nodes,
+      edges: source.edges.map((edge) => ({
+        ...edge,
+        id: createId("edge"),
+        from: ids.get(edge.from)!,
+        to: ids.get(edge.to)!,
+      })),
+    };
+    const written: string[] = [];
+    try {
+      for (const item of media) {
+        await saveImage(item.key, item.file);
+        written.push(item.key);
+      }
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...funnels, imported]));
+    } catch {
+      await Promise.all(written.map(removeImage));
+      throw new Error(
+        "Não há espaço para salvar o fluxo neste navegador. Nenhum projeto existente foi alterado.",
+      );
+    }
+    media.forEach((item) => registerImage(item.key, item.file));
+    if (active && canvasRef.current)
+      savedViews.current[active.id] = canvasRef.current.getViewport();
+    canvasRef.current = null;
+    fittedViewRef.current = null;
+    setFunnels((current) => [...current, imported]);
+    setOpenId(id);
+    setMouseMode("move");
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    setPendingFit(true);
+    setNotice("Fluxo importado como novo projeto. Seus outros funis foram preservados.");
+  };
+
   const updateFunnelMetadata = (name: string, description: string) => {
     setFunnels((current) =>
       current.map((funnel) =>
@@ -889,12 +978,21 @@ function FunilPage() {
                     <h1 className="font-display text-2xl font-bold tracking-tight">Meus funis</h1>
                   </div>
                 </div>
-                <button
-                  onClick={createFunnel}
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition hover:bg-primary/90"
-                >
-                  <Plus className="size-4" /> Criar funil
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setShareMode("import")}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-600 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/10"
+                  >
+                    <Code2 className="size-4" />
+                    Inserir código
+                  </button>
+                  <button
+                    onClick={createFunnel}
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition hover:bg-primary/90"
+                  >
+                    <Plus className="size-4" /> Criar funil
+                  </button>
+                </div>
               </header>
               <section
                 className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
@@ -1006,6 +1104,27 @@ function FunilPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={() => persistWorkspace(true)}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-300/30 bg-blue-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/15 hover:bg-blue-400"
+                  >
+                    <Save className="size-5" />
+                    Salvar fluxo
+                  </button>
+                  <button
+                    onClick={() => setShareMode("export")}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-400/40 bg-blue-500/15 px-4 py-2 text-sm font-semibold text-blue-200 hover:bg-blue-500/25"
+                  >
+                    <Share2 className="size-5" />
+                    Compartilhar
+                  </button>
+                  <button
+                    onClick={() => setShareMode("import")}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/10"
+                  >
+                    <Code2 className="size-5" />
+                    Inserir código
+                  </button>
                   <button
                     onClick={() => void toggleFullscreen()}
                     aria-keyshortcuts="F11"
@@ -1134,6 +1253,30 @@ function FunilPage() {
                 aria-label="Navegar pelo fluxo"
                 className="mt-2 flex shrink-0 flex-wrap items-center gap-2"
               >
+                <div
+                  role="group"
+                  aria-label="Modo do mouse"
+                  className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-slate-600 bg-[#0d1119] p-1"
+                >
+                  <button
+                    onClick={() => setMouseMode("move")}
+                    aria-pressed={mouseMode === "move"}
+                    title="Arraste o fundo com o botão esquerdo para mover o fluxo"
+                    className={`inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${mouseMode === "move" ? "bg-blue-500/25 text-blue-200 shadow-sm ring-1 ring-blue-400/40" : "text-slate-400 hover:bg-white/10 hover:text-white"}`}
+                  >
+                    <Hand className="size-4" />
+                    Mover
+                  </button>
+                  <button
+                    onClick={() => setMouseMode("select")}
+                    aria-pressed={mouseMode === "select"}
+                    title="Arraste o botão esquerdo para selecionar vários elementos"
+                    className={`inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${mouseMode === "select" ? "bg-violet-500/25 text-violet-200 shadow-sm ring-1 ring-violet-400/40" : "text-slate-400 hover:bg-white/10 hover:text-white"}`}
+                  >
+                    <MousePointer2 className="size-4" />
+                    Selecionar
+                  </button>
+                </div>
                 <button
                   onClick={organizeForReading}
                   className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/10 px-3 py-2 text-sm font-semibold text-blue-200 hover:bg-blue-500/20"
@@ -1181,7 +1324,10 @@ function FunilPage() {
                   Selecionar todos
                 </button>
                 <span className="ml-auto hidden text-xs text-slate-400 sm:block">
-                  Arraste: selecionar · Espaço + arraste: mover · Roda: zoom
+                  {mouseMode === "move"
+                    ? "Arraste: mover · Shift + arraste: selecionar"
+                    : "Arraste: selecionar · Espaço + arraste: mover"}{" "}
+                  · Roda: zoom
                 </span>
               </nav>
 
@@ -1205,6 +1351,7 @@ function FunilPage() {
                   <FunnelCanvas
                     key={active.id}
                     funnel={active}
+                    mouseMode={mouseMode}
                     selectedNodeIds={selectedNodeIds}
                     selectedEdgeId={selectedEdgeId}
                     imageSources={imageSources}
@@ -1659,8 +1806,8 @@ function FunilPage() {
                 }
               >
                 <span>
-                  Arraste o botão esquerdo no fundo para selecionar vários. Espaço + arraste ou
-                  botão do meio para mover o quadro. Roda para zoom.
+                  Mover: arraste o fundo para navegar. Selecionar: arraste sobre os elementos.
+                  Clique em um bloco para editar. Use a roda para zoom.
                 </span>
                 <button
                   onClick={() => {
@@ -1675,6 +1822,17 @@ function FunilPage() {
               </footer>
             </>
           )}
+          {shareMode && (
+            <FunnelShareDialog
+              key={`${active?.id ?? "workspace"}-${shareMode}`}
+              funnel={active}
+              initialMode={shareMode}
+              canvas={() => viewportRef.current}
+              readImage={getImage}
+              onImport={importFunnel}
+              onClose={() => setShareMode(null)}
+            />
+          )}
           {editingTarget && (
             <FunnelDetailsDialog
               key={editingTarget.id}
@@ -1682,6 +1840,51 @@ function FunilPage() {
               onClose={() => setEditingFunnelId(null)}
               onSave={updateFunnelMetadata}
             />
+          )}
+          {deletingTarget && (
+            <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+              <section
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="delete-funnel-title"
+                aria-describedby="delete-funnel-description"
+                className="w-full max-w-md rounded-2xl border border-slate-600 bg-[#141a25] p-5 text-slate-200 shadow-2xl"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.stopPropagation();
+                    setDeletingFunnelId(null);
+                  }
+                  if (event.key === "Tab") {
+                    event.preventDefault();
+                    const buttons = event.currentTarget.querySelectorAll("button");
+                    (document.activeElement === buttons[0] ? buttons[1] : buttons[0])?.focus();
+                  }
+                }}
+              >
+                <h2 id="delete-funnel-title" className="text-lg font-bold text-white">
+                  Excluir este funil?
+                </h2>
+                <p id="delete-funnel-description" className="mt-3 text-sm leading-6 text-slate-400">
+                  “{deletingTarget.name}” e seus {deletingTarget.nodes.length} elementos serão
+                  excluídos deste navegador.
+                </p>
+                <div className="mt-5 flex justify-end gap-2">
+                  <button
+                    autoFocus
+                    onClick={() => setDeletingFunnelId(null)}
+                    className="rounded-xl border border-slate-600 px-4 py-2.5 text-sm font-semibold hover:bg-white/10"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => confirmDeleteFunnel(deletingTarget.id)}
+                    className="rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-400"
+                  >
+                    Excluir funil
+                  </button>
+                </div>
+              </section>
+            </div>
           )}
         </div>
       </main>
