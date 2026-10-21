@@ -1,4 +1,21 @@
-# Conector local Hot Profiles
+# Hot Profiles — back-end
+
+## Nuvem (vigente)
+
+- Implementados server functions com autenticação Supabase existente e validação Zod. Lista de UUIDs autorizados no servidor limita acesso a contas aprovadas.
+- Migração com três tabelas e RPC transacional; RLS habilitada e privilégios diretos de anon/authenticated revogados. Todas as consultas do servidor filtram o dono.
+- Senhas criptografadas AES-GCM com IV aleatório e AAD por dono/registro. Chave de criptografia e chaves dos provedores apenas no servidor; estado público contém `hasPassword`.
+- Perfis ativos bloqueiam edição/exclusão e alteração da proxy; reserva única no banco; limite por conta de quatro ambientes e vinte aberturas/hora. Versões conferidas antes de iniciar.
+- APIs públicas Browserbase (context/session/debug/release) e Genymotion (start/get/access-token/stop). Nenhuma API privada do Dolphin.
+- Criação ambígua bloqueia nova sessão e permite recuperação; encerramento só é considerado concluído após estado final. Limite solicitado de 30 minutos no provedor.
+- Login usa o cliente Supabase e o mecanismo de armazenamento já existente no projeto. Não foi feita migração global de autenticação para cookies httpOnly; as chamadas autenticadas seguem o middleware bearer existente.
+- Configuração em `.env.example`; ativação e limites em `docs/hot-profiles-cloud.md`.
+
+### Pendências reais
+
+Credenciais/contas dos provedores, chave de serviço, lista de usuários autorizados e chave de criptografia ausentes no ambiente. Migração ainda não aplicada. Não foram validadas operações de nuvem faturáveis, isolamento por duas contas reais ou proxy do usuário. Android com proxy automática e persistência não implementado; execução com proxy vinculada é bloqueada. Backups de banco devem ser confirmados no Supabase antes da ativação. Não declarar checklist de produção concluído.
+
+## Conector local (histórico)
 
 - Controle acessível somente em loopback, Host e origens explícitas verificados.
 - Pareamento com código temporário e cinco tentativas por minuto. Código renovado a cada 15 minutos. Token de sessão aleatório de 256 bits, somente em memória do conector e sessionStorage do painel.

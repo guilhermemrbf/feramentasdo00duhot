@@ -1,4 +1,11 @@
 feature,area,priority,original,clone,notes
+Execução web sem conector,cloud,must,yes,partial,Adaptadores Browserbase e Genymotion SaaS implementados; credenciais e contas pendentes
+Proxies por dono no servidor,cloud,must,yes,partial,CRUD e criptografia implementados; aplicar migração e validar com proxy real
+Sessões na nuvem em abas,cloud,must,yes,partial,UI e APIs oficiais implementadas; execução remota depende de contas configuradas
+Android web real,cloud,must,no,partial,SDK WebRTC e ciclo de vida Genymotion; instâncias temporárias
+Proxy automática no Android cloud,cloud,must,no,no,Bloqueio explícito até configurar rede dedicada
+Persistência Android cloud,cloud,must,no,no,Requer armazenamento persistente e outro ciclo de vida; UI informa perda ao encerrar
+Autorização de contas da nuvem,cloud,must,yes,partial,JWT validado e lista de usuários autorizados; validação real multiusuário pendente
 Perfis persistentes,browser,must,yes,yes,Diretório exclusivo; reabertura do conector preservou o perfil
 Cadastro edição e tags,profiles,must,yes,yes,Formulários e validação local
 Proxies HTTP HTTPS SOCKS5,network,must,yes,yes,Gateway implementado; validação com proxy do usuário pendente

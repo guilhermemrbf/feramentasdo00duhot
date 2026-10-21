@@ -1,4 +1,21 @@
-# Hot Profiles — primeira base
+# Hot Profiles — entregas
+
+## Base web/nuvem — 2026-10-21
+
+Pedido atual: remover dependência de execução local, implementar frontend/backend de proxy e preparar integração recomendada, pois o usuário ainda não possui conta/servidor de Android na nuvem.
+
+- Painel principal convertido para nuvem; antiga UI preservada em componente separado. Nada foi removido dos perfis locais ou dos emuladores do usuário.
+- Formulários de perfil/proxy, acesso por e-mail, configuração de serviços, busca, filtros, duplicação, sessões em abas, controle por Live View/WebRTC e tela cheia implementados.
+- Back-end autenticado, lista de contas autorizadas, migração SQL, criptografia, referências entre registros do mesmo dono e proteção contra corridas implementados. Credenciais globais e ciphertexts não são retornados ao navegador.
+- Adaptadores oficiais Browserbase e Genymotion SaaS implementados. Android temporário e ausência de proxy automática/persistência explicitamente informados; Android com proxy não inicia.
+- Conferência manual na UI: importação `http://demo:demo@example.com:8080` preencheu campos corretamente; sem login, salvar exibiu a exigência de entrada e não criou cadastro. Nenhuma proxy real foi usada.
+- Cinco casos do importador aprovados executando a função original do formulário: URL HTTP autenticada, formato host:porta:usuário:senha com dois-pontos na senha, HTTPS com porta padrão, SOCKS5 com caracteres codificados e entrada inválida. Somente valores fictícios; nenhum cadastro externo criado.
+- Conferidos formulários de navegador/Android, avisos de serviço não configurado, acesso por e-mail (sem envio), abas Perfis/Proxies/Sessões e layout a 390 pixels. Tamanho original do navegador restaurado. Imagens da UI salvas na pasta outputs da tarefa.
+- TypeScript, ESLint dos arquivos alterados e build de produção conferidos. Integração real de provedores, aplicação da migração, persistência remota e isolamento com dois usuários reais ainda dependem de infraestrutura/credenciais e não foram declarados validados.
+
+Publicação da interface pelo Lovable permanece manual, conforme escolha anterior do usuário. O guia `docs/hot-profiles-cloud.md` explica a ativação, custos e limitações.
+
+## Primeira base local (histórico)
 
 2026-10-21
 
