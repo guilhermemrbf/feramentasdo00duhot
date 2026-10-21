@@ -15,6 +15,7 @@ import { Route as AutomacaoTiktokRouteImport } from './routes/automacao-tiktok'
 import { Route as CriarPaginaRouteImport } from './routes/criar-pagina'
 import { Route as FunilRouteImport } from './routes/funil'
 import { Route as GerarPreviewRouteImport } from './routes/gerar-preview'
+import { Route as HotProfilesRouteImport } from './routes/hot-profiles'
 import { Route as ImageLinksRouteImport } from './routes/image-links'
 import { Route as LimparMetadadosRouteImport } from './routes/limpar-metadados'
 import { Route as OtimizarCriativosRouteImport } from './routes/otimizar-criativos'
@@ -51,6 +52,11 @@ const GerarPreviewRoute = GerarPreviewRouteImport.update({
   path: '/gerar-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HotProfilesRoute = HotProfilesRouteImport.update({
+  id: '/hot-profiles',
+  path: '/hot-profiles',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ImageLinksRoute = ImageLinksRouteImport.update({
   id: '/image-links',
   path: '/image-links',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/criar-pagina': typeof CriarPaginaRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
+  '/hot-profiles': typeof HotProfilesRoute
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/criar-pagina': typeof CriarPaginaRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
+  '/hot-profiles': typeof HotProfilesRoute
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/criar-pagina': typeof CriarPaginaRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
+  '/hot-profiles': typeof HotProfilesRoute
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/criar-pagina'
     | '/funil'
     | '/gerar-preview'
+    | '/hot-profiles'
     | '/image-links'
     | '/limpar-metadados'
     | '/otimizar-criativos'
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
     | '/criar-pagina'
     | '/funil'
     | '/gerar-preview'
+    | '/hot-profiles'
     | '/image-links'
     | '/limpar-metadados'
     | '/otimizar-criativos'
@@ -153,6 +164,7 @@ export interface FileRouteTypes {
     | '/criar-pagina'
     | '/funil'
     | '/gerar-preview'
+    | '/hot-profiles'
     | '/image-links'
     | '/limpar-metadados'
     | '/otimizar-criativos'
@@ -167,6 +179,7 @@ export interface RootRouteChildren {
   CriarPaginaRoute: typeof CriarPaginaRoute
   FunilRoute: typeof FunilRoute
   GerarPreviewRoute: typeof GerarPreviewRoute
+  HotProfilesRoute: typeof HotProfilesRoute
   ImageLinksRoute: typeof ImageLinksRoute
   LimparMetadadosRoute: typeof LimparMetadadosRoute
   OtimizarCriativosRoute: typeof OtimizarCriativosRoute
@@ -218,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GerarPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hot-profiles': {
+      id: '/hot-profiles'
+      path: '/hot-profiles'
+      fullPath: '/hot-profiles'
+      preLoaderRoute: typeof HotProfilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/image-links': {
       id: '/image-links'
       path: '/image-links'
@@ -263,6 +283,7 @@ const rootRouteChildren: RootRouteChildren = {
   CriarPaginaRoute: CriarPaginaRoute,
   FunilRoute: FunilRoute,
   GerarPreviewRoute: GerarPreviewRoute,
+  HotProfilesRoute: HotProfilesRoute,
   ImageLinksRoute: ImageLinksRoute,
   LimparMetadadosRoute: LimparMetadadosRoute,
   OtimizarCriativosRoute: OtimizarCriativosRoute,

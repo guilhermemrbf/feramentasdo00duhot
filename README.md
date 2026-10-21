@@ -56,3 +56,14 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Hot Profiles
+
+Nova área em `/hot-profiles`: perfis de navegador com dados separados, proxies e sessões Android em abas. O site é o painel; o conector local executa Chrome/Edge e se comunica com o emulador instalado, sem importar perfis pessoais.
+
+- `npm run profiles:bridge`: inicia o conector local (Node.js 22+).
+- `npm run profiles:package`: gera `public/hot-profiles-connector.zip`, disponível no botão de conexão do painel. Execute novamente após alterar os arquivos do conector.
+- No Windows, extraia o ZIP e abra **Iniciar Hot Profiles.cmd**. Digite no painel o código mostrado na janela.
+- Para Android, crie uma instância independente no gerenciador oficial BlueStacks, habilite ADB e associe a instância ao perfil.
+
+Configuração, privacidade dos dados, uso de proxies e limites desta primeira base: [guia do conector](tools/hot-profiles/LEIA-ME.md). Pesquisa e arquitetura: [replica/recon.md](replica/recon.md) e [replica/architecture.md](replica/architecture.md).

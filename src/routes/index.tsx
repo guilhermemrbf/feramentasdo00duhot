@@ -5,6 +5,7 @@ import {
   GitBranch,
   Image as ImageIcon,
   Music2,
+  MonitorSmartphone,
   PanelTop,
   Scan,
   ShieldCheck,
@@ -76,6 +77,13 @@ const tools = [
     description: "Visualize e edite seus fluxos em etapas independentes.",
     detail: "Ferramenta",
   },
+  {
+    to: "/hot-profiles" as const,
+    icon: MonitorSmartphone,
+    name: "Hot Profiles",
+    description: "Organize seus navegadores, proxies e celulares Android.",
+    detail: "Ambientes",
+  },
 ];
 
 function Home() {
@@ -142,7 +150,7 @@ function Home() {
 
               <div className="relative mt-8 flex flex-wrap items-center gap-x-7 gap-y-3 border-t border-border/70 pt-5">
                 <div>
-                  <p className="font-display text-lg font-bold">7</p>
+                  <p className="font-display text-lg font-bold">{tools.length}</p>
                   <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">FERRAMENTAS DISPONÍVEIS</p>
                 </div>
                 <div className="h-7 w-px bg-border" />
