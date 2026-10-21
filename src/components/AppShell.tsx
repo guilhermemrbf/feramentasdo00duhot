@@ -6,6 +6,7 @@ import {
   Image,
   Instagram,
   Music2,
+  MonitorSmartphone,
   PanelTop,
   Scan,
   Settings2,
@@ -25,7 +26,8 @@ type NavItem = {
     | "/otimizar-criativos"
     | "/gerar-preview"
     | "/automacao-tiktok"
-    | "/funil";
+    | "/funil"
+    | "/hot-profiles";
   label: string;
   description: string;
   icon: ComponentType<{ className?: string }>;
@@ -40,6 +42,7 @@ const navItems: NavItem[] = [
   { to: "/gerar-preview", label: "Gerar Preview", description: "Gerar previews de mídia", icon: Scan },
   { to: "/automacao-tiktok", label: "Automatic Post", description: "TikTok e Instagram", icon: Zap },
   { to: "/funil", label: "Funil", description: "Visualizar e editar etapas", icon: GitBranch },
+  { to: "/hot-profiles", label: "Hot Profiles", description: "Navegadores e Android", icon: MonitorSmartphone },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

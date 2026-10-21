@@ -1,0 +1,11 @@
+feature,area,priority,original,clone,notes
+Perfis persistentes,browser,must,yes,yes,Diretório exclusivo; reabertura do conector preservou o perfil
+Cadastro edição e tags,profiles,must,yes,yes,Formulários e validação local
+Proxies HTTP HTTPS SOCKS5,network,must,yes,yes,Gateway implementado; validação com proxy do usuário pendente
+Sessões em abas,workspace,must,yes,yes,Duas abas reais abertas e navegação conferida
+Tela real interativa,browser,must,yes,yes,CDP; clique na página conferido
+Celulares Android,android,must,no,partial,Adapter e controles implementados; instância local requer ADB habilitado
+Criação de instâncias,android,should,no,partial,Criação assistida pelo gerenciador oficial; não clona discos pelo site
+Conexão autorizada,bridge,must,yes,yes,Pareamento local e token renovado após reinício
+Fingerprint proprietário,engine,skip,yes,skip,Fora do escopo
+Hospedagem de celulares na nuvem,hosting,could,no,no,Etapa posterior
