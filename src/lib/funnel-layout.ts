@@ -1,5 +1,41 @@
 import type { FlowNode, Funnel } from "./funnel-model.ts";
 
+/** Keep newly inserted blocks close to the requested position without covering existing content. */
+export function findFreeNodePosition(
+  nodes: FlowNode[],
+  requested: { x: number; y: number },
+  width: number,
+  height: number,
+) {
+  const origin = { x: Math.max(0, requested.x), y: Math.max(0, requested.y) };
+  const free = (x: number, y: number) =>
+    x >= 0 &&
+    y >= 0 &&
+    nodes.every(
+      (node) =>
+        x + width + 24 <= node.x ||
+        node.x + node.width + 24 <= x ||
+        y + height + 24 <= node.y ||
+        node.y + node.height + 24 <= y,
+    );
+  if (free(origin.x, origin.y)) return origin;
+  for (let ring = 1; ring <= 40; ring++) {
+    for (let offset = -ring; offset <= ring; offset++) {
+      for (const [dx, dy] of [
+        [offset, ring],
+        [offset, -ring],
+        [ring, offset],
+        [-ring, offset],
+      ]) {
+        const x = origin.x + dx * 48;
+        const y = origin.y + dy * 48;
+        if (free(x, y)) return { x, y };
+      }
+    }
+  }
+  return { x: Math.max(origin.x, ...nodes.map((node) => node.x + node.width + 80)), y: origin.y };
+}
+
 function bounds(nodes: FlowNode[]) {
   return {
     left: Math.min(...nodes.map((node) => node.x)),

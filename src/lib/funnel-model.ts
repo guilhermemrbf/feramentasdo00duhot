@@ -20,9 +20,17 @@ export type FlowNode = {
   displayLabel?: string;
   background?: string;
   textColor?: string;
+  imageFit?: "cover" | "contain";
 };
 
-export type FlowEdge = { id: string; from: string; to: string; label?: string };
+export type FlowEdge = {
+  id: string;
+  from: string;
+  to: string;
+  label?: string;
+  sourceHandle?: string;
+  targetHandle?: string;
+};
 export type Funnel = {
   id: string;
   name: string;
