@@ -54,7 +54,6 @@ class Window:
         ttk.Separator(main).pack(fill='x')
         footer=ttk.Frame(main,padding=(24,12));footer.pack(side='bottom',fill='x')
         self.spinner=ttk.Progressbar(footer,mode='indeterminate',length=70)
-        self.spinner.pack(side='right',padx=(16,0))
         self.status_label=ttk.Label(footer,textvariable=self.status,style='Muted.TLabel',wraplength=700);self.status_label.pack(side='left',fill='x',expand=True)
         footer.bind('<Configure>',lambda e:self.status_label.configure(wraplength=max(200,e.width-160)))
         self.tabs=ttk.Notebook(main,style='Page.TNotebook');self.tabs.pack(fill='both',expand=True)
@@ -221,19 +220,23 @@ class Window:
         saved=bool(self.store.setting('account'))
         self.connect_button.configure(state='disabled' if self.busy or saved else 'normal')
         self.disconnect_button.configure(state='normal' if saved and not self.busy else 'disabled')
+        if saved:
+            self.connect_button.pack_forget();self.disconnect_button.pack(fill='x',pady=(6,0))
+        else:
+            self.disconnect_button.pack_forget();self.connect_button.pack(fill='x')
         self.details()
         if hasattr(self,'editor_tab'):self.editor_tab.update_buttons()
 
     def dispatch(self,coro,callback=None):
         if self.busy:coro.close();self.notify('Aguarde a operação atual.');return
-        self.busy=True;self.spinner.start(12);self.status.set('Operação em andamento. Acompanhe o progresso nesta janela…');self.update_buttons()
+        self.busy=True;self.spinner.pack(side='right',padx=(16,0));self.spinner.start(12);self.status.set('Operação em andamento. Acompanhe o progresso nesta janela…');self.update_buttons()
         self.runtime.submit(coro,callback)
 
     def poll(self):
         while not self.runtime.events.empty():
             kind,value,callback=self.runtime.events.get_nowait()
             if kind in ('result','error'):
-                self.busy=False;self.spinner.stop()
+                self.busy=False;self.spinner.stop();self.spinner.pack_forget()
             if kind=='error':
                 self.notify(value,error=True);self.editor_tab.refresh()
                 if self.login_dialog and self.login_dialog.winfo_exists():self.login_submit.configure(state='normal')
@@ -377,7 +380,7 @@ class Window:
         job=self.jobs_data.get(int(selection[0])) if selection else None
         if not job:
             self.detail.set('Selecione uma tarefa na lista para ver os números e os próximos passos.')
-            self.task_progress.stop()
+            self.task_progress.stop();self.task_progress.pack_forget()
             for button in (self.start_button,self.pause_button,self.cancel_button,self.recover_button):button.configure(state='disabled')
             return
         counts=self.job_counts.get(job['id'],{'sent':0,'skipped':0,'sending':0})
@@ -386,8 +389,9 @@ class Window:
         text=f"{job['source_title']} → {job['destination_title']}\n{LABELS[job['status']]} · {mode}\n\n{readable_count(counts['sent'])} publicadas  ·  {readable_count(counts['skipped'])} ignoradas  ·  {readable_count(counts['sending'])} sem confirmação\n\n{job['error'] or next_step}"
         self.detail.set(text)
         active=job['status']=='running'
-        if active and not self.task_progress.instate(['disabled']):self.task_progress.start(30)
-        else:self.task_progress.stop()
+        if active:
+            self.task_progress.pack(fill='x',pady=(0,8));self.task_progress.start(30)
+        else:self.task_progress.stop();self.task_progress.pack_forget()
         editable=job['status'] not in ('completed','cancelled') and not self.busy
         self.start_button.configure(state='normal' if editable and not active and not counts['sending'] else 'disabled')
         self.pause_button.configure(state='normal' if editable and active else 'disabled')
