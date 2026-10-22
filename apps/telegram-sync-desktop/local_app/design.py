@@ -1,6 +1,6 @@
 """Shared, dependency-free desktop visual system matching the 00duHot site."""
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, font as tkfont
 
 BG='#090c13'
 SIDEBAR='#070a10'
@@ -137,6 +137,14 @@ def table(parent,columns,height=6):
     tree=ttk.Treeview(holder,columns=[c[0] for c in columns],show='headings',height=height,selectmode='browse')
     for name,label,width in columns:
         tree.heading(name,text=label);tree.column(name,width=width,minwidth=60,stretch=True)
+    header_font=tkfont.Font(parent,font=('Segoe UI',9,'bold'))
+    minimums=[max(65,header_font.measure(label)+24) for _,label,_ in columns]
+    weights=[width for _,_,width in columns]
+    def fit(event):
+        available=max(0,event.width-4-sum(minimums))
+        for index,(name,_,_) in enumerate(columns):
+            tree.column(name,minwidth=minimums[index],width=minimums[index]+int(available*weights[index]/sum(weights)))
+    tree.bind('<Configure>',fit,add='+')
     vertical=ttk.Scrollbar(holder,orient='vertical',command=tree.yview)
     horizontal=ttk.Scrollbar(holder,orient='horizontal',command=tree.xview)
     tree.configure(yscrollcommand=vertical.set,xscrollcommand=horizontal.set)
