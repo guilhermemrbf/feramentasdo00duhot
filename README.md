@@ -70,3 +70,7 @@ npm run dev
 - A UI anterior foi preservada em `src/components/hot-profiles/LegacyLocalWorkspace.tsx`; não é a interface da rota principal.
 
 Guia histórico do conector: [LEIA-ME](tools/hot-profiles/LEIA-ME.md). Dados e emuladores locais anteriores não são apagados ou migrados automaticamente.
+
+## Telegram Sync
+
+Módulo de clonagem e sincronização autorizada de canais e grupos, com substituição de links, painel autenticado e worker Python isolado. Veja [configuração e limites](docs/telegram-sync.md).

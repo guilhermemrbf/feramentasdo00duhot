@@ -19,6 +19,7 @@ import { Route as HotProfilesRouteImport } from './routes/hot-profiles'
 import { Route as ImageLinksRouteImport } from './routes/image-links'
 import { Route as LimparMetadadosRouteImport } from './routes/limpar-metadados'
 import { Route as OtimizarCriativosRouteImport } from './routes/otimizar-criativos'
+import { Route as TelegramSyncRouteImport } from './routes/telegram-sync'
 import { Route as ApiInstagramWorkerRouteImport } from './routes/api.instagram.worker'
 import { Route as ApiInstagramOauthCallbackRouteImport } from './routes/api.instagram.oauth.callback'
 
@@ -72,6 +73,11 @@ const OtimizarCriativosRoute = OtimizarCriativosRouteImport.update({
   path: '/otimizar-criativos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TelegramSyncRoute = TelegramSyncRouteImport.update({
+  id: '/telegram-sync',
+  path: '/telegram-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiInstagramWorkerRoute = ApiInstagramWorkerRouteImport.update({
   id: '/api/instagram/worker',
   path: '/api/instagram/worker',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
+  '/telegram-sync': typeof TelegramSyncRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
 }
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
+  '/telegram-sync': typeof TelegramSyncRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
 }
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
+  '/telegram-sync': typeof TelegramSyncRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
 }
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/image-links'
     | '/limpar-metadados'
     | '/otimizar-criativos'
+    | '/telegram-sync'
     | '/api/instagram/worker'
     | '/api/instagram/oauth/callback'
   fileRoutesByTo: FileRoutesByTo
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/image-links'
     | '/limpar-metadados'
     | '/otimizar-criativos'
+    | '/telegram-sync'
     | '/api/instagram/worker'
     | '/api/instagram/oauth/callback'
   id:
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/image-links'
     | '/limpar-metadados'
     | '/otimizar-criativos'
+    | '/telegram-sync'
     | '/api/instagram/worker'
     | '/api/instagram/oauth/callback'
   fileRoutesById: FileRoutesById
@@ -183,6 +195,7 @@ export interface RootRouteChildren {
   ImageLinksRoute: typeof ImageLinksRoute
   LimparMetadadosRoute: typeof LimparMetadadosRoute
   OtimizarCriativosRoute: typeof OtimizarCriativosRoute
+  TelegramSyncRoute: typeof TelegramSyncRoute
   ApiInstagramWorkerRoute: typeof ApiInstagramWorkerRoute
   ApiInstagramOauthCallbackRoute: typeof ApiInstagramOauthCallbackRoute
 }
@@ -259,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OtimizarCriativosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/telegram-sync': {
+      id: '/telegram-sync'
+      path: '/telegram-sync'
+      fullPath: '/telegram-sync'
+      preLoaderRoute: typeof TelegramSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/instagram/worker': {
       id: '/api/instagram/worker'
       path: '/api/instagram/worker'
@@ -287,6 +307,7 @@ const rootRouteChildren: RootRouteChildren = {
   ImageLinksRoute: ImageLinksRoute,
   LimparMetadadosRoute: LimparMetadadosRoute,
   OtimizarCriativosRoute: OtimizarCriativosRoute,
+  TelegramSyncRoute: TelegramSyncRoute,
   ApiInstagramWorkerRoute: ApiInstagramWorkerRoute,
   ApiInstagramOauthCallbackRoute: ApiInstagramOauthCallbackRoute,
 }

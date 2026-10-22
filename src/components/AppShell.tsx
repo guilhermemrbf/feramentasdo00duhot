@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  Send,
   FileKey,
   GitBranch,
   Home,
@@ -27,13 +28,15 @@ type NavItem = {
     | "/gerar-preview"
     | "/automacao-tiktok"
     | "/funil"
-    | "/hot-profiles";
+    | "/hot-profiles"
+    | "/telegram-sync";
   label: string;
   description: string;
   icon: ComponentType<{ className?: string }>;
 };
 
 const navItems: NavItem[] = [
+  { to: "/telegram-sync", label: "Telegram Sync", description: "Clonar e sincronizar canais", icon: Send },
   { to: "/", label: "Início", description: "Visão geral", icon: Home },
   { to: "/image-links", label: "Image Links", description: "Gerar links de imagens", icon: Image },
   { to: "/criar-pagina", label: "Criar Tela Privacy", description: "Criar páginas Privacy", icon: PanelTop },

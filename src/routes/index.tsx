@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
+  Send,
   ArrowUpRight,
   FileKey,
   GitBranch,
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/")({
 });
 
 const tools = [
+  { to: "/telegram-sync" as const, icon: Send, name: "Telegram Sync", description: "Clone e sincronize canais e grupos autorizados do Telegram, substituindo links de divulgação.", detail: "Automação" },
   {
     to: "/image-links" as const,
     icon: ImageIcon,
