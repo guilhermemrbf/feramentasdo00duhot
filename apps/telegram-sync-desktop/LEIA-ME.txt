@@ -1,0 +1,46 @@
+TELEGRAM SYNC DESKTOP 0.1.0 — 00duHot
+VERSÃO DE TESTE PARA WINDOWS 10/11 64 BITS
+
+1. Extraia o ZIP e abra TelegramSync.exe. Não é necessário instalar Python.
+2. Clique em Conectar Telegram. Obtenha seu API ID e API Hash em
+   https://my.telegram.org > API development tools, gratuitamente.
+3. Informe API ID, API Hash e seu telefone com +55. Digite o código recebido
+   pelo Telegram e, se solicitado, a senha de verificação em duas etapas.
+4. Na aba de substituições, configure os links/textos e teste uma legenda.
+5. Escolha origem e destino por ID, @username ou link público.
+   Para canais privados, sua conta precisa participar deles.
+   Você precisa administrar o destino e ter autorização para republicar a origem.
+6. Escolha histórico ou histórico + novos posts. Confira os canais.
+7. Crie uma tarefa, selecione-a e clique em Iniciar. Teste primeiro com
+   dois canais seus e poucas mensagens.
+
+FUNCIONAMENTO
+- Não precisa de Railway, servidor pago, Supabase ou login na Lovable.
+- Precisa de computador ligado, aplicativo aberto e internet.
+- Fechar/suspender o computador interrompe a sincronização.
+- Ao reabrir, as tarefas ficam pausadas; clique em Iniciar para retomar.
+- Regras são copiadas para a tarefa na criação. Alterar a aba de regras
+  só afeta tarefas futuras.
+- A sessão e o API Hash são protegidos pelo Windows DPAPI para o usuário
+  atual. OTP e senha 2FA não são salvos. Não compartilhe a pasta de dados.
+- Dados ficam em %LOCALAPPDATA%\00duHot\TelegramSync.
+- Não há telemetria ou envio para servidores do 00duHot. O aplicativo
+  comunica-se com o Telegram. O botão de ajuda abre my.telegram.org.
+- Para revogar o acesso, desconecte pelo aplicativo ou encerre a sessão
+  em Telegram > Configurações > Dispositivos.
+
+LIMITES
+Não copia membros, tópicos, respostas, reações, visualizações ou mudanças
+posteriores de edição/exclusão. Não contorna conteúdo protegido.
+A formatação vira texto simples. Links ocultos são expandidos para URLs.
+Suporta texto, fotos, vídeos, documentos e álbuns compatíveis. Tipos não
+suportados interrompem a tarefa. Legendas acima do limite exigem revisão.
+
+Se um envio não for confirmado, a tarefa pede conferência. Abra o destino
+antes de usar Conferir envio pendente. Não autorize reenvio sem verificar:
+uma decisão incorreta pode duplicar a publicação. Se um álbum chegou apenas
+em parte, mantenha a tarefa parada para revisão.
+
+O executável não possui assinatura digital comercial. O arquivo SHA256SUMS.txt
+na mesma versão permite conferir a integridade do ZIP. Não desative proteções
+do Windows. Este é um pré-lançamento: valide em canais de teste antes de distribuir.
