@@ -7,9 +7,9 @@ export const Route = createFileRoute("/telegram-sync")({
   component: TelegramSync,
 });
 const release =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-3-1";
+  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-5-1";
 const download =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/download/telegram-sync-desktop-3-1/TelegramSync-Windows.zip";
+  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/download/telegram-sync-desktop-5-1/TelegramSync-Windows.zip";
 
 function TelegramSync() {
   return (
@@ -31,7 +31,7 @@ function TelegramSync() {
                   Windows 10 / 11 · 64 bits
                 </span>
                 <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
-                  Versão de teste 0.1.1
+                  Versão de teste 0.2.0
                 </span>
               </div>
               <h2 className="font-display text-2xl font-semibold">
@@ -67,7 +67,7 @@ function TelegramSync() {
             {
               icon: Link2,
               title: "Links personalizados",
-              text: "Substitua URLs, @usernames e trechos de legenda, com prévia antes de criar uma tarefa.",
+              text: "Troque links na sincronização ou edite links de posts existentes no seu canal, com prévia e restauração local.",
             },
             {
               icon: CheckCircle2,
@@ -124,6 +124,19 @@ function TelegramSync() {
           >
             Abrir portal oficial do Telegram <ArrowRight className="size-4" />
           </a>
+        </section>
+        <section className="space-y-3 rounded-2xl border border-border bg-card p-6">
+          <h2 className="font-display text-xl font-semibold">Editar links de posts existentes</h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            No executável, pause as sincronizações e abra a aba Editar links no canal. Clique em
+            Meus canais, escolha um canal que você administra, informe o novo destino e analise o
+            histórico. A análise apenas prepara uma prévia; confira os posts antes de aplicar.
+          </p>
+          <p className="text-sm leading-6 text-muted-foreground">
+            A edição mantém o texto clicável, a formatação e as mídias. Você pode remover as linhas
+            “outros grupos” e “Hentai” e restaurar os textos originais usando o backup local. Posts
+            alterados depois da prévia são ignorados para preservar suas edições.
+          </p>
         </section>
         <aside className="space-y-3 rounded-2xl border border-border bg-secondary/40 p-6 text-sm leading-6 text-muted-foreground">
           <h2 className="font-semibold text-foreground">O que precisa ficar ligado?</h2>
