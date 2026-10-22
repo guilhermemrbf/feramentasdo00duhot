@@ -702,10 +702,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      claim_due_instagram_posts: {
-        Args: { p_limit?: number }
-        Returns: Database["public"]["Tables"]["posts"]["Row"][]
-      }
       has_workspace_role: {
         Args: {
           allowed_roles: Database["public"]["Enums"]["workspace_role"][]
