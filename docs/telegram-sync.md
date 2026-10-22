@@ -1,5 +1,7 @@
 # Telegram Sync — instalação e operação
 
+> **Versão atual gratuita:** use o [aplicativo local Windows](../apps/telegram-sync-desktop/README.md). A página `/telegram-sync` oferece o download. As instruções de nuvem abaixo são históricas e opcionais; não são necessárias para usar o aplicativo local.
+
 Não houve deploy ou aplicação automática da migração.
 
 ## Ativação manual

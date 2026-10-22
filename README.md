@@ -74,3 +74,7 @@ Guia histórico do conector: [LEIA-ME](tools/hot-profiles/LEIA-ME.md). Dados e e
 ## Telegram Sync
 
 Módulo de clonagem e sincronização autorizada de canais e grupos, com substituição de links, painel autenticado e worker Python isolado. Veja [configuração e limites](docs/telegram-sync.md).
+
+### Telegram Sync Desktop gratuito
+
+A rota `/telegram-sync` agora distribui a versão local para Windows, sem banco remoto ou servidor. Código e instruções: [apps/telegram-sync-desktop](apps/telegram-sync-desktop). A implementação cloud anterior foi preservada para evolução futura. O executável é gerado e testado no workflow `Telegram Sync Windows`, apenas em repositórios públicos com executor padrão.

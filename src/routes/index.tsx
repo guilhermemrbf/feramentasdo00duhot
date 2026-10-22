@@ -29,7 +29,7 @@ export const Route = createFileRoute("/")({
 });
 
 const tools = [
-  { to: "/telegram-sync" as const, icon: Send, name: "Telegram Sync", description: "Clone e sincronize canais e grupos autorizados do Telegram, substituindo links de divulgação.", detail: "Automação" },
+  { to: "/telegram-sync" as const, icon: Send, name: "Telegram Sync", description: "Aplicativo gratuito para Windows: sincronize canais e grupos autorizados e substitua links.", detail: "Automação" },
   {
     to: "/image-links" as const,
     icon: ImageIcon,

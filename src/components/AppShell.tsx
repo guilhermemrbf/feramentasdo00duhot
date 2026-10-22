@@ -36,7 +36,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { to: "/telegram-sync", label: "Telegram Sync", description: "Clonar e sincronizar canais", icon: Send },
+  { to: "/telegram-sync", label: "Telegram Sync", description: "Aplicativo Windows gratuito", icon: Send },
   { to: "/", label: "Início", description: "Visão geral", icon: Home },
   { to: "/image-links", label: "Image Links", description: "Gerar links de imagens", icon: Image },
   { to: "/criar-pagina", label: "Criar Tela Privacy", description: "Criar páginas Privacy", icon: PanelTop },

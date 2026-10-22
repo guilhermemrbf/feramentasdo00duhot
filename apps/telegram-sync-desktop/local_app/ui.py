@@ -178,8 +178,9 @@ class Window:
 
     def disconnect(self):
         if not self.store.setting('account'): return
-        if messagebox.askyesno('Desconectar','Revogar esta sessão no Telegram e remover a conta salva? Cancele antes todas as tarefas pendentes.',parent=self.root):
-            self.dispatch(self.runtime.engine.disconnect(revoke=True))
+        choice=messagebox.askyesnocancel('Desconectar','Cancele primeiro as tarefas pendentes.\n\nSIM: revogar a sessão no Telegram e remover a conta local.\nNÃO: apenas remover a conta local (use se a sessão já foi revogada ou estiver offline).\nCANCELAR: manter a conta.',parent=self.root)
+        if choice is not None:
+            self.dispatch(self.runtime.engine.disconnect(revoke=choice))
 
     def resolve(self):
         self.dispatch(self.runtime.engine.resolve(self.source.get(),self.destination.get()),lambda value:self.resolved.set(value))
