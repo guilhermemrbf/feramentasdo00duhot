@@ -12,9 +12,17 @@ class EditorTab:
         self.window = window
         self.editor = window.runtime.engine.editor
         self.batch_id = None
-        frame = self.frame = ttk.Frame(notebook,padding=16)
+        outer = self.frame = ttk.Frame(notebook)
         self.channel_refs = {}
-        notebook.add(frame,text='  Editar links no canal  ')
+        notebook.add(outer,text='  Editar links no canal  ')
+        canvas=tk.Canvas(outer,bg='#10141f',highlightthickness=0)
+        scrollbar=ttk.Scrollbar(outer,orient='vertical',command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side='right',fill='y');canvas.pack(side='left',fill='both',expand=True)
+        frame=ttk.Frame(canvas,padding=16)
+        content=canvas.create_window((0,0),window=frame,anchor='nw')
+        frame.bind('<Configure>',lambda _event:canvas.configure(scrollregion=canvas.bbox('all')))
+        canvas.bind('<Configure>',lambda event:canvas.itemconfigure(content,width=event.width))
         ttk.Label(frame,text='Altera publicações existentes no seu canal, sem copiar ou baixar as mídias.',wraplength=950).pack(anchor='w')
         form = ttk.Frame(frame);form.pack(fill='x',pady=6);form.columnconfigure(1,weight=1)
         self.channel = tk.StringVar()
