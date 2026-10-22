@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Download, FolderOpen, Loader2, Play, RotateCcw, Square, UploadCloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ACCEPT, LIMITATIONS, sizeLabel } from '@/lib/metadata/formats';
+import { LIMITATIONS, sizeLabel } from '@/lib/metadata/formats';
 import { droppedFiles, selectedFiles, type SelectedFile } from '@/lib/metadata/folders';
 import type { BatchItem } from '@/lib/metadata/batch';
 import { deliverZip } from '@/lib/metadata/download';
@@ -83,7 +83,7 @@ export function BatchCleaner() {
     </div>
     {(phase||error)&&<div className="mt-5" role="status" aria-live="polite"><p className="text-sm font-semibold">{phase}</p>{error&&<p className="mt-2 text-sm text-destructive">{error}</p>}</div>}
     {items.length>0&&<>
-      <progress className="mt-4 h-2 w-full accent-primary" max={100} value={progress} aria-label="Progresso da limpeza em massa"/>
+      <div className="mt-4 flex h-2 w-full overflow-hidden rounded bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={items.length} aria-valuenow={attempted} aria-label="Progresso da limpeza em massa"><div className="bg-primary" style={{flexGrow:attempted,flexBasis:0}}/><div style={{flexGrow:items.length-attempted,flexBasis:0}}/></div>
       <div className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4"><span>Processados: {done}</span><span>Pendentes: {remaining}</span><span>Com erro: {failed}</span><span>Progresso: {progress}%</span></div>
       {cancelled>0&&<p className="mt-2 text-xs text-muted-foreground">Cancelados: {cancelled}</p>}
       <p className="mt-3 truncate text-xs text-muted-foreground">{current?`Arquivo atual: ${current.path}`:`Tamanho dos resultados: ${sizeLabel(bytes)}`}</p>
