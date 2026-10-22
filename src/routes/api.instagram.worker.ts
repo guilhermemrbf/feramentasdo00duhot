@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
 import { getInstagramAccountAccessToken } from "@/lib/instagram-oauth.server";
 import {
@@ -14,7 +16,14 @@ export const Route = createFileRoute("/api/instagram/worker")({
         if (unauthorized) return unauthorized;
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data: posts, error: claimError } = await supabaseAdmin.rpc(
+        // Local extension reflects the checked-in migration without editing generated types.
+        type WorkerDatabase = Database & { public: Database["public"] & {
+          Functions: Database["public"]["Functions"] & {
+            claim_due_instagram_posts: { Args: { p_limit: number }; Returns: Database["public"]["Tables"]["posts"]["Row"][] };
+          };
+        } };
+        const workerClient = supabaseAdmin as unknown as SupabaseClient<WorkerDatabase>;
+        const { data: posts, error: claimError } = await workerClient.rpc(
           "claim_due_instagram_posts",
           { p_limit: 5 },
         );
