@@ -7,9 +7,9 @@ export const Route = createFileRoute("/telegram-sync")({
   component: TelegramSync,
 });
 const release =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-8-1";
+  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-9-1";
 const download =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/download/telegram-sync-desktop-8-1/TelegramSync-Windows.zip";
+  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/download/telegram-sync-desktop-9-1/TelegramSync-Windows.zip";
 
 function TelegramSync() {
   return (
@@ -31,7 +31,7 @@ function TelegramSync() {
                   Windows 10 / 11 · 64 bits
                 </span>
                 <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
-                  Versão de teste 0.3.0
+                  Versão de teste 0.4.0
                 </span>
               </div>
               <h2 className="font-display text-2xl font-semibold">
@@ -48,7 +48,7 @@ function TelegramSync() {
                 <Download className="size-4" /> Baixar para Windows
               </a>
               <p className="text-xs leading-5 text-muted-foreground">
-                Aproximadamente 17 MB. O ZIP inclui o executável e as instruções.{" "}
+                Aproximadamente 19 MB. O ZIP inclui o executável e as instruções.{" "}
                 <a
                   className="underline underline-offset-4"
                   href={release}

@@ -347,18 +347,11 @@ function GerarPreview() {
                       </div>
 
                       {item.status === "processing" && (
-                        <div className="mt-4">
-                          <div className="mb-1 flex justify-between text-[11px] text-muted-foreground">
-                            <span>Processando vídeo inteiro</span>
-                            <span>{item.progress}%</span>
-                          </div>
-                          <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
-                            <div
-                              className="h-full rounded-full bg-primary transition-all"
-                              style={{ width: item.progress + "%" }}
-                            />
-                          </div>
-                        </div>
+                        <p role="status" className="mt-4 text-xs text-muted-foreground">
+                          {type === "video"
+                            ? "Processando o vídeo durante sua reprodução. Aguarde a conclusão."
+                            : "Gerando a imagem com o efeito escolhido."}
+                        </p>
                       )}
 
                       {item.error && <p className="mt-3 text-xs text-destructive">{item.error}</p>}

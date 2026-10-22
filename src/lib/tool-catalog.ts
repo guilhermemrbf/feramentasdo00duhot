@@ -147,7 +147,7 @@ export const TOOL_CATALOG = [
       "Inicie e acompanhe as sessões disponíveis.",
     ],
     requirement:
-      "Sessões em nuvem dependem de um provedor configurado e podem ter custos próprios. Nenhum serviço pago é contratado por esta atualização.",
+      "Sessões em nuvem dependem de um provedor configurado. Confira os limites e eventuais custos do seu provedor antes de iniciar.",
   },
 ] as const;
 export type Tool = (typeof TOOL_CATALOG)[number];

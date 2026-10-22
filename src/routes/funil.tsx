@@ -198,7 +198,7 @@ function FunnelPreview({ funnel }: { funnel: Funnel }) {
       viewBox={`${bounds.left - 70} ${bounds.top - 70} ${bounds.right - bounds.left + 140} ${bounds.bottom - bounds.top + 140}`}
       className="h-full w-full"
       aria-hidden="true"
-      style={{ background: "#10141d" }}
+      style={{ background: "#111111" }}
     >
       {funnel.edges.map((edge) => {
         const from = funnel.nodes.find((item) => item.id === edge.from);
@@ -939,7 +939,7 @@ function FunilPage() {
           aria-busy="true"
           className="flex min-h-[70vh] items-center justify-center gap-3 text-sm text-muted-foreground"
         >
-          <GitBranch className="size-5 animate-pulse text-primary" />
+          <GitBranch className="size-5 text-primary" />
           Carregando seus funis…
         </main>
       </AppShell>
@@ -1035,7 +1035,7 @@ function FunilPage() {
                     >
                       <button
                         onClick={() => openFunnel(funnel.id)}
-                        className="block h-40 w-full overflow-hidden border-b border-border/70 bg-[#10141d] p-4 text-left"
+                        className="block h-40 w-full overflow-hidden border-b border-border/70 bg-[#111111] p-4 text-left"
                         aria-label={`Prévia de ${funnel.name}`}
                       >
                         <FunnelPreview funnel={funnel} />
@@ -1375,7 +1375,7 @@ function FunilPage() {
               )}
 
               <div
-                style={{ backgroundColor: "#0d1119" }}
+                style={{ backgroundColor: "#101010" }}
                 className={`relative mt-3 flex overflow-clip rounded-2xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.2)] ${fullscreen ? "min-h-[220px] flex-1" : "h-[calc(100dvh-295px)] min-h-[500px] flex-none"}`}
               >
                 <div ref={viewportRef} className="relative min-w-0 flex-1 overflow-hidden">
@@ -1421,7 +1421,7 @@ function FunilPage() {
                 {selectedNodes.length > 1 && (
                   <aside
                     aria-label="Editar seleção"
-                    className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-slate-700 bg-[#141a25] shadow-2xl sm:w-[350px]"
+                    className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-slate-700 bg-[#181818] shadow-2xl sm:w-[350px]"
                   >
                     <header className="flex items-start justify-between border-b border-slate-700 p-4">
                       <div>
@@ -1485,7 +1485,7 @@ function FunilPage() {
                 )}
                 {(selectedNode || selectedEdge) && (
                   <aside
-                    className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-slate-700 bg-[#141a25] shadow-2xl sm:w-[350px]"
+                    className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-slate-700 bg-[#181818] shadow-2xl sm:w-[350px]"
                     aria-label={selectedNode ? "Editar elemento" : "Editar conexão"}
                   >
                     <div className="flex items-start justify-between border-b border-slate-700 px-4 py-4">
@@ -1895,7 +1895,7 @@ function FunilPage() {
                 aria-modal="true"
                 aria-labelledby="delete-funnel-title"
                 aria-describedby="delete-funnel-description"
-                className="w-full max-w-md rounded-2xl border border-slate-600 bg-[#141a25] p-5 text-slate-200 shadow-2xl"
+                className="w-full max-w-md rounded-2xl border border-slate-600 bg-[#181818] p-5 text-slate-200 shadow-2xl"
                 onKeyDown={(event) => {
                   if (event.key === "Escape") {
                     event.stopPropagation();

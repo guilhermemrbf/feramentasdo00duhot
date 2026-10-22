@@ -35,6 +35,16 @@ Site: publicar manualmente pelo fluxo atual. Desktop: fechar a versão anterior,
 
 - TypeScript sem erros e build de produção concluído.
 - 51 testes web, incluindo seleção/repetição de arquivos, horários, cancelamento, liberação de recursos e relatório sem credenciais.
-- 72 testes desktop: 63 passaram no Linux, 9 exigem GUI/Windows e são executados no workflow Windows antes da distribuição.
+- 72 testes desktop aprovados no Windows, incluindo GUI e DPAPI. No Linux, 63 passaram e 9 foram corretamente ignorados por exigirem GUI/Windows.
 - Navegador: navegação, busca global e exportação de vídeo sintético. O WEBM exportado foi decodificado sem erros e contém vídeo VP8 (240×160) e áudio Opus.
 - A captura `workspace-0.4.0.jpg` registra a interface na revisão local.
+
+## Distribuição verificada
+
+Release: https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-9-1
+
+Código do aplicativo: `760aa6cff33f6952c965ea258d05b9632ce6ea14`. Workflow Windows concluído com sucesso: https://github.com/guilhermemrbf/feramentasdo00duhot/actions/runs/39788016679 . Autotestes do código-fonte e do executável passaram.
+
+ZIP de 19.133.687 bytes, baixado e verificado: arquivo íntegro, executável Windows PE válido e LEIA-ME 0.4.0 com orientações de seleção múltipla. SHA-256: `1467319a33192c3bbb7ca86cae5266e92a77c973f743d2c72d523ce4f7795cca`. Conferido contra SHA256SUMS.txt da release. Capturas reais da interface Windows do fixture temporário estão anexadas à release.
+
+As integrações com contas e serviços reais permanecem dependentes das configurações do titular e não foram exercitadas com credenciais reais neste trabalho.
