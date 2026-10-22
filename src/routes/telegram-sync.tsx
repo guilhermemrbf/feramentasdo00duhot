@@ -7,9 +7,9 @@ export const Route = createFileRoute("/telegram-sync")({
   component: TelegramSync,
 });
 const release =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-2-1";
+  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-3-1";
 const download =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/download/telegram-sync-desktop-2-1/TelegramSync-Windows.zip";
+  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/download/telegram-sync-desktop-3-1/TelegramSync-Windows.zip";
 
 function TelegramSync() {
   return (
@@ -31,7 +31,7 @@ function TelegramSync() {
                   Windows 10 / 11 · 64 bits
                 </span>
                 <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
-                  Versão de teste 0.1.0
+                  Versão de teste 0.1.1
                 </span>
               </div>
               <h2 className="font-display text-2xl font-semibold">
