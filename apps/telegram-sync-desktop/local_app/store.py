@@ -179,3 +179,12 @@ class Store:
     def logs(self):
         with self.lock:
             return [dict(row) for row in self.conn.execute('select * from logs order by id desc limit 100')]
+
+    def message_counts(self):
+        """Confirmed outcomes, not ID differences or the legacy processed count."""
+        with self.lock:
+            rows=self.conn.execute('select job_id,state,count(*) as total from messages group by job_id,state')
+            result={}
+            for row in rows:
+                result.setdefault(row['job_id'],{'sent':0,'skipped':0,'sending':0})[row['state']]=row['total']
+            return result

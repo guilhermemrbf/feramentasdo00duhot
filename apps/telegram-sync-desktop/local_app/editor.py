@@ -151,6 +151,10 @@ class EditStore:
         with self.store.lock:
             return [dict(r) for r in self.store.conn.execute('select * from edit_items where batch_id=? order by message_id',(batch,))]
 
+    def states(self, batch):
+        with self.store.lock:
+            return [dict(row) for row in self.store.conn.execute('select message_id,status,note from edit_items where batch_id=? order by message_id',(batch,))]
+
 
 class ChannelEditor:
     def __init__(self, engine):

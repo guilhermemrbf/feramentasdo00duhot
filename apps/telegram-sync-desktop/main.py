@@ -3,7 +3,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-VERSION = '0.2.0'
+VERSION = '0.3.0'
 
 
 def data_directory():
@@ -65,6 +65,20 @@ def self_test():
         assert DEFAULT_URL in window.editor_tab.detail.get('1.0','end')
         assert window.editor_tab.detail.winfo_height() >= 40
         assert window.editor_tab.tree.winfo_height() >= 40
+        if os.name=='nt' and os.environ.get('TELEGRAM_SYNC_UI_PREVIEW')=='1':
+            # CI-only screenshots of this temporary fixture; never a real account.
+            import subprocess
+            destination=Path('dist');destination.mkdir(exist_ok=True)
+            for page in ('home','tasks','editor'):
+                window.navigate(page);root.update()
+                path=str((destination/('ui-'+page+'.png')).resolve()).replace("'","''")
+                script=("Add-Type -AssemblyName System.Drawing; "
+                    f"$image=New-Object System.Drawing.Bitmap({root.winfo_width()},{root.winfo_height()}); "
+                    "$graphics=[System.Drawing.Graphics]::FromImage($image); "
+                    f"$graphics.CopyFromScreen({root.winfo_rootx()},{root.winfo_rooty()},0,0,$image.Size); "
+                    f"$image.Save('{path}',[System.Drawing.Imaging.ImageFormat]::Png); "
+                    "$graphics.Dispose(); $image.Dispose()")
+                subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',script],check=True,timeout=30)
         window.closing=True
         window.runtime.close()
         window.runtime.thread.join(timeout=10)

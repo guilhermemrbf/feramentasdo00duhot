@@ -39,3 +39,13 @@ O editor exige canal broadcast e conta dona ou administradora com `edit_messages
 Backups e propostas ficam nas tabelas locais `edit_batches`/`edit_items`, separados das filas de sincronização. Antes de cada edição o conteúdo é relido: se mudou desde a prévia, é marcado como conflito e preservado. A restauração só é aplicada se o post ainda corresponde à proposta; não sobrescreve alterações posteriores. Interrupções e respostas ambíguas ficam pausadas; a retomada primeiro compara o estado remoto, sem repetir uma edição já confirmada. Análises incompletas não podem ser aplicadas. FloodWait é persistido e impede retomada antes do prazo. O programa respeita os limites do Telegram, mas não pode garantir ausência de novos limites.
 
 Testes automatizados usam transporte simulado. A verificação final no canal real depende da sessão e da confirmação do usuário no Windows; não há credenciais de Telegram disponíveis no ambiente de desenvolvimento.
+
+## Interface 0.3.0
+
+Visual inspirado no painel 00duHot: fundo escuro, destaque azul, menu lateral, cartões de indicadores e páginas com rolagem. Sem bibliotecas adicionais, servidor HTTP, cobrança ou migração do banco existente. A sessão, as tarefas, as regras e os backups continuam na mesma pasta.
+
+A visão geral mostra os resultados das sincronizações. “Publicadas” conta somente registros `sent`, incluindo os confirmados pelo operador; `skipped` e `sending` não são publicados. A coluna antiga `processed` inclui ignoradas e não é mais exibida como publicadas. O número da última mensagem nunca vira porcentagem, pois IDs podem ter lacunas. A tabela tem busca, filtros por estado e ações habilitadas conforme a tarefa selecionada. A criação abre um formulário em três etapas e continua criando tarefas pausadas.
+
+O editor tem indicadores próprios para a análise selecionada, progresso sobre o conjunto conhecido de propostas e comparação original/proposta lado a lado. Durante a análise, o progresso é indeterminado. Estados e contadores são atualizados sem recarregar os backups a cada edição. Busca e filtro alteram apenas a visualização: a aplicação mantém o escopo da análise salva e confirma a quantidade completa antes de editar. Restauração e conferência de envio permanecem com confirmação explícita.
+
+Os testes reais de Tk verificam navegação, busca, filtros, publicação versus ignoradas/sem confirmação, atualizações do editor, ações bloqueadas e rolagem em 980×640. Executam no Windows no workflow; em Linux requerem display gráfico. Não acessam Telegram. Horários da atividade usam o fuso local do computador.

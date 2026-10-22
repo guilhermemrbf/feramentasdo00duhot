@@ -1,4 +1,4 @@
-TELEGRAM SYNC DESKTOP 0.2.0 — 00duHot
+TELEGRAM SYNC DESKTOP 0.3.0 — 00duHot
 VERSÃO DE TESTE PARA WINDOWS 10/11 64 BITS
 
 1. Extraia o ZIP e abra TelegramSync.exe. Não é necessário instalar Python.
@@ -75,3 +75,23 @@ na restauração. Limites do Telegram pausam a operação até o prazo indicado.
 Ao pausar/fechar, uma edição em andamento pode terminar. Retome a mesma
 análise para verificar o resultado, em vez de criar outra imediatamente.
 Nenhuma edição ocorre automaticamente ao abrir o programa.
+
+NOVA INTERFACE — 0.3.0
+- Visão geral: números das sincronizações e orientações para começar.
+- Sincronizações: busca por canal, filtros por situação e detalhes da tarefa.
+  Clique Nova sincronização, preencha as três etapas e crie a tarefa pausada.
+- Editar links: escolha o canal, analise e confira original/proposta lado a lado.
+  Veja quantos posts estão pendentes, editados, restaurados ou ignorados.
+- Substituições: regras para novas cópias, com teste de legenda.
+- Atividade e ajuda: histórico com horário local e explicações de uso.
+
+Publicadas = mensagens confirmadas. Ignoradas e envios sem confirmação
+não entram nesse número. A conferir exige revisar o destino antes de reenviar.
+No editor, os indicadores são da análise selecionada, não de todos os canais.
+Filtrar a lista não altera quais propostas serão aplicadas: a confirmação
+final mostra a quantidade total da análise. Use a rolagem para ver mais detalhes.
+
+PARA ATUALIZAR
+Feche o programa antigo, extraia o novo ZIP e abra TelegramSync.exe.
+Sua conta, suas tarefas e os backups são mantidos na mesma pasta do Windows.
+Não apague a pasta de dados. Nenhuma operação inicia sozinha ao abrir.
