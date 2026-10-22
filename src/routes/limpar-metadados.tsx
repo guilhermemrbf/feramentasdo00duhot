@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AppShell, PageIntro } from "@/components/AppShell";
 import { cn } from "@/lib/utils";
+import { BatchCleaner } from "@/components/metadata/BatchCleaner";
 
 export const Route = createFileRoute("/limpar-metadados")({
   head: () => ({
@@ -22,6 +23,10 @@ export const Route = createFileRoute("/limpar-metadados")({
         content:
           "Sanitize fotos e vídeos localmente, removendo metadados incorporados no arquivo processado.",
       },
+      { property: "og:title", content: "Limpar Metadados — 00duHot" },
+      { property: "og:description", content: "Limpeza individual e em massa de imagens e vídeos, com processamento local e exportação ZIP." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: LimparMetadados,
@@ -410,6 +415,7 @@ function LimparMetadados() {
             </p>
           </section>
         )}
+        <BatchCleaner />
       </main>
     </AppShell>
   );
