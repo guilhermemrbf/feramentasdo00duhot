@@ -1,3 +1,5 @@
+import { downloadBlob } from "@/lib/media/files";
+import { profileReport } from "@/lib/profile-report";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
@@ -311,7 +313,7 @@ export function CloudWorkspace() {
             )}
           </div>
         </header>
-        <section className="overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-5 sm:p-6">
+        <section className="overflow-hidden rounded-2xl border border-primary/20 bg-card p-5 sm:p-6">
           <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-center">
             <div>
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
@@ -325,6 +327,20 @@ export function CloudWorkspace() {
               </p>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
+              <button
+                disabled={!loaded || !workspace.profiles.length}
+                onClick={() =>
+                  downloadBlob(
+                    new Blob([JSON.stringify(profileReport(workspace.profiles), null, 2)], {
+                      type: "application/json",
+                    }),
+                    "00duhot-relatorio-perfis.json",
+                  )
+                }
+                className={hotButton}
+              >
+                Relatório de perfis
+              </button>
               <button onClick={() => setProxyForm({})} className={hotButton}>
                 <ShieldCheck className="size-4" />
                 Adicionar proxy

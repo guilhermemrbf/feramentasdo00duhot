@@ -1,3 +1,4 @@
+import { mediaItemId } from "@/lib/media/files";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -10,6 +11,15 @@ import {
   Type,
   UploadCloud,
 } from "lucide-react";
+import { selectMediaFiles } from "@/lib/media/selection";
+import { renderLocalVideo } from "@/lib/media/render";
+import {
+  downloadBlob,
+  outputName,
+  queueCandidates,
+  throwIfAborted,
+  isAbort,
+} from "@/lib/media/files";
 import { AppShell, PageIntro } from "@/components/AppShell";
 
 export const Route = createFileRoute("/otimizar-criativos")({
@@ -46,10 +56,14 @@ function OtimizarCriativos() {
   const [position, setPosition] = useState<Position>("bottom");
   const [opacity, setOpacity] = useState(0.85);
   const [busy, setBusy] = useState(false);
+  const [selectionNotice, setSelectionNotice] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const operation = useRef<AbortController | null>(null);
+  useEffect(() => () => operation.current?.abort(), []);
   const overlayUrl = useObjectUrl(overlayFile);
 
   const reset = () => {
+    if (busy) return;
     setType(null);
     setItems([]);
     setOverlayFile(null);
@@ -58,29 +72,34 @@ function OtimizarCriativos() {
   };
 
   const add = (files: FileList | null) => {
-    if (!files || !type) return;
+    if (busy || !files || !type) return;
 
-    const accepted = type === "image"
-      ? ["image/jpeg", "image/png", "image/webp", "image/avif"]
-      : ["video/mp4", "video/webm", "video/quicktime"];
+    const accepted =
+      type === "image"
+        ? ["image/jpeg", "image/png", "image/webp", "image/avif"]
+        : ["video/mp4", "video/webm", "video/quicktime"];
 
-    const nextItems = Array.from(files)
-      .filter((file) => accepted.includes(file.type))
-      .map((file) => ({
-        id: crypto.randomUUID(),
-        file,
-        status: "waiting" as const,
-        output: null,
-        error: null,
-      }));
+    const selection = selectMediaFiles(
+      Array.from(files),
+      items.map((item) => item.file),
+      accepted,
+    );
+    setSelectionNotice(
+      `${selection.accepted.length} arquivos adicionados${selection.rejected ? `; ${selection.rejected} ignorados por formato, arquivo vazio ou duplicidade` : ""}.`,
+    );
+    const nextItems = selection.accepted.map((file) => ({
+      id: mediaItemId(),
+      file,
+      status: "waiting" as const,
+      output: null,
+      error: null,
+    }));
 
     setItems((current) => [...current, ...nextItems]);
   };
 
   const patch = (id: string, value: Partial<Item>) =>
-    setItems((current) =>
-      current.map((item) => (item.id === id ? { ...item, ...value } : item)),
-    );
+    setItems((current) => current.map((item) => (item.id === id ? { ...item, ...value } : item)));
 
   const cleanImage = async (item: Item) => {
     const sourceUrl = URL.createObjectURL(item.file);
@@ -98,9 +117,16 @@ function OtimizarCriativos() {
       if (!context) throw new Error("Não foi possível preparar o criativo.");
 
       context.drawImage(image, 0, 0);
-      await drawOverlay(context, canvas.width, canvas.height, overlayUrl, overlayText, position, opacity);
+      let overlay: HTMLImageElement | null = null;
+      if (overlayUrl) {
+        overlay = new Image();
+        overlay.src = overlayUrl;
+        await overlay.decode();
+      }
+      drawOverlay(context, canvas.width, canvas.height, overlay, overlayText, position, opacity);
 
       const output = await canvasToBlob(canvas, "image/webp", 0.92);
+      throwIfAborted(operation.current?.signal);
       patch(item.id, { status: "done", output });
     } finally {
       URL.revokeObjectURL(sourceUrl);
@@ -108,103 +134,47 @@ function OtimizarCriativos() {
   };
 
   const cleanVideo = async (item: Item) => {
-    const sourceUrl = URL.createObjectURL(item.file);
-    const video = document.createElement("video");
-
-    video.src = sourceUrl;
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = "auto";
-
-    try {
-      await new Promise<void>((resolve, reject) => {
-        video.onloadedmetadata = () => resolve();
-        video.onerror = () =>
-          reject(new Error("Este vídeo não pôde ser processado neste navegador."));
-      });
-
-      if (
-        !video.captureStream ||
-        !HTMLCanvasElement.prototype.captureStream ||
-        !MediaRecorder.isTypeSupported("video/webm")
-      ) {
-        throw new Error("Seu navegador não oferece suporte ao processamento local de vídeos.");
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error("Não foi possível preparar o criativo.");
-
-      const stream = canvas.captureStream(30);
-      const sourceStream = video.captureStream();
-      sourceStream.getAudioTracks().forEach((track) => stream.addTrack(track));
-
-      const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-      const chunks: Blob[] = [];
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size) chunks.push(event.data);
-      };
-
-      const stopped = new Promise<void>((resolve, reject) => {
-        recorder.onstop = () => resolve();
-        recorder.onerror = () => reject(new Error("Erro ao gerar o criativo."));
-      });
-
-      recorder.start(250);
-      await video.play();
-
-      const drawFrame = () => {
-        if (!video.ended && !video.paused) {
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
-          void drawOverlay(context, canvas.width, canvas.height, overlayUrl, overlayText, position, opacity);
-          requestAnimationFrame(drawFrame);
-        }
-      };
-
-      drawFrame();
-      await new Promise<void>((resolve) => {
-        video.onended = () => resolve();
-      });
-
-      recorder.stop();
-      await stopped;
-
-      stream.getTracks().forEach((track) => track.stop());
-      sourceStream.getTracks().forEach((track) => track.stop());
-
-      if (!chunks.length) throw new Error("Não foi possível gerar o criativo.");
-
-      patch(item.id, {
-        status: "done",
-        output: new Blob(chunks, { type: "video/webm" }),
-      });
-    } finally {
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
-      URL.revokeObjectURL(sourceUrl);
+    let overlay: HTMLImageElement | null = null;
+    if (overlayUrl) {
+      overlay = new Image();
+      overlay.src = overlayUrl;
+      await overlay.decode();
     }
+    throwIfAborted(operation.current?.signal);
+    const output = await renderLocalVideo(
+      item.file,
+      (context, video, width, height) => {
+        context.drawImage(video, 0, 0, width, height);
+        drawOverlay(context, width, height, overlay, overlayText, position, opacity);
+      },
+      operation.current!.signal,
+    );
+    patch(item.id, { status: "done", output });
   };
 
   const optimizeAll = async () => {
     if (!items.length || !type) return;
 
+    if (busy) return;
+    operation.current = new AbortController();
     setBusy(true);
 
-    for (const item of items) {
+    for (const item of queueCandidates(items)) {
+      if (operation.current.signal.aborted) break;
       patch(item.id, { status: "processing", error: null });
 
       try {
         if (type === "image") await cleanImage(item);
         else await cleanVideo(item);
       } catch (error) {
+        if (isAbort(error)) {
+          patch(item.id, { status: "waiting", error: null });
+          break;
+        }
         patch(item.id, {
           status: "error",
-          error: error instanceof Error ? error.message : "Não foi possível processar este arquivo.",
+          error:
+            error instanceof Error ? error.message : "Não foi possível processar este arquivo.",
         });
       }
     }
@@ -213,15 +183,8 @@ function OtimizarCriativos() {
   };
 
   const download = (item: Item) => {
-    if (!item.output || !type) return;
-    const url = URL.createObjectURL(item.output);
-    const extension = type === "image" ? "webp" : "webm";
-    const baseName = item.file.name.replace(/\.[^.]+$/, "");
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `otimizado-${baseName}.${extension}`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    if (item.output)
+      downloadBlob(item.output, outputName(item.file.name, "otimizado-", item.output.type));
   };
 
   return (
@@ -255,6 +218,7 @@ function OtimizarCriativos() {
                 Otimização de {type === "image" ? "imagens" : "vídeos"}
               </p>
               <button
+                disabled={busy}
                 onClick={reset}
                 className="rounded-md border border-border px-3 py-2 text-xs"
               >
@@ -271,15 +235,22 @@ function OtimizarCriativos() {
               className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center hover:border-primary/60"
             >
               <UploadCloud className="mb-4 size-6 text-primary" />
-              <p className="text-sm font-semibold">Arraste os criativos aqui ou clique para selecionar</p>
+              <p className="text-sm font-semibold">
+                Arraste os criativos aqui ou clique para selecionar
+              </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {type === "image" ? "JPG, PNG, WEBP ou AVIF" : "MP4, WEBM ou MOV"} · vários arquivos
               </p>
               <input
                 ref={inputRef}
                 type="file"
+                disabled={busy}
                 multiple
-                accept={type === "image" ? "image/jpeg,image/png,image/webp,image/avif" : "video/mp4,video/webm,video/quicktime"}
+                accept={
+                  type === "image"
+                    ? "image/jpeg,image/png,image/webp,image/avif"
+                    : "video/mp4,video/webm,video/quicktime"
+                }
                 className="hidden"
                 onChange={(event) => add(event.target.files)}
               />
@@ -292,11 +263,13 @@ function OtimizarCriativos() {
                   Overlay visual
                 </div>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Adicione uma imagem transparente de marca, selo ou identidade visual sobre o criativo.
+                  Adicione uma imagem transparente de marca, selo ou identidade visual sobre o
+                  criativo.
                 </p>
                 <label className="mt-4 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-border px-4 py-4 text-xs hover:border-primary/60">
                   {overlayFile ? overlayFile.name : "Selecionar imagem PNG/WebP"}
                   <input
+                    disabled={busy}
                     type="file"
                     accept="image/png,image/webp"
                     className="hidden"
@@ -311,6 +284,7 @@ function OtimizarCriativos() {
                   Texto de marca
                 </div>
                 <input
+                  disabled={busy}
                   value={overlayText}
                   onChange={(event) => setOverlayText(event.target.value)}
                   placeholder="@sua_marca"
@@ -320,6 +294,7 @@ function OtimizarCriativos() {
                   {(["top", "center", "bottom"] as Position[]).map((value) => (
                     <button
                       key={value}
+                      disabled={busy}
                       onClick={() => setPosition(value)}
                       className={`rounded-md border px-3 py-2 text-xs capitalize ${position === value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
                     >
@@ -330,6 +305,7 @@ function OtimizarCriativos() {
                 <label className="mt-3 block text-xs text-muted-foreground">
                   Opacidade do overlay: {Math.round(opacity * 100)}%
                   <input
+                    disabled={busy}
                     type="range"
                     min="0.2"
                     max="1"
@@ -342,34 +318,75 @@ function OtimizarCriativos() {
               </div>
             </div>
 
+            {selectionNotice && (
+              <p role="status" className="text-xs text-muted-foreground">
+                {selectionNotice}
+              </p>
+            )}
+            {busy && (
+              <div
+                role="status"
+                className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-4 text-xs"
+              >
+                <span>
+                  Processando neste dispositivo. Você pode cancelar sem perder os arquivos já
+                  concluídos.
+                </span>
+                <button
+                  onClick={() => operation.current?.abort()}
+                  className="shrink-0 rounded border border-border px-3 py-2"
+                >
+                  Cancelar processamento
+                </button>
+              </div>
+            )}
+
             {items.length > 0 && (
               <>
                 <div className="flex items-center justify-between border-b border-border pb-4">
                   <span className="text-xs text-muted-foreground">
-                    {items.filter((item) => item.status === "done").length}/{items.length} processados
+                    {items.filter((item) => item.status === "done").length}/{items.length}{" "}
+                    processados
                   </span>
                   <button
                     disabled={busy}
                     onClick={optimizeAll}
                     className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
                   >
-                    {busy ? <Loader2 className="size-3 animate-spin" /> : <ShieldCheck className="size-3" />}
+                    {busy ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <ShieldCheck className="size-3" />
+                    )}
                     {busy ? "Processando..." : "Otimizar criativos"}
                   </button>
                 </div>
 
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <article key={item.id} className="flex items-center gap-3 rounded-lg border border-border bg-card p-4">
+                    <article
+                      key={item.id}
+                      className="flex items-center gap-3 rounded-lg border border-border bg-card p-4"
+                    >
                       <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary">
-                        {type === "image" ? <ImageIcon className="size-5" /> : <PlaySquare className="size-5" />}
+                        {type === "image" ? (
+                          <ImageIcon className="size-5" />
+                        ) : (
+                          <PlaySquare className="size-5" />
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm">{item.file.name}</p>
-                        <p className="text-xs text-muted-foreground">{(item.file.size / 1048576).toFixed(2)} MB</p>
-                        {item.error && <p className="mt-1 text-xs text-destructive">{item.error}</p>}
+                        <p className="text-xs text-muted-foreground">
+                          {(item.file.size / 1048576).toFixed(2)} MB
+                        </p>
+                        {item.error && (
+                          <p className="mt-1 text-xs text-destructive">{item.error}</p>
+                        )}
                       </div>
-                      {item.status === "processing" && <Loader2 className="size-4 animate-spin text-primary" />}
+                      {item.status === "processing" && (
+                        <Loader2 className="size-4 animate-spin text-primary" />
+                      )}
                       {item.status === "done" && (
                         <>
                           <button
@@ -388,9 +405,10 @@ function OtimizarCriativos() {
             )}
 
             <div className="rounded-md border border-border bg-card p-4 text-xs leading-5 text-muted-foreground">
-              <strong className="text-foreground">Processamento local:</strong> os arquivos permanecem no navegador.
-              A ferramenta faz uma nova renderização/reexportação e não é um mecanismo para burlar revisão, políticas,
-              antifraude ou sistemas de detecção de plataformas de anúncios.
+              <strong className="text-foreground">Processamento local:</strong> os arquivos
+              permanecem no navegador. A ferramenta faz uma nova renderização/reexportação e não é
+              um mecanismo para burlar revisão, políticas, antifraude ou sistemas de detecção de
+              plataformas de anúncios.
             </div>
           </section>
         )}
@@ -416,11 +434,11 @@ function useObjectUrl(file: File | null) {
   return url;
 }
 
-async function drawOverlay(
+function drawOverlay(
   context: CanvasRenderingContext2D,
   width: number,
   height: number,
-  overlayUrl: string | null,
+  overlay: HTMLImageElement | null,
   text: string,
   position: Position,
   opacity: number,
@@ -428,11 +446,7 @@ async function drawOverlay(
   context.save();
   context.globalAlpha = opacity;
 
-  if (overlayUrl) {
-    const overlay = new Image();
-    overlay.src = overlayUrl;
-    await overlay.decode();
-
+  if (overlay) {
     const maxWidth = width * 0.34;
     const maxHeight = height * 0.22;
     const scale = Math.min(maxWidth / overlay.naturalWidth, maxHeight / overlay.naturalHeight, 1);
@@ -474,7 +488,8 @@ async function drawOverlay(
 function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number) {
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error("Não foi possível gerar o arquivo otimizado."))),
+      (blob) =>
+        blob ? resolve(blob) : reject(new Error("Não foi possível gerar o arquivo otimizado.")),
       type,
       quality,
     );

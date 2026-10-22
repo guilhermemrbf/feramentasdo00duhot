@@ -1,5 +1,6 @@
+import { mediaItemId } from "@/lib/media/files";
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
   Download,
@@ -9,6 +10,15 @@ import {
   Scan,
   UploadCloud,
 } from "lucide-react";
+import { selectMediaFiles } from "@/lib/media/selection";
+import { renderLocalVideo } from "@/lib/media/render";
+import {
+  downloadBlob,
+  outputName,
+  queueCandidates,
+  throwIfAborted,
+  isAbort,
+} from "@/lib/media/files";
 import { AppShell, PageIntro } from "@/components/AppShell";
 
 export const Route = createFileRoute("/gerar-preview")({
@@ -48,9 +58,13 @@ function GerarPreview() {
   const [intensity, setIntensity] = useState<Intensity>("medium");
   const [items, setItems] = useState<Item[]>([]);
   const [busy, setBusy] = useState(false);
+  const [selectionNotice, setSelectionNotice] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const operation = useRef<AbortController | null>(null);
+  useEffect(() => () => operation.current?.abort(), []);
 
   const reset = () => {
+    if (busy) return;
     setType(null);
     setItems([]);
     setBusy(false);
@@ -58,25 +72,29 @@ function GerarPreview() {
   };
 
   const add = (files: FileList | null) => {
-    if (!files || !type) return;
+    if (busy || !files || !type) return;
     const accepted = type === "image" ? IMAGE_TYPES : VIDEO_TYPES;
-    const nextItems = Array.from(files)
-      .filter((file) => accepted.includes(file.type))
-      .map((file) => ({
-        id: crypto.randomUUID(),
-        file,
-        status: "waiting" as const,
-        output: null,
-        progress: 0,
-        error: null,
-      }));
+    const selection = selectMediaFiles(
+      Array.from(files),
+      items.map((item) => item.file),
+      accepted,
+    );
+    setSelectionNotice(
+      `${selection.accepted.length} arquivos adicionados${selection.rejected ? `; ${selection.rejected} ignorados por formato, arquivo vazio ou duplicidade` : ""}.`,
+    );
+    const nextItems = selection.accepted.map((file) => ({
+      id: mediaItemId(),
+      file,
+      status: "waiting" as const,
+      output: null,
+      progress: 0,
+      error: null,
+    }));
     setItems((current) => [...current, ...nextItems]);
   };
 
   const patch = (id: string, value: Partial<Item>) =>
-    setItems((current) =>
-      current.map((item) => (item.id === id ? { ...item, ...value } : item)),
-    );
+    setItems((current) => current.map((item) => (item.id === id ? { ...item, ...value } : item)));
 
   const processImage = async (item: Item) => {
     const sourceUrl = URL.createObjectURL(item.file);
@@ -91,6 +109,7 @@ function GerarPreview() {
       if (!context) throw new Error("Não foi possível preparar a imagem.");
       renderEffect(context, image, canvas.width, canvas.height, effect, intensity);
       const output = await canvasToBlob(canvas, "image/webp", 0.92);
+      throwIfAborted(operation.current!.signal);
       patch(item.id, { status: "done", output, progress: 100 });
     } finally {
       URL.revokeObjectURL(sourceUrl);
@@ -98,99 +117,33 @@ function GerarPreview() {
   };
 
   const processVideo = async (item: Item) => {
-    const sourceUrl = URL.createObjectURL(item.file);
-    const video = document.createElement("video");
-    video.src = sourceUrl;
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = "auto";
-
-    try {
-      await new Promise<void>((resolve, reject) => {
-        video.onloadedmetadata = () => resolve();
-        video.onerror = () =>
-          reject(new Error("Este vídeo não pôde ser processado neste navegador. Tente MP4, WEBM ou MOV."));
-      });
-
-      if (
-        !video.captureStream ||
-        !HTMLCanvasElement.prototype.captureStream ||
-        !MediaRecorder.isTypeSupported("video/webm")
-      ) {
-        throw new Error("Seu navegador não oferece suporte ao processamento local de vídeos.");
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error("Não foi possível preparar o vídeo.");
-
-      const stream = canvas.captureStream(30);
-      const sourceStream = video.captureStream();
-      sourceStream.getAudioTracks().forEach((track) => stream.addTrack(track));
-
-      const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-      const chunks: Blob[] = [];
-      recorder.ondataavailable = (event) => {
-        if (event.data.size) chunks.push(event.data);
-      };
-
-      const stopped = new Promise<void>((resolve, reject) => {
-        recorder.onstop = () => resolve();
-        recorder.onerror = () => reject(new Error("Erro ao gerar o preview."));
-      });
-
-      recorder.start(250);
-      await video.play();
-
-      const renderFrame = () => {
-        if (video.ended || video.paused) return;
-        renderEffect(context, video, canvas.width, canvas.height, effect, intensity);
-        const progress = video.duration
-          ? Math.min(99, Math.round((video.currentTime / video.duration) * 100))
-          : 0;
-        patch(item.id, { progress });
-        requestAnimationFrame(renderFrame);
-      };
-
-      renderFrame();
-      await new Promise<void>((resolve) => {
-        video.onended = () => resolve();
-      });
-
-      renderEffect(context, video, canvas.width, canvas.height, effect, intensity);
-      recorder.stop();
-      await stopped;
-
-      stream.getTracks().forEach((track) => track.stop());
-      sourceStream.getTracks().forEach((track) => track.stop());
-
-      if (!chunks.length) throw new Error("Não foi possível gerar o preview.");
-
-      patch(item.id, {
-        status: "done",
-        output: new Blob(chunks, { type: "video/webm" }),
-        progress: 100,
-      });
-    } finally {
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
-      URL.revokeObjectURL(sourceUrl);
-    }
+    const output = await renderLocalVideo(
+      item.file,
+      (context, video, width, height) =>
+        renderEffect(context, video, width, height, effect, intensity),
+      operation.current!.signal,
+    );
+    throwIfAborted(operation.current!.signal);
+    patch(item.id, { status: "done", output, progress: 100 });
   };
 
   const processAll = async () => {
     if (!items.length || !type) return;
+    if (busy) return;
+    operation.current = new AbortController();
     setBusy(true);
 
-    for (const item of items) {
+    for (const item of queueCandidates(items)) {
+      if (operation.current.signal.aborted) break;
       patch(item.id, { status: "processing", progress: 0, error: null });
       try {
         if (type === "image") await processImage(item);
         else await processVideo(item);
       } catch (error) {
+        if (isAbort(error)) {
+          patch(item.id, { status: "waiting", error: null });
+          break;
+        }
         patch(item.id, {
           status: "error",
           error: error instanceof Error ? error.message : "Não foi possível gerar este preview.",
@@ -202,15 +155,8 @@ function GerarPreview() {
   };
 
   const download = (item: Item) => {
-    if (!item.output || !type) return;
-    const url = URL.createObjectURL(item.output);
-    const extension = type === "image" ? "webp" : "webm";
-    const baseName = item.file.name.replace(/\.[^.]+$/, "");
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "preview-" + baseName + "." + extension;
-    anchor.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (item.output)
+      downloadBlob(item.output, outputName(item.file.name, "preview-", item.output.type));
   };
 
   return (
@@ -244,6 +190,7 @@ function GerarPreview() {
                 Preview de {type === "image" ? "fotos" : "vídeos"}
               </p>
               <button
+                disabled={busy}
                 onClick={reset}
                 className="rounded-md border border-border px-3 py-2 text-xs"
               >
@@ -260,13 +207,16 @@ function GerarPreview() {
               className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center hover:border-primary/60"
             >
               <UploadCloud className="mb-4 size-6 text-primary" />
-              <p className="text-sm font-semibold">Arraste os arquivos aqui ou clique para selecionar</p>
+              <p className="text-sm font-semibold">
+                Arraste os arquivos aqui ou clique para selecionar
+              </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {type === "image" ? "JPG, PNG, WEBP ou AVIF" : "MP4, WEBM ou MOV"} · vários arquivos
               </p>
               <input
                 ref={inputRef}
                 type="file"
+                disabled={busy}
                 multiple
                 accept={(type === "image" ? IMAGE_TYPES : VIDEO_TYPES).join(",")}
                 className="hidden"
@@ -281,8 +231,18 @@ function GerarPreview() {
                   Tipo de efeito
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button onClick={() => setEffect("blur")} className={optionClass(effect === "blur")}>Blur</button>
-                  <button onClick={() => setEffect("pixel")} className={optionClass(effect === "pixel")}>Pixelado</button>
+                  <button
+                    onClick={() => setEffect("blur")}
+                    className={optionClass(effect === "blur")}
+                  >
+                    Blur
+                  </button>
+                  <button
+                    onClick={() => setEffect("pixel")}
+                    className={optionClass(effect === "pixel")}
+                  >
+                    Pixelado
+                  </button>
                 </div>
                 <p className="mt-3 text-xs leading-5 text-muted-foreground">
                   O efeito cobre todo o quadro. Em vídeos, ele é aplicado durante toda a duração.
@@ -295,6 +255,7 @@ function GerarPreview() {
                   {(["light", "medium", "heavy"] as Intensity[]).map((value) => (
                     <button
                       key={value}
+                      disabled={busy}
                       onClick={() => setIntensity(value)}
                       className={optionClass(intensity === value)}
                     >
@@ -308,18 +269,46 @@ function GerarPreview() {
               </div>
             </div>
 
+            {selectionNotice && (
+              <p role="status" className="text-xs text-muted-foreground">
+                {selectionNotice}
+              </p>
+            )}
+            {busy && (
+              <div
+                role="status"
+                className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-4 text-xs"
+              >
+                <span>
+                  Processando neste dispositivo. Você pode cancelar sem perder os arquivos já
+                  concluídos.
+                </span>
+                <button
+                  onClick={() => operation.current?.abort()}
+                  className="shrink-0 rounded border border-border px-3 py-2"
+                >
+                  Cancelar processamento
+                </button>
+              </div>
+            )}
+
             {items.length > 0 && (
               <>
                 <div className="flex items-center justify-between border-b border-border pb-4">
                   <span className="text-xs text-muted-foreground">
-                    {items.filter((item) => item.status === "done").length}/{items.length} previews gerados
+                    {items.filter((item) => item.status === "done").length}/{items.length} previews
+                    gerados
                   </span>
                   <button
                     disabled={busy}
                     onClick={processAll}
                     className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
                   >
-                    {busy ? <Loader2 className="size-3 animate-spin" /> : <Scan className="size-3" />}
+                    {busy ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <Scan className="size-3" />
+                    )}
                     {busy ? "Gerando..." : "Gerar previews"}
                   </button>
                 </div>
@@ -329,13 +318,21 @@ function GerarPreview() {
                     <article key={item.id} className="rounded-lg border border-border bg-card p-4">
                       <div className="flex items-center gap-3">
                         <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary">
-                          {type === "image" ? <ImageIcon className="size-5" /> : <PlaySquare className="size-5" />}
+                          {type === "image" ? (
+                            <ImageIcon className="size-5" />
+                          ) : (
+                            <PlaySquare className="size-5" />
+                          )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm">{item.file.name}</p>
-                          <p className="text-xs text-muted-foreground">{(item.file.size / 1048576).toFixed(2)} MB</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(item.file.size / 1048576).toFixed(2)} MB
+                          </p>
                         </div>
-                        {item.status === "processing" && <Loader2 className="size-4 animate-spin text-primary" />}
+                        {item.status === "processing" && (
+                          <Loader2 className="size-4 animate-spin text-primary" />
+                        )}
                         {item.status === "done" && (
                           <>
                             <button
@@ -356,7 +353,10 @@ function GerarPreview() {
                             <span>{item.progress}%</span>
                           </div>
                           <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
-                            <div className="h-full rounded-full bg-primary transition-all" style={{ width: item.progress + "%" }} />
+                            <div
+                              className="h-full rounded-full bg-primary transition-all"
+                              style={{ width: item.progress + "%" }}
+                            />
                           </div>
                         </div>
                       )}
@@ -369,8 +369,9 @@ function GerarPreview() {
             )}
 
             <div className="rounded-md border border-border bg-card p-4 text-xs leading-5 text-muted-foreground">
-              <strong className="text-foreground">Processamento local:</strong>{" "}
-              os arquivos permanecem no navegador. O preview é gerado por re-renderização do conteúdo e, no caso de vídeos, o efeito é aplicado continuamente durante toda a duração.
+              <strong className="text-foreground">Processamento local:</strong> os arquivos
+              permanecem no navegador. O preview é gerado por re-renderização do conteúdo e, no caso
+              de vídeos, o efeito é aplicado continuamente durante toda a duração.
             </div>
           </section>
         )}
@@ -422,16 +423,18 @@ function pixelScale(intensity: Intensity) {
 }
 
 function optionClass(active: boolean) {
-  return "rounded-md border px-3 py-2 text-xs transition-colors " +
+  return (
+    "rounded-md border px-3 py-2 text-xs transition-colors " +
     (active
       ? "border-primary bg-primary/10 text-primary"
-      : "border-border text-muted-foreground hover:border-primary/50");
+      : "border-border text-muted-foreground hover:border-primary/50")
+  );
 }
 
 function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number) {
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
-      (blob) => blob ? resolve(blob) : reject(new Error("Não foi possível gerar o preview.")),
+      (blob) => (blob ? resolve(blob) : reject(new Error("Não foi possível gerar o preview."))),
       type,
       quality,
     );

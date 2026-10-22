@@ -3,7 +3,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-VERSION = '0.3.0'
+VERSION = '0.4.0'
 
 
 def data_directory():
@@ -47,6 +47,7 @@ def self_test():
         root=tk.Tk();root.withdraw()
         window=Window(root,store)
         root.update()
+        assert window.brand_mark.width()>0
         # Exercise the editor widgets in the packaged Windows application.
         from local_app.editor import DEFAULT_URL, rewrite, encode_entities
         from telethon import types

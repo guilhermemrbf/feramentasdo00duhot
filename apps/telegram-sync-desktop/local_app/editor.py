@@ -228,11 +228,19 @@ class ChannelEditor:
                 raise
         return batch
 
-    async def apply(self, batch_id, restore=False):
+    async def apply(self, batch_id, restore=False, message_ids=None):
         from .engine import safe_error
         self.cancel.clear()
         async with self.engine.lock:
             self.idle_sync()
+            selected=None
+            if message_ids is not None:
+                if not isinstance(message_ids,(list,tuple,set)) or not message_ids or any(type(value) is not int or value<=0 for value in message_ids):
+                    raise UserError('Selecione pelo menos um post válido da análise.')
+                selected=set(message_ids)
+                known={item['message_id'] for item in self.db.states(batch_id)}
+                if not selected<=known:
+                    raise UserError('A seleção contém posts que não pertencem a esta análise.')
             batch = self.db.batch(batch_id)
             if batch['status'] in ('scanning','incomplete'):
                 raise UserError('Esta análise está incompleta. Faça uma nova análise.')
@@ -248,6 +256,8 @@ class ChannelEditor:
             self.db.patch(batch_id, status='applying', note='Restaurando…' if restore else 'Aplicando…')
             try:
                 for item in self.db.items(batch_id):
+                    if selected is not None and item['message_id'] not in selected:
+                        continue
                     if self.cancel.is_set() or self.engine.stopping:
                         self.db.patch(batch_id, status='paused', note='Pausado pelo usuário. É possível retomar.')
                         return batch_id
@@ -277,7 +287,10 @@ class ChannelEditor:
                     self.db.item_state(batch_id,item['message_id'],final_state)
                     self.progress(f"Post {item['message_id']}: {'restaurado' if restore else 'editado'}.")
                     await asyncio.sleep(1.1)
-                self.db.patch(batch_id, status='done', note='Restauração concluída.' if restore else 'Edição concluída. Confira os estados dos posts na lista.')
+                remaining=sum(item['status']=='pending' for item in self.db.states(batch_id))
+                note='Restauração concluída.' if restore else 'Edição concluída. Confira os estados dos posts na lista.'
+                if remaining:note+=f' {remaining} propostas ainda não foram aplicadas.'
+                self.db.patch(batch_id,status='ready' if remaining else 'done',note=note)
             except errors.FloodWaitError as reason:
                 self.db.patch(batch_id,status='paused',wait_until=time.time()+reason.seconds+1,note=f'Limite Telegram: aguarde {reason.seconds} segundos e retome a operação.')
             except BaseException as reason:

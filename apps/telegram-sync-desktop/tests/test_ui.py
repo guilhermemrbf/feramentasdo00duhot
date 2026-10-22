@@ -99,3 +99,19 @@ class InterfaceTests(unittest.TestCase):
             self.assertGreater(page.canvas.bbox('all')[3],page.canvas.winfo_height())
             page.canvas.yview_moveto(1);self.root.update()
         self.window.runtime.engine.connected.assert_not_awaited()
+
+    def test_editor_selected_scope_preserves_other_proposals(self):
+        editor=self.window.editor_tab
+        original={'text':'VIP','entities':encode_entities([types.MessageEntityTextUrl(0,3,'https://old.example')]),'media':None,'preview':False,'buttons':None}
+        desired,links=rewrite(original,DEFAULT_URL)
+        batch=editor.editor.db.create('-100123','Canal de teste',1,DEFAULT_URL)
+        for message in (7,8):editor.editor.db.add(batch,message,original,desired,links)
+        editor.editor.db.patch(batch,status='ready',scanned=2);editor.complete(batch)
+        editor.scope.set('Somente os selecionados');editor.update_buttons()
+        self.assertEqual(str(editor.apply_button['state']),'disabled')
+        editor.tree.selection_set(('7','8'));editor.selection_changed();self.root.update()
+        self.assertEqual(set(editor.tree.selection()),{'7','8'})
+        self.assertEqual(str(editor.apply_button['state']),'normal')
+        editor.render_rows();self.root.update()
+        self.assertEqual(set(editor.tree.selection()),{'7','8'})
+        self.window.runtime.engine.connected.assert_not_awaited()

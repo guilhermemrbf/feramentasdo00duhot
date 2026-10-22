@@ -260,6 +260,7 @@ function FunilPage() {
   const [editingFunnelId, setEditingFunnelId] = useState<string | null>(null);
   const [deletingFunnelId, setDeletingFunnelId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [projectSearch, setProjectSearch] = useState("");
   const [shareMode, setShareMode] = useState<"export" | "import" | null>(null);
   const [mouseMode, setMouseMode] = useState<"move" | "select">("move");
   const [saveError, setSaveError] = useState("");
@@ -946,7 +947,7 @@ function FunilPage() {
 
   return (
     <AppShell>
-      <main className="min-h-screen bg-[radial-gradient(ellipse_at_70%_-20%,rgba(72,132,255,0.12),transparent_48%)]">
+      <main className="min-h-screen bg-background">
         {saveError && (
           <div
             role="alert"
@@ -960,7 +961,7 @@ function FunilPage() {
           data-fullscreen={fullscreen}
           className={
             fullscreen && active
-              ? "fixed inset-0 z-[70] flex h-dvh w-full flex-col overflow-y-auto bg-[#0d1119] p-3 text-foreground"
+              ? "fixed inset-0 z-[70] flex h-dvh w-full flex-col overflow-y-auto bg-background p-3 text-foreground"
               : "mx-auto flex min-h-screen max-w-[1920px] flex-col px-4 py-5 sm:px-6 lg:px-8 lg:py-5"
           }
         >
@@ -988,71 +989,101 @@ function FunilPage() {
                   </button>
                   <button
                     onClick={createFunnel}
-                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition hover:bg-primary/90"
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground  transition hover:bg-primary/90"
                   >
                     <Plus className="size-4" /> Criar funil
                   </button>
                 </div>
               </header>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <label htmlFor="funnel-project-search" className="text-xs text-muted-foreground">
+                  Encontrar projeto
+                </label>
+                <input
+                  id="funnel-project-search"
+                  type="search"
+                  value={projectSearch}
+                  onChange={(event) => setProjectSearch(event.target.value)}
+                  placeholder="Nome do funil"
+                  className="workspace-input max-w-sm"
+                />
+                <span className="text-xs text-muted-foreground">
+                  {
+                    funnels.filter((funnel) =>
+                      funnel.name
+                        .toLocaleLowerCase("pt-BR")
+                        .includes(projectSearch.toLocaleLowerCase("pt-BR")),
+                    ).length
+                  }{" "}
+                  projetos
+                </span>
+              </div>
               <section
-                className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
                 aria-label="Projetos de funil"
               >
-                {funnels.map((funnel, index) => (
-                  <article
-                    key={funnel.id}
-                    className="group overflow-hidden rounded-2xl border border-border bg-card/75 shadow-[0_16px_42px_rgba(0,0,0,0.12)] transition hover:-translate-y-0.5 hover:border-primary/30"
-                  >
-                    <button
-                      onClick={() => openFunnel(funnel.id)}
-                      className="block h-40 w-full overflow-hidden border-b border-border/70 bg-[#10141d] p-4 text-left"
-                      aria-label={`Prévia de ${funnel.name}`}
+                {funnels
+                  .filter((funnel) =>
+                    funnel.name
+                      .toLocaleLowerCase("pt-BR")
+                      .includes(projectSearch.toLocaleLowerCase("pt-BR")),
+                  )
+                  .map((funnel, index) => (
+                    <article
+                      key={funnel.id}
+                      className="group overflow-hidden rounded-2xl border border-border bg-card/75 shadow-[0_16px_42px_rgba(0,0,0,0.12)] transition hover:-translate-y-0.5 hover:border-primary/30"
                     >
-                      <FunnelPreview funnel={funnel} />
-                    </button>
-                    <div className="p-5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-[10px] font-bold tracking-[0.14em] text-primary">
-                            FLUXO {String(index + 1).padStart(2, "0")}
-                          </p>
-                          <h2 className="mt-1 font-display text-lg font-bold">{funnel.name}</h2>
+                      <button
+                        onClick={() => openFunnel(funnel.id)}
+                        className="block h-40 w-full overflow-hidden border-b border-border/70 bg-[#10141d] p-4 text-left"
+                        aria-label={`Prévia de ${funnel.name}`}
+                      >
+                        <FunnelPreview funnel={funnel} />
+                      </button>
+                      <div className="p-5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-[10px] font-bold tracking-[0.14em] text-primary">
+                              FLUXO {String(index + 1).padStart(2, "0")}
+                            </p>
+                            <h2 className="mt-1 font-display text-lg font-bold">{funnel.name}</h2>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setEditingFunnelId(funnel.id);
+                            }}
+                            aria-label={`Editar nome e descrição de ${funnel.name}`}
+                            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                          >
+                            <Settings2 className="size-4" />
+                          </button>
+                          <button
+                            onClick={() => deleteFunnel(funnel.id)}
+                            aria-label={`Excluir ${funnel.name}`}
+                            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
                         </div>
-                        <button
-                          onClick={() => {
-                            setEditingFunnelId(funnel.id);
-                          }}
-                          aria-label={`Editar nome e descrição de ${funnel.name}`}
-                          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
-                        >
-                          <Settings2 className="size-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteFunnel(funnel.id)}
-                          aria-label={`Excluir ${funnel.name}`}
-                          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
-                      <p className="mt-2 line-clamp-2 min-h-10 text-xs leading-5 text-muted-foreground">
-                        {funnel.description || "Adicione uma descrição para orientar seu projeto."}
-                      </p>
-                      <div className="mt-4 flex items-center justify-between border-t border-border/70 pt-3">
-                        <div className="flex gap-3 text-[10px] text-muted-foreground">
-                          <span>{funnel.nodes.length} elementos</span>
-                          <span>{funnel.edges.length} conexões</span>
+                        <p className="mt-2 line-clamp-2 min-h-10 text-xs leading-5 text-muted-foreground">
+                          {funnel.description ||
+                            "Adicione uma descrição para orientar seu projeto."}
+                        </p>
+                        <div className="mt-4 flex items-center justify-between border-t border-border/70 pt-3">
+                          <div className="flex gap-3 text-[10px] text-muted-foreground">
+                            <span>{funnel.nodes.length} elementos</span>
+                            <span>{funnel.edges.length} conexões</span>
+                          </div>
+                          <button
+                            onClick={() => openFunnel(funnel.id)}
+                            className="inline-flex items-center gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-xs font-semibold transition hover:border-primary/30 hover:bg-primary/5"
+                          >
+                            Abrir funil <ArrowRight className="size-3.5" />
+                          </button>
                         </div>
-                        <button
-                          onClick={() => openFunnel(funnel.id)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-xs font-semibold transition hover:border-primary/30 hover:bg-primary/5"
-                        >
-                          Abrir funil <ArrowRight className="size-3.5" />
-                        </button>
                       </div>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  ))}
                 <button
                   onClick={createFunnel}
                   className="flex min-h-[300px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card/25 text-sm font-semibold text-muted-foreground transition hover:border-primary/35 hover:bg-primary/5 hover:text-foreground"
@@ -1256,7 +1287,7 @@ function FunilPage() {
                 <div
                   role="group"
                   aria-label="Modo do mouse"
-                  className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-slate-600 bg-[#0d1119] p-1"
+                  className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-slate-600 bg-background p-1"
                 >
                   <button
                     onClick={() => setMouseMode("move")}
@@ -1488,7 +1519,7 @@ function FunilPage() {
                                 kind: event.target.value as FlowNodeKind,
                               })
                             }
-                            className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#0d1119] px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
+                            className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
                           >
                             {Object.entries(kindStyles).map(([kind, style]) => (
                               <option key={kind} value={kind}>
@@ -1506,7 +1537,7 @@ function FunilPage() {
                                 appearance: event.target.value as FlowNode["appearance"],
                               })
                             }
-                            className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#0d1119] px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
+                            className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
                           >
                             <option value="default">Cartão com detalhes</option>
                             <option value="solid">Bloco colorido</option>
@@ -1583,7 +1614,7 @@ function FunilPage() {
                                 onChange={(event) =>
                                   updateNode(selectedNode.id, { displayLabel: event.target.value })
                                 }
-                                className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#0d1119] px-3 py-2.5 text-xs text-white"
+                                className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white"
                               />
                             </label>
                             <label className="block text-[11px] font-semibold text-slate-300">
@@ -1596,7 +1627,7 @@ function FunilPage() {
                                       (event.target.value as FlowNode["platform"]) || undefined,
                                   })
                                 }
-                                className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#0d1119] px-3 py-2.5 text-xs text-white"
+                                className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white"
                               >
                                 <option value="">Campanha</option>
                                 <option value="tiktok">TikTok</option>
@@ -1614,7 +1645,7 @@ function FunilPage() {
                               updateNode(selectedNode.id, { title: event.target.value })
                             }
                             placeholder="Nome deste ponto"
-                            className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#0d1119] px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
+                            className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
                           />
                         </label>
                         <label className="block text-[11px] font-semibold text-slate-300">
@@ -1626,7 +1657,7 @@ function FunilPage() {
                             }
                             rows={3}
                             placeholder="Explique a função desta etapa"
-                            className="mt-1.5 w-full resize-y rounded-lg border border-slate-600 bg-[#0d1119] px-3 py-2.5 text-xs leading-5 text-white outline-none focus:border-blue-400"
+                            className="mt-1.5 w-full resize-y rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs leading-5 text-white outline-none focus:border-blue-400"
                           />
                         </label>
                         {selectedNode && (
@@ -1639,7 +1670,7 @@ function FunilPage() {
                               }
                               rows={5}
                               placeholder="Adicione informações, links ou próximos passos"
-                              className="mt-1.5 w-full resize-y rounded-lg border border-slate-600 bg-[#0d1119] px-3 py-2.5 text-xs leading-5 text-white outline-none focus:border-blue-400"
+                              className="mt-1.5 w-full resize-y rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs leading-5 text-white outline-none focus:border-blue-400"
                             />
                           </label>
                         )}
@@ -1665,7 +1696,7 @@ function FunilPage() {
                                   });
                                 }}
                                 placeholder="https://..."
-                                className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#0d1119] px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
+                                className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
                               />
                             </label>
                             <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-600 px-3 py-3 text-xs font-semibold text-slate-300 transition hover:border-blue-400 hover:bg-blue-400/5">
@@ -1693,7 +1724,7 @@ function FunilPage() {
                                         imageFit: event.target.value as "cover" | "contain",
                                       })
                                     }
-                                    className="mt-1 block w-full rounded-lg border border-slate-600 bg-[#0d1119] p-2"
+                                    className="mt-1 block w-full rounded-lg border border-slate-600 bg-background p-2"
                                   >
                                     <option value="cover">Preencher</option>
                                     <option value="contain">Imagem inteira</option>
@@ -1741,7 +1772,7 @@ function FunilPage() {
                                   x: Math.max(0, Number(event.target.value)),
                                 })
                               }
-                              className="mt-1 w-full rounded-lg border border-slate-600 bg-[#0d1119] px-2.5 py-2 text-xs text-white"
+                              className="mt-1 w-full rounded-lg border border-slate-600 bg-background px-2.5 py-2 text-xs text-white"
                             />
                           </label>
                           <label className="text-[10px] text-slate-400">
@@ -1754,7 +1785,7 @@ function FunilPage() {
                                   y: Math.max(0, Number(event.target.value)),
                                 })
                               }
-                              className="mt-1 w-full rounded-lg border border-slate-600 bg-[#0d1119] px-2.5 py-2 text-xs text-white"
+                              className="mt-1 w-full rounded-lg border border-slate-600 bg-background px-2.5 py-2 text-xs text-white"
                             />
                           </label>
                         </div>
@@ -1783,7 +1814,7 @@ function FunilPage() {
                               }))
                             }
                             placeholder="Ex.: se assinou, seguir para..."
-                            className="mt-1.5 w-full rounded-lg border border-slate-600 bg-[#0d1119] px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
+                            className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
                           />
                         </label>
                       </div>

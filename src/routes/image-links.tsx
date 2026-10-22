@@ -1,5 +1,6 @@
+import { mediaItemId } from "@/lib/media/files";
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   UploadCloud,
   Copy,
@@ -12,6 +13,8 @@ import {
 } from "lucide-react";
 import { AppShell, PageIntro } from "@/components/AppShell";
 import { ACCEPTED_MEDIA_TYPES, uploadToCloudinary } from "@/lib/cloudinary";
+import { selectMediaFiles, formatMediaLink } from "@/lib/media/selection";
+import { downloadBlob } from "@/lib/media/files";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/image-links")({
@@ -47,6 +50,7 @@ interface UploadedMedia {
   error: string | null;
   preview: string;
   type: "image" | "video";
+  file: File;
 }
 
 const FORMATS: [Format, string][] = [
@@ -63,69 +67,142 @@ function ImageLinks() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [busy, setBusy] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
+  const operation = useRef<AbortController | null>(null);
+  const inFlight = useRef(false);
+  const previews = useRef(new Set<string>());
+  useEffect(
+    () => () => {
+      operation.current?.abort();
+      previews.current.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [],
+  );
   const reset = () => {
+    if (inFlight.current) return;
+    previews.current.forEach((url) => URL.revokeObjectURL(url));
+    previews.current.clear();
     setUploads([]);
+    setNotice("Lista limpa. Arquivos já enviados continuam na hospedagem.");
     if (inputRef.current) inputRef.current.value = "";
   };
-
-  const uploadFile = useCallback((file: File) => {
-    const id = Math.random().toString(36).slice(2);
-    const preview = URL.createObjectURL(file);
-    const type = file.type.startsWith("video/") ? "video" : "image";
-
-    setUploads((prev) => [
-      { id, url: "", fileName: file.name, progress: 0, uploading: true, error: null, preview, type },
-      ...prev,
-    ]);
-
-    const patch = (p: Partial<UploadedMedia>) =>
-      setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...p } : u)));
-
-    uploadToCloudinary(file, (progress) => patch({ progress }))
-      .then((url) => patch({ url, uploading: false, progress: 100 }))
-      .catch((e: Error) => patch({ uploading: false, error: e.message }));
-  }, []);
-
+  const patch = (id: string, value: Partial<UploadedMedia>) =>
+    setUploads((current) => current.map((item) => (item.id === id ? { ...item, ...value } : item)));
+  const run = async (records: UploadedMedia[]) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    const controller = new AbortController();
+    operation.current = controller;
+    try {
+      for (const item of records) {
+        if (controller.signal.aborted) break;
+        setActiveId(item.id);
+        patch(item.id, { uploading: true, error: null, progress: 0 });
+        try {
+          const url = await uploadToCloudinary(
+            item.file,
+            (progress) => patch(item.id, { progress }),
+            controller.signal,
+          );
+          patch(item.id, { url, uploading: false, progress: 100 });
+        } catch (error) {
+          patch(item.id, {
+            uploading: false,
+            error: error instanceof Error ? error.message : "Não foi possível enviar o arquivo.",
+          });
+        }
+      }
+    } finally {
+      if (controller.signal.aborted)
+        setUploads((current) =>
+          current.map((item) =>
+            item.uploading
+              ? {
+                  ...item,
+                  uploading: false,
+                  error: "Envio cancelado. Se necessário, envie novamente.",
+                }
+              : item,
+          ),
+        );
+      setActiveId(null);
+      setBusy(false);
+      inFlight.current = false;
+    }
+  };
   const uploadFiles = (files: FileList | null) => {
     if (!files) return;
-    Array.from(files).forEach(uploadFile);
-  };
-
-  const getFormatted = (item: UploadedMedia) => {
-    if (!item.url) return "";
-
-    if (item.type === "video") {
-      switch (format) {
-        case "markdown":
-          return `[${item.fileName}](${item.url})`;
-        case "html":
-          return `<video src="${item.url}" controls></video>`;
-        case "ai":
-          return `Use this video as reference: ${item.url}`;
-        default:
-          return item.url;
-      }
+    if (inFlight.current) {
+      setNotice("Aguarde os envios ou cancele a operação antes de adicionar novos arquivos.");
+      return;
     }
-
-    switch (format) {
-      case "markdown":
-        return `![${item.fileName}](${item.url})`;
-      case "html":
-        return `<img src="${item.url}" alt="${item.fileName}" />`;
-      case "ai":
-        return `Use this image as reference: ${item.url}`;
-      default:
-        return item.url;
-    }
+    const selection = selectMediaFiles(
+      Array.from(files),
+      uploads.map((item) => item.file),
+      ACCEPTED_MEDIA_TYPES,
+    );
+    const records: UploadedMedia[] = selection.accepted.map((file) => {
+      const preview = URL.createObjectURL(file);
+      previews.current.add(preview);
+      return {
+        id: mediaItemId(),
+        url: "",
+        fileName: file.name,
+        progress: 0,
+        uploading: true,
+        error: null,
+        preview,
+        type: file.type.startsWith("video/") ? "video" : "image",
+        file,
+      };
+    });
+    setNotice(
+      `${records.length} arquivos adicionados${selection.rejected ? `; ${selection.rejected} ignorados por formato, arquivo vazio ou duplicidade` : ""}.`,
+    );
+    setUploads((current) => [...records, ...current]);
+    if (records.length) void run(records);
   };
-
+  const getFormatted = (item: UploadedMedia) => (item.url ? formatMediaLink(item, format) : "");
   const copy = async (item: UploadedMedia) => {
-    const text = getFormatted(item);
-    if (!text) return;
-    await navigator.clipboard.writeText(text);
-    setCopiedId(item.id);
-    setTimeout(() => setCopiedId(null), 1800);
+    try {
+      await navigator.clipboard.writeText(getFormatted(item));
+      setCopiedId(item.id);
+      setTimeout(() => setCopiedId(null), 1800);
+    } catch {
+      setNotice(
+        "Não foi possível copiar automaticamente. Selecione o texto do link e copie manualmente.",
+      );
+    }
   };
+  const copyAll = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        uploads
+          .filter((item) => item.url)
+          .map(getFormatted)
+          .join("\n"),
+      );
+      setNotice("Links prontos copiados.");
+    } catch {
+      setNotice("Não foi possível copiar. Use Baixar links para salvar os resultados.");
+    }
+  };
+  const exportLinks = () =>
+    downloadBlob(
+      new Blob(
+        [
+          uploads
+            .filter((item) => item.url)
+            .map(getFormatted)
+            .join("\n"),
+        ],
+        { type: "text/plain;charset=utf-8" },
+      ),
+      "00duhot-links.txt",
+    );
 
   const done = uploads.filter((u) => u.url).length;
 
@@ -152,7 +229,9 @@ function ImageLinks() {
             }}
             className={cn(
               "flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center transition-colors",
-              dragOver ? "border-primary bg-primary/5" : "hover:border-primary/60 hover:bg-accent/40",
+              dragOver
+                ? "border-primary bg-primary/5"
+                : "hover:border-primary/60 hover:bg-accent/40",
             )}
           >
             <span className="mb-4 flex size-11 items-center justify-center rounded-md bg-secondary text-muted-foreground">
@@ -167,6 +246,7 @@ function ImageLinks() {
             <input
               ref={inputRef}
               type="file"
+              disabled={busy}
               multiple
               accept={ACCEPTED_MEDIA_TYPES.join(",")}
               className="hidden"
@@ -174,6 +254,23 @@ function ImageLinks() {
             />
           </label>
 
+          {notice && (
+            <p role="status" className="text-xs leading-6 text-muted-foreground">
+              {notice}
+            </p>
+          )}
+          <p className="text-xs leading-6 text-muted-foreground">
+            Os arquivos são enviados ao Cloudinary e ficam públicos. Limpar a lista não exclui
+            arquivos da hospedagem.
+          </p>
+          {busy && (
+            <button
+              onClick={() => operation.current?.abort()}
+              className="rounded-md border border-border px-3 py-2 text-xs"
+            >
+              Cancelar envios
+            </button>
+          )}
           {uploads.length > 0 && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
@@ -198,6 +295,21 @@ function ImageLinks() {
                     {done}/{uploads.length} prontas
                   </span>
                   <button
+                    disabled={!done}
+                    onClick={copyAll}
+                    className="text-xs text-primary disabled:opacity-40"
+                  >
+                    Copiar todos
+                  </button>
+                  <button
+                    disabled={!done}
+                    onClick={exportLinks}
+                    className="text-xs text-primary disabled:opacity-40"
+                  >
+                    Baixar links
+                  </button>
+                  <button
+                    disabled={busy}
                     onClick={reset}
                     className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                   >
@@ -212,7 +324,7 @@ function ImageLinks() {
                     key={item.id}
                     className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3"
                   >
-                    <div className="aspect-video overflow-hidden rounded-md border border-border bg-secondary/40">
+                    <div className="relative aspect-video overflow-hidden rounded-md border border-border bg-secondary/40">
                       {item.type === "video" ? (
                         <video
                           src={item.preview}
@@ -249,7 +361,8 @@ function ImageLinks() {
                           />
                         </div>
                         <p className="flex items-center gap-1.5 text-xs text-primary">
-                          <Loader2 className="size-3 animate-spin" /> Enviando · {item.progress}%
+                          <Loader2 className="size-3 animate-spin" />{" "}
+                          {activeId === item.id ? `Enviando · ${item.progress}%` : "Na fila"}
                         </p>
                       </div>
                     )}
@@ -260,6 +373,23 @@ function ImageLinks() {
                       </p>
                     )}
 
+                    {item.error && !busy && (
+                      <button
+                        onClick={() => void run([item])}
+                        className="text-left text-xs text-primary"
+                      >
+                        Enviar novamente
+                      </button>
+                    )}
+                    {item.url && (
+                      <input
+                        aria-label={`Link de ${item.fileName}`}
+                        readOnly
+                        value={getFormatted(item)}
+                        onFocus={(event) => event.target.select()}
+                        className="workspace-input"
+                      />
+                    )}
                     {item.url && (
                       <div className="flex gap-2">
                         <button

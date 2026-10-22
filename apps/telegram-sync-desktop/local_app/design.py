@@ -2,24 +2,24 @@
 import tkinter as tk
 from tkinter import ttk, font as tkfont
 
-BG='#090c13'
-SIDEBAR='#070a10'
-CARD='#121824'
-INPUT='#192232'
-BORDER='#283246'
-TEXT='#f1f5fc'
-MUTED='#a4b0c4'
-BLUE='#579dff'
-GREEN='#60ddb0'
-AMBER='#f1c078'
-RED='#ff98a6'
+BG='#101010'
+SIDEBAR='#0c0c0c'
+CARD='#171717'
+INPUT='#222222'
+BORDER='#30302e'
+TEXT='#efede8'
+MUTED='#a8a59f'
+BLUE='#c9a66b'
+GREEN='#a2b4a8'
+AMBER='#c9ad80'
+RED='#d88983'
 
 
 def theme(root):
     root.configure(bg=BG)
     root.option_add('*TCombobox*Listbox.background',INPUT)
     root.option_add('*TCombobox*Listbox.foreground',TEXT)
-    root.option_add('*TCombobox*Listbox.selectBackground','#234d80')
+    root.option_add('*TCombobox*Listbox.selectBackground','#463c2d')
     style=ttk.Style(root);style.theme_use('clam')
     style.configure('.',font=('Segoe UI',10),background=BG,foreground=TEXT,bordercolor=BORDER,lightcolor=BORDER,darkcolor=BORDER)
     style.configure('TFrame',background=BG)
@@ -32,12 +32,12 @@ def theme(root):
     style.configure('Heading.TLabel',font=('Segoe UI',15,'bold'))
     style.configure('CardHeading.TLabel',background=CARD,font=('Segoe UI',12,'bold'))
     style.configure('Eyebrow.TLabel',foreground=BLUE,font=('Segoe UI',9,'bold'))
-    style.configure('TButton',padding=(14,9),background='#202d42',borderwidth=1,foreground=TEXT)
-    style.map('TButton',background=[('active','#2c4060'),('disabled','#192130')],foreground=[('disabled','#778297')])
-    style.configure('Primary.TButton',background='#2874de',foreground='white',font=('Segoe UI',10,'bold'))
-    style.map('Primary.TButton',background=[('active','#3687f5'),('disabled','#203653')],foreground=[('disabled','#91a1b9')])
-    style.configure('Danger.TButton',background='#32202a',foreground=RED)
-    style.map('Danger.TButton',background=[('active','#4a2935'),('disabled','#1e202c')])
+    style.configure('TButton',padding=(14,9),background='#282724',borderwidth=1,foreground=TEXT)
+    style.map('TButton',background=[('active','#35332e'),('disabled','#222222')],foreground=[('disabled','#85817a')])
+    style.configure('Primary.TButton',background='#c9a66b',foreground='#15120d',font=('Segoe UI',10,'bold'))
+    style.map('Primary.TButton',background=[('active','#d8b983'),('disabled','#3c352a')],foreground=[('disabled','#9a907f')])
+    style.configure('Danger.TButton',background='#2d2322',foreground=RED)
+    style.map('Danger.TButton',background=[('active','#42302d'),('disabled','#252222')])
     style.configure('Quiet.TButton',background=CARD,padding=(10,6))
     style.configure('TEntry',fieldbackground=INPUT,insertcolor=TEXT,padding=9,borderwidth=1)
     style.map('TEntry',bordercolor=[('focus',BLUE)])
@@ -45,12 +45,12 @@ def theme(root):
     style.map('TCombobox',fieldbackground=[('readonly',INPUT)],foreground=[('readonly',TEXT)],selectbackground=[('readonly',INPUT)],selectforeground=[('readonly',TEXT)])
     for name in ('TCheckbutton','TRadiobutton'):
         style.configure(name,background=CARD,padding=5)
-        style.map(name,background=[('active',CARD)],indicatorcolor=[('selected','#2874de'),('!selected',INPUT)])
+        style.map(name,background=[('active',CARD)],indicatorcolor=[('selected','#c9a66b'),('!selected',INPUT)])
     style.configure('Treeview',background=CARD,fieldbackground=CARD,foreground=TEXT,rowheight=38,borderwidth=0)
-    style.map('Treeview',background=[('selected','#1c3a61')],foreground=[('selected','white')])
+    style.map('Treeview',background=[('selected','#40382b')],foreground=[('selected','white')])
     style.configure('Treeview.Heading',background=INPUT,foreground=MUTED,font=('Segoe UI',9,'bold'),padding=(10,10),relief='flat')
-    style.map('Treeview.Heading',background=[('active','#233047')])
-    style.configure('TScrollbar',background='#26334a',troughcolor=BG,borderwidth=0,arrowsize=12)
+    style.map('Treeview.Heading',background=[('active','#33312d')])
+    style.configure('TScrollbar',background='#3c3932',troughcolor=BG,borderwidth=0,arrowsize=12)
     style.configure('Horizontal.TProgressbar',background=BLUE,troughcolor=INPUT,borderwidth=0)
     style.configure('Page.TNotebook',background=BG,borderwidth=0,tabmargins=0)
     style.layout('Page.TNotebook.Tab',[])
@@ -107,7 +107,7 @@ class Metric:
         inner=tk.Frame(self.frame,bg=CARD,padx=16,pady=13);inner.pack(fill='both',expand=True)
         tk.Label(inner,text=title,bg=CARD,fg=MUTED,font=('Segoe UI',10)).pack(anchor='w')
         self.value=tk.StringVar(value='0')
-        tk.Label(inner,textvariable=self.value,bg=CARD,fg=color,font=('Segoe UI',27,'bold')).pack(anchor='w',pady=(4,2))
+        tk.Label(inner,textvariable=self.value,bg=CARD,fg=TEXT,font=('Segoe UI',27,'bold')).pack(anchor='w',pady=(4,2))
         self.description=tk.StringVar(value=description)
         self.caption=tk.Label(inner,textvariable=self.description,bg=CARD,fg=MUTED,font=('Segoe UI',9),wraplength=160,justify='left')
         self.caption.pack(anchor='w')
@@ -126,7 +126,7 @@ def metrics(parent,definitions):
 
 def text_box(parent,height=5,color=TEXT):
     holder=ttk.Frame(parent,style='Card.TFrame');holder.pack(fill='both',expand=True)
-    widget=tk.Text(holder,height=height,bg='#0d131f',fg=color,insertbackground=TEXT,selectbackground='#234d80',wrap='word',relief='flat',padx=12,pady=12,font=('Segoe UI',10),undo=False)
+    widget=tk.Text(holder,height=height,bg='#121212',fg=color,insertbackground=TEXT,selectbackground='#463c2d',wrap='word',relief='flat',padx=12,pady=12,font=('Segoe UI',10),undo=False)
     bar=ttk.Scrollbar(holder,orient='vertical',command=widget.yview);widget.configure(yscrollcommand=bar.set)
     bar.pack(side='right',fill='y');widget.pack(side='left',fill='both',expand=True)
     return widget

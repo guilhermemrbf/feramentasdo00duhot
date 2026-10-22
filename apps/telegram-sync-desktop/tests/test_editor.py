@@ -210,3 +210,17 @@ class EditorTests(unittest.IsolatedAsyncioTestCase):
         self.store.close();self.store=Store(Path(self.temp.name)/'test.sqlite3');db=EditStore(self.store)
         self.assertEqual(db.batch(batch)['status'],'paused')
         self.assertEqual(db.items(batch)[0]['original'],original)
+
+    async def test_apply_only_selected_posts_leaves_other_proposals_pending(self):
+        batch=await self.prepared();item=self.editor.db.items(batch)[0]
+        self.editor.db.add(batch,8,json.loads(item['original']),json.loads(item['desired']),json.loads(item['links']))
+        await self.editor.apply(batch,message_ids=[7])
+        self.assertEqual([i['status'] for i in self.editor.db.items(batch)],['applied','pending'])
+        self.assertEqual(self.editor.db.batch(batch)['status'],'ready')
+        self.assertEqual(len(self.edits),1)
+
+    async def test_invalid_or_foreign_selection_is_rejected_before_network(self):
+        batch=await self.prepared();self.engine.connected.reset_mock()
+        for selection in ([],[0],['7'],[999],[True]):
+            with self.assertRaises(UserError):await self.editor.apply(batch,message_ids=selection)
+        self.engine.connected.assert_not_awaited();self.tg.edit_message.assert_not_awaited()

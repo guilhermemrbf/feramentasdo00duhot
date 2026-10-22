@@ -1,9 +1,10 @@
 import json
 import time
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from .editor import DEFAULT_URL, decode_entities
 from .domain import UserError
+from .reports import export_edit_report
 from .design import BLUE, GREEN, AMBER, MUTED, RED, ScrollPage, heading, card, metrics, text_box, table, readable_count
 
 STATES={'pending':'Pendente','applied':'Editado','restored':'Restaurado','conflict':'Ignorado: mudou após a prévia'}
@@ -14,7 +15,7 @@ BATCH_STATES={'scanning':'Analisando o histórico','ready':'Prévia pronta para 
 class EditorTab:
     def __init__(self,window,notebook):
         self.window=window;self.editor=window.runtime.engine.editor
-        self.batch_id=None;self.channel_refs={};self.items={};self.operation=None;self.run_total=0
+        self.batch_id=None;self.channel_refs={};self.items={};self.operation=None;self.run_total=0;self.run_ids=set()
         self.frame=ScrollPage(notebook);notebook.add(self.frame,text='editor');frame=self.frame.inner
         heading(frame,'Alterar publicações existentes','Editor de links do canal','Escolha seu canal, confira a prévia e aplique. Os textos clicáveis e as mídias são preservados.')
         self.stats=metrics(frame,[('pending','Pendentes','Propostas a aplicar',AMBER),('applied','Editadas','Alterações confirmadas',GREEN),('restored','Restauradas','Textos originais recuperados',BLUE),('conflict','Ignoradas','Mudaram após a prévia',MUTED)])
@@ -49,7 +50,8 @@ class EditorTab:
         ttk.Combobox(filters,textvariable=self.state_filter,values=list(FILTERS),state='readonly',width=18).pack(side='left',padx=(0,10))
         ttk.Entry(filters,textvariable=self.search).pack(side='left',fill='x',expand=True)
         self.tree=table(saved,[('id','Post',65),('state','Situação',195),('links','Links alterados',100),('text','Texto / legenda',350)],height=6)
-        self.tree.bind('<<TreeviewSelect>>',self.details)
+        self.tree.configure(selectmode='extended')
+        self.tree.bind('<<TreeviewSelect>>',self.selection_changed)
         self.list_caption=tk.StringVar(value='A lista aparecerá depois da análise.')
         ttk.Label(saved,textvariable=self.list_caption,style='CardMuted.TLabel',wraplength=700).pack(anchor='w')
         self.state_filter.trace_add('write',lambda *_:self.render_rows());self.search.trace_add('write',lambda *_:self.render_rows())
@@ -67,6 +69,13 @@ class EditorTab:
         applybox=card(frame,'3. Aplique quando estiver pronto','Confira o canal e as propostas acima. A confirmação final mostra o destino e a quantidade de posts.')
         self.apply_caption=tk.StringVar(value='Primeiro analise o canal e confira a prévia.')
         ttk.Label(applybox,textvariable=self.apply_caption,style='CardMuted.TLabel',wraplength=700).pack(anchor='w',pady=(0,10))
+        self.scope=tk.StringVar(value='Toda a análise')
+        scope_row=ttk.Frame(applybox,style='Card.TFrame');scope_row.pack(fill='x',pady=(0,10))
+        ttk.Label(scope_row,text='Aplicar ou restaurar:',style='Card.TLabel').pack(side='left',padx=(0,10))
+        self.scope_choice=ttk.Combobox(scope_row,textvariable=self.scope,values=['Toda a análise','Somente os selecionados'],state='readonly',width=27)
+        self.scope_choice.pack(side='left');self.scope_choice.bind('<<ComboboxSelected>>',lambda _event:self.update_buttons())
+        ttk.Label(applybox,text='Para selecionar vários posts, use Ctrl ou Shift na lista. Busca e filtros mudam apenas a lista visível.',style='CardMuted.TLabel',wraplength=700).pack(anchor='w',pady=(0,10))
+        ttk.Button(applybox,text='Salvar relatório CSV',command=self.export_report,style='Quiet.TButton').pack(anchor='w',pady=(0,10))
         actionrow=ttk.Frame(applybox,style='Card.TFrame');actionrow.pack(fill='x')
         self.apply_button=ttk.Button(actionrow,text='Aplicar alterações / retomar',style='Primary.TButton',command=self.apply);self.apply_button.pack(side='left')
         self.restore_button=ttk.Button(actionrow,text='Restaurar originais',command=lambda:self.apply(True));self.restore_button.pack(side='left',padx=(10,0))
@@ -122,7 +131,8 @@ class EditorTab:
             values=(key,STATES[item['status']],len(json.loads(item['links'])),text.replace('\n',' ')[:180])
             if self.tree.exists(key):self.tree.item(key,values=values,tags=(item['status'],))
             else:self.tree.insert('','end',iid=key,values=values,tags=(item['status'],))
-        if selected and self.tree.exists(selected[0]):self.tree.selection_set(selected)
+        keep=[key for key in selected if self.tree.exists(key)]
+        if keep:self.tree.selection_set(keep)
         self.list_caption.set(f'{len(visible)} de {len(self.items)} propostas na lista. Busque pelo texto ou número do post no campo acima.' if self.items else 'Nenhuma proposta nesta lista. Analise o canal ou confira os filtros.')
         self.details()
 
@@ -140,7 +150,8 @@ class EditorTab:
         if batch['status']=='scanning':
             self.progress_text.set(f"Analisando o histórico… {readable_count(len(states))} propostas encontradas. O total ainda está sendo descoberto.")
         else:
-            remaining=counts['applied' if self.operation=='restore' else 'pending']
+            pending_state='applied' if self.operation=='restore' else 'pending'
+            remaining=sum(item['status']==pending_state and item['message_id'] in self.run_ids for item in states) if self.operation in ('apply','restore') else counts['pending']
             total=self.run_total if self.operation in ('apply','restore') else len(states)
             finished=max(0,total-remaining)
             self.progress.configure(value=100*finished/total if total else 0)
@@ -164,11 +175,28 @@ class EditorTab:
         for button in (self.channels_button,self.scan_button):button.configure(state='disabled' if busy else 'normal')
         self.stop_button.configure(state='normal' if busy and self.operation else 'disabled')
         self.history.configure(state='disabled' if busy else 'readonly')
+        if hasattr(self,'scope_choice'):self.scope_choice.configure(state='disabled' if busy else 'readonly')
         batch=self.editor.db.batch(self.batch_id) if self.batch_id is not None else None
         ready=batch is not None and batch['status'] not in ('scanning','incomplete') and batch['wait_until']<=time.time() and not busy
         states=self.editor.db.states(self.batch_id) if batch else []
+        if hasattr(self,'scope') and self.scope.get()=='Somente os selecionados':
+            selection={int(key) for key in self.tree.selection()}
+            states=[item for item in states if item['message_id'] in selection]
         self.apply_button.configure(state='normal' if ready and any(i['status']=='pending' for i in states) else 'disabled')
         self.restore_button.configure(state='normal' if ready and any(i['status']=='applied' for i in states) else 'disabled')
+
+    def selection_changed(self,_event=None):
+        self.details();self.update_buttons()
+
+    def export_report(self):
+        if self.batch_id is None:
+            self.window.notify('Analise um canal primeiro.');return
+        path=filedialog.asksaveasfilename(parent=self.window.root,title='Salvar relatório da análise',defaultextension='.csv',initialfile=f'telegram-analise-{self.batch_id}.csv',filetypes=[('Relatório CSV','*.csv')])
+        if not path:return
+        try:
+            export_edit_report(path,self.editor.db.batch(self.batch_id),self.editor.db.items(self.batch_id))
+            self.window.notify('Relatório salvo neste computador. O arquivo não inclui credenciais nem os textos completos dos posts.')
+        except OSError:self.window.notify('Não foi possível salvar o relatório. Confira a pasta escolhida.',True)
 
     def details(self,_event=None):
         selected=self.tree.selection()
@@ -192,11 +220,13 @@ class EditorTab:
             if self.batch_id is None:raise UserError('Analise o canal primeiro.')
             batch=self.editor.db.batch(self.batch_id)
             if batch['status'] in ('scanning','incomplete'):raise UserError('Faça uma nova análise: esta foi interrompida.')
-            items=[i for i in self.editor.db.states(self.batch_id) if i['status']==('applied' if restore else 'pending')]
+            selected=[int(key) for key in self.tree.selection()] if self.scope.get()=='Somente os selecionados' else None
+            if selected is not None and not selected:raise UserError('Selecione os posts na lista ou escolha Toda a análise.')
+            items=[i for i in self.editor.db.states(self.batch_id) if i['status']==('applied' if restore else 'pending') and (selected is None or i['message_id'] in selected)]
             if not items:raise UserError('Não há publicações elegíveis para esta operação nesta análise.')
             action='Restaurar os textos originais de' if restore else 'Editar os links e textos de'
-            prompt=f"{action} {len(items)} publicações?\n\nCanal: {batch['title']}\nID: {batch['channel']}\nNovo destino: {batch['target']}\n\nA operação usará a prévia salva desta análise. Posts modificados desde a prévia serão ignorados. Nenhuma publicação será apagada."
+            prompt=f"{action} {len(items)} publicações?\n\nCanal: {batch['title']}\nID: {batch['channel']}\nNovo destino: {batch['target']}\n\nA operação usará a prévia salva desta análise. Posts modificados desde a prévia serão ignorados. Escopo: {self.scope.get()}. Nenhuma publicação será apagada."
             if messagebox.askyesno('Confirmar restauração' if restore else 'Confirmar edição no Telegram',prompt,parent=self.window.root):
-                self.operation='restore' if restore else 'apply';self.run_total=len(items)
-                self.window.dispatch(self.editor.apply(self.batch_id,restore),self.complete)
+                self.operation='restore' if restore else 'apply';self.run_total=len(items);self.run_ids={item['message_id'] for item in items}
+                self.window.dispatch(self.editor.apply(self.batch_id,restore,selected),self.complete)
         except UserError as reason:self.window.notify(str(reason),True)

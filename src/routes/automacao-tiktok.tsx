@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { manualSchedule } from "@/lib/manual-schedule";
 import { AppShell, PageIntro } from "@/components/AppShell";
 
 export const Route = createFileRoute("/automacao-tiktok")({
@@ -169,23 +170,36 @@ function AutomacaoTikTok() {
       setNotice("Informe pelo menos um horário válido, por exemplo: 09:00, 13:00.");
       return;
     }
-    const count = Math.max(1, Math.min(100, Number(quantity) || 1));
-    const perDay = Math.max(1, Math.min(10, Number(dailyLimit) || 1));
-    const base = new Date(`${startDate}T12:00:00`);
-    const next = Array.from({ length: count }, (_, index) => {
-      const date = new Date(base);
-      date.setDate(base.getDate() + Math.floor(index / Math.min(perDay, timeSlots.length)));
-      return {
-        id: `preview-${index + 1}`,
-        videoId: videos[index % videos.length].id,
-        video: videos[index % videos.length].name,
-        date: date.toLocaleDateString("pt-BR"),
-        time: timeSlots[index % Math.min(perDay, timeSlots.length)],
-        caption,
-        hashtags,
-        published: false,
-      };
-    });
+    let schedule: ReturnType<typeof manualSchedule>;
+    try {
+      schedule = manualSchedule({
+        startDate,
+        times,
+        quantity: Number(quantity),
+        dailyLimit: Number(dailyLimit),
+        intervalMinutes: Number(intervalMinutes),
+      });
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Confira os horários da prévia.");
+      return;
+    }
+    if (
+      queue.length &&
+      !window.confirm(
+        "Substituir a prévia atual? Os itens e marcações atuais serão removidos desta sessão.",
+      )
+    )
+      return;
+    const next = schedule.map((slot, index) => ({
+      id: crypto.randomUUID(),
+      videoId: videos[index % videos.length].id,
+      video: videos[index % videos.length].name,
+      date: slot.date,
+      time: slot.time,
+      caption,
+      hashtags,
+      published: false,
+    }));
     setQueue(next);
     setNotice("Prévia local criada. Ela não foi salva no servidor nem publicada no TikTok.");
     setTab("fila");

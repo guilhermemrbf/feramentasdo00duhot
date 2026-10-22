@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, Copy, Check, RotateCcw, Loader2 } from "lucide-react";
 import { AppShell, PageIntro } from "@/components/AppShell";
+import { downloadBlob, validPublicUrl } from "@/lib/media/files";
 import { ImageField } from "@/components/ImageField";
 import { buildPrompt, FOLLOW_UP_PROMPT, type PageData } from "@/lib/prompt-template";
 
@@ -46,13 +47,57 @@ function CriarPagina() {
   const [prompt, setPrompt] = useState("");
   const [copied, setCopied] = useState(false);
   const [copiedFollowUp, setCopiedFollowUp] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [hasDraft, setHasDraft] = useState(false);
+  const draftKey = "00duhot.page-draft.v1";
+  useEffect(() => {
+    try {
+      setHasDraft(Boolean(localStorage.getItem(draftKey)));
+    } catch {
+      /* Optional browser storage. */
+    }
+  }, []);
+  const saveDraft = () => {
+    try {
+      localStorage.setItem(draftKey, JSON.stringify(data));
+      setHasDraft(true);
+      setNotice("Rascunho salvo somente neste navegador.");
+    } catch {
+      setNotice("O navegador não permitiu salvar o rascunho.");
+    }
+  };
+  const restoreDraft = () => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(draftKey) || "{}");
+      if (
+        !Object.keys(EMPTY).every((key) => typeof raw[key] === "string" && raw[key].length <= 20000)
+      )
+        throw new Error();
+      setData(
+        Object.fromEntries(Object.keys(EMPTY).map((key) => [key, raw[key]])) as unknown as PageData,
+      );
+      setStage("form");
+      setNotice("Rascunho restaurado. Confira os dados antes de gerar.");
+    } catch {
+      setNotice("Não foi possível abrir este rascunho.");
+    }
+  };
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(draftKey);
+      setHasDraft(false);
+      setNotice("Rascunho removido deste navegador.");
+    } catch {
+      setNotice("Não foi possível remover o rascunho.");
+    }
+  };
 
   const set = <K extends keyof PageData>(key: K, value: PageData[K]) =>
     setData((d) => ({ ...d, [key]: value }));
 
   const ready = Boolean(
-    data.fotoPerfilUrl &&
-    data.fotoCapaUrl &&
+    validPublicUrl(data.fotoPerfilUrl) &&
+    validPublicUrl(data.fotoCapaUrl) &&
     data.nomePerfil.trim() &&
     data.arrobaPerfil.trim() &&
     data.descricaoPerfil.trim(),
@@ -60,23 +105,27 @@ function CriarPagina() {
 
   const generate = () => {
     if (!ready) return;
-    setStage("processing");
-    setTimeout(() => {
-      setPrompt(buildPrompt(data));
-      setStage("done");
-    }, 700);
+    setPrompt(buildPrompt(data));
+    setStage("done");
   };
 
   const copy = async () => {
-    await navigator.clipboard.writeText(prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setNotice("A cópia automática não foi permitida. Use Baixar prompt.");
+    }
   };
-
   const copyFollowUp = async () => {
-    await navigator.clipboard.writeText(FOLLOW_UP_PROMPT);
-    setCopiedFollowUp(true);
-    setTimeout(() => setCopiedFollowUp(false), 1800);
+    try {
+      await navigator.clipboard.writeText(FOLLOW_UP_PROMPT);
+      setCopiedFollowUp(true);
+      setTimeout(() => setCopiedFollowUp(false), 1800);
+    } catch {
+      setNotice("A cópia automática não foi permitida. Baixe o prompt e copie o texto do arquivo.");
+    }
   };
 
   return (
@@ -88,6 +137,41 @@ function CriarPagina() {
           description="Monte sua Tela Privacy com os dados do seu perfil e gere o prompt completo para acelerar sua operação digital."
         />
 
+        <div className="mt-5 flex flex-wrap gap-3 text-xs">
+          <button onClick={saveDraft} className="rounded-md border border-border px-3 py-2">
+            Salvar rascunho local
+          </button>
+          {hasDraft && (
+            <>
+              <button onClick={restoreDraft} className="rounded-md border border-border px-3 py-2">
+                Restaurar rascunho
+              </button>
+              <button onClick={clearDraft} className="rounded-md border border-border px-3 py-2">
+                Excluir rascunho
+              </button>
+            </>
+          )}
+          {stage === "done" && (
+            <button
+              onClick={() =>
+                downloadBlob(
+                  new Blob([prompt + "\n\n" + FOLLOW_UP_PROMPT], {
+                    type: "text/plain;charset=utf-8",
+                  }),
+                  "00duhot-prompt-pagina.txt",
+                )
+              }
+              className="rounded-md border border-border px-3 py-2"
+            >
+              Baixar prompt
+            </button>
+          )}
+        </div>
+        {notice && (
+          <p role="status" className="mt-3 text-xs text-muted-foreground">
+            {notice}
+          </p>
+        )}
         <div className="mt-8">
           {stage === "form" && (
             <div className="space-y-4">
@@ -145,7 +229,7 @@ function CriarPagina() {
                 </button>
                 {!ready && (
                   <p className="text-xs text-muted-foreground">
-                    Envie as duas fotos e preencha todos os campos.
+                    Use links HTTPS para as duas fotos e preencha todos os campos.
                   </p>
                 )}
               </div>

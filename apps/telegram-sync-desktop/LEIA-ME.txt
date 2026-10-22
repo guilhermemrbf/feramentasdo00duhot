@@ -1,4 +1,4 @@
-TELEGRAM SYNC DESKTOP 0.3.0 — 00duHot
+TELEGRAM SYNC DESKTOP 0.4.0 — 00duHot
 VERSÃO DE TESTE PARA WINDOWS 10/11 64 BITS
 
 1. Extraia o ZIP e abra TelegramSync.exe. Não é necessário instalar Python.
@@ -88,10 +88,21 @@ NOVA INTERFACE — 0.3.0
 Publicadas = mensagens confirmadas. Ignoradas e envios sem confirmação
 não entram nesse número. A conferir exige revisar o destino antes de reenviar.
 No editor, os indicadores são da análise selecionada, não de todos os canais.
-Filtrar a lista não altera quais propostas serão aplicadas: a confirmação
-final mostra a quantidade total da análise. Use a rolagem para ver mais detalhes.
+Filtrar a lista altera apenas a visualização. Na versão 0.4.0, escolha o
+escopo explicitamente antes de aplicar, conforme as orientações abaixo.
 
 PARA ATUALIZAR
 Feche o programa antigo, extraia o novo ZIP e abra TelegramSync.exe.
 Sua conta, suas tarefas e os backups são mantidos na mesma pasta do Windows.
 Não apague a pasta de dados. Nenhuma operação inicia sozinha ao abrir.
+
+NOVIDADES 0.4.0
+- Identidade 00duHot: sua marca, superfícies neutras e destaque dourado discreto.
+- O editor permite selecionar vários posts com Ctrl ou Shift.
+- Em Aplicar ou restaurar, escolha Toda a análise ou Somente os selecionados.
+  A confirmação informa o escopo e a quantidade exata. Um filtro de busca
+  sozinho não limita a operação. Posts não escolhidos continuam pendentes.
+- Salvar relatório CSV exporta a situação dos posts da análise selecionada.
+  Não exporta sessão, credenciais nem o texto completo das mensagens.
+  O relatório inclui nomes de canais e links; compartilhe apenas se desejar.
+- Atualizar não inicia sincronização ou edição automaticamente.

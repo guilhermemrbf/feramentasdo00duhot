@@ -1,234 +1,230 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  Send,
-  ArrowUpRight,
-  FileKey,
-  GitBranch,
-  Image as ImageIcon,
-  Music2,
-  MonitorSmartphone,
-  PanelTop,
-  Scan,
-  ShieldCheck,
-  Sparkles,
-  Zap,
-} from "lucide-react";
-import { AppShell } from "@/components/AppShell";
-
+import { useState } from "react";
+import { ArrowRight, ArrowUpRight, Clock3, Search, Star, X } from "lucide-react";
+import { AppShell, Brand, TOOL_ICONS } from "@/components/AppShell";
+import { CATEGORIES, TOOL_CATALOG, searchTools } from "@/lib/tool-catalog";
+import { useToolPreferences } from "@/lib/tool-preferences";
+import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "00duHot — central de ferramentas" },
+      { title: "00duHot — seu centro de operação" },
       {
         name: "description",
-        content: "Ferramentas para criar, preparar, otimizar e automatizar sua operação em um só lugar.",
+        content:
+          "Conteúdo, preparação, planejamento e automação em um workspace de ferramentas para sua operação digital.",
       },
     ],
   }),
   component: Home,
 });
-
-const tools = [
-  { to: "/telegram-sync" as const, icon: Send, name: "Telegram Sync", description: "Aplicativo gratuito para Windows: sincronize canais e grupos autorizados e substitua links.", detail: "Automação" },
-  {
-    to: "/image-links" as const,
-    icon: ImageIcon,
-    name: "Image Links",
-    description: "Hospede imagens e gere URLs prontas para uso.",
-    detail: "Ferramenta",
-  },
-  {
-    to: "/criar-pagina" as const,
-    icon: PanelTop,
-    name: "Criar Tela Privacy",
-    description: "Monte prompts completos para recriar suas páginas.",
-    detail: "Ferramenta",
-  },
-  {
-    to: "/limpar-metadados" as const,
-    icon: FileKey,
-    name: "Limpar Metadados",
-    description: "Limpe dados embutidos em fotos e vídeos.",
-    detail: "Ferramenta",
-  },
-  {
-    to: "/otimizar-criativos" as const,
-    icon: ShieldCheck,
-    name: "Otimizar Criativos",
-    description: "Prepare novas versões dos seus materiais.",
-    detail: "Ferramenta",
-  },
-  {
-    to: "/gerar-preview" as const,
-    icon: Scan,
-    name: "Gerar Preview",
-    description: "Gere versões com blur ou pixelização.",
-    detail: "Ferramenta",
-  },
-  {
-    to: "/automacao-tiktok" as const,
-    icon: Music2,
-    name: "Automatic Post",
-    description: "Gerencie em uma única área as publicações de TikTok e Instagram.",
-    detail: "Ferramenta",
-  },
-  {
-    to: "/funil" as const,
-    icon: GitBranch,
-    name: "Funil",
-    description: "Visualize e edite seus fluxos em etapas independentes.",
-    detail: "Ferramenta",
-  },
-  {
-    to: "/hot-profiles" as const,
-    icon: MonitorSmartphone,
-    name: "Hot Profiles",
-    description: "Organize seus navegadores, proxies e celulares Android.",
-    detail: "Ambientes",
-  },
-];
-
 function Home() {
+  const [query, setQuery] = useState(""),
+    [category, setCategory] = useState("Todas"),
+    [onlyFavorites, setOnlyFavorites] = useState(false);
+  const { favorites, recent, toggle } = useToolPreferences();
+  const results = searchTools(query, category).filter(
+    (tool) => !onlyFavorites || favorites.includes(tool.id),
+  );
   return (
     <AppShell>
-      <main className="relative min-h-screen overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.018)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.018)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_80%)]" />
-        <div className="pointer-events-none absolute -right-24 -top-24 size-[420px] rounded-full bg-primary/10 blur-[120px]" />
-        <div className="pointer-events-none absolute left-1/3 top-[420px] size-[260px] rounded-full bg-primary/5 blur-[100px]" />
-
-        <div className="relative mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-9 lg:py-8">
-          <section className="overflow-hidden rounded-[26px] border border-border/90 bg-card/85 shadow-[0_24px_80px_rgba(0,0,0,0.2)]">
-            <div className="relative px-6 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-9">
-              <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-primary/10 blur-[80px]" />
-
-              <div className="relative flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
-                <div className="max-w-3xl">
-                  <div className="mb-6 flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-[10px] font-bold tracking-[0.14em] text-primary">
-                      <span className="size-1.5 rounded-full bg-primary shadow-[0_0_8px_currentColor]" />
-                      SESSÃO ATIVA
-                    </span>
-                    <span className="rounded-full border border-border bg-background/40 px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">
-                      CENTRAL DE FERRAMENTAS
-                    </span>
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <span className="hidden size-16 shrink-0 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-primary-foreground shadow-[0_0_34px_rgba(72,132,255,0.22)] sm:flex">
-                      G
-                    </span>
-                    <div>
-                      <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
-                        <Sparkles className="size-4 text-primary" />
-                        <span>Bom dia</span>
-                      </div>
-                      <h1 className="font-display text-4xl font-bold tracking-[-0.045em] sm:text-5xl lg:text-[54px]">
-                        Olá, <span className="text-primary">Guilherme.</span>
-                      </h1>
-                      <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
-                        Tudo que sua operação precisa para escalar, reunido em um só lugar.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:max-w-[520px] xl:justify-end">
-                  {tools.slice(0, 4).map((tool) => {
-                    const Icon = tool.icon;
-                    return (
-                      <Link
-                        key={tool.to}
-                        to={tool.to}
-                        className="group inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background/45 px-3 py-2.5 text-xs font-semibold text-foreground transition-all hover:border-primary/30 hover:bg-background/75"
-                      >
-                        <Icon className="size-3.5 text-primary" />
-                        <span className="truncate">{tool.name}</span>
-                        <ArrowUpRight className="size-3 text-muted-foreground/50 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="relative mt-8 flex flex-wrap items-center gap-x-7 gap-y-3 border-t border-border/70 pt-5">
-                <div>
-                  <p className="font-display text-lg font-bold">{tools.length}</p>
-                  <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">FERRAMENTAS DISPONÍVEIS</p>
-                </div>
-                <div className="h-7 w-px bg-border" />
-                <div>
-                  <p className="font-display text-lg font-bold">01</p>
-                  <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">CENTRAL DE OPERAÇÃO</p>
-                </div>
-                <div className="ml-auto hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
-                  <Zap className="size-3.5 text-primary" />
-                  Acesso rápido às ferramentas
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="mt-7">
-            <div className="mb-4 flex items-end justify-between">
-              <div>
-                <p className="text-[10px] font-bold tracking-[0.16em] text-primary">FERRAMENTAS</p>
-                <h2 className="mt-1 font-display text-xl font-bold tracking-tight">Tudo no seu fluxo de trabalho.</h2>
-              </div>
-              <span className="hidden text-xs text-muted-foreground sm:block">Selecione uma ferramenta para começar</span>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {tools.map((tool, index) => {
-                const Icon = tool.icon;
-
+      <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
+        <section className="home-intro">
+          <div>
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">
+              Seu centro de operação
+            </p>
+            <h1 className="max-w-2xl font-display text-3xl font-semibold leading-tight tracking-tight sm:text-[42px]">
+              Menos ferramentas soltas.
+              <br />
+              Mais controle da operação.
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground">
+              Prepare seus materiais, organize seus fluxos e acompanhe suas automações. Escolha
+              abaixo o que precisa fazer agora.
+            </p>
+          </div>
+          <div className="hidden rounded-xl border border-border bg-[#080808] p-5 sm:block">
+            <img
+              src="/brand/mark.png"
+              alt="Mascote 00duHot: rato de óculos com corrente dourada"
+              width={176}
+              height={176}
+              className="size-40 object-contain"
+            />
+          </div>
+        </section>
+        <section aria-label="Atalhos por objetivo" className="mb-10 grid gap-3 md:grid-cols-3">
+          {[
+            {
+              to: "/gerar-preview" as const,
+              title: "Preparar conteúdo",
+              text: "Prévias, marca e arquivos prontos.",
+            },
+            {
+              to: "/funil" as const,
+              title: "Organizar a estratégia",
+              text: "Etapas e caminhos do seu funil.",
+            },
+            {
+              to: "/telegram-sync" as const,
+              title: "Automatizar a rotina",
+              text: "Sincronização e edição de canais.",
+            },
+          ].map((item) => (
+            <Link key={item.to} to={item.to} className="workspace-shortcut">
+              <span>
+                <strong className="block text-sm font-medium">{item.title}</strong>
+                <span className="mt-1 block text-xs text-muted-foreground">{item.text}</span>
+              </span>
+              <ArrowUpRight className="size-4 text-muted-foreground" />
+            </Link>
+          ))}
+        </section>
+        {recent.length > 0 && (
+          <section className="mb-9">
+            <h2 className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <Clock3 className="size-3.5" />
+              Acessadas recentemente
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {recent.slice(0, 4).map((id) => {
+                const tool = TOOL_CATALOG.find((t) => t.id === id);
+                if (!tool) return null;
                 return (
                   <Link
-                    key={tool.to}
-                    to={tool.to}
-                    className="group relative min-h-[190px] overflow-hidden rounded-2xl border border-border bg-card/80 p-5 shadow-[0_12px_34px_rgba(0,0,0,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_18px_46px_rgba(0,0,0,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    key={id}
+                    to={tool.path}
+                    className="inline-flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-xs hover:border-primary/50"
                   >
-                    <div className="absolute -right-8 -top-8 size-28 rounded-full bg-primary/5 blur-2xl transition-opacity group-hover:opacity-100" />
-                    <div className="relative flex items-start justify-between">
-                      <span className="flex size-11 items-center justify-center rounded-xl border border-border bg-secondary text-primary transition-colors group-hover:border-primary/25">
-                        <Icon className="size-[19px]" />
-                      </span>
-                      <span className="flex size-8 items-center justify-center rounded-lg border border-border/70 text-muted-foreground/40 transition-colors group-hover:border-primary/20 group-hover:text-primary">
-                        <ArrowUpRight className="size-4" />
-                      </span>
-                    </div>
-
-                    <div className="relative mt-8">
-                      <div className="mb-1 text-[10px] font-bold tracking-[0.12em] text-muted-foreground/55">
-                        0{index + 1}
-                      </div>
-                      <h3 className="font-display text-[17px] font-bold tracking-tight">{tool.name}</h3>
-                      <p className="mt-2 max-w-sm text-xs leading-5 text-muted-foreground">
-                        {tool.description}
-                      </p>
-                    </div>
+                    {tool.name}
+                    <ArrowRight className="size-3 text-muted-foreground" />
                   </Link>
                 );
               })}
             </div>
           </section>
-
-          <section className="mt-7 flex flex-col gap-3 rounded-2xl border border-border bg-card/50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Zap className="size-4" />
-              </span>
-              <div>
-                <p className="text-xs font-semibold">00duHot</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Sua operação em um só lugar.
-                </p>
-              </div>
+        )}
+        <section aria-labelledby="tools-title">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                Workspace
+              </p>
+              <h2 id="tools-title" className="mt-2 text-xl font-semibold">
+                Suas ferramentas
+              </h2>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Mais ferramentas podem ser adicionadas sem alterar seu fluxo.
-            </p>
-          </section>
-        </div>
+            <div className="relative w-full sm:w-72">
+              <Search className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" />
+              <label htmlFor="catalog-search" className="sr-only">
+                Buscar ferramentas por nome ou objetivo
+              </label>
+              <input
+                id="catalog-search"
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar por nome ou objetivo"
+                className="workspace-input pl-10"
+              />
+            </div>
+          </div>
+          <div className="mb-5 flex flex-wrap items-center gap-2">
+            {CATEGORIES.map((value) => (
+              <button
+                key={value}
+                aria-pressed={category === value}
+                onClick={() => setCategory(value)}
+                className={cn("catalog-filter", category === value && "is-active")}
+              >
+                {value}
+              </button>
+            ))}
+            <button
+              onClick={() => setOnlyFavorites(!onlyFavorites)}
+              aria-pressed={onlyFavorites}
+              className={cn(
+                "catalog-filter ml-auto inline-flex items-center gap-2",
+                onlyFavorites && "is-active",
+              )}
+            >
+              <Star className={cn("size-3.5", onlyFavorites && "fill-current")} />
+              Favoritas ({favorites.length})
+            </button>
+          </div>
+          <p className="sr-only" role="status">
+            {results.length} ferramentas encontradas.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {results.map((tool) => {
+              const Icon = TOOL_ICONS[tool.id],
+                favorite = favorites.includes(tool.id);
+              return (
+                <article key={tool.id} className="tool-card">
+                  <div className="mb-6 flex items-center justify-between">
+                    <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-background text-primary">
+                      <Icon className="size-[18px]" />
+                    </span>
+                    <button
+                      onClick={() => toggle(tool.id)}
+                      aria-pressed={favorite}
+                      aria-label={`${favorite ? "Remover" : "Adicionar"} ${tool.name} ${favorite ? "dos" : "aos"} favoritos`}
+                      className="rounded-md p-2 text-muted-foreground hover:text-primary"
+                    >
+                      <Star className={cn("size-4", favorite && "fill-primary text-primary")} />
+                    </button>
+                  </div>
+                  <p className="mb-2 text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    {tool.category}
+                  </p>
+                  <h3 className="text-[17px] font-semibold tracking-tight">{tool.name}</h3>
+                  <p className="mt-3 min-h-12 text-xs leading-6 text-muted-foreground">
+                    {tool.summary}
+                  </p>
+                  <div className="mt-6 flex items-center justify-between gap-2 border-t border-border pt-4">
+                    <span className="text-[10px] text-muted-foreground">{tool.mode}</span>
+                    <Link
+                      to={tool.path}
+                      className="inline-flex items-center gap-2 text-xs font-semibold text-primary"
+                    >
+                      Abrir ferramenta
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          {!results.length && (
+            <div className="rounded-lg border border-dashed border-border p-10 text-center">
+              <Search className="mx-auto mb-4 size-5 text-muted-foreground" />
+              <h3 className="text-sm font-semibold">Nenhuma ferramenta encontrada</h3>
+              <p className="mt-2 text-xs leading-6 text-muted-foreground">
+                Tente outro termo ou remova os filtros para ver todas as opções.
+              </p>
+              <button
+                onClick={() => {
+                  setQuery("");
+                  setCategory("Todas");
+                  setOnlyFavorites(false);
+                }}
+                className="mt-5 inline-flex items-center gap-2 text-xs text-primary"
+              >
+                <X className="size-3" />
+                Limpar filtros
+              </button>
+            </div>
+          )}
+        </section>
+        <section className="mt-10 flex flex-wrap items-center gap-5 rounded-lg border border-border bg-card p-5">
+          <Brand compact />
+          <p className="flex-1 text-xs leading-6 text-muted-foreground">
+            Cada ferramenta explica os dados de entrada, o resultado e os requisitos. O
+            processamento local permanece no seu dispositivo; integrações externas são identificadas
+            em cada área.
+          </p>
+        </section>
       </main>
     </AppShell>
   );

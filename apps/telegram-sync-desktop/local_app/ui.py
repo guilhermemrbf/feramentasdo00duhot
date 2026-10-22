@@ -5,6 +5,7 @@ from datetime import datetime
 from tkinter import ttk, messagebox
 from .domain import UserError, replace
 from .runtime import Runtime
+from .branding import brand_image
 from .design import BG, SIDEBAR, CARD, BORDER, TEXT, MUTED, BLUE, GREEN, AMBER, RED
 from .design import theme, ScrollPage, heading, card, metrics, text_box, table, readable_count
 
@@ -28,10 +29,10 @@ class Window:
         theme(root)
         self.shell=tk.Frame(root,bg=BG);self.shell.pack(fill='both',expand=True)
         sidebar=tk.Frame(self.shell,bg=SIDEBAR,width=216,padx=14,pady=14);sidebar.pack(side='left',fill='y');sidebar.pack_propagate(False)
-        logo=tk.Frame(sidebar,bg=SIDEBAR);logo.pack(fill='x',pady=(0,20))
-        mark=tk.Canvas(logo,width=38,height=40,bg=SIDEBAR,highlightthickness=0);mark.pack(side='left',padx=(0,10))
-        mark.create_rectangle(1,1,37,37,fill='#2874de',outline='')
-        mark.create_polygon(22,7,12,21,19,21,16,32,28,16,21,16,fill='white')
+        logo=tk.Frame(sidebar,bg=SIDEBAR);logo.pack(fill='x',pady=(0,16))
+        self.brand_mark=brand_image(44)
+        root.iconphoto(True,self.brand_mark)
+        tk.Label(logo,image=self.brand_mark,bg=SIDEBAR).pack(side='left',padx=(0,10))
         logotext=tk.Frame(logo,bg=SIDEBAR);logotext.pack(side='left')
         tk.Label(logotext,text='00duHot',font=('Segoe UI',17,'bold'),fg=TEXT,bg=SIDEBAR).pack(anchor='w')
         tk.Label(logotext,text='OPERAÇÃO DIGITAL',font=('Segoe UI',8),fg=MUTED,bg=SIDEBAR).pack(anchor='w')
@@ -40,7 +41,7 @@ class Window:
         for key,title,caption in [('home','Visão geral','Números e próximos passos'),('tasks','Sincronizações','Copiar e acompanhar posts'),('editor','Editar links','Alterar posts do seu canal'),('rules','Substituições','Regras para novas cópias'),('activity','Atividade e ajuda','Histórico e orientações')]:
             button=tk.Button(sidebar,text=f'{title}\n{caption}',anchor='w',justify='left',bg=SIDEBAR,fg=MUTED,activebackground=CARD,activeforeground=TEXT,font=('Segoe UI',10),relief='flat',borderwidth=0,padx=13,pady=8,cursor='hand2',command=lambda key=key:self.navigate(key),takefocus=True,highlightthickness=1,highlightbackground=SIDEBAR,highlightcolor=BLUE)
             button.pack(fill='x',pady=3);self.nav[key]=button
-        tk.Label(sidebar,text='v0.3.0  ·  Gratuito e local',bg=SIDEBAR,fg=MUTED,font=('Segoe UI',9)).pack(side='bottom',anchor='w',padx=8,pady=(10,0))
+        tk.Label(sidebar,text='v0.4.0  ·  Gratuito e local',bg=SIDEBAR,fg=MUTED,font=('Segoe UI',9)).pack(side='bottom',anchor='w',padx=8,pady=(10,0))
         accountbox=tk.Frame(sidebar,bg=CARD,padx=12,pady=10,highlightbackground=BORDER,highlightthickness=1);accountbox.pack(side='bottom',fill='x')
         tk.Label(accountbox,text='SUA CONTA',bg=CARD,fg=MUTED,font=('Segoe UI',8,'bold')).pack(anchor='w')
         tk.Label(accountbox,textvariable=self.account,bg=CARD,fg=TEXT,font=('Segoe UI',10),wraplength=155,justify='left').pack(anchor='w',pady=(6,10))
@@ -84,14 +85,14 @@ class Window:
         selected=self.tabs.select()
         for key,page in self.pages.items():
             active=str(page)==selected
-            self.nav[key].configure(bg='#17263d' if active else SIDEBAR,fg=TEXT if active else MUTED,highlightbackground='#284970' if active else SIDEBAR)
+            self.nav[key].configure(bg='#24211c' if active else SIDEBAR,fg=TEXT if active else MUTED,highlightbackground='#4c4231' if active else SIDEBAR)
             if active:
                 self.active_page=key
                 self.breadcrumb.set('Telegram Sync  /  '+self.nav[key].cget('text').split('\n')[0])
 
     def build_home(self,parent):
-        heading(parent,'Seu painel de controle','Tudo sob controle.','Acompanhe suas sincronizações e edite links sem perder de vista o que está acontecendo.')
-        self.home_metrics=metrics(parent,[('sent','Publicadas','Mensagens confirmadas',GREEN),('running','Em execução','Sincronizações ativas',BLUE),('paused','Pausadas','Tarefas aguardando você',AMBER),('attention','A conferir','Tarefas que precisam de atenção',RED)])
+        heading(parent,'Seu painel de controle','Visão geral da operação','Acompanhe as cópias entre canais ou abra o editor para alterar links de publicações existentes.')
+        self.home_metrics=metrics(parent,[('sent','Publicadas','Mensagens confirmadas',GREEN),('running','Em execução','Sincronizações ativas',BLUE),('paused','Pausadas','Tarefas aguardando você',AMBER),('attention','Com alerta','Tarefas que precisam de atenção',RED)])
         nextbox=card(parent,'Seu próximo passo')
         self.next_step=tk.StringVar()
         ttk.Label(nextbox,textvariable=self.next_step,style='CardMuted.TLabel',wraplength=700).pack(anchor='w',pady=(0,10))

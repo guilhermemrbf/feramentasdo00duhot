@@ -1,17 +1,17 @@
 .funnel-canvas .funnel-node {
   width: 100%;
   height: 100%;
-  border: 1px solid #64748b;
-  box-shadow: 0 6px 24px #0003;
+  border: 1px solid var(--border);
+  box-shadow: none;
   position: relative;
 }
 .funnel-canvas .funnel-node.is-selected {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px #60a5fa55;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px #c9a66b35;
 }
 .funnel-canvas .funnel-port {
-  border: 2px solid #b5d8ff;
-  background: #2563eb;
+  border: 2px solid var(--primary);
+  background: var(--primary);
   z-index: 20;
   opacity: 0.4;
   cursor: crosshair;
@@ -26,7 +26,7 @@
 .funnel-canvas .react-flow__handle.connecting,
 .funnel-canvas .react-flow__handle.valid {
   opacity: 1;
-  background: #34d399;
+  background: var(--success);
 }
 .funnel-canvas .react-flow__node {
   border: 0;
@@ -43,8 +43,8 @@
 }
 .funnel-canvas .react-flow__selection,
 .funnel-canvas .react-flow__nodesselection-rect {
-  border: 1px solid #60a5fa;
-  background: #3b82f61a;
+  border: 1px solid var(--primary);
+  background: #c9a66b12;
   border-radius: 6px;
 }
 .funnel-canvas .react-flow__pane.dragging {

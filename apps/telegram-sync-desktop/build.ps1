@@ -9,7 +9,7 @@ $Python = Join-Path $PSScriptRoot '.venv-build/Scripts/python.exe'
 if ($LASTEXITCODE -ne 0) { throw 'Não foi possível instalar dependências.' }
 & $Python -m unittest discover -s tests -v
 if ($LASTEXITCODE -ne 0) { throw 'Os testes falharam.' }
-& $Python -m PyInstaller --noconfirm --clean --onefile --windowed --name TelegramSync --collect-all telethon main.py
+& $Python -m PyInstaller --noconfirm --clean --onefile --windowed --name TelegramSync --collect-all telethon --add-data "../../public/brand/mark.png;assets" main.py
 if ($LASTEXITCODE -ne 0) { throw 'A criação do executável falhou.' }
 $Process = Start-Process -FilePath 'dist/TelegramSync.exe' -ArgumentList '--self-test' -Wait -PassThru
 if ($Process.ExitCode -ne 0) { throw 'O autoteste do executável falhou.' }

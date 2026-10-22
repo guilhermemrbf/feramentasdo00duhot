@@ -49,3 +49,9 @@ A visão geral mostra os resultados das sincronizações. “Publicadas” conta
 O editor tem indicadores próprios para a análise selecionada, progresso sobre o conjunto conhecido de propostas e comparação original/proposta lado a lado. Durante a análise, o progresso é indeterminado. Estados e contadores são atualizados sem recarregar os backups a cada edição. Busca e filtro alteram apenas a visualização: a aplicação mantém o escopo da análise salva e confirma a quantidade completa antes de editar. Restauração e conferência de envio permanecem com confirmação explícita.
 
 Os testes reais de Tk verificam navegação, busca, filtros, publicação versus ignoradas/sem confirmação, atualizações do editor, ações bloqueadas e rolagem em 980×640. Executam no Windows no workflow; em Linux requerem display gráfico. Não acessam Telegram. Horários da atividade usam o fuso local do computador.
+
+## Interface e seleção 0.4.0
+
+Marca original 00duHot incorporada ao executável, paleta neutra e destaque dourado discreto. O editor aceita seleção múltipla com Ctrl/Shift e escopo explícito: toda a análise ou somente os selecionados. O motor local valida todos os IDs antes de conectar ao Telegram; seleção inválida não inicia operações. Propostas não selecionadas continuam pendentes e a análise permanece disponível para retomada. Filtros de busca continuam alterando apenas a visualização.
+
+O relatório CSV é exportado somente por ação do operador. Inclui canal, destino, ID, título, situação e contagem de links; exclui sessão, API Hash e corpos completos. Campos com prefixos interpretáveis como fórmulas por planilhas são escapados. Não há alteração de esquema do banco. A marca é incluída com `--add-data` e o autoteste verifica que foi carregada tanto do código quanto do executável.
