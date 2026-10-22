@@ -23,3 +23,7 @@ A sincronização contínua importa o histórico e depois consulta novos posts. 
 ## Verificação
 
 `python -m unittest discover -s tests -v`. Testes de DPAPI e interface precisam de Windows; o workflow os executa. Testes de integração real exigem conta Telegram e dois canais próprios/autorizados. Não há garantia de entrega exatamente uma vez entre banco e Telegram; o mecanismo de conferência torna a ambiguidade explícita.
+
+## Correção 0.1.1
+
+O login agora permite até três novas tentativas na camada MTProto, necessárias quando o Telegram exige troca de data center. A versão anterior, com `request_retries=0`, era reproduzivelmente incapaz de concluir `auth.sendCode` após `PHONE_MIGRATE`. O teste de regressão exercita o código real `_call` do Telethon com transporte simulado, sem conta ou tráfego Telegram. Depois do login, a conexão é fechada e restaurada sob a política de publicação sem repetição automática. Erros conhecidos têm mensagens específicas; erros desconhecidos mostram apenas o nome da classe, nunca a resposta bruta ou as credenciais. Telefone aceita formatação comum e é normalizado antes do envio.

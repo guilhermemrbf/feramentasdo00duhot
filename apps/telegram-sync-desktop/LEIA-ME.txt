@@ -1,4 +1,4 @@
-TELEGRAM SYNC DESKTOP 0.1.0 — 00duHot
+TELEGRAM SYNC DESKTOP 0.1.1 — 00duHot
 VERSÃO DE TESTE PARA WINDOWS 10/11 64 BITS
 
 1. Extraia o ZIP e abra TelegramSync.exe. Não é necessário instalar Python.
@@ -44,3 +44,9 @@ em parte, mantenha a tarefa parada para revisão.
 O executável não possui assinatura digital comercial. O arquivo SHA256SUMS.txt
 na mesma versão permite conferir a integridade do ZIP. Não desative proteções
 do Windows. Este é um pré-lançamento: valide em canais de teste antes de distribuir.
+
+ATUALIZAÇÃO 0.1.1
+Corrige a repetição do login após redirecionamento de servidor pelo Telegram.
+Mostra erros específicos de API ID/Hash, telefone, bloqueios e rede sem expor
+credenciais. Não precisa apagar seus dados para atualizar: feche o programa
+e abra o novo executável.
