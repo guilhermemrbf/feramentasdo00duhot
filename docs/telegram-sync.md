@@ -27,3 +27,18 @@ Não replica membros, tópicos, respostas, reações, visualizações, edições
 Na pasta do serviço: `python -m unittest discover -s tests`. Na raiz: `npm test`, `npx tsc --noEmit`, `npm run build`. Testes reais de SQL, concorrência, isolamento e Telegram dependem de banco de teste e credenciais e devem preceder uso em produção.
 
 Validação local concluída: 35 testes Node existentes e 14 testes Python (incluindo autenticação, isolamento por proprietário, proteção de conteúdo, criptografia e retomada após envio sem confirmação). TypeScript e lint dos arquivos novos passaram. O build de produção passou com avisos de tamanho de chunks e diretivas de dependências. Esses testes não substituem a validação integrada de PostgreSQL e Telegram com suas credenciais.
+
+## Railway: configuração preparada
+
+Crie dois serviços vazios antes de conectar o repositório, para evitar que a Railway tente construir o frontend. Ambos usam a branch `main` do repositório `guilhermemrbf/feramentasdo00duhot` e Root Directory `/services/telegram-sync`.
+
+| Serviço | Config File (caminho absoluto no repositório) | Comando |
+| --- | --- | --- |
+| telegram-api | `/services/telegram-sync/railway.api.json` | `python run_api.py` |
+| telegram-worker | `/services/telegram-sync/railway.worker.json` | `python worker.py` |
+
+A API usa a porta fornecida por PORT e disponibiliza `/healthz`. API e worker verificam as variáveis obrigatórias e a existência das tabelas antes de iniciar, encerrando com mensagem sem segredos quando a configuração está incompleta. O worker não tem endpoint HTTP nem domínio público. O contexto Docker exclui `.env`, sessões Telegram e arquivos de desenvolvimento.
+
+Como a Lovable e a Railway estão em provedores diferentes, um endereço `*.railway.internal` não é acessível pelo servidor da Lovable. Para essa arquitetura, configure um domínio HTTPS na API Railway e use-o em TELEGRAM_SYNC_SERVICE_URL no servidor da Lovable. O endpoint `/command` continua exigindo JWT Supabase válido, com verificação da propriedade dos recursos. Não exponha o banco de dados ao navegador.
+
+Antes de criar recursos, verifique incidentes em https://status.railway.com/. Em 22/10/2026, a tentativa de criação foi recusada com `Deploys have been paused temporarily`. Nenhum projeto ou serviço foi criado nessa tentativa e nenhuma credencial foi enviada à Railway.

@@ -280,3 +280,9 @@ async def command(cmd:Command, authorization:str|None=Header(default=None)):
         raise
     except Exception:
         raise HTTPException(503,'Serviço indisponível. Confira a configuração do Telegram Sync.') from None
+
+
+@app.get("/healthz")
+def healthz():
+    # Liveness only; startup checks credentials and the database schema separately.
+    return {"status": "ok"}
