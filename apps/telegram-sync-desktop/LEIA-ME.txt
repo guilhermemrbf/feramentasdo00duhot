@@ -1,4 +1,4 @@
-TELEGRAM SYNC DESKTOP 0.1.1 — 00duHot
+TELEGRAM SYNC DESKTOP 0.2.0 — 00duHot
 VERSÃO DE TESTE PARA WINDOWS 10/11 64 BITS
 
 1. Extraia o ZIP e abra TelegramSync.exe. Não é necessário instalar Python.
@@ -50,3 +50,28 @@ Corrige a repetição do login após redirecionamento de servidor pelo Telegram.
 Mostra erros específicos de API ID/Hash, telefone, bloqueios e rede sem expor
 credenciais. Não precisa apagar seus dados para atualizar: feche o programa
 e abra o novo executável.
+
+NOVO: EDITAR LINKS NO PRÓPRIO CANAL — 0.2.0
+1. Feche o executável antigo e abra esta versão. A conta salva é mantida.
+2. Pause as sincronizações. Abra a aba Editar links no canal.
+3. Clique Meus canais e escolha o canal na lista, ou digite @username/ID.
+4. Confira o novo destino: https://t.me/vipacessoliberado_bot
+5. Se desejar, marque remover linhas “outros grupos” e “Hentai”.
+6. Clique Analisar todo o histórico. Isso não altera publicações.
+7. Selecione posts para conferir texto e destinos na prévia.
+8. Clique Aplicar prévia / retomar e confirme o canal, ID e quantidade.
+
+Preserva texto dos links, formatação, fotos e vídeos. Por padrão troca
+links embutidos (Ctrl+K). URLs por extenso são opcionais: o texto visível
+permanece, mas o clique passa a abrir o novo destino. Menções não mudam;
+posts com botões são ignorados. Todos os links elegíveis do post serão
+alterados: revise os destinos anteriores na prévia.
+Não apaga posts inteiros: a opção de limpeza remove apenas as linhas
+citadas. Exige que sua conta possa editar mensagens do canal.
+Textos e formatação originais ficam no banco local, permitindo Restaurar
+textos originais. Não apague a pasta de dados se precisar desse backup.
+Mudanças feitas depois da prévia são ignoradas como conflitos, inclusive
+na restauração. Limites do Telegram pausam a operação até o prazo indicado.
+Ao pausar/fechar, uma edição em andamento pode terminar. Retome a mesma
+análise para verificar o resultado, em vez de criar outra imediatamente.
+Nenhuma edição ocorre automaticamente ao abrir o programa.

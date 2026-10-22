@@ -3,7 +3,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-VERSION = '0.1.1'
+VERSION = '0.2.0'
 
 
 def data_directory():
@@ -47,6 +47,24 @@ def self_test():
         root=tk.Tk();root.withdraw()
         window=Window(root,store)
         root.update()
+        # Exercise the editor widgets in the packaged Windows application.
+        from local_app.editor import DEFAULT_URL, rewrite, encode_entities
+        from telethon import types
+        original={'text':'VIP','entities':encode_entities([types.MessageEntityTextUrl(0,3,'https://old.example')]),'media':None,'preview':False,'buttons':None}
+        desired,links=rewrite(original,DEFAULT_URL)
+        batch=window.runtime.engine.editor.db.create('-100123','Canal de teste',1,DEFAULT_URL)
+        window.runtime.engine.editor.db.add(batch,7,original,desired,links)
+        window.runtime.engine.editor.db.patch(batch,status='ready',note='Prévia de teste')
+        window.editor_tab.complete(batch)
+        window.editor_tab.frame.master.select(window.editor_tab.frame)
+        root.deiconify()
+        root.update()
+        window.editor_tab.tree.selection_set('7')
+        window.editor_tab.details()
+        root.update()
+        assert DEFAULT_URL in window.editor_tab.detail.get('1.0','end')
+        assert window.editor_tab.detail.winfo_height() >= 40
+        assert window.editor_tab.tree.winfo_height() >= 40
         window.closing=True
         window.runtime.close()
         window.runtime.thread.join(timeout=10)

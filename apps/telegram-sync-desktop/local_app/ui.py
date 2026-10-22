@@ -43,6 +43,8 @@ class Window:
         tabs=ttk.Notebook(body);tabs.pack(fill='both',expand=True)
         tasks=ttk.Frame(tabs,padding=16);rules=ttk.Frame(tabs,padding=16);logs=ttk.Frame(tabs,padding=16)
         tabs.add(tasks,text='  Sincronizações  ');tabs.add(rules,text='  Substituir links e textos  ');tabs.add(logs,text='  Atividade e ajuda  ')
+        from .editor_ui import EditorTab
+        self.editor_tab=EditorTab(self,tabs)
         form=ttk.Frame(tasks);form.pack(fill='x')
         form.columnconfigure(1,weight=1)
         self.source=tk.StringVar();self.destination=tk.StringVar();self.mode=tk.StringVar(value='history');self.authorized=tk.BooleanVar()
@@ -115,12 +117,16 @@ class Window:
                 self.busy=False
             if kind=='error':
                 self.notify(value,error=True)
+                self.editor_tab.refresh()
                 if self.login_dialog and self.login_dialog.winfo_exists():
                     self.login_submit.configure(state='normal')
             elif kind=='result':
                 self.status.set('Operação concluída.')
                 if callback: callback(value)
                 self.reload()
+                self.editor_tab.refresh()
+            elif kind=='editor_progress':
+                self.status.set(value)
             elif kind=='account': self.account.set(value)
             elif kind=='refresh': self.reload()
         if not self.closing: self.root.after(150,self.poll)
@@ -195,6 +201,8 @@ class Window:
         return int(selected[0])
 
     def control(self,action):
+        if self.busy:
+            self.notify('Aguarde a operação atual.');return
         try:
             job_id=self.selected()
             if action=='cancel' and not messagebox.askyesno('Cancelar','Cancelar esta tarefa? Publicações já enviadas não serão apagadas.',parent=self.root): return
@@ -259,7 +267,7 @@ class Window:
 
     def close(self):
         if self.closing:return
-        if any(j['status']=='running' for j in self.store.jobs()) and not messagebox.askyesno('Fechar aplicativo','As sincronizações vão parar. Deseja fechar?',parent=self.root):return
+        if (self.busy or any(j['status']=='running' for j in self.store.jobs())) and not messagebox.askyesno('Fechar aplicativo','As operações vão parar. Deseja fechar?',parent=self.root):return
         self.closing=True
         self.status.set('Encerrando conexão. Não desligue o computador ainda…')
         self.runtime.close()

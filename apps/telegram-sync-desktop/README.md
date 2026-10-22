@@ -14,7 +14,7 @@ O executável Windows precisa ser gerado no Windows; não se renomeia um binári
 
 ## Segurança e retomada
 
-Não há backend nem porta local. Telethon conecta diretamente ao Telegram; credenciais persistidas são protegidas com Windows DPAPI. A segurança depende também da conta e do dispositivo Windows. Código de login e senha 2FA não persistem. O programa não registra conteúdo das mensagens ou respostas brutas do provedor. A sessão `StringSession` só existe em memória e no registro criptografado; nenhum arquivo `.session` é criado.
+Não há backend nem porta local. Telethon conecta diretamente ao Telegram; credenciais persistidas são protegidas com Windows DPAPI. A segurança depende também da conta e do dispositivo Windows. Código de login e senha 2FA não persistem. Os logs não registram conteúdo das mensagens ou respostas brutas do provedor. O editor de canais guarda textos e entidades originais no SQLite local para restauração; esses backups não incluem arquivos de mídia e não são enviados a outro servidor. A sessão `StringSession` só existe em memória e no registro criptografado; nenhum arquivo `.session` é criado.
 
 Um lock de processo impede duas cópias de usarem o mesmo banco. O worker assíncrono opera em thread separada da UI e uma única conexão publica lotes curtos. Cada publicação reserva todos os IDs do álbum em transação antes do envio e confirma mapeamento/checkpoint após a resposta. Envios ambíguos nunca são reenviados automaticamente. Ao reiniciar, tarefas em execução viram pausadas; reservas pendentes exigem revisão. Após revisão manual, pode-se confirmar como enviado sem inventar IDs de destino, ou autorizar uma nova tentativa. Álbuns parcialmente publicados exigem revisão fora do fluxo automático.
 
@@ -27,3 +27,15 @@ A sincronização contínua importa o histórico e depois consulta novos posts. 
 ## Correção 0.1.1
 
 O login agora permite até três novas tentativas na camada MTProto, necessárias quando o Telegram exige troca de data center. A versão anterior, com `request_retries=0`, era reproduzivelmente incapaz de concluir `auth.sendCode` após `PHONE_MIGRATE`. O teste de regressão exercita o código real `_call` do Telethon com transporte simulado, sem conta ou tráfego Telegram. Depois do login, a conexão é fechada e restaurada sob a política de publicação sem repetição automática. Erros conhecidos têm mensagens específicas; erros desconhecidos mostram apenas o nome da classe, nunca a resposta bruta ou as credenciais. Telefone aceita formatação comum e é normalizado antes do envio.
+
+## Editor de canais 0.2.0
+
+A aba **Editar links no canal** usa a conta salva para listar canais administrados, analisar todo o histórico sem alterá-lo e exibir uma prévia persistente. Troca os destinos de entidades `MessageEntityTextUrl` (Ctrl+K), mantendo o texto clicável, formatação UTF-16 e mídias existentes. URLs por extenso podem ser incluídas por opção: o texto visível permanece e o destino clicável é alterado. Menções e posts com teclados de botões são ignorados. A prévia considera todos os links elegíveis, não apenas links de bot ou textos específicos: confira antes de aplicar.
+
+O destino inicial é `https://t.me/vipacessoliberado_bot`. A opção de limpeza remove apenas linhas cujo texto, sem emojis/espaços/pontuação, seja “outros grupos” ou “Hentai”. Não apaga publicações inteiras, não altera títulos de canais e não baixa arquivos. Uma legenda que ficaria vazia é ignorada.
+
+O editor exige canal broadcast e conta dona ou administradora com `edit_messages`, tanto na análise quanto na aplicação/restauração. A proteção contra encaminhamento não bloqueia a edição legítima do próprio canal. Sincronizações precisam ser pausadas antes de editar. A aplicação requer confirmação do canal, ID, destino e quantidade no aplicativo. Não há alterações ao apenas abrir, listar canais ou analisar.
+
+Backups e propostas ficam nas tabelas locais `edit_batches`/`edit_items`, separados das filas de sincronização. Antes de cada edição o conteúdo é relido: se mudou desde a prévia, é marcado como conflito e preservado. A restauração só é aplicada se o post ainda corresponde à proposta; não sobrescreve alterações posteriores. Interrupções e respostas ambíguas ficam pausadas; a retomada primeiro compara o estado remoto, sem repetir uma edição já confirmada. Análises incompletas não podem ser aplicadas. FloodWait é persistido e impede retomada antes do prazo. O programa respeita os limites do Telegram, mas não pode garantir ausência de novos limites.
+
+Testes automatizados usam transporte simulado. A verificação final no canal real depende da sessão e da confirmação do usuário no Windows; não há credenciais de Telegram disponíveis no ambiente de desenvolvimento.

@@ -55,7 +55,7 @@ def telegram_client(session, api_id, api_hash, *, login=False):
     return TelegramClient(StringSession(session),api_id,api_hash,
         flood_sleep_threshold=0, request_retries=3 if login else 0,
         raise_last_call_error=True, connection_retries=2, timeout=20,
-        device_model='Telegram Sync Desktop', app_version='0.1.1')
+        device_model='Telegram Sync Desktop', app_version='0.2.0')
 
 
 class Engine:
@@ -65,6 +65,8 @@ class Engine:
         self.pending_login = None
         self.lock = asyncio.Lock()
         self.stopping = False
+        from .editor import ChannelEditor
+        self.editor = ChannelEditor(self)
 
     async def begin_login(self, api_id, api_hash, phone):
         async with self.lock:
