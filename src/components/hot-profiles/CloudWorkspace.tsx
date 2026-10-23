@@ -1,3 +1,4 @@
+import { WorkspaceMode } from "./WorkspaceMode";
 import { downloadBlob } from "@/lib/media/files";
 import { profileReport } from "@/lib/profile-report";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -267,6 +268,7 @@ export function CloudWorkspace() {
   return (
     <AppShell>
       <main className="mx-auto min-h-screen max-w-screen-2xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        <WorkspaceMode mode="cloud" />
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex gap-3">
             <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">

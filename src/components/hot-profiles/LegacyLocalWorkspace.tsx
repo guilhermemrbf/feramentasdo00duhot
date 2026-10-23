@@ -1,3 +1,4 @@
+import { WorkspaceMode } from "./WorkspaceMode";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Activity,
@@ -62,6 +63,7 @@ export function LegacyLocalWorkspace() {
   const [tab, setTab] = useState<"profiles" | "proxies" | "sessions">("profiles");
   const [kind, setKind] = useState<"all" | ProfileKind>("all");
   const [search, setSearch] = useState("");
+  const [proxyFilter, setProxyFilter] = useState("all");
   const [profileForm, setProfileForm] = useState<{
     initialKind: ProfileKind;
     profile?: HotProfile;
@@ -80,6 +82,13 @@ export function LegacyLocalWorkspace() {
     Record<string, { ok: boolean; latency?: number; message: string }>
   >({});
   const refreshing = useRef(false);
+  const currentConnection = useRef<HotConnection | null>(null);
+  useEffect(() => {
+    currentConnection.current = connection;
+    return () => {
+      currentConnection.current = null;
+    };
+  }, [connection]);
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(HOT_CONNECTION_KEY);
@@ -106,9 +115,11 @@ export function LegacyLocalWorkspace() {
         "GET",
         AbortSignal.timeout(5000),
       );
+      if (currentConnection.current !== connection) return;
       setWorkspace(next);
       setOnline(true);
     } catch (reason) {
+      if (currentConnection.current !== connection) return;
       setOnline(false);
       if ((reason as { status?: number }).status === 401) {
         setConnection(null);
@@ -214,9 +225,15 @@ export function LegacyLocalWorkspace() {
         .toLocaleLowerCase()
         .includes(search.toLocaleLowerCase()),
   );
-  const proxies = workspace.proxies.filter((proxy) =>
-    `${proxy.name} ${proxy.host}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
-  );
+  const proxies = workspace.proxies.filter((proxy) => {
+    const owners = workspace.profiles.filter((profile) => profile.proxyId === proxy.id);
+    return (
+      `${proxy.name} ${proxy.host} ${owners.map((item) => item.name).join(" ")}`
+        .toLocaleLowerCase()
+        .includes(search.toLocaleLowerCase()) &&
+      (proxyFilter === "all" || (proxyFilter === "available" ? !owners.length : !!owners.length))
+    );
+  });
   const running = workspace.sessions.filter(sessionActive);
   const visibleSessions = workspace.sessions.filter((session) => session.status !== "stopped");
   const selectedSession =
@@ -231,6 +248,7 @@ export function LegacyLocalWorkspace() {
   return (
     <AppShell>
       <main className="mx-auto min-h-screen max-w-screen-2xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        <WorkspaceMode mode="local" />
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="flex size-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
@@ -285,6 +303,31 @@ export function LegacyLocalWorkspace() {
                 <ArrowRight className="size-4" />
               </button>
             </div>
+          </section>
+        )}
+        {online && workspace.performance && (
+          <section
+            aria-label="Capacidade do computador"
+            className="rounded-lg border border-border bg-card p-4 text-sm"
+          >
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              <span>
+                RAM: <strong>{workspace.performance.freeGB} GB livres</strong> /{" "}
+                {workspace.performance.totalGB} GB
+              </span>
+              <span>{workspace.performance.cores} processadores lógicos</span>
+              <span>
+                Sessões:{" "}
+                <strong>
+                  {running.length} / {workspace.performance.maxSessions}
+                </strong>
+              </span>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              O limite inicial é conservador. Android consome mais recursos e exige virtualização
+              ativa. Encerrar o controle de um Android não desliga o emulador; feche instâncias que
+              não estiver usando no gerenciador.
+            </p>
           </section>
         )}
         {message && (
@@ -567,10 +610,11 @@ export function LegacyLocalWorkspace() {
                                   if (connection)
                                     await bridgeRequest(connection, "/v1/profiles", {
                                       ...profile,
+                                      proxyId: null,
                                       name: `${profile.name.slice(0, 70)} · cópia`,
                                     });
                                 },
-                                "Configuração duplicada. O novo navegador começa com dados separados.",
+                                "Configuração duplicada sem reutilizar o proxy. Edite o novo perfil para escolher outra conexão.",
                               )
                             }
                           >
@@ -648,7 +692,8 @@ export function LegacyLocalWorkspace() {
           <section aria-label="Seus proxies" className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground">
-                Conexões HTTP, HTTPS e SOCKS5, com ou sem autenticação.
+                Sua central de conexões HTTP, HTTPS e SOCKS5. Use um cadastro diferente em cada
+                perfil.
               </p>
               <label className="relative w-full sm:max-w-xs">
                 <span className="sr-only">Buscar proxies</span>
@@ -660,6 +705,30 @@ export function LegacyLocalWorkspace() {
                   className={`${hotInput} pl-9`}
                 />
               </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              <label>
+                Mostrar{" "}
+                <select
+                  aria-label="Filtrar proxies por vínculo"
+                  value={proxyFilter}
+                  onChange={(event) => setProxyFilter(event.target.value)}
+                  className="ml-2 rounded border border-border bg-background p-2"
+                >
+                  <option value="all">Todos</option>
+                  <option value="available">Disponíveis</option>
+                  <option value="assigned">Vinculados</option>
+                </select>
+              </label>
+              <span>
+                {
+                  workspace.proxies.filter(
+                    (proxy) => !workspace.profiles.some((profile) => profile.proxyId === proxy.id),
+                  ).length
+                }{" "}
+                disponíveis para novos perfis
+              </span>
+              <span>A verificação testa conectividade; não garante IP exclusivo ou reputação.</span>
             </div>
             {proxies.length ? (
               <div className="grid gap-4 xl:grid-cols-2">
@@ -692,6 +761,12 @@ export function LegacyLocalWorkspace() {
                             .length
                         }{" "}
                         perfis vinculados
+                      </span>
+                      <span>
+                        {workspace.profiles
+                          .filter((profile) => profile.proxyId === proxy.id)
+                          .map((profile) => profile.name)
+                          .join(", ") || "Disponível para um novo perfil"}
                       </span>
                     </div>
                     {checks[proxy.id] && (
@@ -761,7 +836,7 @@ export function LegacyLocalWorkspace() {
                     : "As conexões dos seus projetos, em um só lugar"}
                 </h2>
                 <p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-muted-foreground">
-                  Adicione seu proxy e escolha em quais perfis utilizá-lo. As senhas não ficam
+                  Adicione seu proxy e escolha o perfil que vai utilizá-lo. As senhas não ficam
                   salvas no navegador do painel.
                 </p>
                 <button onClick={createProxy} className={`${hotPrimary} mt-5`}>
@@ -892,6 +967,12 @@ export function LegacyLocalWorkspace() {
             proxies={workspace.proxies}
             profiles={workspace.profiles}
             devices={devices}
+            onCreateProxy={async (input) => {
+              if (!connection) throw new Error("Conecte seu computador primeiro.");
+              const created = await bridgeRequest<HotProxy>(connection, "/v1/proxies", input);
+              await refresh();
+              return created;
+            }}
             onClose={() => setProfileForm(null)}
             onRefresh={refreshDevices}
             onManager={openManager}
@@ -928,6 +1009,12 @@ export function LegacyLocalWorkspace() {
                 id ? "PATCH" : "POST",
               );
               await refresh();
+              if (id)
+                setChecks((current) => {
+                  const next = { ...current };
+                  delete next[id];
+                  return next;
+                });
               setProxyForm(null);
               setMessage("Proxy salvo no computador.");
             }}

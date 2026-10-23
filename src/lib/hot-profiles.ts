@@ -38,7 +38,16 @@ export type HotDevice = {
   ready: boolean;
   adbEnabled: boolean;
 };
+export type HotPerformance = {
+  totalGB: number;
+  freeGB: number;
+  cores: number;
+  maxSessions: number;
+  suggested: number;
+  platform: string;
+};
 export type HotDevices = {
+  performance?: HotPerformance;
   devices: HotDevice[];
   adbAvailable: boolean;
   managerAvailable: boolean;
@@ -46,6 +55,7 @@ export type HotDevices = {
   computer: string;
 };
 export type HotWorkspace = {
+  performance?: HotPerformance;
   profiles: HotProfile[];
   proxies: HotProxy[];
   sessions: HotSession[];

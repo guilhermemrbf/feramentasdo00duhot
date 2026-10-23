@@ -41,3 +41,21 @@ node bridge.mjs --allow-origin https://seu-dominio.com
 A origem publicada já autorizada é `https://feramentasdo00duhot.lovable.app`. Para outro domínio, use `--allow-origin` com uma origem exata, sem caminho. Não use URLs ou endereços de terceiros como conector: o painel só aceita localhost/127.0.0.1.
 
 Para caminhos não padrão: variáveis de ambiente `HOT_PROFILES_BROWSER` (Chrome/Edge) e `HOT_PROFILES_ADB` (adb). Apenas executáveis já instalados e confiáveis.
+
+## Central de proxies e desempenho
+
+O Hot Profiles abre em **Meu computador**. O modo **Nuvem** continua disponível em um cadastro separado; alternar a tela não encerra sessões. Nenhum serviço pago é contratado pelo modo local. O computador precisa continuar ligado. Proxies são fornecidos por você; eventuais custos do provedor de proxy não estão incluídos.
+
+Em **Proxies**, adicione ou edite conexões e filtre as disponíveis ou vinculadas. O nome do perfil vinculado aparece no cartão. No formulário de perfil, você pode cadastrar uma nova proxy sem perder o preenchimento. Cada proxy só pode ser associada a um novo perfil por vez. Uma cópia da configuração de navegador começa sem proxy para você escolher outra. Para liberar uma proxy, encerre a sessão e edite o vínculo no perfil anterior. Cadastros antigos compartilhados são preservados, mas não podem abrir simultaneamente a mesma conexão. Endereço, protocolo e usuário repetidos são recusados; usuários diferentes do mesmo gateway podem representar sessões distintas do provedor, mas não garantem IPs diferentes.
+
+Sem proxy selecionado, o ambiente usa a conexão normal do computador. O teste de conexão confirma apenas que o proxy aceita um túnel, não localização, reputação ou exclusividade de IP. No Android, aplicações que ignoram o proxy HTTP do sistema continuam fora desse roteamento; não há VPN de dispositivo completo nesta base.
+
+O painel mostra RAM total/livre, processadores lógicos e limite de sessões. O limite padrão é uma estimativa conservadora de 1 a 4 ambientes. Não é uma garantia da quantidade de Androids suportada. Se necessário, após medir o uso no Gerenciador de Tarefas, configure explicitamente de 1 a 8:
+
+```text
+node bridge.mjs --max-sessions 2
+```
+
+Só a sessão selecionada tem prévia atualizada. O seletor **Econômica / Equilibrada / Mais rápida** controla a frequência das capturas; não muda o Android ou a velocidade do site. Abas ocultas não pedem capturas. O conector compartilha capturas concorrentes e mantém somente o último frame em cache por 250 ms, invalidando-o após uma ação. Android usa capturas ADB, sem áudio; não é streaming de alta taxa de quadros. Ao encerrar o controle, o emulador permanece ligado. Feche instâncias sem uso pelo gerenciador para liberar CPU/RAM.
+
+Para um Android completo, instale e configure seu emulador, com virtualização ativada, e use uma instância independente por perfil. Criar um perfil no painel não cria nem baixa uma máquina Android. A alternativa mais leve é começar por perfis de navegador. Valide primeiro um ambiente e uma proxy antes de aumentar a simultaneidade.

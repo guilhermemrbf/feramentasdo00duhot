@@ -1,0 +1,46 @@
+name: Hot Profiles Local
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/hot-profiles/**'
+      - 'tests/hot-profiles*.test.mjs'
+      - 'src/lib/proxy-input.ts'
+      - '.github/workflows/hot-profiles-local.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    if: github.event.repository.private == false
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --experimental-strip-types --test --test-timeout=30000 tests/hot-profiles-local.test.mjs tests/hot-profiles-bridge.test.mjs
+  package:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tools/hot-profiles/package.mjs
+      - run: |
+          cd public
+          sha256sum hot-profiles-connector.zip > hot-profiles-SHA256SUMS.txt
+      - name: Publish tested connector
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "hot-profiles-local-${{ github.run_number }}-${{ github.run_attempt }}" public/hot-profiles-connector.zip public/hot-profiles-SHA256SUMS.txt --target '${{ github.sha }}' --title 'Hot Profiles Local — central de proxies' --notes-file tools/hot-profiles/LEIA-ME.md --prerelease

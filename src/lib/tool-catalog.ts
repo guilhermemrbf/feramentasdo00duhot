@@ -137,17 +137,17 @@ export const TOOL_CATALOG = [
     path: "/hot-profiles",
     name: "Hot Profiles",
     category: "Ambientes",
-    mode: "Integração externa",
+    mode: "Local · nuvem opcional",
     summary: "Organize perfis, proxies e sessões de navegador em um workspace.",
-    input: "Seu workspace e os ambientes configurados.",
-    output: "Perfis organizados e sessões dos provedores conectados.",
+    input: "Conector local, navegador ou instância Android e seus proxies.",
+    output: "Perfis locais com dados separados, proxy por perfil e controle das sessões.",
     steps: [
-      "Abra ou configure seu workspace.",
-      "Cadastre os dados do ambiente e confira a conexão.",
-      "Inicie e acompanhe as sessões disponíveis.",
+      "Conecte seu computador com o código do conector.",
+      "Cadastre proxies na central e escolha um diferente em cada perfil.",
+      "Abra o ambiente e controle a sessão pelo painel.",
     ],
     requirement:
-      "Sessões em nuvem dependem de um provedor configurado. Confira os limites e eventuais custos do seu provedor antes de iniciar.",
+      "Local: Chrome/Edge instalado; Android exige instância própria, ADB e recursos de hardware. O computador precisa ficar ligado. Nuvem usa configuração separada e pode ter custos do provedor.",
   },
 ] as const;
 export type Tool = (typeof TOOL_CATALOG)[number];

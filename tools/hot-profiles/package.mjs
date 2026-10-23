@@ -9,6 +9,8 @@ const destination = path.resolve(directory, "../../public");
 const files = [
   "bridge.mjs",
   "storage.mjs",
+  "policy.mjs",
+  "frame-cache.mjs",
   "proxy.mjs",
   "browser.mjs",
   "android.mjs",

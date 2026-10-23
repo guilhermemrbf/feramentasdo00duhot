@@ -1,4 +1,6 @@
 import http from "node:http";
+import { performanceInfo, proxyKey } from "./policy.mjs";
+import { frameCache } from "./frame-cache.mjs";
 import { randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
@@ -33,6 +35,13 @@ if (additionalOrigin) {
     throw new Error("Informe uma origem exata, sem caminho.");
   origins.add(origin.origin);
 }
+const requestedLimit = argument("--max-sessions");
+if (
+  requestedLimit !== undefined &&
+  (!/^\d+$/.test(requestedLimit) || Number(requestedLimit) < 1 || Number(requestedLimit) > 8)
+)
+  throw new Error("Use --max-sessions entre 1 e 8.");
+const limits = performanceInfo(requestedLimit ? Number(requestedLimit) : undefined);
 const store = await createStore(directory);
 const token = randomBytes(32).toString("base64url");
 let pairCode = String(randomInt(100000, 1000000));
@@ -68,6 +77,7 @@ const publicState = () => ({
   proxies: store.data.proxies.map(store.publicProxy),
   sessions: [...sessions.values()].map(sessionInfo),
   activities: store.data.activities,
+  performance: performanceInfo(limits.maxSessions),
 });
 async function body(request) {
   let size = 0;
@@ -98,6 +108,7 @@ async function stopSession(session) {
     session.abort.abort();
     return;
   }
+  session.frames.clear();
   session.status = "stopping";
   try {
     await session.runtime?.stop();
@@ -114,9 +125,12 @@ async function stopSession(session) {
   }
 }
 async function launch(profile) {
-  if ([...sessions.values()].filter((session) => active(session.profile.id)).length >= 8)
+  if (
+    [...sessions.values()].filter((session) => active(session.profile.id)).length >=
+    limits.maxSessions
+  )
     fail(
-      "Encerre um ambiente antes de abrir outro. Esta base aceita até oito sessões simultâneas.",
+      `Encerre um ambiente antes de abrir outro. Este conector está limitado a ${limits.maxSessions} sessões simultâneas.`,
       409,
     );
   if (active(profile.id)) fail("Este perfil já tem uma sessão aberta.", 409);
@@ -127,7 +141,18 @@ async function launch(profile) {
     )
   )
     fail("Esta instância Android já está em uso.", 409);
+  const selectedProxy = profile.proxyId ? store.proxy(profile.proxyId) : null;
+  if (profile.proxyId && !selectedProxy) fail("O proxy deste perfil não está disponível.");
+  if (
+    selectedProxy &&
+    [...sessions.values()].some((session) => {
+      const other = session.profile.proxyId ? store.proxy(session.profile.proxyId) : null;
+      return active(session.profile.id) && other && proxyKey(other) === proxyKey(selectedProxy);
+    })
+  )
+    fail("Este proxy já está em uso por outro perfil. Escolha uma conexão diferente.", 409);
   const session = {
+    frames: frameCache(),
     profile,
     status: "starting",
     startedAt: new Date().toISOString(),
@@ -204,7 +229,7 @@ const server = http.createServer(async (request, response) => {
     }
     const url = new URL(request.url, `http://127.0.0.1:${port}`);
     if (url.pathname === "/health" && request.method === "GET") {
-      send(response, 200, { name: "Hot Profiles", version: 1 });
+      send(response, 200, { name: "Hot Profiles", version: 2 });
       return;
     }
     if (url.pathname === "/pair" && request.method === "POST") {
@@ -238,6 +263,7 @@ const server = http.createServer(async (request, response) => {
       send(response, 200, {
         ...(await discoverAndroid()),
         browserAvailable: !!(await findBrowser()),
+        performance: performanceInfo(limits.maxSessions),
         computer: os.hostname(),
       });
       return;
@@ -316,13 +342,7 @@ const server = http.createServer(async (request, response) => {
       const session = sessions.get(id);
       if (!session || session.status !== "running") fail("Esta sessão não está em execução.", 409);
       if (method === "GET" && action === "frame") {
-        if (session.capturing) fail("A tela está sendo atualizada.", 409);
-        session.capturing = true;
-        try {
-          send(response, 200, await session.runtime.frame());
-        } finally {
-          session.capturing = false;
-        }
+        send(response, 200, await session.frames.get(() => session.runtime.frame()));
         return;
       }
       if (
@@ -330,13 +350,12 @@ const server = http.createServer(async (request, response) => {
         session.profile.kind === "browser" &&
         ["GET", "POST"].includes(method)
       ) {
-        send(
-          response,
-          200,
+        const tabs =
           method === "POST"
             ? await session.runtime.addTab((await body(request)).url)
-            : await session.runtime.tabs(),
-        );
+            : await session.runtime.tabs();
+        if (method === "POST") session.frames.clear();
+        send(response, 200, tabs);
         return;
       }
       if (method === "POST" && action === "control") {
@@ -349,6 +368,7 @@ const server = http.createServer(async (request, response) => {
         session.control = operation;
         try {
           await operation;
+          session.frames.clear();
           send(response, 200, { ok: true });
         } finally {
           session.controlCount--;
@@ -380,7 +400,7 @@ server.on("error", (error) => {
 });
 server.listen(port, "127.0.0.1", () => {
   console.log(
-    `\nHOT PROFILES — conector local\n\nEndereço: http://127.0.0.1:${port}\nDados: ${directory}\n\nCódigo de conexão: ${pairCode}\nVálido por 15 minutos. Digite-o apenas no seu painel 00duHot.\n\nMantenha esta janela aberta enquanto usa suas sessões. Ctrl+C para encerrar.\n`,
+    `\nHOT PROFILES — conector local\n\nEndereço: http://127.0.0.1:${port}\nDados: ${directory}\nLimite: ${limits.maxSessions} sessões · RAM: ${limits.totalGB} GB · processadores lógicos: ${limits.cores}\n\nCódigo de conexão: ${pairCode}\nVálido por 15 minutos. Digite-o apenas no seu painel 00duHot.\n\nMantenha esta janela aberta enquanto usa suas sessões. Ctrl+C para encerrar.\n`,
   );
 });
 const renewCode = setInterval(

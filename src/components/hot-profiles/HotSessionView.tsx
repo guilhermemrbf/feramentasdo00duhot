@@ -49,6 +49,7 @@ export function HotSessionView({
   const [prompt, setPrompt] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [lastFrame, setLastFrame] = useState(0);
+  const [previewRate, setPreviewRate] = useState<"economy" | "balanced" | "responsive">("balanced");
   const screen = useRef<HTMLDivElement>(null);
   const currentFrame = useRef<HotFrame | null>(null);
   const pointer = useRef<{ x: number; y: number } | null>(null);
@@ -90,14 +91,25 @@ export function HotSessionView({
         if (!abort.signal.aborted) setError((reason as Error).message);
       }
       if (!abort.signal.aborted)
-        timer = setTimeout(() => void capture(), session.kind === "android" ? 900 : 600);
+        timer = setTimeout(
+          () => void capture(),
+          previewRate === "economy"
+            ? 1800
+            : previewRate === "responsive"
+              ? session.kind === "android"
+                ? 500
+                : 300
+              : session.kind === "android"
+                ? 900
+                : 600,
+        );
     }
     void capture();
     return () => {
       abort.abort();
       clearTimeout(timer);
     };
-  }, [connection, prefix, session.status, session.kind]);
+  }, [connection, prefix, session.status, session.kind, previewRate]);
   const activeTab = frame?.tabs.find((tab) => tab.active);
   useEffect(() => {
     if (!editing)
@@ -215,6 +227,20 @@ export function HotSessionView({
           : "overflow-hidden rounded-2xl border border-border bg-card"
       }
     >
+      <label className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2 text-xs text-muted-foreground">
+        Atualização da tela{" "}
+        <select
+          aria-label="Velocidade da prévia"
+          value={previewRate}
+          onChange={(event) => setPreviewRate(event.target.value as typeof previewRate)}
+          className="rounded border border-border bg-background px-2 py-1"
+        >
+          <option value="economy">Econômica</option>
+          <option value="balanced">Equilibrada</option>
+          <option value="responsive">Mais rápida</option>
+        </select>
+        <span>Mais rápida usa mais CPU. Android usa capturas de tela, sem áudio.</span>
+      </label>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-3">
         <div className="flex min-w-0 items-center gap-2">
           {session.kind === "android" ? (

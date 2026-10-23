@@ -4,6 +4,8 @@ import { unlinkSync } from "node:fs";
 import path from "node:path";
 import net from "node:net";
 
+import { proxyKey, proxyOwner } from "./policy.mjs";
+
 export function fail(message, status = 400) {
   throw Object.assign(new Error(message), { status });
 }
@@ -22,10 +24,12 @@ export function webUrl(value) {
 }
 export const portNumber = (value) =>
   Number.isInteger(Number(value)) && Number(value) > 0 && Number(value) <= 65535;
-export const validHost = (value) =>
-  typeof value === "string" &&
-  value.length <= 253 &&
-  (net.isIP(value) > 0 || /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/i.test(value));
+export const validHost = (value) => {
+  if (typeof value !== "string" || value.length > 253) return false;
+  if (net.isIP(value)) return true;
+  if (/^[\d.]+$/.test(value)) return false;
+  return value.split(".").every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label));
+};
 
 export async function createStore(directory) {
   await mkdir(directory, { recursive: true, mode: 0o700 });
@@ -120,6 +124,11 @@ export async function createStore(directory) {
     const proxyId = input.proxyId || null;
     if (proxyId && !data.proxies.some((p) => p.id === proxyId))
       fail("O proxy selecionado não existe.");
+    if (proxyId !== previous?.proxyId && proxyOwner(data.profiles, proxyId, previous?.id))
+      fail(
+        "Este proxy já está vinculado a outro perfil. Cadastre uma conexão diferente ou libere o vínculo anterior.",
+        409,
+      );
     const tags = Array.isArray(input.tags)
       ? [...new Set(input.tags.map((t) => text(t, 30)).filter(Boolean))].slice(0, 8)
       : [];
@@ -217,6 +226,23 @@ export async function createStore(directory) {
         fail("Credenciais inválidas.");
       if (/[\r\n]/.test(input.username + input.password) || input.username.includes(":"))
         fail("Credenciais contêm caracteres não aceitos.");
+      if (
+        input.protocol === "socks5" &&
+        (Buffer.byteLength(input.username) > 255 || Buffer.byteLength(input.password) > 255)
+      )
+        fail("Credenciais SOCKS5 aceitam até 255 bytes por campo.");
+      const candidate = {
+        protocol: input.protocol,
+        host,
+        port: input.port,
+        username: input.username,
+      };
+      if (
+        data.proxies.some(
+          (proxy) => proxy.id !== previous?.id && proxyKey(proxy) === proxyKey(candidate),
+        )
+      )
+        fail("Este endereço, protocolo e usuário já estão cadastrados na central de proxies.", 409);
       const now = new Date().toISOString();
       const item = {
         id: previous?.id || randomUUID(),

@@ -185,6 +185,7 @@ export async function createGateway(proxy) {
           incoming.pipe(response);
         },
       );
+      outgoing.on("socket", (socket) => socket.resume());
       outgoing.on("error", () => {
         if (!response.headersSent) response.writeHead(502);
         response.end("O proxy não conseguiu conectar.");
