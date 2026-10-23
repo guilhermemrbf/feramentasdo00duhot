@@ -102,24 +102,24 @@ def card(parent,title=None,subtitle=None):
 
 
 class Metric:
-    def __init__(self,parent,title,description,color=BLUE):
+    def __init__(self,parent,title,description,color=BLUE,compact=False):
         self.frame=tk.Frame(parent,bg=BORDER,padx=1,pady=1)
-        inner=tk.Frame(self.frame,bg=CARD,padx=16,pady=13);inner.pack(fill='both',expand=True)
-        tk.Label(inner,text=title,bg=CARD,fg=MUTED,font=('Segoe UI',10)).pack(anchor='w')
+        inner=tk.Frame(self.frame,bg=CARD,padx=14,pady=7 if compact else 13);inner.pack(fill='both',expand=True)
+        tk.Label(inner,text=title,bg=CARD,fg=MUTED,font=('Segoe UI',9 if compact else 10)).pack(anchor='w')
         self.value=tk.StringVar(value='0')
-        tk.Label(inner,textvariable=self.value,bg=CARD,fg=TEXT,font=('Segoe UI',27,'bold')).pack(anchor='w',pady=(4,2))
+        tk.Label(inner,textvariable=self.value,bg=CARD,fg=TEXT,font=('Segoe UI',20 if compact else 27,'bold')).pack(anchor='w',pady=(4,2))
         self.description=tk.StringVar(value=description)
-        self.caption=tk.Label(inner,textvariable=self.description,bg=CARD,fg=MUTED,font=('Segoe UI',9),wraplength=160,justify='left')
+        self.caption=tk.Label(inner,textvariable=self.description,bg=CARD,fg=MUTED,font=('Segoe UI',8 if compact else 9),wraplength=160,justify='left')
         self.caption.pack(anchor='w')
         inner.bind('<Configure>',lambda e:self.caption.configure(wraplength=max(90,e.width-32)))
 
 
-def metrics(parent,definitions):
-    row=ttk.Frame(parent);row.pack(fill='x',pady=(0,20))
+def metrics(parent,definitions,compact=False):
+    row=ttk.Frame(parent);row.pack(fill='x',pady=(0,8 if compact else 20))
     result={}
     for index,(key,title,description,color) in enumerate(definitions):
         row.columnconfigure(index,weight=1,uniform='metric')
-        metric=Metric(row,title,description,color);metric.frame.grid(row=0,column=index,sticky='nsew',padx=(0,10 if index<len(definitions)-1 else 0))
+        metric=Metric(row,title,description,color,compact);metric.frame.grid(row=0,column=index,sticky='nsew',padx=(0,10 if index<len(definitions)-1 else 0))
         result[key]=metric
     return result
 

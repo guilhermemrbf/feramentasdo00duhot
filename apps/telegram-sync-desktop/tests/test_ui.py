@@ -102,7 +102,9 @@ class InterfaceTests(unittest.TestCase):
         self.root.geometry('980x640');self.root.deiconify();self.root.update()
         metric=self.window.home_metrics['sent'].frame;y=metric.winfo_rooty()
         for operation in ('copy','edit'):
-            self.window.show_operation(operation);self.root.update()
+            self.window.show_operation(operation);self.window.page.canvas.yview_moveto(0);self.root.update()
+            action=self.window.create_button if operation=='copy' else self.window.editor_tab.scan_button
+            self.assertLessEqual(action.winfo_rooty()+action.winfo_height(),self.window.page.canvas.winfo_rooty()+self.window.page.canvas.winfo_height())
             self.window.page.canvas.yview_moveto(1);self.root.update()
             self.assertEqual(metric.winfo_rooty(),y)
             self.assertTrue(metric.winfo_ismapped())

@@ -37,12 +37,12 @@ class Window:
         self.connect_button=ttk.Button(self.account_controls,text='Conectar Telegram',style='Primary.TButton',command=self.login)
         self.disconnect_button=ttk.Button(self.account_controls,text='Desconectar',style='Quiet.TButton',command=self.disconnect)
         dashboard=ttk.Frame(self.shell,padding=(22,0,22,0));dashboard.pack(fill='x')
-        self.home_metrics=metrics(dashboard,[('sent','Cópias publicadas','Mensagens confirmadas',GREEN),('running','Copiando agora','Sincronizações em execução',BLUE),('paused','Pausadas','Aguardando você iniciar',AMBER),('attention','Precisam de atenção','Confira antes de retomar',RED)])
+        self.home_metrics=metrics(dashboard,[('sent','Cópias publicadas','Mensagens confirmadas',GREEN),('running','Copiando agora','Sincronizações em execução',BLUE),('paused','Pausadas','Aguardando você iniciar',AMBER),('attention','Precisam de atenção','Confira antes de retomar',RED)],compact=True)
         footer=ttk.Frame(self.shell,padding=(22,10));footer.pack(side='bottom',fill='x')
         self.spinner=ttk.Progressbar(footer,mode='indeterminate',length=70)
         self.status_label=ttk.Label(footer,textvariable=self.status,style='Muted.TLabel',wraplength=900);self.status_label.pack(side='left',fill='x',expand=True)
         footer.bind('<Configure>',lambda e:self.status_label.configure(wraplength=max(200,e.width-160)))
-        self.page=ScrollPage(self.shell,padding=22);self.page.pack(fill='both',expand=True);body=self.page.inner
+        self.page=ScrollPage(self.shell,padding=(22,10,22,14));self.page.pack(fill='both',expand=True);body=self.page.inner
         self.login_section=Fold(body,'Conectar minha conta');self.login_section.pack_forget()
         self.operation_choice=tk.StringVar(value='copy')
         chooser=ttk.Frame(body);self.chooser=chooser;chooser.pack(fill='x',pady=(0,12))
