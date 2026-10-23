@@ -3,7 +3,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-VERSION = '0.4.0'
+VERSION = '0.5.0'
 
 
 def data_directory():
@@ -57,7 +57,7 @@ def self_test():
         window.runtime.engine.editor.db.add(batch,7,original,desired,links)
         window.runtime.engine.editor.db.patch(batch,status='ready',note='Prévia de teste')
         window.editor_tab.complete(batch)
-        window.editor_tab.frame.master.select(window.editor_tab.frame)
+        window.show_operation('edit')
         root.deiconify()
         root.update()
         window.editor_tab.tree.selection_set('7')

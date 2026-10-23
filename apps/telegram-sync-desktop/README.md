@@ -55,3 +55,13 @@ Os testes reais de Tk verificam navegação, busca, filtros, publicação versus
 Marca original 00duHot incorporada ao executável, paleta neutra e destaque dourado discreto. O editor aceita seleção múltipla com Ctrl/Shift e escopo explícito: toda a análise ou somente os selecionados. O motor local valida todos os IDs antes de conectar ao Telegram; seleção inválida não inicia operações. Propostas não selecionadas continuam pendentes e a análise permanece disponível para retomada. Filtros de busca continuam alterando apenas a visualização.
 
 O relatório CSV é exportado somente por ação do operador. Inclui canal, destino, ID, título, situação e contagem de links; exclui sessão, API Hash e corpos completos. Campos com prefixos interpretáveis como fórmulas por planilhas são escapados. Não há alteração de esquema do banco. A marca é incluída com `--add-data` e o autoteste verifica que foi carregada tanto do código quanto do executável.
+
+## Tela única 0.5.0
+
+O dashboard fica fixo no topo, inclusive ao rolar. Sai o menu lateral e as cinco páginas: na própria janela, escolha **Copiar para outro canal** ou **Trocar links do meu canal**. A escolha só apresenta o formulário correspondente; não inicia operações. Regras, filtros, histórico e restauração ficam recolhidos. O modo de cópia padrão continua sendo somente histórico, sem acompanhamento de novos posts até marcar a opção.
+
+A criação da sincronização agora usa o formulário na tela principal. A validação dos canais ocorre ao criar, removendo o botão de verificação duplicada. A tarefa continua nascendo pausada e requer **Iniciar cópia**. Autorização de republicação permanece obrigatória e é desmarcada após criar. Pausa e conferência de envio aparecem quando são relevantes para a tarefa selecionada.
+
+O login acontece na própria tela, sem uma janela auxiliar. Código e senha de duas etapas são mostrados somente na etapa solicitada pelo Telegram. As credenciais persistidas continuam protegidas pelo DPAPI e os segredos transitórios continuam sendo limpos. Nenhuma conexão acontece apenas por abrir ou alternar formulários.
+
+No editor, **Ver prévia** prepara a análise, depois **Aplicar alterações** fica disponível. Mudar canal, destino ou opções invalida a aplicação da prévia no formulário até analisar de novo (ou voltar aos campos anteriores). A confirmação final identifica o canal, destino, quantidade e escopo. Backups, restauração, seleção múltipla, CSV e tratamento de conflitos continuam disponíveis. Não há migração de dados nem mudança na política de publicação/reenvio.

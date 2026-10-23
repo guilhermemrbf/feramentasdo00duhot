@@ -1,108 +1,73 @@
-TELEGRAM SYNC DESKTOP 0.4.0 — 00duHot
-VERSÃO DE TESTE PARA WINDOWS 10/11 64 BITS
+TELEGRAM SYNC 0.5.0 — 00duHot
+WINDOWS 10/11 64 BITS · GRATUITO E LOCAL
 
-1. Extraia o ZIP e abra TelegramSync.exe. Não é necessário instalar Python.
-2. Clique em Conectar Telegram. Obtenha seu API ID e API Hash em
-   https://my.telegram.org > API development tools, gratuitamente.
-3. Informe API ID, API Hash e seu telefone com +55. Digite o código recebido
-   pelo Telegram e, se solicitado, a senha de verificação em duas etapas.
-4. Na aba de substituições, configure os links/textos e teste uma legenda.
-5. Escolha origem e destino por ID, @username ou link público.
-   Para canais privados, sua conta precisa participar deles.
-   Você precisa administrar o destino e ter autorização para republicar a origem.
-6. Escolha histórico ou histórico + novos posts. Confira os canais.
-7. Crie uma tarefa, selecione-a e clique em Iniciar. Teste primeiro com
-   dois canais seus e poucas mensagens.
+PARA ABRIR OU ATUALIZAR
+Feche o aplicativo antigo, extraia o ZIP e abra TelegramSync.exe.
+Não precisa instalar Python. Sua conta, tarefas e backups ficam mantidos em
+%LOCALAPPDATA%\00duHot\TelegramSync. Não apague essa pasta.
 
-FUNCIONAMENTO
-- Não precisa de Railway, servidor pago, Supabase ou login na Lovable.
-- Precisa de computador ligado, aplicativo aberto e internet.
-- Fechar/suspender o computador interrompe a sincronização.
-- Ao reabrir, as tarefas ficam pausadas; clique em Iniciar para retomar.
-- Regras são copiadas para a tarefa na criação. Alterar a aba de regras
-  só afeta tarefas futuras.
-- A sessão e o API Hash são protegidos pelo Windows DPAPI para o usuário
-  atual. OTP e senha 2FA não são salvos. Não compartilhe a pasta de dados.
-- Dados ficam em %LOCALAPPDATA%\00duHot\TelegramSync.
-- Não há telemetria ou envio para servidores do 00duHot. O aplicativo
-  comunica-se com o Telegram. O botão de ajuda abre my.telegram.org.
-- Para revogar o acesso, desconecte pelo aplicativo ou encerre a sessão
-  em Telegram > Configurações > Dispositivos.
+TUDO NA MESMA TELA
+O painel no topo mostra as cópias publicadas, em execução, pausadas e com
+alerta. Ele continua visível quando você rola a tela. Escolha abaixo:
 
-LIMITES
-Não copia membros, tópicos, respostas, reações, visualizações ou mudanças
-posteriores de edição/exclusão. Não contorna conteúdo protegido.
-A formatação vira texto simples. Links ocultos são expandidos para URLs.
-Suporta texto, fotos, vídeos, documentos e álbuns compatíveis. Tipos não
-suportados interrompem a tarefa. Legendas acima do limite exigem revisão.
+COPIAR PARA OUTRO CANAL
+1. Preencha origem e destino: @nome, link público t.me ou ID numérico.
+2. Confirme que tem autorização para copiar e clique Criar sincronização.
+3. Confira os nomes na lista, selecione a tarefa e clique Iniciar cópia.
+Os canais são verificados ao criar. Nada começa automaticamente.
+Para acompanhar novos posts, abra a opção Continuar copiando novos posts.
+Sem marcar essa opção, copia apenas o histórico existente.
+Para mudar textos/links nas novas cópias, abra a opção de substituições.
+As regras são copiadas para a tarefa ao criar; alterações futuras nas regras
+não mudam tarefas já criadas.
 
-Se um envio não for confirmado, a tarefa pede conferência. Abra o destino
-antes de usar Conferir envio pendente. Não autorize reenvio sem verificar:
-uma decisão incorreta pode duplicar a publicação. Se um álbum chegou apenas
-em parte, mantenha a tarefa parada para revisão.
+TROCAR LINKS DO MEU CANAL
+1. Escolha um canal que você administra e informe o novo link.
+2. Clique Ver prévia. Isso percorre o histórico sem alterar publicações.
+3. Confira o antes e depois, escolha toda a análise ou somente os posts
+   selecionados e clique Aplicar alterações. Confira a confirmação final.
+Se mudar canal, link ou opções, prepare uma nova prévia.
+Por padrão altera links clicáveis (Ctrl+K), mantendo texto e mídia.
+Opções recolhidas permitem incluir URLs por extenso ou remover apenas
+as linhas “outros grupos” e “Hentai”. Não apaga publicações inteiras.
+Ctrl ou Shift selecionam vários posts. Filtros mudam apenas a lista visível.
+Restauração, análises anteriores e relatório CSV estão na opção abaixo
+da prévia. O backup guarda textos/formatação, não os arquivos de mídia.
+Posts alterados depois da prévia são preservados como conflitos.
 
-O executável não possui assinatura digital comercial. O arquivo SHA256SUMS.txt
-na mesma versão permite conferir a integridade do ZIP. Não desative proteções
-do Windows. Este é um pré-lançamento: valide em canais de teste antes de distribuir.
+CONECTAR TELEGRAM
+Clique Conectar Telegram no topo. Obtenha gratuitamente API ID e API Hash
+em https://my.telegram.org > API development tools. Informe os dados e
+o telefone com +55. Código e senha de duas etapas aparecem apenas quando
+forem solicitados. O login ocorre na própria tela.
+A sessão e o API Hash usam Windows DPAPI para seu usuário. Código e senha
+2FA não são salvos. Não compartilhe a pasta de dados. Para revogar o acesso,
+desconecte pelo aplicativo ou em Telegram > Configurações > Dispositivos.
 
-ATUALIZAÇÃO 0.1.1
-Corrige a repetição do login após redirecionamento de servidor pelo Telegram.
-Mostra erros específicos de API ID/Hash, telefone, bloqueios e rede sem expor
-credenciais. Não precisa apagar seus dados para atualizar: feche o programa
-e abra o novo executável.
-
-NOVO: EDITAR LINKS NO PRÓPRIO CANAL — 0.2.0
-1. Feche o executável antigo e abra esta versão. A conta salva é mantida.
-2. Pause as sincronizações. Abra a aba Editar links no canal.
-3. Clique Meus canais e escolha o canal na lista, ou digite @username/ID.
-4. Confira o novo destino: https://t.me/vipacessoliberado_bot
-5. Se desejar, marque remover linhas “outros grupos” e “Hentai”.
-6. Clique Analisar todo o histórico. Isso não altera publicações.
-7. Selecione posts para conferir texto e destinos na prévia.
-8. Clique Aplicar prévia / retomar e confirme o canal, ID e quantidade.
-
-Preserva texto dos links, formatação, fotos e vídeos. Por padrão troca
-links embutidos (Ctrl+K). URLs por extenso são opcionais: o texto visível
-permanece, mas o clique passa a abrir o novo destino. Menções não mudam;
-posts com botões são ignorados. Todos os links elegíveis do post serão
-alterados: revise os destinos anteriores na prévia.
-Não apaga posts inteiros: a opção de limpeza remove apenas as linhas
-citadas. Exige que sua conta possa editar mensagens do canal.
-Textos e formatação originais ficam no banco local, permitindo Restaurar
-textos originais. Não apague a pasta de dados se precisar desse backup.
-Mudanças feitas depois da prévia são ignoradas como conflitos, inclusive
-na restauração. Limites do Telegram pausam a operação até o prazo indicado.
-Ao pausar/fechar, uma edição em andamento pode terminar. Retome a mesma
-análise para verificar o resultado, em vez de criar outra imediatamente.
-Nenhuma edição ocorre automaticamente ao abrir o programa.
-
-NOVA INTERFACE — 0.3.0
-- Visão geral: números das sincronizações e orientações para começar.
-- Sincronizações: busca por canal, filtros por situação e detalhes da tarefa.
-  Clique Nova sincronização, preencha as três etapas e crie a tarefa pausada.
-- Editar links: escolha o canal, analise e confira original/proposta lado a lado.
-  Veja quantos posts estão pendentes, editados, restaurados ou ignorados.
-- Substituições: regras para novas cópias, com teste de legenda.
-- Atividade e ajuda: histórico com horário local e explicações de uso.
-
+ENTENDER OS NÚMEROS
 Publicadas = mensagens confirmadas. Ignoradas e envios sem confirmação
-não entram nesse número. A conferir exige revisar o destino antes de reenviar.
-No editor, os indicadores são da análise selecionada, não de todos os canais.
-Filtrar a lista altera apenas a visualização. Na versão 0.4.0, escolha o
-escopo explicitamente antes de aplicar, conforme as orientações abaixo.
+não entram nesse total. No editor, os números são da análise selecionada,
+separados das cópias do painel.
+Se um envio ficar sem confirmação, confira o destino antes de autorizar
+um reenvio: uma decisão incorreta pode duplicar publicações. Álbuns
+parcialmente publicados exigem revisão; mantenha a tarefa parada.
 
-PARA ATUALIZAR
-Feche o programa antigo, extraia o novo ZIP e abra TelegramSync.exe.
-Sua conta, suas tarefas e os backups são mantidos na mesma pasta do Windows.
-Não apague a pasta de dados. Nenhuma operação inicia sozinha ao abrir.
+FUNCIONAMENTO E LIMITES
+Não precisa de Railway, Supabase, Lovable ou servidor pago. Precisa de
+computador ligado, internet e aplicativo aberto. Ao fechar ou suspender,
+as operações param. Ao reabrir, você decide quando retomar.
+Não contorna proteção de conteúdo nem copia membros, tópicos, respostas,
+reações, visualizações ou edições/exclusões posteriores. A cópia converte
+a formatação em texto simples e expande links ocultos. A edição de links
+no próprio canal preserva formatação e mídias. Posts com botões são ignorados
+pelo editor. Tipos de mídia/legendas não suportados exigem revisão.
+Uma edição ou envio já em andamento pode terminar após pedir pausa.
+Limites do Telegram são respeitados; espere o prazo indicado para retomar.
+Não há telemetria ou envio aos servidores 00duHot. O aplicativo conversa
+com o Telegram; ajuda abre o portal oficial. O relatório CSV é local e não
+inclui credenciais nem corpos completos, mas inclui canais e destinos.
 
-NOVIDADES 0.4.0
-- Identidade 00duHot: sua marca, superfícies neutras e destaque dourado discreto.
-- O editor permite selecionar vários posts com Ctrl ou Shift.
-- Em Aplicar ou restaurar, escolha Toda a análise ou Somente os selecionados.
-  A confirmação informa o escopo e a quantidade exata. Um filtro de busca
-  sozinho não limita a operação. Posts não escolhidos continuam pendentes.
-- Salvar relatório CSV exporta a situação dos posts da análise selecionada.
-  Não exporta sessão, credenciais nem o texto completo das mensagens.
-  O relatório inclui nomes de canais e links; compartilhe apenas se desejar.
-- Atualizar não inicia sincronização ou edição automaticamente.
+VERSÃO DE TESTE
+O executável não possui assinatura digital comercial. Confira o ZIP com
+SHA256SUMS.txt da mesma release. Não desative as proteções do Windows.
+Teste primeiro com poucos posts em dois canais seus antes de distribuir.

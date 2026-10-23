@@ -5,7 +5,7 @@ from tkinter import ttk, messagebox, filedialog
 from .editor import DEFAULT_URL, decode_entities
 from .domain import UserError
 from .reports import export_edit_report
-from .design import BLUE, GREEN, AMBER, MUTED, RED, ScrollPage, heading, card, metrics, text_box, table, readable_count
+from .design import BLUE, GREEN, AMBER, MUTED, RED, ScrollPage, heading, card, metrics, text_box, table, readable_count, Fold, CompactMetric
 
 STATES={'pending':'Pendente','applied':'Editado','restored':'Restaurado','conflict':'Ignorado: mudou após a prévia'}
 FILTERS={'Todas':None,'Pendentes':'pending','Editadas':'applied','Restauradas':'restored','Ignoradas':'conflict'}
@@ -13,74 +13,82 @@ BATCH_STATES={'scanning':'Analisando o histórico','ready':'Prévia pronta para 
 
 
 class EditorTab:
-    def __init__(self,window,notebook):
+    def __init__(self,window,parent):
         self.window=window;self.editor=window.runtime.engine.editor
-        self.batch_id=None;self.channel_refs={};self.items={};self.operation=None;self.run_total=0;self.run_ids=set()
-        self.frame=ScrollPage(notebook);notebook.add(self.frame,text='editor');frame=self.frame.inner
-        heading(frame,'Alterar publicações existentes','Editor de links do canal','Escolha seu canal, confira a prévia e aplique. Os textos clicáveis e as mídias são preservados.')
-        self.stats=metrics(frame,[('pending','Pendentes','Propostas a aplicar',AMBER),('applied','Editadas','Alterações confirmadas',GREEN),('restored','Restauradas','Textos originais recuperados',BLUE),('conflict','Ignoradas','Mudaram após a prévia',MUTED)])
-        config=card(frame,'1. Escolha o canal e o novo link','Você precisa ser dono do canal ou ter permissão para editar mensagens.')
+        self.batch_id=None;self.channel_refs={};self.items={};self.operation=None;self.run_total=0;self.run_ids=set();self.ready_inputs=None;self.scanning_inputs=None
+        self.frame=ttk.Frame(parent);frame=self.frame
+        config=card(frame,'Trocar links do meu canal','1. Escolha seu canal e o novo link. 2. Confira a prévia. 3. Aplique quando estiver pronto.')
         self.channel=tk.StringVar();self.target=tk.StringVar(value=DEFAULT_URL)
-        ttk.Label(config,text='Canal que você administra',style='Card.TLabel').pack(anchor='w')
-        row=ttk.Frame(config,style='Card.TFrame');row.pack(fill='x',pady=(5,12))
+        ttk.Label(config,text='Qual canal você administra?',style='Card.TLabel').pack(anchor='w')
+        row=ttk.Frame(config,style='Card.TFrame');row.pack(fill='x',pady=(5,8))
         self.channel_choice=ttk.Combobox(row,textvariable=self.channel);self.channel_choice.pack(side='left',fill='x',expand=True)
-        self.channels_button=ttk.Button(row,text='Meus canais',command=self.channels);self.channels_button.pack(side='right',padx=(10,0))
-        ttk.Label(config,text='Novo destino dos links',style='Card.TLabel').pack(anchor='w')
-        ttk.Entry(config,textvariable=self.target).pack(fill='x',pady=(5,8))
+        self.channels_button=ttk.Button(row,text='Escolher na minha lista',command=self.channels);self.channels_button.pack(side='right',padx=(10,0))
+        ttk.Label(config,text='Qual será o novo link?',style='Card.TLabel').pack(anchor='w')
+        self.target_entry=ttk.Entry(config,textvariable=self.target);self.target_entry.pack(fill='x',pady=(5,8))
         self.ads=tk.BooleanVar(value=False);self.plain=tk.BooleanVar(value=False)
-        ttk.Checkbutton(config,text='Remover as linhas “outros grupos” e “Hentai”, preservando o post',variable=self.ads).pack(anchor='w')
-        ttk.Checkbutton(config,text='Também trocar o destino das URLs escritas por extenso',variable=self.plain).pack(anchor='w')
-        ttk.Label(config,text='Por padrão, troca links embutidos (Ctrl+K). O texto visível é mantido. Posts com botões e menções não são alterados.',style='CardMuted.TLabel',wraplength=700).pack(anchor='w',pady=(8,10))
-        actionrow=ttk.Frame(config,style='Card.TFrame');actionrow.pack(fill='x')
-        self.scan_button=ttk.Button(actionrow,text='Analisar todo o histórico',style='Primary.TButton',command=self.scan);self.scan_button.pack(side='left')
-        self.stop_button=ttk.Button(actionrow,text='Pausar operação',command=self.stop);self.stop_button.pack(side='left',padx=8)
-        ttk.Label(config,text='Analisar prepara uma prévia. Nenhum post é alterado nesta etapa.',style='CardMuted.TLabel').pack(anchor='w',pady=(10,0))
-        saved=card(frame,'2. Confira as alterações','Selecione uma publicação para comparar o texto original e a proposta abaixo da lista.')
-        historyrow=ttk.Frame(saved,style='Card.TFrame');historyrow.pack(fill='x')
-        ttk.Label(historyrow,text='Análise salva',style='Card.TLabel').pack(side='left',padx=(0,10))
-        self.history=ttk.Combobox(historyrow,state='readonly');self.history.pack(side='left',fill='x',expand=True);self.history.bind('<<ComboboxSelected>>',self.choose)
-        ttk.Button(historyrow,text='Atualizar',command=self.refresh,style='Quiet.TButton').pack(side='right',padx=(8,0))
-        self.summary=tk.StringVar(value='Ainda não há uma análise. Escolha um canal acima para começar.')
-        ttk.Label(saved,textvariable=self.summary,style='CardMuted.TLabel',wraplength=700,justify='left').pack(anchor='w',pady=12)
-        self.progress=ttk.Progressbar(saved,mode='determinate');self.progress.pack(fill='x',pady=(0,6))
-        self.progress_text=tk.StringVar(value='A análise percorre o histórico sem alterar publicações.')
-        ttk.Label(saved,textvariable=self.progress_text,style='CardMuted.TLabel',wraplength=700).pack(anchor='w',pady=(0,10))
-        filters=ttk.Frame(saved,style='Card.TFrame');filters.pack(fill='x')
-        self.state_filter=tk.StringVar(value='Todas');self.search=tk.StringVar()
-        ttk.Combobox(filters,textvariable=self.state_filter,values=list(FILTERS),state='readonly',width=18).pack(side='left',padx=(0,10))
-        ttk.Entry(filters,textvariable=self.search).pack(side='left',fill='x',expand=True)
-        self.tree=table(saved,[('id','Post',65),('state','Situação',195),('links','Links alterados',100),('text','Texto / legenda',350)],height=6)
-        self.tree.configure(selectmode='extended')
-        self.tree.bind('<<TreeviewSelect>>',self.selection_changed)
-        self.list_caption=tk.StringVar(value='A lista aparecerá depois da análise.')
-        ttk.Label(saved,textvariable=self.list_caption,style='CardMuted.TLabel',wraplength=700).pack(anchor='w')
-        self.state_filter.trace_add('write',lambda *_:self.render_rows());self.search.trace_add('write',lambda *_:self.render_rows())
-        compare=card(frame,'Comparar publicação selecionada')
-        columns=ttk.Frame(compare,style='Card.TFrame');columns.pack(fill='both',expand=True)
-        for index,label in enumerate(('ORIGINAL','COMO VAI FICAR')):
+        self.options=Fold(config,'Opções da próxima análise (opcional)')
+        self.option_controls=[]
+        for text,var in [('Remover as linhas “outros grupos” e “Hentai”, mantendo o post',self.ads),('Trocar também URLs escritas por extenso',self.plain)]:
+            control=ttk.Checkbutton(self.options.body,text=text,variable=var);control.pack(anchor='w');self.option_controls.append(control)
+        ttk.Label(self.options.body,text='Sem marcar nada, troca apenas o destino dos links clicáveis (Ctrl+K). O texto e a mídia são mantidos.',style='CardMuted.TLabel',wraplength=900).pack(anchor='w')
+        actions=ttk.Frame(config,style='Card.TFrame');actions.pack(fill='x',pady=(8,0))
+        self.scan_button=ttk.Button(actions,text='1. Ver prévia',style='Primary.TButton',command=self.scan);self.scan_button.pack(side='left')
+        self.apply_button=ttk.Button(actions,text='2. Aplicar alterações',style='Primary.TButton',command=self.apply)
+        self.stop_button=ttk.Button(actions,text='Pausar',command=self.stop)
+        self.apply_caption=tk.StringVar(value='Ver prévia não altera nenhum post.')
+        ttk.Label(config,textvariable=self.apply_caption,style='CardMuted.TLabel',wraplength=900).pack(anchor='w',pady=(8,0))
+        self.empty_preview=ttk.Label(frame,text='A prévia aparecerá aqui. Nenhum post muda até você conferir e confirmar.',style='Muted.TLabel');self.empty_preview.pack(anchor='w',pady=(0,12))
+        saved=card(frame,'Prévia das alterações');self.preview_card=saved
+        counters=ttk.Frame(saved,style='Card.TFrame');counters.pack(fill='x',pady=(0,8))
+        self.stats={key:CompactMetric(counters,title) for key,title in [('pending','Pendentes'),('applied','Editadas'),('restored','Restauradas'),('conflict','Ignoradas')]}
+        self.summary=tk.StringVar(value='Preencha os dois campos acima e clique em Ver prévia.')
+        ttk.Label(saved,textvariable=self.summary,style='CardMuted.TLabel',wraplength=900,justify='left').pack(anchor='w',pady=(0,6))
+        self.progress=ttk.Progressbar(saved,mode='determinate');self.progress.pack(fill='x',pady=(0,4))
+        self.progress_text=tk.StringVar(value='Nenhuma análise iniciada.')
+        ttk.Label(saved,textvariable=self.progress_text,style='CardMuted.TLabel',wraplength=900).pack(anchor='w')
+        self.tree=table(saved,[('id','Post',65),('state','Situação',170),('links','Links',70),('text','Texto / legenda',500)],height=3)
+        self.tree.configure(selectmode='extended');self.tree.bind('<<TreeviewSelect>>',self.selection_changed)
+        self.list_caption=tk.StringVar(value='Clique em um post para conferir o antes e depois.')
+        ttk.Label(saved,textvariable=self.list_caption,style='CardMuted.TLabel',wraplength=900).pack(anchor='w')
+        columns=ttk.Frame(saved,style='Card.TFrame');columns.pack(fill='both',expand=True,pady=(8,0))
+        for index,label in enumerate(('ANTES','DEPOIS')):
             columns.columnconfigure(index,weight=1,uniform='preview')
             side=ttk.Frame(columns,style='Card.TFrame',padding=(0 if index==0 else 8,0,8 if index==0 else 0,0));side.grid(row=0,column=index,sticky='nsew')
-            ttk.Label(side,text=label,style='CardMuted.TLabel').pack(anchor='w',pady=(0,8))
-            widget=text_box(side,height=9,color=GREEN if index else MUTED);widget.configure(state='disabled')
+            ttk.Label(side,text=label,style='CardMuted.TLabel').pack(anchor='w')
+            widget=text_box(side,height=4,color=GREEN if index else MUTED);widget.configure(state='disabled')
             if index:self.detail=widget
             else:self.original_text=widget
-        self.selected_note=tk.StringVar(value='Selecione um post na lista. As caixas mostram o texto e os destinos dos links.')
-        ttk.Label(compare,textvariable=self.selected_note,style='CardMuted.TLabel',wraplength=700).pack(anchor='w',pady=(10,0))
-        applybox=card(frame,'3. Aplique quando estiver pronto','Confira o canal e as propostas acima. A confirmação final mostra o destino e a quantidade de posts.')
-        self.apply_caption=tk.StringVar(value='Primeiro analise o canal e confira a prévia.')
-        ttk.Label(applybox,textvariable=self.apply_caption,style='CardMuted.TLabel',wraplength=700).pack(anchor='w',pady=(0,10))
+        self.selected_note=tk.StringVar(value='Confira os textos e os links antes de aplicar.')
+        ttk.Label(saved,textvariable=self.selected_note,style='CardMuted.TLabel',wraplength=900).pack(anchor='w',pady=(6,0))
+        scope_row=ttk.Frame(saved,style='Card.TFrame');scope_row.pack(fill='x',pady=(8,0))
+        ttk.Label(scope_row,text='Quais posts alterar?',style='Card.TLabel').pack(side='left',padx=(0,10))
         self.scope=tk.StringVar(value='Toda a análise')
-        scope_row=ttk.Frame(applybox,style='Card.TFrame');scope_row.pack(fill='x',pady=(0,10))
-        ttk.Label(scope_row,text='Aplicar ou restaurar:',style='Card.TLabel').pack(side='left',padx=(0,10))
         self.scope_choice=ttk.Combobox(scope_row,textvariable=self.scope,values=['Toda a análise','Somente os selecionados'],state='readonly',width=27)
         self.scope_choice.pack(side='left');self.scope_choice.bind('<<ComboboxSelected>>',lambda _event:self.update_buttons())
-        ttk.Label(applybox,text='Para selecionar vários posts, use Ctrl ou Shift na lista. Busca e filtros mudam apenas a lista visível.',style='CardMuted.TLabel',wraplength=700).pack(anchor='w',pady=(0,10))
-        ttk.Button(applybox,text='Salvar relatório CSV',command=self.export_report,style='Quiet.TButton').pack(anchor='w',pady=(0,10))
-        actionrow=ttk.Frame(applybox,style='Card.TFrame');actionrow.pack(fill='x')
-        self.apply_button=ttk.Button(actionrow,text='Aplicar alterações / retomar',style='Primary.TButton',command=self.apply);self.apply_button.pack(side='left')
-        self.restore_button=ttk.Button(actionrow,text='Restaurar originais',command=lambda:self.apply(True));self.restore_button.pack(side='left',padx=(10,0))
-        ttk.Label(applybox,text='A restauração usa o backup salvo neste Windows. Posts alterados depois da prévia são preservados como conflitos.',style='CardMuted.TLabel',wraplength=700).pack(anchor='w',pady=(10,0))
+        self.filters=Fold(saved,'Buscar ou filtrar posts')
+        self.state_filter=tk.StringVar(value='Todas');self.search=tk.StringVar()
+        ttk.Combobox(self.filters.body,textvariable=self.state_filter,values=list(FILTERS),state='readonly',width=18).pack(side='left',padx=(0,10))
+        ttk.Entry(self.filters.body,textvariable=self.search).pack(side='left',fill='x',expand=True)
+        self.state_filter.trace_add('write',lambda *_:self.render_rows());self.search.trace_add('write',lambda *_:self.render_rows())
+        self.backups=Fold(frame,'Análises anteriores, restaurar ou salvar relatório')
+        historyrow=ttk.Frame(self.backups.body,style='Card.TFrame');historyrow.pack(fill='x')
+        ttk.Label(historyrow,text='Análise salva',style='Card.TLabel').pack(side='left',padx=(0,10))
+        self.history=ttk.Combobox(historyrow,state='readonly');self.history.pack(side='left',fill='x',expand=True);self.history.bind('<<ComboboxSelected>>',self.choose)
+        ttk.Button(historyrow,text='Atualizar lista',command=self.refresh,style='Quiet.TButton').pack(side='right',padx=(8,0))
+        actions=ttk.Frame(self.backups.body,style='Card.TFrame');actions.pack(fill='x',pady=8)
+        self.restore_button=ttk.Button(actions,text='Restaurar textos originais',command=lambda:self.apply(True));self.restore_button.pack(side='left')
+        ttk.Button(actions,text='Salvar relatório CSV',command=self.export_report,style='Quiet.TButton').pack(side='left',padx=8)
+        ttk.Label(self.backups.body,text='Ctrl ou Shift selecionam vários posts. Filtros só mudam a lista visível. A restauração usa o backup e preserva posts alterados depois da prévia.',style='CardMuted.TLabel',wraplength=900).pack(anchor='w')
         self.refresh()
+        for variable in (self.channel,self.target,self.ads,self.plain):variable.trace_add('write',lambda *_:self.update_buttons())
+
+    def inputs(self):
+        return (self.channel_refs.get(self.channel.get(),self.channel.get()).strip(),self.target.get().strip(),self.ads.get(),self.plain.get())
+
+    def load_batch_inputs(self):
+        batch=self.editor.db.batch(self.batch_id)
+        self.channel.set(batch['channel']);self.target.set(batch['target']);self.ads.set(False);self.plain.set(False)
+        self.ready_inputs=self.inputs()
 
     def stop(self):
         self.editor.cancel.set();self.window.notify('Pausa solicitada. A edição em andamento pode terminar antes da pausa.')
@@ -95,22 +103,29 @@ class EditorTab:
 
     def scan(self):
         if self.window.busy:self.window.notify('Aguarde a operação atual.');return
-        self.operation='scan';self.progress.configure(mode='indeterminate');self.progress.start(20)
+        if not self.window.store.setting('account'):
+            self.window.login();self.window.notify('Conecte sua conta acima. Depois clique em Ver prévia.');return
+        self.scanning_inputs=self.inputs();self.operation='scan';self.progress.configure(mode='indeterminate');self.progress.start(20)
         self.window.dispatch(self.editor.scan(self.channel_refs.get(self.channel.get(),self.channel.get()),self.target.get(),self.ads.get(),self.plain.get()),self.complete)
 
     def complete(self,batch_id):
-        self.batch_id=batch_id;self.operation=None;self.progress.stop();self.progress.configure(mode='determinate')
+        scanning=self.operation=='scan'
+        self.batch_id=batch_id
+        if scanning:self.ready_inputs=self.scanning_inputs
+        elif self.ready_inputs is None:self.load_batch_inputs()
+        self.operation=None;self.progress.stop();self.progress.configure(mode='determinate')
         self.refresh();self.window.notify(self.editor.db.batch(batch_id)['note'])
 
     def choose(self,_event=None):
         if self.window.busy:return
         if self.history.current()<0:return
-        self.batch_id=self.ids[self.history.current()];self.operation=None;self.refresh()
+        self.batch_id=self.ids[self.history.current()];self.operation=None;self.load_batch_inputs();self.search.set('');self.state_filter.set('Todas');self.refresh()
 
     def refresh(self):
         batches=self.editor.db.batches();self.ids=[b['id'] for b in batches]
         self.history.configure(values=[f"#{b['id']} · {b['title']}" for b in batches])
-        if self.batch_id is None and batches:self.batch_id=batches[0]['id']
+        if self.batch_id is None and batches:
+            self.batch_id=batches[0]['id'];self.load_batch_inputs()
         if self.batch_id in self.ids:
             self.history.current(self.ids.index(self.batch_id))
             self.items={str(i['message_id']):i for i in self.editor.db.items(self.batch_id)}
@@ -133,7 +148,7 @@ class EditorTab:
             else:self.tree.insert('','end',iid=key,values=values,tags=(item['status'],))
         keep=[key for key in selected if self.tree.exists(key)]
         if keep:self.tree.selection_set(keep)
-        self.list_caption.set(f'{len(visible)} de {len(self.items)} propostas na lista. Busque pelo texto ou número do post no campo acima.' if self.items else 'Nenhuma proposta nesta lista. Analise o canal ou confira os filtros.')
+        self.list_caption.set(f'{len(visible)} de {len(self.items)} posts. Clique para conferir; Ctrl ou Shift para selecionar vários.' if self.items else 'Nenhuma proposta nesta lista. Analise o canal ou confira os filtros.')
         self.details()
 
     def refresh_progress(self):
@@ -146,7 +161,7 @@ class EditorTab:
         batch=self.editor.db.batch(self.batch_id);states=self.editor.db.states(self.batch_id)
         counts={state:sum(i['status']==state for i in states) for state in STATES}
         for key,metric in self.stats.items():metric.value.set(readable_count(counts[key]))
-        self.summary.set(f"{batch['title']} · {batch['channel']}\nDestino: {batch['target']}\n{BATCH_STATES[batch['status']]} · {readable_count(batch['scanned'])} publicações analisadas\n{batch['note']}")
+        self.summary.set(f"{batch['title']} · {batch['channel']} → {batch['target']}\n{BATCH_STATES[batch['status']]} · {readable_count(batch['scanned'])} posts analisados")
         if batch['status']=='scanning':
             self.progress_text.set(f"Analisando o histórico… {readable_count(len(states))} propostas encontradas. O total ainda está sendo descoberto.")
         else:
@@ -172,6 +187,10 @@ class EditorTab:
 
     def update_buttons(self):
         busy=self.window.busy
+        if self.batch_id is None:
+            self.preview_card.master.pack_forget()
+        else:
+            self.empty_preview.pack_forget();self.preview_card.master.pack(fill='x',pady=(0,16),before=self.backups)
         for button in (self.channels_button,self.scan_button):button.configure(state='disabled' if busy else 'normal')
         self.stop_button.configure(state='normal' if busy and self.operation else 'disabled')
         self.history.configure(state='disabled' if busy else 'readonly')
@@ -184,6 +203,17 @@ class EditorTab:
             states=[item for item in states if item['message_id'] in selection]
         self.apply_button.configure(state='normal' if ready and any(i['status']=='pending' for i in states) else 'disabled')
         self.restore_button.configure(state='normal' if ready and any(i['status']=='applied' for i in states) else 'disabled')
+        same=self.ready_inputs==self.inputs()
+        if not same:
+            self.apply_button.configure(state='disabled')
+            if batch and not busy:self.apply_caption.set('Você alterou os campos. Clique em Ver prévia para preparar uma nova análise.')
+        self.scan_button.configure(text='Analisar novamente' if batch and same else '1. Ver prévia',style='Quiet.TButton' if batch and same else 'Primary.TButton')
+        if batch and same:self.apply_button.pack(side='left',padx=8)
+        else:self.apply_button.pack_forget()
+        if busy and self.operation:self.stop_button.pack(side='left',padx=8)
+        else:self.stop_button.pack_forget()
+        for control in [self.channel_choice,self.target_entry,*self.option_controls]:control.configure(state='disabled' if busy else 'normal')
+
 
     def selection_changed(self,_event=None):
         self.details();self.update_buttons()
@@ -217,7 +247,8 @@ class EditorTab:
     def apply(self,restore=False):
         if self.window.busy:self.window.notify('Aguarde a operação atual.');return
         try:
-            if self.batch_id is None:raise UserError('Analise o canal primeiro.')
+            if self.batch_id is None:raise UserError('Veja a prévia primeiro.')
+            if not restore and self.ready_inputs!=self.inputs():raise UserError('Os campos mudaram. Veja uma nova prévia antes de aplicar.')
             batch=self.editor.db.batch(self.batch_id)
             if batch['status'] in ('scanning','incomplete'):raise UserError('Faça uma nova análise: esta foi interrompida.')
             selected=[int(key) for key in self.tree.selection()] if self.scope.get()=='Somente os selecionados' else None

@@ -3,8 +3,9 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 import tkinter as tk
+from tkinter import ttk
 from local_app.store import Store
 from local_app.ui import Window
 from local_app.editor import DEFAULT_URL, encode_entities, rewrite
@@ -25,7 +26,9 @@ class InterfaceTests(unittest.TestCase):
         self.window.runtime.engine.connected=AsyncMock(side_effect=AssertionError('UI must not connect automatically'))
         self.root.update()
     def tearDown(self):
-        self.window.closing=True;self.window.runtime.close();self.window.runtime.thread.join(timeout=10)
+        self.window.closing=True
+        for timer in (self.window.poll_id,self.window.tick_id):self.root.after_cancel(timer)
+        self.window.runtime.close();self.window.runtime.thread.join(timeout=10)
         self.assertFalse(self.window.runtime.thread.is_alive())
         self.store.close();self.root.destroy();self.temp.cleanup()
         self.assertEqual(self.errors,[])
@@ -49,13 +52,19 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(self.window.jobs.get_children(),())
         self.assertEqual(self.store.job(self.job)['status'],'attention')
 
-    def test_navigation_and_task_form_do_not_send(self):
-        for page in ('home','tasks','editor','rules','activity'):
-            self.window.navigate(page);self.root.update()
-            self.assertEqual(self.window.tabs.select(),str(self.window.pages[page]))
+    def test_one_screen_and_inline_form_do_not_send(self):
+        self.root.deiconify();self.root.update()
+        def widgets(widget):
+            return [widget]+[child for inner in widget.winfo_children() for child in widgets(inner)]
+        self.assertFalse(any(isinstance(widget,(tk.Toplevel,ttk.Notebook)) for widget in widgets(self.root)))
+        for operation in ('copy','edit','copy'):
+            self.window.show_operation(operation);self.root.update()
+            self.assertEqual(self.window.operation_choice.get(),operation)
+            self.assertEqual(bool(self.window.copy_panel.winfo_manager()),operation=='copy')
+            self.assertEqual(bool(self.window.editor_tab.frame.winfo_manager()),operation=='edit')
         self.window.new_task();self.root.update()
-        self.assertTrue(self.window.task_dialog.winfo_exists())
-        self.window.task_dialog.destroy()
+        self.assertIsNone(self.window.task_dialog)
+        self.assertTrue(self.window.copy_form.winfo_ismapped())
         self.window.runtime.engine.connected.assert_not_awaited()
         self.assertEqual(len(self.store.jobs()),1)
 
@@ -63,7 +72,7 @@ class InterfaceTests(unittest.TestCase):
         self.window.busy=True;self.window.update_buttons()
         self.assertEqual(str(self.window.editor_tab.apply_button['state']),'disabled')
         self.assertEqual(str(self.window.editor_tab.scan_button['state']),'disabled')
-        self.assertEqual(str(self.window.next_button['state']),'disabled')
+        self.assertEqual(str(self.window.create_button['state']),'disabled')
         self.assertEqual(str(self.window.connect_button['state']),'disabled')
 
     def test_live_editor_counters_filters_and_backup_preview(self):
@@ -89,15 +98,17 @@ class InterfaceTests(unittest.TestCase):
         editor.editor.db.patch(batch,status='incomplete');editor.refresh_progress()
         self.assertEqual(str(editor.apply_button['state']),'disabled')
 
-    def test_narrow_window_keeps_sidebar_and_scrollable_pages(self):
-        self.root.geometry('980x640');self.root.deiconify()
-        for key in ('home','tasks','editor','rules','activity'):
-            self.window.navigate(key);self.root.update()
-            page=self.window.pages[key]
-            self.assertGreater(page.canvas.winfo_width(),600)
-            self.assertGreater(page.canvas.winfo_height(),400)
-            self.assertGreater(page.canvas.bbox('all')[3],page.canvas.winfo_height())
-            page.canvas.yview_moveto(1);self.root.update()
+    def test_dashboard_stays_visible_when_scrolling_at_980_by_640(self):
+        self.root.geometry('980x640');self.root.deiconify();self.root.update()
+        metric=self.window.home_metrics['sent'].frame;y=metric.winfo_rooty()
+        for operation in ('copy','edit'):
+            self.window.show_operation(operation);self.root.update()
+            self.window.page.canvas.yview_moveto(1);self.root.update()
+            self.assertEqual(metric.winfo_rooty(),y)
+            self.assertTrue(metric.winfo_ismapped())
+            self.assertGreater(self.window.page.canvas.winfo_width(),900)
+            self.assertGreater(self.window.page.canvas.winfo_height(),250)
+            self.assertGreater(self.window.page.canvas.bbox('all')[3],self.window.page.canvas.winfo_height())
         self.window.runtime.engine.connected.assert_not_awaited()
 
     def test_editor_selected_scope_preserves_other_proposals(self):
@@ -114,4 +125,59 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(str(editor.apply_button['state']),'normal')
         editor.render_rows();self.root.update()
         self.assertEqual(set(editor.tree.selection()),{'7','8'})
+        self.window.runtime.engine.connected.assert_not_awaited()
+
+    def test_optional_controls_start_closed_and_do_not_change_data(self):
+        for fold in (self.window.copy_options,self.window.rules_section,self.window.activity_section,self.window.task_extra,self.window.editor_tab.options,self.window.editor_tab.backups,self.window.editor_tab.filters):
+            self.assertFalse(fold.opened);self.assertEqual(fold.body.winfo_manager(),'')
+            fold.flip();self.root.update();self.assertTrue(fold.opened);fold.flip()
+        self.assertEqual(self.window.mode.get(),'history');self.assertFalse(self.window.authorized.get())
+        self.assertEqual(self.store.job(self.job)['status'],'attention')
+        self.window.runtime.engine.connected.assert_not_awaited()
+
+    def test_inline_login_shows_only_requested_code_or_password(self):
+        self.window.login();self.root.update()
+        self.assertEqual(self.window.login_dialog.winfo_toplevel(),self.root)
+        self.assertEqual(self.window.login_rows['code'].winfo_manager(),'')
+        self.assertEqual(self.window.login_rows['password'].winfo_manager(),'')
+        def respond(stage):
+            def dispatch(coro,callback):coro.close();callback(stage)
+            return dispatch
+        for stage in ('code','password'):
+            with patch.object(self.window,'dispatch',side_effect=respond(stage)):
+                self.window.login_step();self.root.update()
+            self.assertEqual(bool(self.window.login_rows['code'].winfo_manager()),stage=='code')
+            self.assertEqual(bool(self.window.login_rows['password'].winfo_manager()),stage=='password')
+        with patch.object(self.window,'dispatch',side_effect=respond('connected')):
+            self.window.login_step();self.root.update()
+        self.assertIsNone(self.window.login_dialog)
+        self.assertEqual(self.window.login_section.winfo_manager(),'')
+        self.assertTrue(all(not value.get() for value in self.window.login_vars.values()))
+        self.window.runtime.engine.connected.assert_not_awaited()
+
+    def test_changed_editor_inputs_require_new_preview_before_applying(self):
+        editor=self.window.editor_tab
+        original={'text':'VIP','entities':encode_entities([types.MessageEntityTextUrl(0,3,'https://old.example')]),'media':None,'preview':False,'buttons':None}
+        desired,links=rewrite(original,DEFAULT_URL)
+        batch=editor.editor.db.create('-100123','Canal de teste',1,DEFAULT_URL)
+        editor.editor.db.add(batch,7,original,desired,links)
+        editor.editor.db.patch(batch,status='ready');editor.complete(batch)
+        self.assertEqual(str(editor.apply_button['state']),'normal')
+        editor.target.set('https://t.me/new_target');self.root.update()
+        self.assertEqual(str(editor.apply_button['state']),'disabled')
+        self.assertEqual(editor.apply_button.winfo_manager(),'')
+        with patch.object(self.window,'notify') as notice,patch.object(self.window,'dispatch') as dispatch:
+            editor.apply();dispatch.assert_not_called();self.assertIn('nova prévia',notice.call_args.args[0])
+        self.assertEqual(editor.editor.db.states(batch)[0]['status'],'pending')
+        editor.target.set(DEFAULT_URL);self.root.update()
+        self.assertEqual(str(editor.apply_button['state']),'normal')
+
+    def test_created_task_is_selected_and_paused_without_starting(self):
+        self.window.authorized.set(True)
+        job=self.store.create('10','20','Origem autorizada','Meu destino','history',[],100)
+        self.window.task_created(job);self.root.update()
+        self.assertEqual(self.window.jobs.selection(),(str(job),))
+        self.assertEqual(self.store.job(job)['status'],'paused');self.assertFalse(self.window.authorized.get())
+        self.assertEqual(str(self.window.start_button['state']),'normal')
+        self.assertEqual(self.window.home_metrics['paused'].value.get(),'1')
         self.window.runtime.engine.connected.assert_not_awaited()

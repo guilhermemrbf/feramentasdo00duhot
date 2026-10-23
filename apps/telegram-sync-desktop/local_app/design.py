@@ -157,3 +157,27 @@ def table(parent,columns,height=6):
 
 def readable_count(value):
     return f'{value:,}'.replace(',','.')
+
+
+class Fold(ttk.Frame):
+    """Optional controls stay inline and out of the main task's way."""
+    def __init__(self, parent, title):
+        super().__init__(parent, style='Card.TFrame')
+        self.pack(fill='x', pady=(4, 8))
+        self.title=title;self.opened=False
+        self.toggle=ttk.Button(self, text='+ '+title, style='Quiet.TButton', command=self.flip)
+        self.toggle.pack(anchor='w')
+        self.body=ttk.Frame(self, style='Card.TFrame', padding=(8, 10, 8, 4))
+    def set_open(self, opened):
+        self.opened=bool(opened)
+        self.toggle.configure(text=('− ' if self.opened else '+ ')+self.title)
+        if self.opened:self.body.pack(fill='x')
+        else:self.body.pack_forget()
+    def flip(self):self.set_open(not self.opened)
+
+
+class CompactMetric:
+    def __init__(self, parent, title):
+        self.value=tk.StringVar(value='0')
+        ttk.Label(parent,text=title,style='CardMuted.TLabel').pack(side='left',padx=(0,5))
+        ttk.Label(parent,textvariable=self.value,style='CardHeading.TLabel').pack(side='left',padx=(0,20))
