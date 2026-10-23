@@ -7,9 +7,9 @@ export const Route = createFileRoute("/telegram-sync")({
   component: TelegramSync,
 });
 const release =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-9-1";
+  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-11-1";
 const download =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/download/telegram-sync-desktop-9-1/TelegramSync-Windows.zip";
+  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/download/telegram-sync-desktop-11-1/TelegramSync-Windows.zip";
 
 function TelegramSync() {
   return (
@@ -31,7 +31,7 @@ function TelegramSync() {
                   Windows 10 / 11 · 64 bits
                 </span>
                 <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
-                  Versão de teste 0.4.0
+                  Versão de teste 0.5.0
                 </span>
               </div>
               <h2 className="font-display text-2xl font-semibold">
@@ -98,11 +98,11 @@ function TelegramSync() {
               ],
               [
                 "Configure a cópia",
-                "Informe origem e destino por ID, link público ou @username. Cadastre as substituições e confira as permissões.",
+                "Na mesma tela, escolha Copiar para outro canal e informe origem e destino. Se precisar trocar textos ou links, abra as substituições opcionais.",
               ],
               [
                 "Crie e inicie a tarefa",
-                "A tarefa nasce pausada. Selecione-a e clique em Iniciar. Faça o primeiro teste entre dois canais seus.",
+                "Clique em Criar sincronização. A tarefa nasce pausada: confira os canais e clique em Iniciar cópia. Teste primeiro entre dois canais seus.",
               ],
             ].map(([title, text], index) => (
               <li key={title} className="flex gap-3">
@@ -128,14 +128,16 @@ function TelegramSync() {
         <section className="space-y-3 rounded-2xl border border-border bg-card p-6">
           <h2 className="font-display text-xl font-semibold">Editar links de posts existentes</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            No executável, pause as sincronizações e abra a aba Editar links no canal. Clique em
-            Meus canais, escolha um canal que você administra, informe o novo destino e analise o
-            histórico. A análise apenas prepara uma prévia; confira os posts antes de aplicar.
+            Na própria tela do aplicativo, pause as sincronizações e escolha Trocar links do meu
+            canal. Escolha um canal que você administra, informe o novo destino e clique em Ver
+            prévia. Confira o antes e depois, escolha quais posts alterar e clique em Aplicar
+            alterações. A confirmação final mostra o canal, o destino e a quantidade.
           </p>
           <p className="text-sm leading-6 text-muted-foreground">
             A edição mantém o texto clicável, a formatação e as mídias. Você pode remover as linhas
-            “outros grupos” e “Hentai” e restaurar os textos originais usando o backup local. Posts
-            alterados depois da prévia são ignorados para preservar suas edições.
+            “outros grupos” e “Hentai” nas opções recolhidas e restaurar os textos originais usando
+            o backup local. Posts alterados depois da prévia são ignorados para preservar suas
+            edições.
           </p>
         </section>
         <aside className="space-y-3 rounded-2xl border border-border bg-secondary/40 p-6 text-sm leading-6 text-muted-foreground">
