@@ -1,4 +1,4 @@
-TELEGRAM SYNC 0.5.1 — 00duHot
+TELEGRAM SYNC 0.5.2 — 00duHot
 WINDOWS 10/11 64 BITS · GRATUITO E LOCAL
 
 PARA ABRIR OU ATUALIZAR
@@ -23,15 +23,15 @@ não mudam tarefas já criadas.
 
 TROCAR LINKS DO MEU CANAL
 1. Escolha um canal que você administra e informe o novo link.
-2. Clique Ver prévia. Isso percorre o histórico sem alterar publicações.
-3. Confira o antes e depois, escolha toda a análise ou somente os posts
-   selecionados e clique Aplicar alterações. Confira a confirmação final.
+2. Clique Analisar canal. Isso percorre o histórico sem alterar publicações.
+3. Confira os totais e clique Aplicar todos os links. Confirme uma vez
+   para executar o lote inteiro e acompanhe o dashboard ao vivo.
 Se mudar canal, link ou opções, prepare uma nova prévia.
 Troca todos os destinos de links do texto, inclusive URLs por extenso,
 independentemente do título. Preserva texto, linhas, formatação e mídia.
 Não remove linhas. Posts com botões continuam ignorados.
 Analise novamente para encontrar destinos diferentes do novo link.
-Ctrl ou Shift selecionam vários posts. Filtros mudam apenas a lista visível.
+Seleção e filtros servem para conferir e não limitam o lote aplicado.
 Restauração, análises anteriores e relatório CSV estão na opção abaixo
 da prévia. O backup guarda textos/formatação, não os arquivos de mídia.
 Posts alterados depois da prévia são preservados como conflitos.
@@ -72,3 +72,5 @@ VERSÃO DE TESTE
 O executável não possui assinatura digital comercial. Confira o ZIP com
 SHA256SUMS.txt da mesma release. Não desative as proteções do Windows.
 Teste primeiro com poucos posts em dois canais seus antes de distribuir.
+
+EDITOR DE LINKS: Analise o canal e clique em Aplicar todos os links. A seleção e os filtros servem apenas para conferir. O dashboard acompanha posts e links pendentes/alterados, o post atual e o motivo de pausas. O lote é processado automaticamente, respeitando limites do Telegram. Posts sem permissão individual são ignorados; erros de conexão e limites pausam para retomar com segurança.

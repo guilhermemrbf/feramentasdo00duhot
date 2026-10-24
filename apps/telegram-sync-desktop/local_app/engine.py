@@ -55,7 +55,7 @@ def telegram_client(session, api_id, api_hash, *, login=False):
     return TelegramClient(StringSession(session),api_id,api_hash,
         flood_sleep_threshold=0, request_retries=3 if login else 0,
         raise_last_call_error=True, connection_retries=2, timeout=20,
-        device_model='Telegram Sync Desktop', app_version='0.5.1')
+        device_model='Telegram Sync Desktop', app_version='0.5.2')
 
 
 class Engine:

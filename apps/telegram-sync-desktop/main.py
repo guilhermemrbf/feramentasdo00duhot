@@ -3,7 +3,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-VERSION = '0.5.1'
+VERSION = '0.5.2'
 
 
 def data_directory():

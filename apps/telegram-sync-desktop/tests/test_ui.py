@@ -113,21 +113,27 @@ class InterfaceTests(unittest.TestCase):
             self.assertGreater(self.window.page.canvas.bbox('all')[3],self.window.page.canvas.winfo_height())
         self.window.runtime.engine.connected.assert_not_awaited()
 
-    def test_editor_selected_scope_preserves_other_proposals(self):
+    def test_editor_applies_all_posts_despite_selection_and_filters(self):
         editor=self.window.editor_tab
         original={'text':'VIP','entities':encode_entities([types.MessageEntityTextUrl(0,3,'https://old.example')]),'media':None,'preview':False,'buttons':None}
         desired,links=rewrite(original,DEFAULT_URL)
         batch=editor.editor.db.create('-100123','Canal de teste',1,DEFAULT_URL)
         for message in (7,8):editor.editor.db.add(batch,message,original,desired,links)
         editor.editor.db.patch(batch,status='ready',scanned=2);editor.complete(batch)
-        editor.scope.set('Somente os selecionados');editor.update_buttons()
-        self.assertEqual(str(editor.apply_button['state']),'disabled')
-        editor.tree.selection_set(('7','8'));editor.selection_changed();self.root.update()
-        self.assertEqual(set(editor.tree.selection()),{'7','8'})
-        self.assertEqual(str(editor.apply_button['state']),'normal')
-        editor.render_rows();self.root.update()
-        self.assertEqual(set(editor.tree.selection()),{'7','8'})
-        self.window.runtime.engine.connected.assert_not_awaited()
+        editor.tree.selection_set('7');editor.search.set('7');self.root.update()
+        self.assertIn('2 pendentes',editor.link_summary.get())
+        with patch('local_app.editor_ui.messagebox.askyesno',return_value=True),patch.object(self.window,'dispatch',side_effect=lambda coro,callback:coro.close()),patch.object(editor.editor,'apply',new=AsyncMock()) as apply:
+            editor.apply()
+            apply.assert_called_once_with(batch,False,None)
+        self.assertEqual(editor.run_ids,{7,8})
+        self.assertEqual(editor.run_total,2)
+        self.window.busy=True
+        editor.editor.db.patch(batch,status='applying',note='Alterando post 8')
+        editor.editor.db.item_state(batch,7,'applied');editor.refresh_progress()
+        self.assertIn('1 alterados',editor.link_summary.get())
+        self.assertEqual(editor.live_note.get(),'Alterando post 8')
+        self.assertIn('1 de 2',editor.progress_text.get())
+        self.window.busy=False
 
     def test_optional_controls_start_closed_and_do_not_change_data(self):
         for fold in (self.window.copy_options,self.window.rules_section,self.window.activity_section,self.window.task_extra,self.window.editor_tab.backups,self.window.editor_tab.filters):

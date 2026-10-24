@@ -154,6 +154,14 @@ class EditStore:
         with self.store.lock:
             return [dict(r) for r in self.store.conn.execute('select * from edit_items where batch_id=? order by message_id',(batch,))]
 
+    def link_totals(self, batch):
+        # Read only link metadata, never deserialize every message/backup on each UI tick.
+        with self.store.lock:
+            rows=self.store.conn.execute('select status,links from edit_items where batch_id=?',(batch,)).fetchall()
+            totals={state:0 for state in ('pending','applied','restored','conflict')}
+            for row in rows:totals[row['status']]+=len(json.loads(row['links']))
+            return totals
+
     def states(self, batch):
         with self.store.lock:
             return [dict(row) for row in self.store.conn.execute('select message_id,status,note from edit_items where batch_id=? order by message_id',(batch,))]
@@ -222,7 +230,7 @@ class ChannelEditor:
                             desired, links = proposal
                             self.db.add(batch, message.id, original, desired, links)
                             candidates += 1
-                    if scanned % 50 == 0:
+                    if scanned == 1 or scanned % 10 == 0:
                         self.db.patch(batch, scanned=scanned)
                         self.progress(f'Analisadas {scanned} publicações; {candidates} alterações propostas…')
                 self.db.patch(batch, status='ready', scanned=scanned, note=f'{scanned} publicações analisadas; {candidates} alterações propostas. Posts com botões não são editados.')
@@ -266,6 +274,8 @@ class ChannelEditor:
                         return batch_id
                     if item['status'] != ('applied' if restore else 'pending'):
                         continue
+                    self.db.patch(batch_id,note=f"{'Restaurando' if restore else 'Alterando links do'} post {item['message_id']}…")
+                    self.progress(self.db.batch(batch_id)['note'])
                     expected = json.loads(item['desired' if restore else 'original'])
                     desired = json.loads(item['original' if restore else 'desired'])
                     message = await tg.get_messages(channel, ids=item['message_id'])
@@ -280,9 +290,14 @@ class ChannelEditor:
                     if not same_content(current, expected):
                         self.db.item_state(batch_id,item['message_id'],'conflict','Conteúdo mudou após a prévia; não foi sobrescrito.')
                         continue
-                    await tg.edit_message(channel, item['message_id'], text=desired['text'],
-                        formatting_entities=decode_entities(desired['entities']), parse_mode=None,
-                        link_preview=desired['preview'])
+                    try:
+                        await tg.edit_message(channel, item['message_id'], text=desired['text'],
+                            formatting_entities=decode_entities(desired['entities']), parse_mode=None,
+                            link_preview=desired['preview'])
+                    except (errors.MessageIdInvalidError, errors.MessageAuthorRequiredError, errors.MessageEditTimeExpiredError):
+                        self.db.item_state(batch_id,item['message_id'],'conflict','Telegram não permite editar este post; os demais continuam.')
+                        self.progress(f"Post {item['message_id']} ignorado: edição não permitida.")
+                        continue
                     # Re-read instead of trusting an update whose result could be missing.
                     confirmed = await tg.get_messages(channel, ids=item['message_id'])
                     if not confirmed or not same_content(snapshot(confirmed),desired):

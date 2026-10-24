@@ -224,3 +224,23 @@ class EditorTests(unittest.IsolatedAsyncioTestCase):
         for selection in ([],[0],['7'],[999],[True]):
             with self.assertRaises(UserError):await self.editor.apply(batch,message_ids=selection)
         self.engine.connected.assert_not_awaited();self.tg.edit_message.assert_not_awaited()
+
+    async def test_whole_batch_continues_past_uneditable_post_and_emits_live_progress(self):
+        messages={mid:post() for mid in (7,8,9)}
+        for mid,message in messages.items():message.id=mid
+        async def history(*a,**k):
+            for message in messages.values():yield message
+        self.tg.iter_messages=history
+        self.tg.get_messages=AsyncMock(side_effect=lambda *a,**k:messages[k['ids']])
+        async def edit(channel,mid,**kwargs):
+            if mid==8:raise errors.MessageEditTimeExpiredError(None)
+            messages[mid]=post(kwargs['text'],kwargs['formatting_entities']);messages[mid].id=mid
+        self.tg.edit_message=AsyncMock(side_effect=edit)
+        self.engine.emit=MagicMock()
+        batch=await self.prepared();await self.editor.apply(batch)
+        self.assertEqual([i['status'] for i in self.editor.db.items(batch)],['applied','conflict','applied'])
+        self.assertEqual(self.tg.edit_message.await_count,3)
+        self.assertEqual(self.editor.db.batch(batch)['status'],'done')
+        self.assertTrue(any('post 9' in str(call).lower() for call in self.engine.emit.call_args_list))
+        await self.editor.apply(batch)
+        self.assertEqual(self.tg.edit_message.await_count,3)

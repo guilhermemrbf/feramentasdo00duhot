@@ -7,7 +7,7 @@ from .domain import UserError
 from .reports import export_edit_report
 from .design import BLUE, GREEN, AMBER, MUTED, RED, ScrollPage, heading, card, metrics, text_box, table, readable_count, Fold, CompactMetric
 
-STATES={'pending':'Pendente','applied':'Editado','restored':'Restaurado','conflict':'Ignorado: mudou após a prévia'}
+STATES={'pending':'Pendente','applied':'Editado','restored':'Restaurado','conflict':'Ignorado: veja o motivo'}
 FILTERS={'Todas':None,'Pendentes':'pending','Editadas':'applied','Restauradas':'restored','Ignoradas':'conflict'}
 BATCH_STATES={'scanning':'Analisando o histórico','ready':'Prévia pronta para conferir','incomplete':'Análise incompleta · faça uma nova análise','applying':'Operação em andamento','paused':'Operação pausada','done':'Operação finalizada'}
 
@@ -17,7 +17,7 @@ class EditorTab:
         self.window=window;self.editor=window.runtime.engine.editor
         self.batch_id=None;self.channel_refs={};self.items={};self.operation=None;self.run_total=0;self.run_ids=set();self.ready_inputs=None;self.scanning_inputs=None
         self.frame=ttk.Frame(parent);frame=self.frame
-        config=card(frame,'Trocar links do meu canal','1. Escolha seu canal e o novo link. 2. Confira a prévia. 3. Aplique quando estiver pronto.')
+        config=card(frame,'Trocar links do meu canal','1. Escolha o canal e o novo link. 2. Analise. 3. Aplique todos os pendentes com um clique.')
         self.channel=tk.StringVar();self.target=tk.StringVar(value=DEFAULT_URL)
         ttk.Label(config,text='Qual canal você administra?',style='Card.TLabel').pack(anchor='w')
         row=ttk.Frame(config,style='Card.TFrame');row.pack(fill='x',pady=(5,8))
@@ -29,15 +29,19 @@ class EditorTab:
         self.option_controls=[]
         ttk.Label(config,text='Troca todos os destinos dos links, qualquer que seja o título. Preserva textos, linhas, formatação e mídias. Posts com botões são ignorados.',style='CardMuted.TLabel',wraplength=900).pack(anchor='w',pady=(4,8))
         actions=ttk.Frame(config,style='Card.TFrame');actions.pack(fill='x',pady=(8,0))
-        self.scan_button=ttk.Button(actions,text='1. Ver prévia',style='Primary.TButton',command=self.scan);self.scan_button.pack(side='left')
-        self.apply_button=ttk.Button(actions,text='2. Aplicar alterações',style='Primary.TButton',command=self.apply)
+        self.scan_button=ttk.Button(actions,text='1. Analisar canal',style='Primary.TButton',command=self.scan);self.scan_button.pack(side='left')
+        self.apply_button=ttk.Button(actions,text='2. Aplicar todos os links',style='Primary.TButton',command=self.apply)
         self.stop_button=ttk.Button(actions,text='Pausar',command=self.stop)
         self.apply_caption=tk.StringVar(value='Ver prévia não altera nenhum post.')
         ttk.Label(config,textvariable=self.apply_caption,style='CardMuted.TLabel',wraplength=900).pack(anchor='w',pady=(8,0))
         self.empty_preview=ttk.Label(frame,text='A prévia aparecerá aqui. Nenhum post muda até você conferir e confirmar.',style='Muted.TLabel');self.empty_preview.pack(anchor='w',pady=(0,12))
-        saved=card(frame,'Prévia das alterações');self.preview_card=saved
+        saved=card(frame,'Dashboard de alteração de links');self.preview_card=saved
         counters=ttk.Frame(saved,style='Card.TFrame');counters.pack(fill='x',pady=(0,8))
-        self.stats={key:CompactMetric(counters,title) for key,title in [('pending','Pendentes'),('applied','Editadas'),('restored','Restauradas'),('conflict','Ignoradas')]}
+        self.stats={key:CompactMetric(counters,title) for key,title in [('pending','Posts pendentes'),('applied','Posts alterados'),('restored','Restaurados'),('conflict','Ignorados')]}
+        self.link_summary=tk.StringVar(value='Nenhum link analisado.')
+        ttk.Label(saved,textvariable=self.link_summary,style='Card.TLabel',wraplength=900).pack(anchor='w',pady=(0,6))
+        self.live_note=tk.StringVar()
+        ttk.Label(saved,textvariable=self.live_note,style='CardMuted.TLabel',wraplength=900).pack(anchor='w',pady=(0,6))
         self.summary=tk.StringVar(value='Preencha os dois campos acima e clique em Ver prévia.')
         ttk.Label(saved,textvariable=self.summary,style='CardMuted.TLabel',wraplength=900,justify='left').pack(anchor='w',pady=(0,6))
         self.progress=ttk.Progressbar(saved,mode='determinate');self.progress.pack(fill='x',pady=(0,4))
@@ -57,11 +61,7 @@ class EditorTab:
             else:self.original_text=widget
         self.selected_note=tk.StringVar(value='Confira os textos e os links antes de aplicar.')
         ttk.Label(saved,textvariable=self.selected_note,style='CardMuted.TLabel',wraplength=900).pack(anchor='w',pady=(6,0))
-        scope_row=ttk.Frame(saved,style='Card.TFrame');scope_row.pack(fill='x',pady=(8,0))
-        ttk.Label(scope_row,text='Quais posts alterar?',style='Card.TLabel').pack(side='left',padx=(0,10))
         self.scope=tk.StringVar(value='Toda a análise')
-        self.scope_choice=ttk.Combobox(scope_row,textvariable=self.scope,values=['Toda a análise','Somente os selecionados'],state='readonly',width=27)
-        self.scope_choice.pack(side='left');self.scope_choice.bind('<<ComboboxSelected>>',lambda _event:self.update_buttons())
         self.filters=Fold(saved,'Buscar ou filtrar posts')
         self.state_filter=tk.StringVar(value='Todas');self.search=tk.StringVar()
         ttk.Combobox(self.filters.body,textvariable=self.state_filter,values=list(FILTERS),state='readonly',width=18).pack(side='left',padx=(0,10))
@@ -75,7 +75,7 @@ class EditorTab:
         actions=ttk.Frame(self.backups.body,style='Card.TFrame');actions.pack(fill='x',pady=8)
         self.restore_button=ttk.Button(actions,text='Restaurar textos originais',command=lambda:self.apply(True));self.restore_button.pack(side='left')
         ttk.Button(actions,text='Salvar relatório CSV',command=self.export_report,style='Quiet.TButton').pack(side='left',padx=8)
-        ttk.Label(self.backups.body,text='Ctrl ou Shift selecionam vários posts. Filtros só mudam a lista visível. A restauração usa o backup e preserva posts alterados depois da prévia.',style='CardMuted.TLabel',wraplength=900).pack(anchor='w')
+        ttk.Label(self.backups.body,text='A aplicação inclui todos os posts pendentes, mesmo quando a lista está filtrada. A restauração usa o backup e preserva posts alterados depois da prévia.',style='CardMuted.TLabel',wraplength=900).pack(anchor='w')
         self.refresh()
         for variable in (self.channel,self.target,self.ads,self.plain):variable.trace_add('write',lambda *_:self.update_buttons())
 
@@ -158,6 +158,9 @@ class EditorTab:
         batch=self.editor.db.batch(self.batch_id);states=self.editor.db.states(self.batch_id)
         counts={state:sum(i['status']==state for i in states) for state in STATES}
         for key,metric in self.stats.items():metric.value.set(readable_count(counts[key]))
+        totals=self.editor.db.link_totals(self.batch_id)
+        self.link_summary.set(f"Links: {sum(totals.values())} encontrados para alterar · {totals['pending']} pendentes · {totals['applied']} alterados · {totals['conflict']} ignorados")
+        self.live_note.set(batch['note'])
         self.summary.set(f"{batch['title']} · {batch['channel']} → {batch['target']}\n{BATCH_STATES[batch['status']]} · {readable_count(batch['scanned'])} posts analisados")
         if batch['status']=='scanning':
             self.progress_text.set(f"Analisando o histórico… {readable_count(len(states))} propostas encontradas. O total ainda está sendo descoberto.")
@@ -167,7 +170,8 @@ class EditorTab:
             total=self.run_total if self.operation in ('apply','restore') else len(states)
             finished=max(0,total-remaining)
             self.progress.configure(value=100*finished/total if total else 0)
-            self.progress_text.set(f"{readable_count(finished)} de {readable_count(total)} propostas conferidas nesta operação.")
+            phase="Executando o lote automaticamente…" if batch['status']=='applying' else BATCH_STATES[batch['status']]
+            self.progress_text.set(f"{readable_count(finished)} de {readable_count(total)} posts processados · {phase}")
         changed=False
         for state in states:
             key=str(state['message_id'])
@@ -177,7 +181,7 @@ class EditorTab:
         wait=max(0,int(batch['wait_until']-time.time())+1)
         if wait:self.apply_caption.set(f'Limite do Telegram: aguarde {wait} segundos antes de retomar.')
         elif batch['status']=='incomplete':self.apply_caption.set('A análise foi interrompida. Analise o histórico novamente antes de aplicar.')
-        elif counts['pending']:self.apply_caption.set(f"{readable_count(counts['pending'])} posts aguardam aplicação. Revise a prévia antes de confirmar.")
+        elif counts['pending']:self.apply_caption.set(f"{readable_count(counts['pending'])} posts aguardam aplicação. O botão aplica todos, sem selecionar linhas.")
         elif counts['applied']:self.apply_caption.set('Alterações aplicadas. Você pode restaurar os originais enquanto os posts não tiverem novas mudanças.')
         else:self.apply_caption.set('Nenhuma alteração pendente nesta análise.')
         self.update_buttons()
@@ -191,20 +195,16 @@ class EditorTab:
         for button in (self.channels_button,self.scan_button):button.configure(state='disabled' if busy else 'normal')
         self.stop_button.configure(state='normal' if busy and self.operation else 'disabled')
         self.history.configure(state='disabled' if busy else 'readonly')
-        if hasattr(self,'scope_choice'):self.scope_choice.configure(state='disabled' if busy else 'readonly')
         batch=self.editor.db.batch(self.batch_id) if self.batch_id is not None else None
         ready=batch is not None and batch['status'] not in ('scanning','incomplete') and batch['wait_until']<=time.time() and not busy
         states=self.editor.db.states(self.batch_id) if batch else []
-        if hasattr(self,'scope') and self.scope.get()=='Somente os selecionados':
-            selection={int(key) for key in self.tree.selection()}
-            states=[item for item in states if item['message_id'] in selection]
         self.apply_button.configure(state='normal' if ready and any(i['status']=='pending' for i in states) else 'disabled')
         self.restore_button.configure(state='normal' if ready and any(i['status']=='applied' for i in states) else 'disabled')
         same=self.ready_inputs==self.inputs()
         if not same:
             self.apply_button.configure(state='disabled')
             if batch and not busy:self.apply_caption.set('Você alterou os campos. Clique em Ver prévia para preparar uma nova análise.')
-        self.scan_button.configure(text='Analisar novamente' if batch and same else '1. Ver prévia',style='Quiet.TButton' if batch and same else 'Primary.TButton')
+        self.scan_button.configure(text='Analisar novamente' if batch and same else '1. Analisar canal',style='Quiet.TButton' if batch and same else 'Primary.TButton')
         if batch and same:self.apply_button.pack(side='left',padx=8)
         else:self.apply_button.pack_forget()
         if busy and self.operation:self.stop_button.pack(side='left',padx=8)
@@ -248,11 +248,10 @@ class EditorTab:
             if not restore and self.ready_inputs!=self.inputs():raise UserError('Os campos mudaram. Veja uma nova prévia antes de aplicar.')
             batch=self.editor.db.batch(self.batch_id)
             if batch['status'] in ('scanning','incomplete'):raise UserError('Faça uma nova análise: esta foi interrompida.')
-            selected=[int(key) for key in self.tree.selection()] if self.scope.get()=='Somente os selecionados' else None
-            if selected is not None and not selected:raise UserError('Selecione os posts na lista ou escolha Toda a análise.')
+            selected=None  # Selection and filters only inspect posts; apply always runs the whole batch.
             items=[i for i in self.editor.db.states(self.batch_id) if i['status']==('applied' if restore else 'pending') and (selected is None or i['message_id'] in selected)]
             if not items:raise UserError('Não há publicações elegíveis para esta operação nesta análise.')
-            action='Restaurar os textos originais de' if restore else 'Editar os links e textos de'
+            action='Restaurar os textos originais de' if restore else 'Substituir os destinos de todos os links em'
             prompt=f"{action} {len(items)} publicações?\n\nCanal: {batch['title']}\nID: {batch['channel']}\nNovo destino: {batch['target']}\n\nA operação usará a prévia salva desta análise. Posts modificados desde a prévia serão ignorados. Escopo: {self.scope.get()}. Nenhuma publicação será apagada."
             if messagebox.askyesno('Confirmar restauração' if restore else 'Confirmar edição no Telegram',prompt,parent=self.window.root):
                 self.operation='restore' if restore else 'apply';self.run_total=len(items);self.run_ids={item['message_id'] for item in items}
