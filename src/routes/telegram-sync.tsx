@@ -7,9 +7,9 @@ export const Route = createFileRoute("/telegram-sync")({
   component: TelegramSync,
 });
 const release =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-12-1";
+  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-15-1";
 const download =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/download/telegram-sync-desktop-12-1/TelegramSync-Windows.zip";
+  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/download/telegram-sync-desktop-15-1/TelegramSync-Windows.zip";
 
 function TelegramSync() {
   return (
@@ -31,7 +31,7 @@ function TelegramSync() {
                   Windows 10 / 11 · 64 bits
                 </span>
                 <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
-                  Versão de teste 0.5.1
+                  Versão de teste 0.5.2
                 </span>
               </div>
               <h2 className="font-display text-2xl font-semibold">
@@ -129,9 +129,12 @@ function TelegramSync() {
           <h2 className="font-display text-xl font-semibold">Editar links de posts existentes</h2>
           <p className="text-sm leading-6 text-muted-foreground">
             Na própria tela do aplicativo, pause as sincronizações e escolha Trocar links do meu
-            canal. Escolha um canal que você administra, informe o novo destino e clique em Ver
-            prévia. Confira o antes e depois, escolha quais posts alterar e clique em Aplicar
-            alterações. A confirmação final mostra o canal, o destino e a quantidade.
+            canal. Escolha um canal que você administra, informe o novo destino e clique em Analisar
+            canal. Confira os totais e clique em Aplicar todos os links. Uma confirmação inicia
+            o lote inteiro; seleção e filtros servem apenas para conferir. O dashboard ao vivo
+            mostra posts e links pendentes, alterados, ignorados e a publicação em andamento.
+            Quando o Telegram exigir uma espera, a contagem regressiva aparece e o lote retoma
+            automaticamente ao terminar, enquanto o aplicativo permanecer aberto.
           </p>
           <p className="text-sm leading-6 text-muted-foreground">
             A edição troca os destinos de todos os links do texto, qualquer que seja o título
