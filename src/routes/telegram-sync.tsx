@@ -1,3 +1,4 @@
+import { downloads } from "@/lib/downloads";
 import { createFileRoute } from "@tanstack/react-router";
 import { Download, Laptop, ShieldCheck, ArrowRight, CheckCircle2, Link2 } from "lucide-react";
 import { AppShell, PageIntro } from "@/components/AppShell";
@@ -6,10 +7,7 @@ export const Route = createFileRoute("/telegram-sync")({
   head: () => ({ meta: [{ title: "Telegram Sync gratuito para Windows — 00duHot" }] }),
   component: TelegramSync,
 });
-const release =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-15-1";
-const download =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/download/telegram-sync-desktop-15-1/TelegramSync-Windows.zip";
+const { url: download, release } = downloads.telegramSync;
 
 function TelegramSync() {
   return (
@@ -31,7 +29,7 @@ function TelegramSync() {
                   Windows 10 / 11 · 64 bits
                 </span>
                 <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
-                  Versão de teste 0.5.2
+                  Versão de teste {downloads.telegramSync.version}
                 </span>
               </div>
               <h2 className="font-display text-2xl font-semibold">

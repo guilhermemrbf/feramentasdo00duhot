@@ -1,3 +1,4 @@
+import { downloads } from "@/lib/downloads";
 import { parseProxyAddress } from "@/lib/proxy-input";
 import { useState, type FormEvent } from "react";
 import {
@@ -72,9 +73,12 @@ export function ConnectComputer({
             <p className="mt-1 leading-6 text-muted-foreground">
               Extraia o arquivo em uma pasta do seu computador. Requer Node.js 22 ou superior.
             </p>
-            <a href="/hot-profiles-connector.zip" download className={`${hotButton} mt-2`}>
+            <a href={downloads.hotProfiles.url} className={`${hotButton} mt-2`}>
               <Download className="size-4" />
               Baixar conector Windows
+            </a>
+            <a href={downloads.hotProfiles.release} target="_blank" rel="noreferrer" className="mt-2 block text-xs text-muted-foreground underline underline-offset-4">
+              Ver versão e integridade do arquivo
             </a>
           </div>
         </li>
