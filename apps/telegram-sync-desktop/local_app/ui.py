@@ -36,7 +36,9 @@ class Window:
         ttk.Label(self.account_controls,textvariable=self.account,style='Muted.TLabel').pack(side='left',padx=12)
         self.connect_button=ttk.Button(self.account_controls,text='Conectar Telegram',style='Primary.TButton',command=self.login)
         self.disconnect_button=ttk.Button(self.account_controls,text='Desconectar',style='Quiet.TButton',command=self.disconnect)
-        dashboard=ttk.Frame(self.shell,padding=(22,0,22,0));dashboard.pack(fill='x')
+        dashboard=ttk.Frame(self.shell,padding=(22,0,22,0));dashboard.pack(fill='x');self.copy_dashboard=dashboard
+        self.edit_dashboard=ttk.Frame(self.shell,padding=(22,0,22,0))
+        self.edit_metrics=metrics(self.edit_dashboard,[('pending','Posts pendentes','Aguardam alteração',AMBER),('applied','Posts alterados','Confirmados no Telegram',GREEN),('restored','Restaurados','Backup aplicado',BLUE),('conflict','Ignorados','Confira o motivo no post',RED)],compact=True)
         self.home_metrics=metrics(dashboard,[('sent','Cópias publicadas','Mensagens confirmadas',GREEN),('running','Copiando agora','Sincronizações em execução',BLUE),('paused','Pausadas','Aguardando você iniciar',AMBER),('attention','Precisam de atenção','Confira antes de retomar',RED)],compact=True)
         footer=ttk.Frame(self.shell,padding=(22,10));footer.pack(side='bottom',fill='x')
         self.spinner=ttk.Progressbar(footer,mode='indeterminate',length=70)
@@ -79,6 +81,8 @@ class Window:
 
     def show_operation(self, value):
         self.operation_choice.set(value)
+        self.copy_dashboard.pack_forget();self.edit_dashboard.pack_forget()
+        (self.copy_dashboard if value=='copy' else self.edit_dashboard).pack(fill='x',after=self.shell.winfo_children()[0])
         self.copy_panel.pack_forget();self.editor_tab.frame.pack_forget()
         (self.copy_panel if value=='copy' else self.editor_tab.frame).pack(fill='x')
         for key,button in self.mode_buttons.items():button.configure(style='Primary.TButton' if key==value else 'TButton')

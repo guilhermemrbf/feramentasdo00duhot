@@ -157,7 +157,9 @@ class EditorTab:
         if self.batch_id is None:return
         batch=self.editor.db.batch(self.batch_id);states=self.editor.db.states(self.batch_id)
         counts={state:sum(i['status']==state for i in states) for state in STATES}
-        for key,metric in self.stats.items():metric.value.set(readable_count(counts[key]))
+        for key,metric in self.stats.items():
+            metric.value.set(readable_count(counts[key]))
+            self.window.edit_metrics[key].value.set(readable_count(counts[key]))
         totals=self.editor.db.link_totals(self.batch_id)
         self.link_summary.set(f"Links: {sum(totals.values())} encontrados para alterar · {totals['pending']} pendentes · {totals['applied']} alterados · {totals['conflict']} ignorados")
         self.live_note.set(batch['note'])
