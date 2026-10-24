@@ -90,6 +90,9 @@ def rewrite(original, target, remove_ads=False, plain_urls=False):
         elif plain_urls and isinstance(entity, types.MessageEntityUrl):
             # Ctrl+K equivalent: retain the visible label, change its click target.
             raw = result['text'].encode('utf-16-le')[start*2:end*2].decode('utf-16-le')
+            if raw == target:
+                entities.append(entity)
+                continue
             links.append(raw)
             entity = types.MessageEntityTextUrl(start, end-start, target)
         entities.append(entity)

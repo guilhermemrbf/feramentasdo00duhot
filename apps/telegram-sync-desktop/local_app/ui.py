@@ -31,7 +31,7 @@ class Window:
         self.brand_mark=brand_image(40);root.iconphoto(True,self.brand_mark)
         ttk.Label(top,image=self.brand_mark).pack(side='left',padx=(0,10))
         ttk.Label(top,text='Telegram Sync',style='Heading.TLabel').pack(side='left')
-        ttk.Label(top,text='00duHot · v0.5.0',style='Muted.TLabel').pack(side='left',padx=14)
+        ttk.Label(top,text='00duHot · v0.5.1',style='Muted.TLabel').pack(side='left',padx=14)
         self.account_controls=ttk.Frame(top);self.account_controls.pack(side='right')
         ttk.Label(self.account_controls,textvariable=self.account,style='Muted.TLabel').pack(side='left',padx=12)
         self.connect_button=ttk.Button(self.account_controls,text='Conectar Telegram',style='Primary.TButton',command=self.login)

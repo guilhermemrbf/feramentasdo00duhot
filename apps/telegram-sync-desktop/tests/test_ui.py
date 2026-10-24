@@ -130,7 +130,7 @@ class InterfaceTests(unittest.TestCase):
         self.window.runtime.engine.connected.assert_not_awaited()
 
     def test_optional_controls_start_closed_and_do_not_change_data(self):
-        for fold in (self.window.copy_options,self.window.rules_section,self.window.activity_section,self.window.task_extra,self.window.editor_tab.options,self.window.editor_tab.backups,self.window.editor_tab.filters):
+        for fold in (self.window.copy_options,self.window.rules_section,self.window.activity_section,self.window.task_extra,self.window.editor_tab.backups,self.window.editor_tab.filters):
             self.assertFalse(fold.opened);self.assertEqual(fold.body.winfo_manager(),'')
             fold.flip();self.root.update();self.assertTrue(fold.opened);fold.flip()
         self.assertEqual(self.window.mode.get(),'history');self.assertFalse(self.window.authorized.get())

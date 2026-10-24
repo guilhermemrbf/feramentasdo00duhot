@@ -1,4 +1,4 @@
-TELEGRAM SYNC 0.5.0 — 00duHot
+TELEGRAM SYNC 0.5.1 — 00duHot
 WINDOWS 10/11 64 BITS · GRATUITO E LOCAL
 
 PARA ABRIR OU ATUALIZAR
@@ -27,9 +27,10 @@ TROCAR LINKS DO MEU CANAL
 3. Confira o antes e depois, escolha toda a análise ou somente os posts
    selecionados e clique Aplicar alterações. Confira a confirmação final.
 Se mudar canal, link ou opções, prepare uma nova prévia.
-Por padrão altera links clicáveis (Ctrl+K), mantendo texto e mídia.
-Opções recolhidas permitem incluir URLs por extenso ou remover apenas
-as linhas “outros grupos” e “Hentai”. Não apaga publicações inteiras.
+Troca todos os destinos de links do texto, inclusive URLs por extenso,
+independentemente do título. Preserva texto, linhas, formatação e mídia.
+Não remove linhas. Posts com botões continuam ignorados.
+Analise novamente para encontrar destinos diferentes do novo link.
 Ctrl ou Shift selecionam vários posts. Filtros mudam apenas a lista visível.
 Restauração, análises anteriores e relatório CSV estão na opção abaixo
 da prévia. O backup guarda textos/formatação, não os arquivos de mídia.

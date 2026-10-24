@@ -25,12 +25,9 @@ class EditorTab:
         self.channels_button=ttk.Button(row,text='Escolher na minha lista',command=self.channels);self.channels_button.pack(side='right',padx=(10,0))
         ttk.Label(config,text='Qual será o novo link?',style='Card.TLabel').pack(anchor='w')
         self.target_entry=ttk.Entry(config,textvariable=self.target);self.target_entry.pack(fill='x',pady=(5,8))
-        self.ads=tk.BooleanVar(value=False);self.plain=tk.BooleanVar(value=False)
-        self.options=Fold(config,'Opções da próxima análise (opcional)')
+        self.ads=tk.BooleanVar(value=False);self.plain=tk.BooleanVar(value=True)
         self.option_controls=[]
-        for text,var in [('Remover as linhas “outros grupos” e “Hentai”, mantendo o post',self.ads),('Trocar também URLs escritas por extenso',self.plain)]:
-            control=ttk.Checkbutton(self.options.body,text=text,variable=var);control.pack(anchor='w');self.option_controls.append(control)
-        ttk.Label(self.options.body,text='Sem marcar nada, troca apenas o destino dos links clicáveis (Ctrl+K). O texto e a mídia são mantidos.',style='CardMuted.TLabel',wraplength=900).pack(anchor='w')
+        ttk.Label(config,text='Troca todos os destinos dos links, qualquer que seja o título. Preserva textos, linhas, formatação e mídias. Posts com botões são ignorados.',style='CardMuted.TLabel',wraplength=900).pack(anchor='w',pady=(4,8))
         actions=ttk.Frame(config,style='Card.TFrame');actions.pack(fill='x',pady=(8,0))
         self.scan_button=ttk.Button(actions,text='1. Ver prévia',style='Primary.TButton',command=self.scan);self.scan_button.pack(side='left')
         self.apply_button=ttk.Button(actions,text='2. Aplicar alterações',style='Primary.TButton',command=self.apply)
@@ -87,7 +84,7 @@ class EditorTab:
 
     def load_batch_inputs(self):
         batch=self.editor.db.batch(self.batch_id)
-        self.channel.set(batch['channel']);self.target.set(batch['target']);self.ads.set(False);self.plain.set(False)
+        self.channel.set(batch['channel']);self.target.set(batch['target']);self.ads.set(False);self.plain.set(True)
         self.ready_inputs=self.inputs()
 
     def stop(self):
