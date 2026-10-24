@@ -7,9 +7,9 @@ export const Route = createFileRoute("/telegram-sync")({
   component: TelegramSync,
 });
 const release =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-11-1";
+  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/telegram-sync-desktop-12-1";
 const download =
-  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/download/telegram-sync-desktop-11-1/TelegramSync-Windows.zip";
+  "https://github.com/guilhermemrbf/feramentasdo00duhot/releases/download/telegram-sync-desktop-12-1/TelegramSync-Windows.zip";
 
 function TelegramSync() {
   return (
@@ -31,7 +31,7 @@ function TelegramSync() {
                   Windows 10 / 11 · 64 bits
                 </span>
                 <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
-                  Versão de teste 0.5.0
+                  Versão de teste 0.5.1
                 </span>
               </div>
               <h2 className="font-display text-2xl font-semibold">
@@ -134,10 +134,10 @@ function TelegramSync() {
             alterações. A confirmação final mostra o canal, o destino e a quantidade.
           </p>
           <p className="text-sm leading-6 text-muted-foreground">
-            A edição mantém o texto clicável, a formatação e as mídias. Você pode remover as linhas
-            “outros grupos” e “Hentai” nas opções recolhidas e restaurar os textos originais usando
-            o backup local. Posts alterados depois da prévia são ignorados para preservar suas
-            edições.
+            A edição troca os destinos de todos os links do texto, qualquer que seja o título
+            clicável, inclusive URLs por extenso. Mantém texto, linhas, formatação e mídias. Analise
+            novamente para encontrar destinos que ainda não apontam para o novo link. A restauração
+            continua disponível; posts alterados depois da prévia são preservados.
           </p>
         </section>
         <aside className="space-y-3 rounded-2xl border border-border bg-secondary/40 p-6 text-sm leading-6 text-muted-foreground">
