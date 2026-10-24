@@ -63,7 +63,9 @@ a formatação em texto simples e expande links ocultos. A edição de links
 no próprio canal preserva formatação e mídias. Posts com botões são ignorados
 pelo editor. Tipos de mídia/legendas não suportados exigem revisão.
 Uma edição ou envio já em andamento pode terminar após pedir pausa.
-Limites do Telegram são respeitados; espere o prazo indicado para retomar.
+Limites do Telegram são respeitados: a contagem regressiva aparece e o lote
+retoma automaticamente, sem clicar novamente. Você pode pausar a espera.
+Ao fechar o aplicativo, a retomada na próxima abertura exige sua ação.
 Não há telemetria ou envio aos servidores 00duHot. O aplicativo conversa
 com o Telegram; ajuda abre o portal oficial. O relatório CSV é local e não
 inclui credenciais nem corpos completos, mas inclui canais e destinos.
@@ -73,4 +75,4 @@ O executável não possui assinatura digital comercial. Confira o ZIP com
 SHA256SUMS.txt da mesma release. Não desative as proteções do Windows.
 Teste primeiro com poucos posts em dois canais seus antes de distribuir.
 
-EDITOR DE LINKS: Analise o canal e clique em Aplicar todos os links. A seleção e os filtros servem apenas para conferir. O dashboard acompanha posts e links pendentes/alterados, o post atual e o motivo de pausas. O lote é processado automaticamente, respeitando limites do Telegram. Posts sem permissão individual são ignorados; erros de conexão e limites pausam para retomar com segurança.
+EDITOR DE LINKS: Analise o canal e clique em Aplicar todos os links. A seleção e os filtros servem apenas para conferir. O dashboard acompanha posts e links pendentes/alterados, o post atual e o motivo de pausas. O lote é processado automaticamente, respeitando limites do Telegram. Posts sem permissão individual são ignorados; erros de conexão pausam para conferência; limites do Telegram aguardam o prazo e retomam automaticamente.

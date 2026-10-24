@@ -274,44 +274,66 @@ class ChannelEditor:
                         return batch_id
                     if item['status'] != ('applied' if restore else 'pending'):
                         continue
-                    self.db.patch(batch_id,note=f"{'Restaurando' if restore else 'Alterando links do'} post {item['message_id']}…")
-                    self.progress(self.db.batch(batch_id)['note'])
-                    expected = json.loads(item['desired' if restore else 'original'])
-                    desired = json.loads(item['original' if restore else 'desired'])
-                    message = await tg.get_messages(channel, ids=item['message_id'])
-                    if not message:
-                        self.db.item_state(batch_id,item['message_id'],'conflict','Publicação removida; ignorada.')
-                        continue
-                    current = snapshot(message)
-                    final_state = 'restored' if restore else 'applied'
-                    if same_content(current, desired):
-                        self.db.item_state(batch_id,item['message_id'],final_state,'Conteúdo já confirmado no Telegram.')
-                        continue
-                    if not same_content(current, expected):
-                        self.db.item_state(batch_id,item['message_id'],'conflict','Conteúdo mudou após a prévia; não foi sobrescrito.')
-                        continue
-                    try:
-                        await tg.edit_message(channel, item['message_id'], text=desired['text'],
-                            formatting_entities=decode_entities(desired['entities']), parse_mode=None,
-                            link_preview=desired['preview'])
-                    except (errors.MessageIdInvalidError, errors.MessageAuthorRequiredError, errors.MessageEditTimeExpiredError):
-                        self.db.item_state(batch_id,item['message_id'],'conflict','Telegram não permite editar este post; os demais continuam.')
-                        self.progress(f"Post {item['message_id']} ignorado: edição não permitida.")
-                        continue
-                    # Re-read instead of trusting an update whose result could be missing.
-                    confirmed = await tg.get_messages(channel, ids=item['message_id'])
-                    if not confirmed or not same_content(snapshot(confirmed),desired):
-                        raise UserError('Não foi possível confirmar a edição. Retome para verificar o estado no Telegram.')
-                    self.db.item_state(batch_id,item['message_id'],final_state)
-                    self.progress(f"Post {item['message_id']}: {'restaurado' if restore else 'editado'}.")
+                    while True:
+                        try:
+                            await self.apply_item(tg,channel,batch_id,item,restore)
+                            break
+                        except errors.FloodWaitError as reason:
+                            self.db.patch(batch_id,wait_until=time.time()+reason.seconds+1)
+                            if not await self.wait_limit(batch_id):return batch_id
                     await asyncio.sleep(1.1)
                 remaining=sum(item['status']=='pending' for item in self.db.states(batch_id))
                 note='Restauração concluída.' if restore else 'Edição concluída. Confira os estados dos posts na lista.'
                 if remaining:note+=f' {remaining} propostas ainda não foram aplicadas.'
                 self.db.patch(batch_id,status='ready' if remaining else 'done',note=note)
-            except errors.FloodWaitError as reason:
-                self.db.patch(batch_id,status='paused',wait_until=time.time()+reason.seconds+1,note=f'Limite Telegram: aguarde {reason.seconds} segundos e retome a operação.')
             except BaseException as reason:
                 self.db.patch(batch_id,status='paused',note='Operação interrompida. '+(safe_error(reason) if isinstance(reason,Exception) else 'Retome para conferir o estado.'))
                 raise
         return batch_id
+
+    async def wait_limit(self, batch_id):
+        """Keep the authorized batch alive, respecting the server's persisted deadline."""
+        while True:
+            if self.cancel.is_set() or self.engine.stopping:
+                self.db.patch(batch_id,status='paused',note='Pausado durante a espera. Retome após o prazo do Telegram.')
+                return False
+            remaining=self.db.batch(batch_id)['wait_until']-time.time()
+            if remaining<=0:
+                self.db.patch(batch_id,wait_until=0,note='Espera concluída. Retomando automaticamente…')
+                self.progress(self.db.batch(batch_id)['note'])
+                return True
+            self.db.patch(batch_id,status='applying',note=f'Limite do Telegram: aguardando {int(remaining)+1}s. Retomada automática ao terminar.')
+            self.progress(self.db.batch(batch_id)['note'])
+            await asyncio.sleep(min(1,remaining))
+
+    async def apply_item(self, tg, channel, batch_id, item, restore):
+        self.db.patch(batch_id,note=f"{'Restaurando' if restore else 'Alterando links do'} post {item['message_id']}…")
+        self.progress(self.db.batch(batch_id)['note'])
+        expected = json.loads(item['desired' if restore else 'original'])
+        desired = json.loads(item['original' if restore else 'desired'])
+        message = await tg.get_messages(channel, ids=item['message_id'])
+        if not message:
+            self.db.item_state(batch_id,item['message_id'],'conflict','Publicação removida; ignorada.')
+            return
+        current = snapshot(message)
+        final_state = 'restored' if restore else 'applied'
+        if same_content(current, desired):
+            self.db.item_state(batch_id,item['message_id'],final_state,'Conteúdo já confirmado no Telegram.')
+            return
+        if not same_content(current, expected):
+            self.db.item_state(batch_id,item['message_id'],'conflict','Conteúdo mudou após a prévia; não foi sobrescrito.')
+            return
+        try:
+            await tg.edit_message(channel, item['message_id'], text=desired['text'],
+                formatting_entities=decode_entities(desired['entities']), parse_mode=None,
+                link_preview=desired['preview'])
+        except (errors.MessageIdInvalidError, errors.MessageAuthorRequiredError, errors.MessageEditTimeExpiredError):
+            self.db.item_state(batch_id,item['message_id'],'conflict','Telegram não permite editar este post; os demais continuam.')
+            self.progress(f"Post {item['message_id']} ignorado: edição não permitida.")
+            return
+        # Re-read instead of trusting an update whose result could be missing.
+        confirmed = await tg.get_messages(channel, ids=item['message_id'])
+        if not confirmed or not same_content(snapshot(confirmed),desired):
+            raise UserError('Não foi possível confirmar a edição. Retome para verificar o estado no Telegram.')
+        self.db.item_state(batch_id,item['message_id'],final_state)
+        self.progress(f"Post {item['message_id']}: {'restaurado' if restore else 'editado'}.")

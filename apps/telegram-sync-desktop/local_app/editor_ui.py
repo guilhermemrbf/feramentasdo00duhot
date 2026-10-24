@@ -181,7 +181,7 @@ class EditorTab:
                 self.items[key].update(state);changed=True
         if changed:self.render_rows()
         wait=max(0,int(batch['wait_until']-time.time())+1)
-        if wait:self.apply_caption.set(f'Limite do Telegram: aguarde {wait} segundos antes de retomar.')
+        if wait:self.apply_caption.set(f'Limite do Telegram: {wait}s. '+('O lote retoma automaticamente; não precisa clicar.' if batch['status']=='applying' else 'Operação pausada; retome após o prazo.'))
         elif batch['status']=='incomplete':self.apply_caption.set('A análise foi interrompida. Analise o histórico novamente antes de aplicar.')
         elif counts['pending']:self.apply_caption.set(f"{readable_count(counts['pending'])} posts aguardam aplicação. O botão aplica todos, sem selecionar linhas.")
         elif counts['applied']:self.apply_caption.set('Alterações aplicadas. Você pode restaurar os originais enquanto os posts não tiverem novas mudanças.')

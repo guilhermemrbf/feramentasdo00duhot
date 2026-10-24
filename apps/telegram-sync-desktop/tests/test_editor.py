@@ -169,7 +169,10 @@ class EditorTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_floodwait_persists_and_blocks_early_retry(self):
         batch=await self.prepared();self.tg.edit_message.side_effect=errors.FloodWaitError(None,capture=15)
-        await self.editor.apply(batch)
+        async def pause_wait(batch):
+            self.editor.db.patch(batch,status='paused')
+            return False
+        with patch.object(self.editor,'wait_limit',side_effect=pause_wait):await self.editor.apply(batch)
         self.assertEqual(self.editor.db.batch(batch)['status'],'paused')
         with self.assertRaises(UserError):await self.editor.apply(batch)
         self.assertEqual(self.tg.edit_message.await_count,1)
@@ -244,3 +247,39 @@ class EditorTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any('post 9' in str(call).lower() for call in self.engine.emit.call_args_list))
         await self.editor.apply(batch)
         self.assertEqual(self.tg.edit_message.await_count,3)
+
+    async def test_floodwait_automatically_resumes_same_post_without_second_apply(self):
+        batch=await self.prepared();write=self.tg.edit_message.side_effect
+        calls=0
+        async def limited(*a,**kw):
+            nonlocal calls
+            calls+=1
+            if calls==1:raise errors.FloodWaitError(None,capture=5)
+            return await write(*a,**kw)
+        self.tg.edit_message.side_effect=limited
+        async def elapsed(batch):
+            self.assertEqual(self.editor.db.batch(batch)['status'],'applying')
+            self.assertGreater(self.editor.db.batch(batch)['wait_until'],0)
+            self.editor.db.patch(batch,wait_until=0)
+            return True
+        with patch.object(self.editor,'wait_limit',side_effect=elapsed) as wait:
+            await self.editor.apply(batch)
+            wait.assert_awaited_once_with(batch)
+        self.assertEqual(calls,2)
+        self.assertEqual(self.editor.db.items(batch)[0]['status'],'applied')
+        self.assertEqual(self.editor.db.batch(batch)['status'],'done')
+
+    async def test_wait_countdown_is_cancellable_and_persists_deadline(self):
+        batch=await self.prepared();self.editor.db.patch(batch,wait_until=106)
+        self.engine.emit=MagicMock()
+        clock=[100]
+        async def advance(seconds):clock[0]+=seconds
+        with patch('local_app.editor.time.time',side_effect=lambda:clock[0]),patch('local_app.editor.asyncio.sleep',side_effect=advance):
+            self.assertTrue(await self.editor.wait_limit(batch))
+        self.assertEqual(clock[0],106)
+        self.assertEqual(self.editor.db.batch(batch)['wait_until'],0)
+        self.assertTrue(any('automática' in str(c) for c in self.engine.emit.call_args_list))
+        self.editor.db.patch(batch,wait_until=200);self.editor.cancel.set()
+        self.assertFalse(await self.editor.wait_limit(batch))
+        self.assertEqual(self.editor.db.batch(batch)['status'],'paused')
+        self.assertEqual(self.editor.db.batch(batch)['wait_until'],200)
