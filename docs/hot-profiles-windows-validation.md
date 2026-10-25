@@ -44,6 +44,8 @@ O computador reportou aproximadamente 7,7 GB de RAM total e 0,9 GB livre com uma
 
 Validação automatizada nesta entrega: **83 testes aprovados** no Windows (`npm test`), TypeScript sem erros (`tsc --noEmit`) e build de produção concluído (`npm run build`). O build emitiu avisos de tamanho de chunks e opções/importações de dependências, sem falha. Nenhum comando de deploy foi executado. O ZIP foi regenerado pelo script existente; um teste descompacta e compara seus 11 arquivos com as fontes e confere todos os imports locais. Atributos de fim de linha mantêm o pacote reproduzível entre Windows e Linux.
 
+Distribuição: [Hot Profiles Local 2-1](https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/hot-profiles-local-2-1), produzida pelo [workflow 40152068636](https://github.com/guilhermemrbf/feramentasdo00duhot/actions/runs/40152068636) no commit `152c63deedc273e74db6c288cd32c0bc682757f7`. As suítes Hot Profiles passaram nos executores Windows e Linux. O ZIP publicado respondeu HTTP 200 e foi comparado byte a byte com o local: 29.509 bytes; SHA-256 `ba738450f92a55bb80ae8836b2ba15f9a093e524e2d90a49a16641eba25cc132`. Somente após essa conferência o download central da aplicação foi atualizado para a nova release. O commit de downloads/documentação não modifica o conteúdo desse pacote.
+
 - Duas proxies de teste fornecidas pelo titular, cadastradas localmente, sem credenciais no Git.
 - Medição de memória e capacidade antes de duas instâncias reais simultâneas.
 - Confirmação do endpoint ativo da Pie64_4 quando aberta.
