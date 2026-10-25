@@ -1,5 +1,5 @@
 import { WorkspaceMode } from "./WorkspaceMode";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Activity,
   ArrowRight,
@@ -52,7 +52,14 @@ function clearSavedConnection() {
   }
 }
 
-export function LegacyLocalWorkspace() {
+function DesktopShell({ children }: { children: ReactNode }) {
+  return <div className="app-workspace min-h-screen bg-background text-foreground">{children}</div>;
+}
+
+export function LegacyLocalWorkspace({
+  standalone = false,
+  desktopConnection,
+}: { standalone?: boolean; desktopConnection?: HotConnection } = {}) {
   const [connection, setConnection] = useState<HotConnection | null>(null);
   const [workspace, setWorkspace] = useState<HotWorkspace>(EMPTY_WORKSPACE);
   const [devices, setDevices] = useState<HotDevices | null>(null);
@@ -90,6 +97,11 @@ export function LegacyLocalWorkspace() {
     };
   }, [connection]);
   useEffect(() => {
+    if (desktopConnection) {
+      setConnection(desktopConnection);
+      setLoaded(true);
+      return;
+    }
     try {
       const saved = sessionStorage.getItem(HOT_CONNECTION_KEY);
       if (saved) {
@@ -103,7 +115,7 @@ export function LegacyLocalWorkspace() {
       clearSavedConnection();
     }
     setLoaded(true);
-  }, []);
+  }, [desktopConnection]);
   const refresh = useCallback(async () => {
     if (!connection || refreshing.current) return;
     refreshing.current = true;
@@ -245,10 +257,11 @@ export function LegacyLocalWorkspace() {
   const androidCount = workspace.profiles.filter((profile) => profile.kind === "android").length;
   const iconButton =
     "inline-flex size-10 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30";
+  const Shell = standalone ? DesktopShell : AppShell;
   return (
-    <AppShell>
+    <Shell>
       <main className="mx-auto min-h-screen max-w-screen-2xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        <WorkspaceMode mode="local" />
+        {!standalone && <WorkspaceMode mode="local" />}
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="flex size-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
@@ -266,9 +279,17 @@ export function LegacyLocalWorkspace() {
               </p>
             </div>
           </div>
-          <button onClick={() => setShowConnect(true)} className={hotButton}>
+          <button disabled={standalone} onClick={() => setShowConnect(true)} className={hotButton}>
             <Cable className="size-4" />
-            <span>{online ? connection?.computer : "Conectar computador"}</span>
+            <span>
+              {standalone
+                ? online
+                  ? "Aplicativo local conectado"
+                  : "Aguardando serviço local"
+                : online
+                  ? connection?.computer
+                  : "Conectar computador"}
+            </span>
             <span
               className={`size-2 rounded-full ${online ? "bg-success" : "bg-muted-foreground"}`}
             />
@@ -285,9 +306,11 @@ export function LegacyLocalWorkspace() {
                     : "Conecte seu computador para começar"}
                 </h2>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  {connection
-                    ? "Mantenha o conector aberto para acessar suas sessões. Seus perfis continuam salvos no computador."
-                    : "O conector executa os ambientes no seu computador e traz a tela para cá. Você organiza tudo pelo painel, inclusive no site publicado."}
+                  {standalone
+                    ? "Aguarde a conexão local. Se ela não voltar, feche o conector antigo e reabra o aplicativo; seus dados ficam preservados."
+                    : connection
+                      ? "Mantenha o conector aberto para acessar suas sessões. Seus perfis continuam salvos no computador."
+                      : "O conector executa os ambientes no seu computador e traz a tela para cá. Você organiza tudo pelo painel, inclusive no site publicado."}
                 </p>
               </div>
             </div>
@@ -298,10 +321,12 @@ export function LegacyLocalWorkspace() {
                   Reconectar
                 </button>
               )}
-              <button onClick={() => setShowConnect(true)} className={hotPrimary}>
-                {connection ? "Novo código" : "Conectar agora"}
-                <ArrowRight className="size-4" />
-              </button>
+              {!standalone && (
+                <button onClick={() => setShowConnect(true)} className={hotPrimary}>
+                  {connection ? "Novo código" : "Conectar agora"}
+                  <ArrowRight className="size-4" />
+                </button>
+              )}
             </div>
           </section>
         )}
@@ -933,7 +958,7 @@ export function LegacyLocalWorkspace() {
             <LockKeyhole className="size-3.5" />
             Dados e credenciais no computador conectado.
           </p>
-          {connection && (
+          {connection && !standalone && (
             <button
               onClick={() => {
                 clearSavedConnection();
@@ -957,7 +982,7 @@ export function LegacyLocalWorkspace() {
             Conectando ambientes…
           </div>
         )}
-        {showConnect && (
+        {showConnect && !standalone && (
           <ConnectComputer onClose={() => setShowConnect(false)} onConnect={connect} />
         )}
         {profileForm && (
@@ -1076,6 +1101,6 @@ export function LegacyLocalWorkspace() {
           </HotDialog>
         )}
       </main>
-    </AppShell>
+    </Shell>
   );
 }

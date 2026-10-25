@@ -79,7 +79,10 @@ export async function discoverAndroid() {
   const configuration = await config();
   let output = "",
     adbResponding = false;
-  if (binary) {
+  // Opening the desktop panel must not start an ADB daemon while Android
+  // debugging is disabled. Existing SDK devices can still be listed if their
+  // local ADB server is already running.
+  if (binary && (configuration.enabled || (await listening(5037)))) {
     try {
       // Only probe local configured endpoints. A listening socket alone is not ADB readiness.
       if (configuration.enabled) {

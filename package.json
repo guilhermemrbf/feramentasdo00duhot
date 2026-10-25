@@ -7,6 +7,8 @@
     "dev": "vite dev",
     "profiles:bridge": "node tools/hot-profiles/bridge.mjs",
     "profiles:package": "node tools/hot-profiles/package.mjs",
+    "profiles:desktop:build": "node apps/hot-profiles-desktop/build-ui.mjs",
+    "profiles:desktop:start": "npm --prefix apps/hot-profiles-desktop start",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
