@@ -6,7 +6,7 @@ O projeto indicado pelo repositório é [03560931-5f6a-41e1-a222-0510d1828a23](h
 
 Alterações mantidas somente na branch do PR não ficam automaticamente disponíveis no preview da main. A integração deve ser feita por merge normal, preservando os commits, sem force push. Depois, conferir o preview dentro do Lovable. Sincronização de código e publicação do site são etapas diferentes; a publicação permanece manual, pelo titular na Lovable.
 
-Na conferência de 25/10/2026, o navegador disponível retornou **You don't have access** para o projeto privado. Isso não confirma falha de sincronização nem autoriza afirmar que o preview foi validado. É necessário entrar com uma conta que tenha acesso ao projeto para conferir o preview real.
+Na conferência de 25/10/2026, o acesso inicial ao projeto privado estava bloqueado. Depois de o titular entrar com sua conta, o editor ficou acessível. O PR #14 foi integrado à `main` pelo merge `103ecd95aca5d1a2e23f0af00a788702a50d7756`, preservando o histórico. O editor Lovable mostrou a entrada **Pushed from GitHub — Merge Hot Profiles local desktop and Lovable frontend integration**. A prévia foi atualizada e as rotas local e nuvem foram conferidas dentro do próprio projeto, sem publicação.
 
 ## Frontend esperado
 
@@ -25,6 +25,16 @@ O modo nuvem continua usando `src/lib/api/hot-cloud.functions.ts`, `src/lib/hot-
 Os perfis, proxies, senhas e sessões do modo local permanecem no PC, em `%LOCALAPPDATA%\00duHot\HotProfiles`. Eles não devem ser enviados ao Supabase para fazer esta integração. Não duplicar o backend local no Supabase, não migrar dados automaticamente e não colocar chave de serviço em variáveis `VITE_*`.
 
 O estado operacional do Supabase remoto (migrações aplicadas, configuração de Auth, RLS e credenciais dos provedores) só pode ser confirmado com acesso autorizado ao ambiente. Ele não foi anunciado como validado a partir da inspeção de código.
+
+No preview real, **Configurar nuvem** respondeu pelo backend e mostrou **Configuração encontrada** para acesso por e-mail e banco de perfis/proxies. Contas autorizadas, proteção das senhas e provedores Browserbase/Genymotion ficaram **A configurar**, como esperado para a execução cloud ainda não ativada. Esse diagnóstico confirma presença de configuração; não comprova consultas ao banco, RLS, login de usuário ou sessões nos provedores. Nenhum desses recursos foi criado, alterado ou contratado nesta conferência.
+
+## Resultado da conferência
+
+- 85 testes, TypeScript e build de produção aprovados antes da integração.
+- Preview local mostrou **Meu computador**, **Baixar aplicativo Windows** e o destino exato da release verificada `hot-profiles-desktop-1-1`.
+- O seletor **Nuvem**, o fluxo de autenticação anterior e o diagnóstico do backend continuaram disponíveis, sem iniciar ambientes pagos.
+- O editor indicou **Publish, unpublished changes available**. Nenhuma publicação foi acionada; o site público continua dependendo da ação manual do titular pelo Lovable.
+- As capturas de conferência ficaram no diretório local ignorado `.hot-profiles`, sem credenciais, sessões de aplicativos ou dados reais de perfis.
 
 ## Conferência no preview Lovable
 
