@@ -2,7 +2,9 @@
 
 ## O que mudou
 
-A rota `/hot-profiles` agora usa o back-end do site. O visitante não precisa instalar um conector, deixar Chrome aberto ou executar BlueStacks. O código da implementação local anterior está preservado em `LegacyLocalWorkspace.tsx` e `tools/hot-profiles/`; não é carregado pela rota principal. Nenhum dado local é migrado automaticamente.
+A rota `/hot-profiles` abre **Meu computador** por padrão. O modo **Nuvem** continua disponível pelo seletor, em `/hot-profiles?mode=cloud`, usando o back-end do site e Supabase. Somente nesse modo o visitante dispensa conector e emulador locais. A interface local usa `LegacyLocalWorkspace.tsx` e `tools/hot-profiles/`; o aplicativo Windows reutiliza esses módulos. Os cadastros local e nuvem continuam separados, sem migração automática.
+
+As mudanças do aplicativo desktop não exigem novas tabelas, políticas RLS, Edge Functions ou segredos Supabase. A ativação abaixo descreve a infraestrutura de nuvem anterior e não deve ser executada só para adicionar o botão de download do aplicativo. Veja o [contrato de integração com Lovable](hot-profiles-lovable.md).
 
 Há cadastro/edição/exclusão de proxies e perfis, tags, observações, duplicação de configuração, busca, sessões em abas, encerramento com confirmação do estado pelo provedor e visualização em tela cheia.
 
