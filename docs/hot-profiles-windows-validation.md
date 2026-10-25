@@ -1,4 +1,4 @@
-# Hot Profiles — evidências no Windows (24/10/2026)
+# Hot Profiles — evidências no Windows (24–25/10/2026)
 
 ## Base e preservação
 
@@ -34,11 +34,26 @@ Nenhuma ferramenta REA exposta no cliente desta conversa. CLI local 6.7.0, skill
 
 A primeira tentativa de teste não aguardava a resposta após EOF no netcat do Android 9; o cliente de teste foi corrigido para manter stdin aberto por dois segundos. O teste final passou. Esse ajuste não é evidência sobre o comportamento dos aplicativos.
 
-Não houve navegação em contas, captura de tela Android, importação de cookies, leitura de sessões de aplicativos, proxy contratada ou destino externo. O diagnóstico da sessão não devolve o valor bruto da proxy anterior.
+Na rodada inicial de 24/10, não houve navegação em contas, captura de tela Android, importação de cookies, leitura de sessões de aplicativos, proxy contratada ou destino externo. O diagnóstico da sessão não devolve o valor bruto da proxy anterior.
 
 **Não comprovados:** IP de saída externo por perfil, DNS real pela proxy, roteamento de aplicativos que ignoram HTTP proxy, UDP/QUIC e bloqueio de toda conexão direta quando a proxy falha. O gateway não oferece fallback direto, mas isso não impede um aplicativo de ignorá-lo. O painel mantém o aviso de isolamento não comprovado.
 
 O computador reportou aproximadamente 7,7 GB de RAM total e 0,9 GB livre com uma instância aberta. Não foi iniciada uma segunda instância simultânea. Separação de duas proxies e falha sem fallback foram validadas por testes de servidores simulados no Windows, não por dois Androids reais.
+
+## Validação complementar com proxy real — 25/10/2026
+
+O titular forneceu uma proxy HTTP autenticada para teste. Credenciais foram usadas apenas em memória, com entrada sem eco; não foram salvas em arquivos, argumentos do processo, commits ou neste relatório. O script de diagnóstico ficou em diretório local ignorado pelo Git. Não houve cadastro persistente de proxy ou perfil, nem acesso a contas ou aplicativos sociais.
+
+- **Computador:** TCP acessível, autenticação CONNECT aceita (537 ms na medição inicial), consulta HTTPS ao ipify com certificado validado. O IP retornado pela proxy diferiu do IP da conexão direta. Endereços e credenciais foram omitidos desta documentação pública.
+- **Android real:** Pie64 em `127.0.0.1:5555`, ADB local habilitado temporariamente pelo titular, acesso remoto desabilitado. O proxy HTTP global foi aplicado e conferido por leitura de volta.
+- **Saída explícita pela proxy:** requisição HTTP do shell Android → ADB reverse → gateway local → proxy real → ipify retornou o mesmo IP observado na consulta HTTPS pela proxy no computador. O nome de destino foi encaminhado ao proxy; isso comprova resolução suficiente para essa requisição, não isolamento do DNS do dispositivo.
+- **Saída direta:** com o proxy HTTP global ainda configurado, `toybox nc` no Android alcançou o ipify diretamente e retornou um IP diferente do proxy, igual ao da conexão direta do computador. Portanto, existe um caminho TCP que ignora essa configuração HTTP.
+- **Falha controlada:** o upstream somente do gateway de teste foi trocado em memória por uma porta local indisponível, sem alterar o serviço do fornecedor. A requisição pelo gateway retornou HTTP 502; uma nova conexão TCP direta do Android continuou funcionando. Não foi simulada uma indisponibilidade real do fornecedor.
+- **Limpeza:** o valor anterior do proxy Android foi restaurado e comparado em memória; não restaram encaminhamentos reversos de teste. O daemon ADB iniciado para o diagnóstico foi encerrado. Após o titular desligar e salvar ADB, o arquivo confirmou novamente `enable_adb_access="0"` e `enable_adb_remote_access="0"`.
+
+**Conclusão comprovada:** a proxy funciona no caminho explícito testado, mas o proxy HTTP atual não fornece isolamento integral do Android nem bloqueia saída direta quando o gateway perde sua proxy. Não é necessário supor que algum aplicativo específico ignore a proxy: o caminho direto já foi demonstrado no shell. Comportamento de aplicativos, UDP/QUIC, IPv6 e DNS/resolvedor efetivo continuam sem validação. Duas instâncias/proxies reais simultâneas também permanecem pendentes.
+
+Esta rodada alterou apenas a documentação no repositório; não houve mudança funcional, novo pacote ou deploy. Os 83 testes/build registrados abaixo pertencem à entrega anterior. A evidência nova vem da execução real descrita acima, não de novos testes simulados.
 
 ## Requisitos restantes
 
