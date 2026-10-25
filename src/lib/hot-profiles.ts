@@ -12,6 +12,7 @@ export type HotProfile = {
   viewport: { width: number; height: number };
   createdAt: string;
   updatedAt: string;
+  androidBinding?: { deviceId: string; endpoint: string; verifiedAt: string };
 };
 export type HotProxy = {
   id: string;
@@ -30,6 +31,18 @@ export type HotSession = {
   startedAt: string;
   error: string | null;
   needsCleanup?: boolean;
+  androidBinding?: { deviceId: string; endpoint: string; verifiedAt: string } | null;
+};
+export type HotNetwork = {
+  checkedAt: string;
+  endpoint: string;
+  mode: "system-http" | "unmanaged";
+  systemProxyMatches: boolean | null;
+  deviceWideVerified: false;
+  egressIp: null;
+  dnsVerified: false;
+  failClosed: false;
+  message: string;
 };
 export type HotDevice = {
   id: string;
@@ -37,6 +50,9 @@ export type HotDevice = {
   provider: "bluestacks" | "adb";
   ready: boolean;
   adbEnabled: boolean;
+  endpoint?: string | null;
+  candidateEndpoints?: string[];
+  warnings?: string[];
 };
 export type HotPerformance = {
   totalGB: number;
@@ -50,6 +66,9 @@ export type HotDevices = {
   performance?: HotPerformance;
   devices: HotDevice[];
   adbAvailable: boolean;
+  adbResponding?: boolean;
+  configReadable?: boolean;
+  adbRemoteEnabled?: boolean;
   managerAvailable: boolean;
   browserAvailable: boolean;
   computer: string;

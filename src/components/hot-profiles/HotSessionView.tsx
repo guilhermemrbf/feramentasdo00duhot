@@ -27,6 +27,7 @@ import {
   type HotConnection,
   type HotFrame,
   type HotSession,
+  type HotNetwork,
 } from "@/lib/hot-profiles";
 import { hotButton, hotInput } from "./HotDialog";
 
@@ -43,6 +44,8 @@ export function HotSessionView({
 }) {
   const [frame, setFrame] = useState<HotFrame | null>(null);
   const [error, setError] = useState("");
+  const [network, setNetwork] = useState<HotNetwork | null>(null);
+  const [checkingNetwork, setCheckingNetwork] = useState(false);
   const [address, setAddress] = useState("");
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState("");
@@ -175,6 +178,17 @@ export function HotSessionView({
     }
   }
   const iconButton = `${hotButton} min-w-11 px-2`;
+  async function checkNetwork() {
+    setCheckingNetwork(true);
+    setNetwork(null);
+    try {
+      setNetwork(await bridgeRequest<HotNetwork>(connection, `${prefix}/network`, {}));
+    } catch (reason) {
+      setError((reason as Error).message);
+    } finally {
+      setCheckingNetwork(false);
+    }
+  }
   if (session.status !== "running")
     return (
       <div className="flex min-h-96 flex-col items-center justify-center rounded-2xl border border-border bg-card px-6 py-12 text-center">
@@ -268,6 +282,34 @@ export function HotSessionView({
           </button>
         </div>
       </header>
+      {session.kind === "android" && (
+        <div className="space-y-2 border-b border-border bg-amber-500/5 p-3 text-xs leading-5">
+          <p className="font-semibold">Isolamento de rede ainda não comprovado</p>
+          <p>
+            O proxy HTTP do sistema pode ser ignorado por aplicativos. Esta sessão não garante IP
+            exclusivo, DNS pela proxy ou bloqueio quando ela falha.
+          </p>
+          {session.androidBinding && (
+            <p>
+              ADB: {session.androidBinding.endpoint} · vínculo persistido com a instância deste
+              perfil.
+            </p>
+          )}
+          <button
+            className={hotButton}
+            disabled={checkingNetwork}
+            onClick={() => void checkNetwork()}
+          >
+            {checkingNetwork ? "Conferindo…" : "Conferir configuração de rede"}
+          </button>
+          {network && (
+            <p role="status">
+              {network.message} Conferido em{" "}
+              {new Date(network.checkedAt).toLocaleTimeString("pt-BR")}.
+            </p>
+          )}
+        </div>
+      )}
       {session.kind === "browser" && (
         <div
           className="flex items-center gap-1 overflow-x-auto border-b border-border bg-background/60 p-2"

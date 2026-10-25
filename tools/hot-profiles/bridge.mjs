@@ -7,6 +7,7 @@ import path from "node:path";
 import { createStore, fail, uuid } from "./storage.mjs";
 import { findBrowser, startBrowser } from "./browser.mjs";
 import { discoverAndroid, openAndroidManager, startAndroid } from "./android.mjs";
+import { localSerial } from "./android-discovery.mjs";
 import { createGateway, checkProxy } from "./proxy.mjs";
 
 if (Number(process.versions.node.split(".")[0]) < 22)
@@ -63,6 +64,7 @@ const sessionInfo = (session) => ({
   startedAt: session.startedAt,
   error: session.error || null,
   needsCleanup: session.status === "error" && !!session.runtime,
+  androidBinding: session.androidBinding || null,
 });
 const active = (id) => {
   const session = sessions.get(id);
@@ -188,7 +190,20 @@ async function launch(profile) {
               },
               session.abort.signal,
             )
-          : await startAndroid(profile, session.gateway, session.abort.signal);
+          : await startAndroid(profile, session.gateway, session.abort.signal, async (binding) => {
+              if (
+                [...sessions.values()].some(
+                  (other) =>
+                    other !== session &&
+                    active(other.profile.id) &&
+                    other.androidBinding?.endpoint === binding.endpoint,
+                )
+              )
+                fail("Este endpoint Android já está em uso por outra sessão.", 409);
+              // Reserve before persisting or touching Android proxy settings.
+              session.androidBinding = binding;
+              await store.bindAndroid(profile.id, binding);
+            });
       // Android must expose a real screen before its session is ready. Chrome's
       // page compositor may still be loading; its authenticated CDP connection
       // already confirms the process and the viewer retries frames independently.
@@ -289,11 +304,17 @@ const server = http.createServer(async (request, response) => {
       if (id && active(id)) fail("Encerre a sessão antes de editar ou excluir este perfil.", 409);
       if ((method === "POST" && !id) || (method === "PATCH" && id && !action)) {
         const input = await body(request);
-        if (
-          input.kind === "android" &&
-          !(await discoverAndroid()).devices.some((device) => device.id === input.deviceId)
-        )
-          fail("Selecione uma instância Android detectada neste computador.");
+        if (input.kind === "android") {
+          const device = (await discoverAndroid()).devices.find(
+            (device) =>
+              device.id === input.deviceId ||
+              (input.deviceId?.startsWith("adb:") &&
+                device.endpoint &&
+                device.endpoint === localSerial(input.deviceId.slice(4))),
+          );
+          if (!device) fail("Selecione uma instância Android detectada neste computador.");
+          input.deviceId = device.id;
+        }
         send(response, 200, await store.putProfile(input, id));
         return;
       }
@@ -341,6 +362,10 @@ const server = http.createServer(async (request, response) => {
     if (collection === "sessions" && id) {
       const session = sessions.get(id);
       if (!session || session.status !== "running") fail("Esta sessão não está em execução.", 409);
+      if (method === "POST" && action === "network" && session.profile.kind === "android") {
+        send(response, 200, await session.runtime.network());
+        return;
+      }
       if (method === "GET" && action === "frame") {
         send(response, 200, await session.frames.get(() => session.runtime.frame()));
         return;

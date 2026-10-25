@@ -136,6 +136,89 @@ test("Android instances remain exclusive across profiles", async (t) => {
     /já está vinculado/,
   );
 });
+
+test("Android endpoint binding persists and blocks aliases across profile IDs", async (t) => {
+  const store = await storeFor(t);
+  const a = await store.putProfile(profile({ kind: "android", deviceId: "bluestacks:Pie64" }));
+  const b = await store.putProfile(profile({ kind: "android", deviceId: "bluestacks:Pie64_4" }));
+  const binding = {
+    deviceId: a.deviceId,
+    endpoint: "127.0.0.1:5555",
+    verifiedAt: new Date().toISOString(),
+  };
+  await store.bindAndroid(a.id, binding);
+  await assert.rejects(
+    store.bindAndroid(b.id, { ...binding, deviceId: b.deviceId }),
+    /já pertence/,
+  );
+  await assert.rejects(
+    store.putProfile(profile({ kind: "android", deviceId: "adb:emulator-5554" })),
+    /já está vinculado/,
+  );
+  await store.putProfile(profile({ kind: "android", deviceId: a.deviceId, name: "Editado" }), a.id);
+  const saved = JSON.parse(await readFile(path.join(store.directory, "workspace.json"), "utf8"));
+  assert.deepEqual(saved.profiles.find((p) => p.id === a.id).androidBinding, binding);
+});
+
+test("local Android serial aliases share one ownership and remote ADB is rejected", async (t) => {
+  const store = await storeFor(t);
+  const saved = await store.putProfile(profile({ kind: "android", deviceId: "adb:emulator-5554" }));
+  assert.equal(saved.deviceId, "adb:127.0.0.1:5555");
+  await assert.rejects(
+    store.putProfile(profile({ kind: "android", deviceId: "adb:127.0.0.1:5555" })),
+    /já está vinculado/,
+  );
+  await assert.rejects(
+    store.putProfile(profile({ kind: "android", deviceId: "adb:10.0.0.2:5555" })),
+    /local válido/,
+  );
+});
+
+test("two gateways keep separate proxy routes and never fall back directly on proxy failure", async (t) => {
+  const target = http.createServer((_req, res) => res.end("must-not-connect-directly"));
+  let directRequests = 0;
+  target.on("request", () => directRequests++);
+  const targetPort = await listen(t, target);
+  const ports = await Promise.all(
+    ["A", "B"].map(async (label) => {
+      const upstream = http.createServer();
+      upstream.on("connect", (_req, socket) => {
+        socket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
+        socket.once("data", () =>
+          socket.end(`HTTP/1.1 200 OK\r\nContent-Length: 1\r\nConnection: close\r\n\r\n${label}`),
+        );
+      });
+      return listen(t, upstream);
+    }),
+  );
+  const gateways = await Promise.all(ports.map((port) => createGateway(proxy({ port }))));
+  t.after(() => gateways.forEach((g) => g.close()));
+  async function request(gateway) {
+    return new Promise((resolve, reject) =>
+      http
+        .get(
+          { host: "127.0.0.1", port: gateway.port, path: `http://127.0.0.1:${targetPort}/` },
+          (response) => {
+            let body = "";
+            response.on("data", (chunk) => (body += chunk));
+            response.on("end", () => resolve({ status: response.statusCode, body }));
+          },
+        )
+        .on("error", reject),
+    );
+  }
+  assert.deepEqual(await Promise.all(gateways.map(request)), [
+    { status: 200, body: "A" },
+    { status: 200, body: "B" },
+  ]);
+  const unavailable = net.createServer();
+  const unused = await listen(t, unavailable);
+  await new Promise((resolve) => unavailable.close(resolve));
+  const failed = await createGateway(proxy({ port: unused }));
+  t.after(() => failed.close());
+  assert.equal((await request(failed)).status, 502);
+  assert.equal(directRequests, 0);
+});
 test("resource recommendation is conservative, bounded and does not imply Android capacity", () => {
   const fake = {
     totalmem: () => 8 * 1024 ** 3,

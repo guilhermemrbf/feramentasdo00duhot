@@ -59,17 +59,17 @@ npm run dev
 
 ## Hot Profiles
 
-Área em `/hot-profiles`: perfis, proxies e sessões em abas com execução na nuvem. A interface principal agora usa autenticação Supabase, cadastro no servidor, Browserbase e Genymotion SaaS. Não exige um emulador ou conector no computador do visitante.
+Área em `/hot-profiles`: **Meu computador** é o modo padrão, com conector local, navegadores e instâncias Android existentes. O seletor **Nuvem** preserva a implementação Supabase/Browserbase/Genymotion e seus cadastros separados; não há migração automática.
 
 **Ativação e limitações:** [guia da nuvem](docs/hot-profiles-cloud.md) e [.env.example](.env.example). Aplicar a migração, liberar as contas autorizadas e configurar os provedores antes de usar. Android nesta base é temporário; Android com proxy automática e armazenamento persistente ainda depende de infraestrutura adicional.
 
-### Implementação local anterior (preservada)
+### Execução local
 
 - `npm run profiles:bridge`: inicia o conector local (Node.js 22+).
 - `npm run profiles:package`: gera `public/hot-profiles-connector.zip`, disponível no botão de conexão do painel. Execute novamente após alterar os arquivos do conector.
-- A UI anterior foi preservada em `src/components/hot-profiles/LegacyLocalWorkspace.tsx`; não é a interface da rota principal.
+- A interface local está em `src/components/hot-profiles/LegacyLocalWorkspace.tsx` e é o padrão da rota principal.
 
-Guia histórico do conector: [LEIA-ME](tools/hot-profiles/LEIA-ME.md). Dados e emuladores locais anteriores não são apagados ou migrados automaticamente.
+Instruções do conector: [LEIA-ME](tools/hot-profiles/LEIA-ME.md), [estrutura local](docs/hot-profiles-local.md) e [validação Android no Windows](docs/hot-profiles-windows-validation.md). Dados e emuladores anteriores não são apagados ou migrados automaticamente. Proxy HTTP no Android não comprova roteamento integral dos aplicativos.
 
 ## Telegram Sync
 
