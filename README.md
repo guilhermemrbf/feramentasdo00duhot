@@ -65,7 +65,7 @@ npm run dev
 
 ### Execução local
 
-- Aplicativo Windows em desenvolvimento: [Hot Profiles Desktop](apps/hot-profiles-desktop/README.md), com instalador, janela própria e conector incluído. Reutiliza os perfis locais existentes; não exige Node.js do usuário final nem o site publicado. O suporte Android continua com a limitação de proxy HTTP documentada.
+- [Hot Profiles Desktop 0.1.0 para Windows](https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/hot-profiles-desktop-1-1): instalador, janela própria e conector incluído. Reutiliza os perfis locais existentes; não exige Node.js do usuário final nem o site publicado. [Instruções](apps/hot-profiles-desktop/README.md) e [validação](docs/hot-profiles-desktop-validation.md). O suporte Android continua com a limitação de proxy HTTP documentada.
 
 - `npm run profiles:bridge`: inicia o conector local (Node.js 22+).
 - `npm run profiles:package`: gera `public/hot-profiles-connector.zip`, disponível no botão de conexão do painel. Execute novamente após alterar os arquivos do conector.

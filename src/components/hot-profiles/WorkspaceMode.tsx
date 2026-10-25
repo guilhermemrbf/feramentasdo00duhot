@@ -1,3 +1,5 @@
+import { downloads } from "@/lib/downloads";
+
 export function WorkspaceMode({ mode }: { mode: "local" | "cloud" }) {
   return (
     <section
@@ -33,6 +35,27 @@ export function WorkspaceMode({ mode }: { mode: "local" | "cloud" }) {
       <p className="mt-2 text-xs text-muted-foreground">
         Os cadastros dos dois modos são separados. Alternar o painel não encerra sessões abertas.
       </p>
+      {mode === "local" && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-4 text-xs">
+          <a
+            href={downloads.hotProfilesDesktop.url}
+            className="rounded-md bg-primary px-4 py-2.5 font-semibold text-primary-foreground"
+          >
+            Baixar aplicativo Windows
+          </a>
+          <span className="text-muted-foreground">
+            Janela própria, dados neste PC e sem instalar Node.js.
+          </span>
+          <a
+            href={downloads.hotProfilesDesktop.release}
+            target="_blank"
+            rel="noreferrer"
+            className="text-muted-foreground underline underline-offset-4"
+          >
+            Versão {downloads.hotProfilesDesktop.version}, instruções e integridade
+          </a>
+        </div>
+      )}
     </section>
   );
 }
