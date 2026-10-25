@@ -5,6 +5,7 @@ import path from "node:path";
 import net from "node:net";
 
 import { proxyKey, proxyOwner } from "./policy.mjs";
+import { localSerial } from "./android-discovery.mjs";
 
 export function fail(message, status = 400) {
   throw Object.assign(new Error(message), { status });
@@ -153,9 +154,24 @@ export async function createStore(directory) {
       viewport.height > 1200
     )
       fail("Escolha uma resolução entre 360 × 480 e 1920 × 1200.");
-    const deviceId = input.kind === "android" ? text(input.deviceId, 150) : "";
+    let deviceId = input.kind === "android" ? text(input.deviceId, 150) : "";
+    if (deviceId.startsWith("adb:")) {
+      const serial = localSerial(deviceId.slice(4));
+      if (!serial) fail("Use somente um endpoint ADB local válido.");
+      deviceId = `adb:${serial}`;
+    }
     if (input.kind === "android" && !deviceId) fail("Escolha uma instância Android independente.");
-    if (deviceId && data.profiles.some((p) => p.id !== previous?.id && p.deviceId === deviceId))
+    if (
+      deviceId &&
+      data.profiles.some(
+        (p) =>
+          p.id !== previous?.id &&
+          (p.deviceId === deviceId ||
+            (deviceId.startsWith("adb:") &&
+              (localSerial(p.deviceId?.slice(4)) === localSerial(deviceId.slice(4)) ||
+                p.androidBinding?.endpoint === localSerial(deviceId.slice(4))))),
+      )
+    )
       fail(
         "Este Android já está vinculado a outro perfil. Crie outra instância para manter os dados separados.",
       );
@@ -171,6 +187,9 @@ export async function createStore(directory) {
       startUrls,
       viewport,
       deviceId,
+      ...(previous?.deviceId === deviceId && previous.androidBinding
+        ? { androidBinding: previous.androidBinding }
+        : {}),
       hostAddress,
     };
   }
@@ -178,6 +197,32 @@ export async function createStore(directory) {
     directory,
     data,
     save,
+    async bindAndroid(id, binding) {
+      const profile = data.profiles.find((p) => p.id === id && p.kind === "android");
+      if (!profile || !localSerial(binding.endpoint)) fail("Vínculo Android inválido.");
+      if (
+        data.profiles.some(
+          (p) =>
+            p.id !== id &&
+            (p.deviceId === binding.deviceId ||
+              p.androidBinding?.endpoint === binding.endpoint ||
+              (p.deviceId?.startsWith("adb:") &&
+                localSerial(p.deviceId.slice(4)) === binding.endpoint)),
+        )
+      )
+        fail(
+          "Este endpoint Android já pertence a outro perfil. Confira os vínculos antes de iniciar.",
+          409,
+        );
+      const previous = profile.androidBinding;
+      profile.androidBinding = binding;
+      try {
+        await save();
+      } catch (error) {
+        profile.androidBinding = previous;
+        throw error;
+      }
+    },
     publicProxy,
     proxy(id) {
       const item = data.proxies.find((p) => p.id === id);

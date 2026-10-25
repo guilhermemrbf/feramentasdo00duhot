@@ -77,7 +77,12 @@ export function ConnectComputer({
               <Download className="size-4" />
               Baixar conector Windows
             </a>
-            <a href={downloads.hotProfiles.release} target="_blank" rel="noreferrer" className="mt-2 block text-xs text-muted-foreground underline underline-offset-4">
+            <a
+              href={downloads.hotProfiles.release}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 block text-xs text-muted-foreground underline underline-offset-4"
+            >
               Ver versão e integridade do arquivo
             </a>
           </div>
@@ -396,13 +401,44 @@ export function ProfileForm({
                   return (
                     <option key={device.id} value={device.id} disabled={used}>
                       {device.name} ·{" "}
-                      {used ? "já vinculada" : device.ready ? "ligada" : "desligada"}
+                      {used ? "já vinculada" : device.ready ? "ADB conectado" : "ADB não conectado"}
                       {!device.adbEnabled ? " · ADB desativado" : ""}
                     </option>
                   );
                 })}
               </select>
             </label>
+            {devices && !devices.adbAvailable && (
+              <p role="status" className="text-xs text-destructive">
+                ADB não encontrado. Instale o BlueStacks ou indique seu ADB local no conector.
+              </p>
+            )}
+            {devices?.adbAvailable && devices.adbResponding === false && (
+              <p role="status" className="text-xs text-destructive">
+                ADB instalado, mas não respondeu. Confira o conector e as opções avançadas do
+                BlueStacks.
+              </p>
+            )}
+            {devices?.adbRemoteEnabled && (
+              <p role="status" className="text-xs text-destructive">
+                O acesso ADB remoto está habilitado no BlueStacks. Desative-o e use somente a
+                conexão local.
+              </p>
+            )}
+            {devices?.devices
+              .filter((device) => device.id === deviceId)
+              .map((device) => (
+                <div key={device.id} className="space-y-1 text-xs leading-5 text-muted-foreground">
+                  <p>
+                    {device.endpoint
+                      ? `Endpoint confirmado pelo ADB: ${device.endpoint}`
+                      : `Candidatos locais: ${device.candidateEndpoints?.join(", ") || "nenhum"}. Conexão ainda não confirmada.`}
+                  </p>
+                  {device.warnings?.map((warning) => (
+                    <p key={warning}>{warning}</p>
+                  ))}
+                </div>
+              ))}
             <p className="text-xs leading-5 text-muted-foreground">
               Cada perfil deve usar uma instância diferente. Seus aplicativos e contas pertencem à
               instância selecionada.
@@ -431,7 +467,9 @@ export function ProfileForm({
                 <p className="text-xs leading-5 text-muted-foreground">
                   Use 127.0.0.1 para conexão automática pelo ADB. O proxy HTTP do Android será
                   configurado durante a sessão. Alguns aplicativos não utilizam o proxy do sistema.
-                  Ao encerrar, a configuração anterior será restaurada.
+                  IP de saída, DNS e bloqueio de conexão direta ainda precisam ser comprovados. Ao
+                  desconectar o controle, a configuração anterior será restaurada; o Android
+                  permanece ligado.
                 </p>
               </>
             )}

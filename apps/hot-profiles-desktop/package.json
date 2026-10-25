@@ -1,0 +1,64 @@
+{
+  "name": "hot-profiles-desktop",
+  "productName": "Hot Profiles",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Perfis de navegador e Android no computador — 00duHot",
+  "author": "00duHot",
+  "main": "main.mjs",
+  "scripts": {
+    "build:ui": "node build-ui.mjs",
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis zip --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.00duhot.hotprofiles",
+    "productName": "Hot Profiles",
+    "artifactName": "HotProfiles-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "dist/release"
+    },
+    "files": [
+      "main.mjs",
+      "preload.cjs",
+      "local-server.mjs",
+      "dist/ui/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../tools/hot-profiles",
+        "to": "connector",
+        "filter": [
+          "*.mjs",
+          "!package.mjs",
+          "!verify-android.mjs"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "executableName": "HotProfiles",
+      "requestedExecutionLevel": "asInvoker",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "Hot Profiles",
+      "runAfterFinish": false
+    },
+    "publish": null
+  }
+}

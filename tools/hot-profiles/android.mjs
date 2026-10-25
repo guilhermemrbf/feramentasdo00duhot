@@ -2,7 +2,14 @@ import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, access } from "node:fs/promises";
 import path from "node:path";
+import net from "node:net";
 import { fail, webUrl } from "./storage.mjs";
+import {
+  parseBlueStacks,
+  androidDevices,
+  endpointCandidates,
+  localSerial,
+} from "./android-discovery.mjs";
 
 const execute = promisify(execFile);
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -50,76 +57,58 @@ async function config() {
       path.join(process.env.PROGRAMDATA || "C:/ProgramData", "BlueStacks_nxt/bluestacks.conf"),
       "utf8",
     );
-    const entries = Object.fromEntries(
-      [...content.matchAll(/^([^=\r\n]+)="([^"\r\n]*)"/gm)].map((match) => [match[1], match[2]]),
-    );
-    const names = [
-      ...new Set(
-        Object.keys(entries).flatMap(
-          (key) => key.match(/^bst\.instance\.([A-Za-z0-9_]+)\.display_name$/)?.[1] || [],
-        ),
-      ),
-    ];
-    return {
-      enabled: entries["bst.enable_adb_access"] === "1",
-      instances: names.map((instance) => ({
-        id: `bluestacks:${instance}`,
-        instance,
-        name: entries[`bst.instance.${instance}.display_name`] || instance,
-        port: Number(entries[`bst.instance.${instance}.adb_port`]) || 5555,
-      })),
-    };
+    return parseBlueStacks(content);
   } catch {
-    return { enabled: false, instances: [] };
+    return { readable: false, enabled: false, remoteEnabled: false, instances: [] };
   }
+}
+function listening(port) {
+  return new Promise((resolve) => {
+    const socket = net.connect({ host: "127.0.0.1", port });
+    const finish = (result) => {
+      socket.destroy();
+      resolve(result);
+    };
+    socket.setTimeout(500, () => finish(false));
+    socket.once("error", () => finish(false));
+    socket.once("connect", () => finish(true));
+  });
 }
 export async function discoverAndroid() {
   const binary = await findAdb();
   const configuration = await config();
-  let connected = [];
-  if (binary) {
+  let output = "",
+    adbResponding = false;
+  // Opening the desktop panel must not start an ADB daemon while Android
+  // debugging is disabled. Existing SDK devices can still be listed if their
+  // local ADB server is already running.
+  if (binary && (configuration.enabled || (await listening(5037)))) {
     try {
-      connected = (await adb(binary, ["devices"]))
-        .split(/\r?\n/)
-        .map((line) => line.trim().split(/\s+/))
-        .filter(
-          ([serial, status]) =>
-            status === "device" && /^(emulator-\d+|127\.0\.0\.1:\d+)$/.test(serial),
-        )
-        .map(([serial]) => serial);
+      // Only probe local configured endpoints. A listening socket alone is not ADB readiness.
+      if (configuration.enabled) {
+        const ports = [
+          ...new Set(configuration.instances.flatMap((i) => endpointCandidates(configuration, i))),
+        ];
+        await Promise.all(
+          ports.map(async (port) => {
+            if (await listening(port)) {
+              try {
+                await adb(binary, ["connect", `127.0.0.1:${port}`], { timeout: 2500 });
+              } catch {}
+            }
+          }),
+        );
+      }
+      output = await adb(binary, ["devices"]);
+      adbResponding = true;
     } catch {}
   }
-  const devices = configuration.instances.map((instance) => {
-    const serial = connected.find(
-      (serial) =>
-        serial === `127.0.0.1:${instance.port}` || serial === `emulator-${instance.port - 1}`,
-    );
-    return {
-      ...instance,
-      provider: "bluestacks",
-      serial,
-      ready: !!serial,
-      adbEnabled: configuration.enabled,
-    };
-  });
-  for (const serial of connected) {
-    if (
-      !devices.some(
-        (device) =>
-          serial === `127.0.0.1:${device.port}` || serial === `emulator-${device.port - 1}`,
-      )
-    )
-      devices.push({
-        id: `adb:${serial}`,
-        name: `Android ${serial}`,
-        serial,
-        provider: "adb",
-        ready: true,
-        adbEnabled: true,
-      });
-  }
+  const devices = androidDevices(configuration, output);
   return {
     adbAvailable: !!binary,
+    adbResponding,
+    configReadable: configuration.readable,
+    adbRemoteEnabled: configuration.remoteEnabled,
     managerAvailable: await exists(path.join(blueDirectory, "HD-MultiInstanceManager.exe")),
     devices,
   };
@@ -140,12 +129,26 @@ export async function openAndroidManager() {
   return { ok: true };
 }
 
-export async function startAndroid(profile, gateway, signal) {
-  const binary = await findAdb();
+export async function startAndroid(
+  profile,
+  gateway,
+  signal,
+  onResolved = async () => {},
+  dependencies = {},
+) {
+  const runAdb = dependencies.adb || adb;
+  const discover = dependencies.discoverAndroid || discoverAndroid;
+  const binary = await (dependencies.findAdb || findAdb)();
   if (!binary)
     fail("Instale o BlueStacks ou Android SDK Platform Tools para conectar um Android.", 409);
-  const discovery = await discoverAndroid();
-  const device = discovery.devices.find((item) => item.id === profile.deviceId);
+  const discovery = await discover();
+  const device = discovery.devices.find(
+    (item) =>
+      item.id === profile.deviceId ||
+      (profile.deviceId.startsWith("adb:") &&
+        item.endpoint &&
+        item.endpoint === localSerial(profile.deviceId.slice(4))),
+  );
   if (!device)
     fail(
       "Esta instância não foi encontrada. Edite o perfil e selecione uma instância disponível.",
@@ -156,7 +159,12 @@ export async function startAndroid(profile, gateway, signal) {
       "Ative Android Debug Bridge no BlueStacks: Configurações → Avançado → Android Debug Bridge → Salvar.",
       409,
     );
-  let serial = device.serial || `127.0.0.1:${device.port}`;
+  if (device.provider === "bluestacks" && !device.ready && !device.candidateEndpoints?.length)
+    fail(
+      "Esta instância não tem uma porta ADB local inequívoca. Confira as opções avançadas no BlueStacks.",
+      409,
+    );
+  let serial = device.serial;
   if (device.provider === "bluestacks") {
     const player = path.join(blueDirectory, "HD-Player.exe");
     if (!(await exists(player))) fail("BlueStacks App Player não foi encontrado.", 409);
@@ -179,10 +187,19 @@ export async function startAndroid(profile, gateway, signal) {
     for (let attempt = 0; attempt < 35; attempt++) {
       if (signal?.aborted) fail("Abertura cancelada.", 409);
       try {
-        if (!device.serial) await adb(binary, ["connect", serial], { timeout: 2500 });
-        const status = await adb(binary, ["-s", serial, "shell", "getprop", "sys.boot_completed"], {
-          timeout: 2500,
-        });
+        const current = (await discover()).devices.find((item) => item.id === device.id);
+        serial = current?.serial;
+        if (!serial) {
+          await delay(1200);
+          continue;
+        }
+        const status = await runAdb(
+          binary,
+          ["-s", serial, "shell", "getprop", "sys.boot_completed"],
+          {
+            timeout: 2500,
+          },
+        );
         if (status.trim() === "1") {
           ready = true;
           break;
@@ -193,11 +210,25 @@ export async function startAndroid(profile, gateway, signal) {
     if (!ready)
       fail("O Android ainda está iniciando. Aguarde o BlueStacks terminar e tente novamente.", 409);
   }
-  const command = (args) => adb(binary, ["-s", serial, ...args]);
+  if (!serial)
+    fail("Nenhum endpoint ADB confirmado para esta instância. Atualize os dispositivos.", 409);
+  const binding = {
+    deviceId: device.id,
+    endpoint: localSerial(serial),
+    verifiedAt: new Date().toISOString(),
+  };
+  await onResolved(binding);
+  const command = (args) => runAdb(binary, ["-s", serial, ...args]);
   if (signal?.aborted) fail("Abertura cancelada.", 409);
   let previousProxy = null;
   let appliedProxy = null;
   let reversePort = null;
+  const restoreProxy = () =>
+    command(
+      previousProxy === "null"
+        ? ["shell", "settings", "delete", "global", "http_proxy"]
+        : ["shell", "settings", "put", "global", "http_proxy", previousProxy || ":0"],
+    );
   try {
     if (gateway) {
       previousProxy = (await command(["shell", "settings", "get", "global", "http_proxy"])).trim();
@@ -223,14 +254,7 @@ export async function startAndroid(profile, gateway, signal) {
   } catch (error) {
     if (appliedProxy) {
       try {
-        await command([
-          "shell",
-          "settings",
-          "put",
-          "global",
-          "http_proxy",
-          previousProxy && previousProxy !== "null" ? previousProxy : ":0",
-        ]);
+        await restoreProxy();
       } catch {}
     }
     if (reversePort) {
@@ -243,8 +267,27 @@ export async function startAndroid(profile, gateway, signal) {
   let width = 720,
     height = 1280;
   return {
+    binding,
+    async network() {
+      const current = (await command(["shell", "settings", "get", "global", "http_proxy"])).trim();
+      return {
+        checkedAt: new Date().toISOString(),
+        endpoint: binding.endpoint,
+        mode: appliedProxy ? "system-http" : "unmanaged",
+        systemProxyMatches: appliedProxy ? current === appliedProxy : null,
+        deviceWideVerified: false,
+        egressIp: null,
+        dnsVerified: false,
+        failClosed: false,
+        message: appliedProxy
+          ? current === appliedProxy
+            ? "Proxy HTTP configurada no Android. IP de saída, DNS e bloqueio de conexão direta não comprovados. Aplicativos podem ignorar essa proxy."
+            : "A configuração de proxy do Android mudou. O roteamento desta sessão precisa ser conferido."
+          : "Sem proxy gerenciada pelo Hot Profiles. A configuração de rede anterior da instância foi preservada.",
+      };
+    },
     async frame() {
-      const bytes = await adb(binary, ["-s", serial, "exec-out", "screencap", "-p"], {
+      const bytes = await runAdb(binary, ["-s", serial, "exec-out", "screencap", "-p"], {
         encoding: "buffer",
       });
       if (
@@ -337,15 +380,7 @@ export async function startAndroid(profile, gateway, signal) {
         const current = (
           await command(["shell", "settings", "get", "global", "http_proxy"])
         ).trim();
-        if (current === appliedProxy)
-          await command([
-            "shell",
-            "settings",
-            "put",
-            "global",
-            "http_proxy",
-            previousProxy && previousProxy !== "null" ? previousProxy : ":0",
-          ]);
+        if (current === appliedProxy) await restoreProxy();
       }
       if (reversePort) {
         await command(["reverse", "--remove", `tcp:${reversePort}`]);

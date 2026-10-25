@@ -1,5 +1,7 @@
 # Hot Profiles — estrutura local e central de proxies
 
+> Atualização de 24/10/2026: o ciclo HTTP local foi validado em uma instância BlueStacks real. Veja [evidências e requisitos restantes](hot-profiles-windows-validation.md). A descoberta agora distingue portas candidatas de endpoints ADB conectados e o painel informa que isolamento integral de rede ainda não foi comprovado. Os números de testes abaixo descrevem a etapa anterior.
+
 ## Decisão
 
 O modo padrão é **Meu computador**. O site organiza os perfis; o conector local executa os ambientes. Isso dispensa um servidor de execução contratado. O modo **Nuvem** continua acessível pelo seletor e preserva sua configuração e cadastros separados. Não houve migração automática nem deploy do site.

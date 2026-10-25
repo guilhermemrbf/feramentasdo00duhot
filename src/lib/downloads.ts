@@ -13,5 +13,10 @@ export const downloads = {
     version: "0.5.2",
     ...packageDownload("telegram-sync-desktop-15-1", "TelegramSync-Windows.zip"),
   },
-  hotProfiles: packageDownload("hot-profiles-local-1-1", "hot-profiles-connector.zip"),
+  hotProfiles: packageDownload("hot-profiles-local-2-1", "hot-profiles-connector.zip"),
+  hotProfilesDesktop: {
+    version: "0.1.0",
+    ...packageDownload("hot-profiles-desktop-1-1", "HotProfiles-0.1.0-x64.exe"),
+    portable: `${releases}/download/hot-profiles-desktop-1-1/HotProfiles-0.1.0-x64.zip`,
+  },
 } as const;

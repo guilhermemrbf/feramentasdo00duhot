@@ -7,6 +7,7 @@ import path from "node:path";
 import { createStore, fail, uuid } from "./storage.mjs";
 import { findBrowser, startBrowser } from "./browser.mjs";
 import { discoverAndroid, openAndroidManager, startAndroid } from "./android.mjs";
+import { localSerial } from "./android-discovery.mjs";
 import { createGateway, checkProxy } from "./proxy.mjs";
 
 if (Number(process.versions.node.split(".")[0]) < 22)
@@ -15,8 +16,22 @@ const argument = (name) => {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : undefined;
 };
-const port = Number(argument("--port") || 47900);
-if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("Porta inválida.");
+const desktopOrigin = argument("--desktop-origin");
+const desktop = !!desktopOrigin;
+if (desktop) {
+  const origin = new URL(desktopOrigin);
+  if (
+    !process.parentPort ||
+    origin.protocol !== "http:" ||
+    origin.hostname !== "127.0.0.1" ||
+    !origin.port ||
+    origin.origin !== desktopOrigin
+  )
+    throw new Error("O modo desktop requer o aplicativo local e uma origem loopback.");
+}
+let port = Number(argument("--port") || 47900);
+if (!Number.isInteger(port) || (port < 1024 && !(desktop && port === 0)) || port > 65535)
+  throw new Error("Porta inválida.");
 const directory = path.resolve(
   argument("--data-dir") ||
     path.join(process.env.LOCALAPPDATA || os.homedir(), "00duHot", "HotProfiles"),
@@ -28,6 +43,10 @@ const origins = new Set([
   "http://127.0.0.1:8080",
   "http://localhost:8080",
 ]);
+if (desktop) {
+  origins.clear();
+  origins.add(desktopOrigin);
+}
 const additionalOrigin = argument("--allow-origin");
 if (additionalOrigin) {
   const origin = new URL(additionalOrigin);
@@ -63,6 +82,7 @@ const sessionInfo = (session) => ({
   startedAt: session.startedAt,
   error: session.error || null,
   needsCleanup: session.status === "error" && !!session.runtime,
+  androidBinding: session.androidBinding || null,
 });
 const active = (id) => {
   const session = sessions.get(id);
@@ -188,7 +208,20 @@ async function launch(profile) {
               },
               session.abort.signal,
             )
-          : await startAndroid(profile, session.gateway, session.abort.signal);
+          : await startAndroid(profile, session.gateway, session.abort.signal, async (binding) => {
+              if (
+                [...sessions.values()].some(
+                  (other) =>
+                    other !== session &&
+                    active(other.profile.id) &&
+                    other.androidBinding?.endpoint === binding.endpoint,
+                )
+              )
+                fail("Este endpoint Android já está em uso por outra sessão.", 409);
+              // Reserve before persisting or touching Android proxy settings.
+              session.androidBinding = binding;
+              await store.bindAndroid(profile.id, binding);
+            });
       // Android must expose a real screen before its session is ready. Chrome's
       // page compositor may still be loading; its authenticated CDP connection
       // already confirms the process and the viewer retries frames independently.
@@ -233,6 +266,7 @@ const server = http.createServer(async (request, response) => {
       return;
     }
     if (url.pathname === "/pair" && request.method === "POST") {
+      if (desktop) fail("O aplicativo desktop usa conexão privada local.", 404);
       if (!origin || !origins.has(origin))
         fail("Abra o Hot Profiles para conectar este computador.", 403);
       attempts = attempts.filter((attempt) => attempt > Date.now() - 60000);
@@ -289,11 +323,17 @@ const server = http.createServer(async (request, response) => {
       if (id && active(id)) fail("Encerre a sessão antes de editar ou excluir este perfil.", 409);
       if ((method === "POST" && !id) || (method === "PATCH" && id && !action)) {
         const input = await body(request);
-        if (
-          input.kind === "android" &&
-          !(await discoverAndroid()).devices.some((device) => device.id === input.deviceId)
-        )
-          fail("Selecione uma instância Android detectada neste computador.");
+        if (input.kind === "android") {
+          const device = (await discoverAndroid()).devices.find(
+            (device) =>
+              device.id === input.deviceId ||
+              (input.deviceId?.startsWith("adb:") &&
+                device.endpoint &&
+                device.endpoint === localSerial(input.deviceId.slice(4))),
+          );
+          if (!device) fail("Selecione uma instância Android detectada neste computador.");
+          input.deviceId = device.id;
+        }
         send(response, 200, await store.putProfile(input, id));
         return;
       }
@@ -341,6 +381,10 @@ const server = http.createServer(async (request, response) => {
     if (collection === "sessions" && id) {
       const session = sessions.get(id);
       if (!session || session.status !== "running") fail("Esta sessão não está em execução.", 409);
+      if (method === "POST" && action === "network" && session.profile.kind === "android") {
+        send(response, 200, await session.runtime.network());
+        return;
+      }
       if (method === "GET" && action === "frame") {
         send(response, 200, await session.frames.get(() => session.runtime.frame()));
         return;
@@ -399,15 +443,24 @@ server.on("error", (error) => {
   process.exitCode = 1;
 });
 server.listen(port, "127.0.0.1", () => {
-  console.log(
-    `\nHOT PROFILES — conector local\n\nEndereço: http://127.0.0.1:${port}\nDados: ${directory}\nLimite: ${limits.maxSessions} sessões · RAM: ${limits.totalGB} GB · processadores lógicos: ${limits.cores}\n\nCódigo de conexão: ${pairCode}\nVálido por 15 minutos. Digite-o apenas no seu painel 00duHot.\n\nMantenha esta janela aberta enquanto usa suas sessões. Ctrl+C para encerrar.\n`,
-  );
+  port = server.address().port;
+  if (desktop)
+    process.parentPort.postMessage({
+      type: "hot-profiles:ready",
+      port,
+      token,
+      computer: os.hostname(),
+    });
+  else
+    console.log(
+      `\nHOT PROFILES — conector local\n\nEndereço: http://127.0.0.1:${port}\nDados: ${directory}\nLimite: ${limits.maxSessions} sessões · RAM: ${limits.totalGB} GB · processadores lógicos: ${limits.cores}\n\nCódigo de conexão: ${pairCode}\nVálido por 15 minutos. Digite-o apenas no seu painel 00duHot.\n\nMantenha esta janela aberta enquanto usa suas sessões. Ctrl+C para encerrar.\n`,
+    );
 });
 const renewCode = setInterval(
   () => {
     pairCode = String(randomInt(100000, 1000000));
     pairExpires = Date.now() + 15 * 60 * 1000;
-    console.log(`Novo código de conexão: ${pairCode} (válido por 15 minutos).`);
+    if (!desktop) console.log(`Novo código de conexão: ${pairCode} (válido por 15 minutos).`);
   },
   15 * 60 * 1000,
 );
@@ -415,6 +468,22 @@ renewCode.unref();
 const shutdown = async () => {
   if (shuttingDown) return;
   shuttingDown = true;
+  if (desktop) {
+    try {
+      await Promise.allSettled([...sessions.values()].map(stopSession));
+      await Promise.allSettled([...sessions.values()].map((session) => session.ready));
+      if ([...sessions.values()].some((session) => active(session.profile.id)))
+        throw new Error("cleanup");
+      await store.save();
+      clearInterval(renewCode);
+      server.closeAllConnections();
+      server.close(() => process.exit(0));
+    } catch {
+      shuttingDown = false;
+      process.parentPort.postMessage({ type: "hot-profiles:shutdown-blocked" });
+    }
+    return;
+  }
   clearInterval(renewCode);
   server.close();
   const timeout = setTimeout(() => process.exit(1), 15000);
@@ -427,3 +496,7 @@ const shutdown = async () => {
 };
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+if (desktop)
+  process.parentPort.on("message", (event) => {
+    if (event.data?.type === "hot-profiles:shutdown") void shutdown();
+  });

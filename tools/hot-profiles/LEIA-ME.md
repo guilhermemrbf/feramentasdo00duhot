@@ -19,11 +19,27 @@ BlueStacks 5 deve estar instalado no caminho padrão. Clique em **Criar instânc
 
 Abra a instância e ative **Configurações → Avançado → Android Debug Bridge → Salvar**. No cadastro do Hot Profiles, clique **Atualizar** e selecione essa instância. Uma instância não pode pertencer a dois perfis. Dados e aplicativos anteriores da instância não são apagados.
 
+O formulário mostra **ADB conectado** somente após resposta real do ADB; uma porta no arquivo do BlueStacks é apenas candidata. Divergências de portas e endpoints ambíguos aparecem como avisos. O conector não assume 5555 para instâncias sem porta válida. Aliases como `emulator-5554` e `127.0.0.1:5555` representam o mesmo endpoint e não permitem compartilhar o Android entre perfis. O vínculo confirmado fica salvo no cadastro local e é conferido novamente ao iniciar; não é usado como prova de conexão futura.
+
+Na sessão Android, **Conferir configuração de rede** consulta se o proxy HTTP aplicado continua configurado. Isso não testa IP público, DNS ou todos os aplicativos. O aviso **Isolamento de rede ainda não comprovado** permanece mesmo quando a configuração confere. Sem proxy gerenciada, o conector preserva a configuração de rede já existente na instância; ela pode conter uma proxy anterior.
+
 A tela usa capturas periódicas via ADB; não é streaming de vídeo com áudio. Toque, arraste, use a roda e os botões Voltar/Início/Recentes. O envio de texto via ADB aceita caracteres ASCII sem acento; o teclado do Android continua utilizável.
 
 Proxies HTTP/HTTPS/SOCKS5 com autenticação são intermediados por um gateway local. No Android, ele é configurado como proxy HTTP do sistema. O endereço padrão 127.0.0.1 usa encaminhamento reverso pelo ADB, sem expor o gateway na sua rede. Em instalação sem suporte a esse recurso, configure o endereço do host visto pelo emulador (por exemplo, 10.0.2.2). Aplicativos que ignoram o proxy do sistema não são redirecionados. A verificação de proxy cria um túnel a example.com:443; não determina reputação/localização ou garante o tráfego de todos os aplicativos.
 
 Encerre normalmente pelo painel e Ctrl+C no conector para restaurar o proxy anterior do Android. Se o processo for encerrado à força ou houver queda de energia durante uma sessão com proxy, confira a configuração de proxy do Android antes de usá-lo novamente.
+
+### Teste Android com destinos apenas locais
+
+Com uma instância já aberta e ADB **local** habilitado, um teste opcional permite conferir o caminho HTTP sem usar contas nem uma proxy contratada:
+
+```text
+node verify-android.mjs --device bluestacks:Pie64
+```
+
+Substitua `Pie64` pelo identificador da sua instância. O teste altera temporariamente o proxy HTTP, usa ADB reverse e servidores simulados ligados somente a 127.0.0.1, confere resposta 502 quando a proxy simulada para e restaura o proxy anterior ao terminar normalmente, inclusive em erro tratado. Não abra outro controlador da mesma instância durante o teste. Não encerre o processo à força. O teste não acessa aplicativos, contas, IP externo ou DNS real e não certifica isolamento do dispositivo. Não habilita nem desabilita ADB; ao terminar, restaure manualmente a opção se a habilitou só para o teste.
+
+Validado no BlueStacks 5.22.285.1013 / Android 9 / HD-Adb 1.0.36 no Windows. Duas rotas de proxy e falha sem fallback foram testadas com servidores locais simulados no Windows; duas instâncias Android simultâneas, IPs externos e DNS real continuam pendentes. Cookies do navegador não são importados em aplicativos Android: use login normal do titular, cujos dados permanecem na instância.
 
 ## Dados e configuração
 

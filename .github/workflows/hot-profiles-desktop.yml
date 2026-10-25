@@ -1,0 +1,85 @@
+name: Hot Profiles Desktop Windows
+on:
+  push:
+    branches: [main, codex/hot-profiles-android-local]
+    paths:
+      - 'apps/hot-profiles-desktop/**'
+      - 'src/components/hot-profiles/**'
+      - 'src/lib/hot-profiles.ts'
+      - 'tools/hot-profiles/**'
+      - 'tests/hot-profiles-desktop.test.mjs'
+      - '.github/workflows/hot-profiles-desktop.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    if: github.event.repository.private == false
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.4'
+      - name: Install locked UI and desktop dependencies
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          npm ci --prefix apps/hot-profiles-desktop --ignore-scripts --no-audit --no-fund
+          node apps/hot-profiles-desktop/node_modules/electron/install.js
+      - name: Test existing modules and desktop HTTP boundary
+        run: npm test
+      - name: Check types and build local UI
+        run: |
+          node node_modules/typescript/bin/tsc --noEmit
+          node node_modules/typescript/bin/tsc -p apps/hot-profiles-desktop/tsconfig.json --noEmit
+          npm run profiles:desktop:build
+      - name: Build installer and portable ZIP without publishing
+        run: npm run dist:win --prefix apps/hot-profiles-desktop
+      - name: Install and test the real Windows application
+        shell: pwsh
+        run: |
+          $release = Join-Path $PWD 'apps/hot-profiles-desktop/dist/release'
+          $installer = Join-Path $release 'HotProfiles-0.1.0-x64.exe'
+          $install = Join-Path $env:RUNNER_TEMP 'HotProfilesInstallerTest'
+          $markerFolder = Join-Path $env:LOCALAPPDATA '00duHot/HotProfiles'
+          New-Item -ItemType Directory -Force -Path $markerFolder | Out-Null
+          $marker = Join-Path $markerFolder 'installer-test-preserve.txt'
+          'temporary test marker' | Set-Content -LiteralPath $marker
+          $installed = Start-Process -FilePath $installer -ArgumentList @('/S',"/D=$install") -WindowStyle Hidden -Wait -PassThru
+          if ($installed.ExitCode -ne 0) { throw 'Installer failed' }
+          $report = Join-Path $release 'desktop-self-test.json'
+          $image = Join-Path $release 'desktop-home.png'
+          $test = Start-Process -FilePath (Join-Path $install 'HotProfiles.exe') -ArgumentList @('--self-test','--self-test-browser','--self-test-report',$report,'--self-test-screenshot',$image) -WindowStyle Hidden -Wait -PassThru
+          if ($test.ExitCode -ne 0) { throw 'Installed application self-test failed' }
+          $result = Get-Content -Raw -LiteralPath $report | ConvertFrom-Json
+          if (!$result.ok -or !$result.packaged -or !$result.profileSurvivesServiceRestart -or !$result.realBrowserStartStop) { throw 'Incomplete application validation' }
+          $uninstaller = Get-ChildItem -LiteralPath $install -Filter 'Uninstall*.exe' | Select-Object -First 1
+          if (!$uninstaller) { throw 'Uninstaller missing' }
+          $removed = Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -WindowStyle Hidden -Wait -PassThru
+          if ($removed.ExitCode -ne 0 -or !(Test-Path -LiteralPath $marker)) { throw 'Uninstall did not preserve profile data' }
+          Remove-Item -LiteralPath $marker
+      - name: Hash and publish tested Windows downloads
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $release = 'apps/hot-profiles-desktop/dist/release'
+          $installer = "$release/HotProfiles-0.1.0-x64.exe"
+          $portable = "$release/HotProfiles-0.1.0-x64.zip"
+          $lines = @($installer,$portable) | ForEach-Object { $hash=(Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLower(); "$hash  $([System.IO.Path]::GetFileName($_))" }
+          $lines | Set-Content -LiteralPath "$release/SHA256SUMS.txt" -Encoding ascii
+          $tag = 'hot-profiles-desktop-' + '${{ github.run_number }}' + '-' + '${{ github.run_attempt }}'
+          gh release create $tag $installer $portable "$release/SHA256SUMS.txt" "$release/desktop-self-test.json" "$release/desktop-home.png" --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Hot Profiles Desktop 0.1.0 — Windows' --notes-file apps/hot-profiles-desktop/README.md --prerelease
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: desktop-diagnostics
+          path: apps/hot-profiles-desktop/dist/release/desktop-self-test.json
