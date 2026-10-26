@@ -11,7 +11,7 @@ Na conferência de 25/10/2026, o acesso inicial ao projeto privado estava bloque
 ## Frontend esperado
 
 - `/hot-profiles`: modo **Meu computador** por padrão, central local de perfis/proxies e botão **Baixar aplicativo Windows**.
-- O download central em `src/lib/downloads.ts` aponta para o instalador 0.1.0 da release verificada `hot-profiles-desktop-1-1`; o link não depende de contratar hospedagem ou instalar Node.js no computador do usuário.
+- O download central em `src/lib/downloads.ts` aponta para o instalador 0.2.0 experimental da release verificada `hot-profiles-desktop-3-1`; o link não depende de contratar hospedagem ou instalar Node.js no computador do usuário. O Android próprio requer SDK/imagem locais, fora do instalador.
 - `/hot-profiles?mode=cloud`: modo **Nuvem** anterior preservado, com seu login e cadastros próprios.
 - O site pode controlar o conector tradicional por localhost e pareamento. O aplicativo desktop usa seu próprio painel e canal privado; não permite que o site se conecte automaticamente ao serviço privado do aplicativo. Feche um antes de abrir outro sobre a mesma pasta de dados.
 - O aviso de isolamento Android não comprovado permanece visível. A presença de proxy cadastrada não significa bloqueio de conexão direta.
@@ -28,13 +28,19 @@ O estado operacional do Supabase remoto (migrações aplicadas, configuração d
 
 No preview real, **Configurar nuvem** respondeu pelo backend e mostrou **Configuração encontrada** para acesso por e-mail e banco de perfis/proxies. Contas autorizadas, proteção das senhas e provedores Browserbase/Genymotion ficaram **A configurar**, como esperado para a execução cloud ainda não ativada. Esse diagnóstico confirma presença de configuração; não comprova consultas ao banco, RLS, login de usuário ou sessões nos provedores. Nenhum desses recursos foi criado, alterado ou contratado nesta conferência.
 
-## Resultado da conferência
+## Resultado da conferência de 25/10/2026
 
 - 85 testes, TypeScript e build de produção aprovados antes da integração.
 - Preview local mostrou **Meu computador**, **Baixar aplicativo Windows** e o destino exato da release verificada `hot-profiles-desktop-1-1`.
 - O seletor **Nuvem**, o fluxo de autenticação anterior e o diagnóstico do backend continuaram disponíveis, sem iniciar ambientes pagos.
 - O editor indicou **Publish, unpublished changes available**. Nenhuma publicação foi acionada; o site público continua dependendo da ação manual do titular pelo Lovable.
 - As capturas de conferência ficaram no diretório local ignorado `.hot-profiles`, sem credenciais, sessões de aplicativos ou dados reais de perfis.
+
+## Atualização de 26/10/2026
+
+O commit `627205c6a2f9884720359d66fea92c0fa6462ab4` foi enviado à main após 88 testes, verificações de tipos e builds. O editor exibiu **Pushed from GitHub — feat(hot-profiles): add owned Android runtime and Windows 0.2.0 prototype**, e sua prévia foi atualizada sem publicar. O novo formulário compartilhado oferece celular próprio do Hot Profiles; o runtime executa no Windows e não no backend Supabase.
+
+A release `hot-profiles-desktop-3-1` aponta para esse commit. Instalador e ZIP foram verificados integralmente por HTTP 200 e SHA-256 antes de atualizar os links centrais do frontend. [Evidências da versão 0.2.0](hot-profiles-desktop-020-validation.md). O modo nuvem, configurações e migrações Supabase foram preservados.
 
 ## Conferência no preview Lovable
 
