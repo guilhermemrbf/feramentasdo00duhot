@@ -36,7 +36,7 @@ export type HotSession = {
 export type HotNetwork = {
   checkedAt: string;
   endpoint: string;
-  mode: "system-http" | "unmanaged";
+  mode: "system-http" | "unmanaged" | "restricted-http";
   systemProxyMatches: boolean | null;
   deviceWideVerified: false;
   egressIp: null;
@@ -63,6 +63,7 @@ export type HotPerformance = {
   platform: string;
 };
 export type HotDevices = {
+  runtime?: { available: boolean; message: string; api?: string };
   performance?: HotPerformance;
   devices: HotDevice[];
   adbAvailable: boolean;

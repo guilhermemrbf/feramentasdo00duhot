@@ -47,7 +47,7 @@ jobs:
         shell: pwsh
         run: |
           $release = Join-Path $PWD 'apps/hot-profiles-desktop/dist/release'
-          $installer = Join-Path $release 'HotProfiles-0.1.0-x64.exe'
+          $installer = Join-Path $release 'HotProfiles-0.2.0-x64.exe'
           $install = Join-Path $env:RUNNER_TEMP 'HotProfilesInstallerTest'
           $markerFolder = Join-Path $env:LOCALAPPDATA '00duHot/HotProfiles'
           New-Item -ItemType Directory -Force -Path $markerFolder | Out-Null
@@ -72,12 +72,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $release = 'apps/hot-profiles-desktop/dist/release'
-          $installer = "$release/HotProfiles-0.1.0-x64.exe"
-          $portable = "$release/HotProfiles-0.1.0-x64.zip"
+          $installer = "$release/HotProfiles-0.2.0-x64.exe"
+          $portable = "$release/HotProfiles-0.2.0-x64.zip"
           $lines = @($installer,$portable) | ForEach-Object { $hash=(Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLower(); "$hash  $([System.IO.Path]::GetFileName($_))" }
           $lines | Set-Content -LiteralPath "$release/SHA256SUMS.txt" -Encoding ascii
           $tag = 'hot-profiles-desktop-' + '${{ github.run_number }}' + '-' + '${{ github.run_attempt }}'
-          gh release create $tag $installer $portable "$release/SHA256SUMS.txt" "$release/desktop-self-test.json" "$release/desktop-home.png" --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Hot Profiles Desktop 0.1.0 — Windows' --notes-file apps/hot-profiles-desktop/README.md --prerelease
+          gh release create $tag $installer $portable "$release/SHA256SUMS.txt" "$release/desktop-self-test.json" "$release/desktop-home.png" 'docs/hot-profiles-runtime-validation.json' --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Hot Profiles Desktop 0.2.0 experimental — Windows' --notes-file apps/hot-profiles-desktop/README.md --prerelease
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

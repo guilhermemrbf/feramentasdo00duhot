@@ -126,4 +126,20 @@ test("local bridge authenticates pairing, enforces origin and proxy ownership, a
     (await call(`/v1/proxies/${added.body.id}`, { token, input: {}, method: "DELETE" })).status,
     200,
   );
+  const androidInput = { ...input, kind: "android", deviceId: "runtime:new", proxyId: null };
+  const ownA = await call("/v1/profiles", { token, input: androidInput });
+  const ownB = await call("/v1/profiles", { token, input: androidInput });
+  assert.equal(ownA.status, 200);
+  assert.equal(ownB.status, 200);
+  assert.equal(ownA.body.deviceId, `runtime:${ownA.body.id}`);
+  assert.notEqual(ownA.body.deviceId, ownB.body.deviceId);
+  assert.equal(
+    (
+      await call("/v1/profiles", {
+        token,
+        input: { ...androidInput, deviceId: ownA.body.deviceId },
+      })
+    ).status,
+    400,
+  );
 });

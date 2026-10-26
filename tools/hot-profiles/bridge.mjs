@@ -7,6 +7,7 @@ import path from "node:path";
 import { createStore, fail, uuid } from "./storage.mjs";
 import { findBrowser, startBrowser } from "./browser.mjs";
 import { discoverAndroid, openAndroidManager, startAndroid } from "./android.mjs";
+import { discoverRuntime, startLocalAndroid } from "./android-runtime.mjs";
 import { localSerial } from "./android-discovery.mjs";
 import { createGateway, checkProxy } from "./proxy.mjs";
 
@@ -155,6 +156,16 @@ async function launch(profile) {
     );
   if (active(profile.id)) fail("Este perfil já tem uma sessão aberta.", 409);
   if (
+    profile.deviceId?.startsWith("runtime:") &&
+    [...sessions.values()].some(
+      (other) => active(other.profile.id) && other.profile.deviceId?.startsWith("runtime:"),
+    )
+  )
+    fail(
+      "O protótipo permite um celular próprio por vez. Encerre o atual antes de iniciar outro.",
+      409,
+    );
+  if (
     profile.kind === "android" &&
     [...sessions.values()].some(
       (session) => active(session.profile.id) && session.profile.deviceId === profile.deviceId,
@@ -208,7 +219,21 @@ async function launch(profile) {
               },
               session.abort.signal,
             )
-          : await startAndroid(profile, session.gateway, session.abort.signal, async (binding) => {
+          : await (
+              profile.deviceId.startsWith("runtime:")
+                ? (p, g, s, bind) =>
+                    startLocalAndroid(p, directory, g, s, bind, {
+                      onUnexpectedExit: () => {
+                        if (session.status === "running") {
+                          session.status = "error";
+                          session.error =
+                            "O motor Android encerrou. Encerre a sessão antes de iniciar novamente.";
+                          session.frames.clear();
+                        }
+                      },
+                    })
+                : startAndroid
+            )(profile, session.gateway, session.abort.signal, async (binding) => {
               if (
                 [...sessions.values()].some(
                   (other) =>
@@ -230,6 +255,7 @@ async function launch(profile) {
       await store.activity("Sessão iniciada", profile);
       if (session.cancelled || shuttingDown) await stopSession(session);
     } catch (error) {
+      if (error.cleanupRuntime) session.runtime = error.cleanupRuntime;
       try {
         await session.runtime?.stop();
         session.runtime = null;
@@ -294,8 +320,14 @@ const server = http.createServer(async (request, response) => {
       return;
     }
     if (collection === "devices" && method === "GET") {
+      const runtime = await discoverRuntime();
       send(response, 200, {
         ...(await discoverAndroid()),
+        runtime: {
+          available: runtime.available,
+          message: runtime.message,
+          api: runtime.image?.api,
+        },
         browserAvailable: !!(await findBrowser()),
         performance: performanceInfo(limits.maxSessions),
         computer: os.hostname(),
@@ -323,7 +355,7 @@ const server = http.createServer(async (request, response) => {
       if (id && active(id)) fail("Encerre a sessão antes de editar ou excluir este perfil.", 409);
       if ((method === "POST" && !id) || (method === "PATCH" && id && !action)) {
         const input = await body(request);
-        if (input.kind === "android") {
+        if (input.kind === "android" && !input.deviceId?.startsWith("runtime:")) {
           const device = (await discoverAndroid()).devices.find(
             (device) =>
               device.id === input.deviceId ||

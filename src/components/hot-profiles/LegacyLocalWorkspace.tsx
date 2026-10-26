@@ -89,6 +89,7 @@ export function LegacyLocalWorkspace({
     Record<string, { ok: boolean; latency?: number; message: string }>
   >({});
   const refreshing = useRef(false);
+  const sessionSection = useRef<HTMLElement>(null);
   const currentConnection = useRef<HotConnection | null>(null);
   useEffect(() => {
     currentConnection.current = connection;
@@ -253,6 +254,10 @@ export function LegacyLocalWorkspace({
   const currentProfile = workspace.profiles.find(
     (profile) => profile.id === selectedSession?.profileId,
   );
+  useEffect(() => {
+    if (tab === "sessions" && selectedSession)
+      sessionSection.current?.scrollIntoView({ block: "start" });
+  }, [tab, selectedSession?.profileId, selectedSession?.status]);
   const browserCount = workspace.profiles.filter((profile) => profile.kind === "browser").length;
   const androidCount = workspace.profiles.filter((profile) => profile.kind === "android").length;
   const iconButton =
@@ -350,8 +355,8 @@ export function LegacyLocalWorkspace({
             </div>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
               O limite inicial é conservador. Android consome mais recursos e exige virtualização
-              ativa. Encerrar o controle de um Android não desliga o emulador; feche instâncias que
-              não estiver usando no gerenciador.
+              ativa. Encerrar um Android próprio desliga o celular e preserva os dados. Instâncias
+              externas do BlueStacks precisam ser fechadas pelo gerenciador.
             </p>
           </section>
         )}
@@ -543,7 +548,10 @@ export function LegacyLocalWorkspace({
                           <p className="mt-1 truncate text-xs text-muted-foreground">
                             {profile.kind === "android"
                               ? devices?.devices.find((device) => device.id === profile.deviceId)
-                                  ?.name || "Android"
+                                  ?.name ||
+                                (profile.deviceId.startsWith("runtime:")
+                                  ? "Android próprio · experimental"
+                                  : "Android")
                               : "Navegador isolado"}
                           </p>
                           {profile.tags.length > 0 && (
@@ -571,7 +579,9 @@ export function LegacyLocalWorkspace({
                           <span className="truncate font-semibold">
                             {proxy?.name ||
                               (profile.kind === "android"
-                                ? "Rede atual do Android"
+                                ? profile.deviceId.startsWith("runtime:")
+                                  ? "Rede restrita do Android"
+                                  : "Rede atual do Android"
                                 : "Conexão do computador")}
                           </span>
                         </div>
@@ -873,7 +883,7 @@ export function LegacyLocalWorkspace({
           </section>
         )}
         {tab === "sessions" && (
-          <section aria-label="Sessões dos perfis" className="space-y-4">
+          <section ref={sessionSection} aria-label="Sessões dos perfis" className="space-y-4">
             {visibleSessions.length > 0 && (
               <div
                 className="flex gap-2 overflow-x-auto pb-1"

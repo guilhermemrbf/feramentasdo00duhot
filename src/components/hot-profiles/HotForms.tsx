@@ -179,7 +179,7 @@ export function ProfileForm({
   const [proxyId, setProxyId] = useState(profile?.proxyId ?? "");
   const [addingProxy, setAddingProxy] = useState(false);
   const [urls, setUrls] = useState(profile?.startUrls.join("\n") ?? "");
-  const [deviceId, setDeviceId] = useState(profile?.deviceId ?? "");
+  const [deviceId, setDeviceId] = useState(profile?.deviceId ?? "runtime:new");
   const [hostAddress, setHostAddress] = useState(profile?.hostAddress ?? "127.0.0.1");
   const [resolution, setResolution] = useState(
     profile ? `${profile.viewport.width}x${profile.viewport.height}` : "1280x800",
@@ -324,7 +324,11 @@ export function ProfileForm({
               onChange={(event) => setProxyId(event.target.value)}
               className={hotInput}
             >
-              <option value="">Sem proxy · rede padrão do ambiente</option>
+              <option value="">
+                {kind === "android" && deviceId.startsWith("runtime:")
+                  ? "Sem proxy · teste local com rede restrita"
+                  : "Sem proxy · rede padrão do ambiente"}
+              </option>
               {proxies.map((proxy) => {
                 const owner = profiles.find(
                   (item) => item.id !== profile?.id && item.proxyId === proxy.id,
@@ -358,7 +362,9 @@ export function ProfileForm({
           <p>
             {proxyId
               ? "Uma conexão cadastrada por perfil. IPs distintos dependem do seu provedor."
-              : "Sem proxy, o ambiente usa a conexão deste computador."}
+              : kind === "android" && deviceId.startsWith("runtime:")
+                ? "Android próprio sem proxy: teste de tela e controles com rede restrita."
+                : "Sem proxy, o ambiente usa a conexão deste computador."}
           </p>
           {onCreateProxy && (
             <button
@@ -375,7 +381,7 @@ export function ProfileForm({
         {kind === "android" ? (
           <section className="space-y-3 rounded-xl border border-border bg-background/60 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-bold">Celular conectado</h3>
+              <h3 className="text-sm font-bold">Celular Android</h3>
               <button
                 type="button"
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary"
@@ -394,6 +400,13 @@ export function ProfileForm({
                 className={hotInput}
               >
                 <option value="">Selecione uma instância independente</option>
+                <option
+                  value={
+                    profile?.deviceId.startsWith("runtime:") ? profile.deviceId : "runtime:new"
+                  }
+                >
+                  Criar / usar celular próprio do Hot Profiles · experimental
+                </option>
                 {devices?.devices.map((device) => {
                   const used = profiles.some(
                     (item) => item.id !== profile?.id && item.deviceId === device.id,
@@ -408,17 +421,37 @@ export function ProfileForm({
                 })}
               </select>
             </label>
-            {devices && !devices.adbAvailable && (
+            {deviceId.startsWith("runtime:") && (
+              <div className="space-y-2 text-xs leading-5 text-muted-foreground">
+                <p>
+                  {devices?.runtime?.message ||
+                    "Atualize o aplicativo local para verificar o motor Android próprio."}
+                </p>
+                <p>
+                  O Hot Profiles cria um celular vazio com armazenamento exclusivo e abre a tela
+                  aqui, sem BlueStacks. Iniciar pode levar alguns minutos. Encerrar desliga o
+                  celular e mantém seus dados.
+                </p>
+                <p>
+                  Protótipo com tela por capturas e controles de toque/teclado, sem áudio ou câmera.
+                  Rede restrita: aplicativos que ignoram proxy HTTP podem ficar sem conexão.
+                  Isolamento integral ainda em validação.
+                </p>
+              </div>
+            )}
+            {!deviceId.startsWith("runtime:") && devices && !devices.adbAvailable && (
               <p role="status" className="text-xs text-destructive">
                 ADB não encontrado. Instale o BlueStacks ou indique seu ADB local no conector.
               </p>
             )}
-            {devices?.adbAvailable && devices.adbResponding === false && (
-              <p role="status" className="text-xs text-destructive">
-                ADB instalado, mas não respondeu. Confira o conector e as opções avançadas do
-                BlueStacks.
-              </p>
-            )}
+            {!deviceId.startsWith("runtime:") &&
+              devices?.adbAvailable &&
+              devices.adbResponding === false && (
+                <p role="status" className="text-xs text-destructive">
+                  ADB instalado, mas não respondeu. Confira o conector e as opções avançadas do
+                  BlueStacks.
+                </p>
+              )}
             {devices?.adbRemoteEnabled && (
               <p role="status" className="text-xs text-destructive">
                 O acesso ADB remoto está habilitado no BlueStacks. Desative-o e use somente a
@@ -443,17 +476,19 @@ export function ProfileForm({
               Cada perfil deve usar uma instância diferente. Seus aplicativos e contas pertencem à
               instância selecionada.
             </p>
-            {devices?.managerAvailable && (
+            {!deviceId.startsWith("runtime:") && devices?.managerAvailable && (
               <button type="button" onClick={() => void action(onManager)} className={hotButton}>
                 <Plus className="size-4" />
                 Criar instância no BlueStacks
               </button>
             )}
-            <p className="text-xs leading-5 text-muted-foreground">
-              No BlueStacks, crie uma nova instância e ative Configurações → Avançado → Android
-              Debug Bridge. Depois clique em Atualizar aqui.
-            </p>
-            {proxyId && (
+            {!deviceId.startsWith("runtime:") && (
+              <p className="text-xs leading-5 text-muted-foreground">
+                No BlueStacks, crie uma nova instância e ative Configurações → Avançado → Android
+                Debug Bridge. Depois clique em Atualizar aqui.
+              </p>
+            )}
+            {proxyId && !deviceId.startsWith("runtime:") && (
               <>
                 <label className="block space-y-2 text-sm">
                   <span>Endereço de conexão do Android</span>

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess, nativeImage } from "electron";
 import { fileURLToPath } from "node:url";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
@@ -102,6 +102,7 @@ else {
               serviceDiagnostic,
             }),
           );
+        await stopService().catch(() => {});
         child?.kill();
         await ui?.close();
         mayExit = true;
@@ -228,6 +229,7 @@ function createWindow() {
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
+      backgroundThrottling: !selfTest,
       devTools: !app.isPackaged && !selfTest,
     },
   });
@@ -325,6 +327,49 @@ async function runSelfTest() {
     `(async()=>{const c=await window.hotProfilesDesktop.connect();const s=await(await fetch(c.url+'/v1/state',{headers:{Authorization:'Bearer '+c.token}})).json();return s.profiles.some(p=>p.id===${JSON.stringify(result.id)});})()`,
   );
   if (!persisted) throw new Error("Persistence failed");
+  const androidSmoke = process.argv.includes("--self-test-android");
+  if (androidSmoke) {
+    testStage = "own-android-in-desktop";
+    await window.webContents.executeJavaScript(`(async()=>{
+      const c=await window.hotProfilesDesktop.connect();
+      const call=async(route,input)=>{const r=await fetch(c.url+route,{method:input?'POST':'GET',headers:{Authorization:'Bearer '+c.token,...(input?{'Content-Type':'application/json'}:{})},body:input?JSON.stringify(input):undefined});const data=await r.json();if(!r.ok)throw new Error(data.error||'Android API failed');return data;};
+      const p=await call('/v1/profiles',{kind:'android',deviceId:'runtime:new',name:'Android próprio de teste',notes:'Celular vazio temporário',tags:['teste'],startUrls:[]});
+      const wait=ms=>new Promise(r=>setTimeout(r,ms));
+      let clicked=false;
+      for(let n=0;n<50;n++){const row=[...document.querySelectorAll('article')].find(e=>e.querySelector('h3')?.textContent===p.name);if(row){[...row.querySelectorAll('button')].find(e=>e.textContent.trim()==='Iniciar')?.click();clicked=true;break;}await wait(300);}
+      if(!clicked)throw new Error('Android start button unavailable');
+      let running=false;
+      for(let n=0;n<240;n++){const state=await call('/v1/state');const s=state.sessions.find(s=>s.profileId===p.id);if(s?.status==='error')throw new Error(s.error);if(s?.status==='running'){running=true;break;}await wait(1500);}
+      if(!running)throw new Error('Own Android boot timed out');
+      const f=await call('/v1/sessions/'+p.id+'/frame');if(!f.image?.startsWith('data:image/png;base64,'))throw new Error('Own Android screen missing');
+      await call('/v1/sessions/'+p.id+'/control',{action:'key',key:'home'});
+      for(let n=0;n<100;n++){if(document.querySelector('img[alt="Tela atual de Android próprio de teste"]'))return true;await wait(300);}
+      throw new Error('Own Android screen not shown in desktop viewer');
+    })()`);
+    let rendered = false;
+    for (let n = 0; n < 60; n++) {
+      const source = await window.webContents.executeJavaScript(
+        `document.querySelector('img[alt="Tela atual de Android próprio de teste"]')?.src || ''`,
+      );
+      if (source) {
+        const pixels = nativeImage.createFromDataURL(source).toBitmap();
+        let minimum = 255,
+          maximum = 0;
+        for (let at = 0; at < pixels.length; at += 64) {
+          for (let channel = 0; channel < 3; channel++) {
+            minimum = Math.min(minimum, pixels[at + channel]);
+            maximum = Math.max(maximum, pixels[at + channel]);
+          }
+        }
+        if (maximum - minimum > 24) {
+          rendered = true;
+          break;
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    if (!rendered) throw new Error("Android viewer received only blank frames");
+  }
   testStage = "screenshot";
   await new Promise((resolve) => setTimeout(resolve, 1500));
   const screenshot = argument("--self-test-screenshot");
@@ -340,6 +385,7 @@ async function runSelfTest() {
     foreignOriginRejected: true,
     profileSurvivesServiceRestart: true,
     realBrowserStartStop: browserSmoke,
+    realAndroidInDesktop: androidSmoke,
     nodeIntegration: false,
     packaged: app.isPackaged,
     version: app.getVersion(),

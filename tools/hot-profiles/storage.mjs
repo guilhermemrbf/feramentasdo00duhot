@@ -161,6 +161,8 @@ export async function createStore(directory) {
       deviceId = `adb:${serial}`;
     }
     if (input.kind === "android" && !deviceId) fail("Escolha uma instância Android independente.");
+    if (deviceId.startsWith("runtime:") && deviceId !== `runtime:${input.id}`)
+      fail("Cada celular local deve pertencer ao próprio perfil.");
     if (
       deviceId &&
       data.profiles.some(
@@ -205,7 +207,8 @@ export async function createStore(directory) {
           (p) =>
             p.id !== id &&
             (p.deviceId === binding.deviceId ||
-              p.androidBinding?.endpoint === binding.endpoint ||
+              (!profile.deviceId.startsWith("runtime:") &&
+                p.androidBinding?.endpoint === binding.endpoint) ||
               (p.deviceId?.startsWith("adb:") &&
                 localSerial(p.deviceId.slice(4)) === binding.endpoint)),
         )
@@ -231,11 +234,19 @@ export async function createStore(directory) {
     async putProfile(input, id) {
       const previous = id ? data.profiles.find((p) => p.id === id) : null;
       if (id && !previous) fail("Perfil não encontrado.", 404);
-      const values = profileInput(input, previous);
+      const profileId = previous?.id || randomUUID();
+      const values = profileInput(
+        {
+          ...input,
+          id: profileId,
+          deviceId: input.deviceId === "runtime:new" ? `runtime:${profileId}` : input.deviceId,
+        },
+        previous,
+      );
       const now = new Date().toISOString();
       const profile = {
         ...values,
-        id: previous?.id || randomUUID(),
+        id: profileId,
         createdAt: previous?.createdAt || now,
         updatedAt: now,
       };

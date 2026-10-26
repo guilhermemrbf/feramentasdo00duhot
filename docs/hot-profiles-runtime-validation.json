@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "applicationVersion": "0.2.0",
+  "date": "2026-10-26",
+  "status": "experimental",
+  "validationEnvironment": "local Windows development PC",
+  "testedRuntime": "Android Emulator 37.1.11.0",
+  "testedImageApi": "37.1 x86_64",
+  "automatedTests": { "passed": 88, "failed": 0 },
+  "builds": { "frontend": true, "desktop": true, "typescript": true },
+  "emptyAndroidDevice": {
+    "boot": true,
+    "renderedCapture": true,
+    "inputCommands": true,
+    "httpThroughLocalProxyFixture": true,
+    "directRouteToLocalControlServerBlocked": true,
+    "proxyOutageReturns502": true,
+    "markerPersistsAfterRestart": true,
+    "shutdown": true
+  },
+  "packagedApplication": {
+    "authenticatedApi": true,
+    "unauthenticatedRequestsRejected": true,
+    "foreignOriginsRejected": true,
+    "browserStartStop": true,
+    "ownAndroidStartFromInterface": true,
+    "androidImageInSessionViewer": true,
+    "nodeIntegration": false
+  },
+  "scope": {
+    "usesEmptySyntheticProfiles": true,
+    "usesOnlySimulatedLocalProxy": true,
+    "usesPersonalAccounts": false,
+    "ciRunsRealAndroid": false,
+    "sdkBundledInInstaller": false,
+    "deviceWideNetworkIsolationProven": false,
+    "internetDnsUdpIpv6FullyValidated": false,
+    "socialApplicationCompatibilityValidated": false,
+    "multipleSimultaneousAndroidsValidated": false
+  }
+}

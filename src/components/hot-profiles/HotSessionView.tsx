@@ -278,7 +278,9 @@ export function HotSessionView({
           </button>
           <button onClick={onStop} className={hotButton}>
             <Square className="size-3.5" />
-            {session.kind === "android" ? "Desconectar" : "Encerrar"}
+            {session.kind === "android" && !session.androidBinding?.deviceId.startsWith("runtime:")
+              ? "Desconectar"
+              : "Encerrar"}
           </button>
         </div>
       </header>
@@ -286,8 +288,9 @@ export function HotSessionView({
         <div className="space-y-2 border-b border-border bg-amber-500/5 p-3 text-xs leading-5">
           <p className="font-semibold">Isolamento de rede ainda não comprovado</p>
           <p>
-            O proxy HTTP do sistema pode ser ignorado por aplicativos. Esta sessão não garante IP
-            exclusivo, DNS pela proxy ou bloqueio quando ela falha.
+            {session.androidBinding?.deviceId.startsWith("runtime:")
+              ? "Android próprio experimental: rede restrita e proxy HTTP por canal local. Aplicativos que ignoram proxy HTTP podem ficar sem conexão. Sem áudio ou câmera; isolamento integral em validação."
+              : "O proxy HTTP do sistema pode ser ignorado por aplicativos. Esta sessão não garante IP exclusivo, DNS pela proxy ou bloqueio quando ela falha."}
           </p>
           {session.androidBinding && (
             <p>
