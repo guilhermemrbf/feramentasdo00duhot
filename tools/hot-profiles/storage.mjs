@@ -6,6 +6,7 @@ import net from "node:net";
 
 import { proxyKey, proxyOwner } from "./policy.mjs";
 import { localSerial } from "./android-discovery.mjs";
+import { androidSettings } from "./android-settings.mjs";
 
 export function fail(message, status = 400) {
   throw Object.assign(new Error(message), { status });
@@ -189,6 +190,9 @@ export async function createStore(directory) {
       startUrls,
       viewport,
       deviceId,
+      ...(deviceId.startsWith("runtime:")
+        ? { androidSettings: androidSettings(input.androidSettings ?? previous?.androidSettings) }
+        : {}),
       ...(previous?.deviceId === deviceId && previous.androidBinding
         ? { androidBinding: previous.androidBinding }
         : {}),

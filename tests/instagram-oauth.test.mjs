@@ -30,7 +30,12 @@ test("Instagram tokens are encrypted with unique AES-GCM nonces", async () => {
   assert.notEqual(first, second);
   assert.ok(!first.includes("sensitive-token"));
   assert.equal(await decryptInstagramToken(first), "sensitive-token");
-  await assert.rejects(decryptInstagramToken(`${first.slice(0, -1)}x`));
+  // Alter a significant encoded byte, not a potentially unchanged final
+  // character or unused Base64 padding bits.
+  const position = first.lastIndexOf(".") + 1;
+  const tampered =
+    first.slice(0, position) + (first[position] === "A" ? "B" : "A") + first.slice(position + 1);
+  await assert.rejects(decryptInstagramToken(tampered));
 });
 
 test("production OAuth cookie uses the host-only secure prefix", () => {

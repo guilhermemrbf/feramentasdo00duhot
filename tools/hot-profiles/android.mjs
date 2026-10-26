@@ -306,6 +306,8 @@ export async function startAndroid(
       };
     },
     async control(input) {
+      if (input.action === "settings")
+        return command(["shell", "am", "start", "-a", "android.settings.SETTINGS"]);
       const point = (x, y) => {
         if (!Number.isFinite(x) || !Number.isFinite(y)) fail("Posição inválida.");
         return [

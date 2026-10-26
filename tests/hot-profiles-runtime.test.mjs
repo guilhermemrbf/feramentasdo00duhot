@@ -38,6 +38,24 @@ test("owned Android profiles receive distinct disk identities; another profile c
   assert.equal(updated.deviceId, a.deviceId);
   const data = JSON.parse(await readFile(path.join(directory, "workspace.json"), "utf8"));
   assert.equal(data.profiles.find((p) => p.id === a.id).deviceId, a.deviceId);
+  const configured = await store.putProfile(
+    {
+      ...input,
+      deviceId: a.deviceId,
+      androidSettings: { ramMb: 4096, cpuCores: 4, resolution: "360x640", memoryMode: "low" },
+    },
+    a.id,
+  );
+  const copied = await store.putProfile({
+    ...configured,
+    deviceId: "runtime:new",
+    proxyId: null,
+    name: "Cópia de configuração",
+  });
+  assert.deepEqual(copied.androidSettings, configured.androidSettings);
+  assert.notEqual(copied.deviceId, configured.deviceId);
+  assert.equal(copied.androidBinding, undefined);
+  assert.equal(copied.proxyId, null);
 });
 
 test("SDK discovery reports prerequisites without creating devices or starting ADB", async (t) => {

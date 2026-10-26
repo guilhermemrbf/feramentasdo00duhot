@@ -14,6 +14,7 @@ test("distributed connector contains exact source bytes and all its local import
     "browser.mjs",
     "android.mjs",
     "android-runtime.mjs",
+    "android-settings.mjs",
     "android-discovery.mjs",
     "verify-android.mjs",
     "Iniciar Hot Profiles.cmd",

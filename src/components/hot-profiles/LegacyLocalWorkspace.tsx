@@ -633,11 +633,12 @@ export function LegacyLocalWorkspace({
                         >
                           <Pencil className="size-4" />
                         </button>
-                        {profile.kind === "browser" && (
+                        {(profile.kind === "browser" ||
+                          profile.deviceId.startsWith("runtime:")) && (
                           <button
                             aria-label={`Duplicar configuração de ${profile.name}`}
                             disabled={!online || !!busy}
-                            className={iconButton}
+                            className={hotButton}
                             onClick={() =>
                               void act(
                                 `copy-${profile.id}`,
@@ -646,14 +647,18 @@ export function LegacyLocalWorkspace({
                                     await bridgeRequest(connection, "/v1/profiles", {
                                       ...profile,
                                       proxyId: null,
+                                      deviceId: profile.kind === "android" ? "runtime:new" : "",
                                       name: `${profile.name.slice(0, 70)} · cópia`,
                                     });
                                 },
-                                "Configuração duplicada sem reutilizar o proxy. Edite o novo perfil para escolher outra conexão.",
+                                profile.kind === "android"
+                                  ? "Novo celular vazio criado com as mesmas configurações. Contas e aplicativos não foram copiados. Escolha outra proxy para o novo perfil."
+                                  : "Configuração duplicada sem reutilizar o proxy. Edite o novo perfil para escolher outra conexão.",
                               )
                             }
                           >
                             <Copy className="size-4" />
+                            <span>Novo igual</span>
                           </button>
                         )}
                         <button

@@ -6,6 +6,7 @@ import os from "node:os";
 import net from "node:net";
 import { fail, uuid } from "./storage.mjs";
 import { startAndroid } from "./android.mjs";
+import { androidSettings, updateRuntimeConfig } from "./android-settings.mjs";
 
 const execute = promisify(execFile);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -50,6 +51,8 @@ export async function discoverRuntime() {
           (await present(path.join(directory, "system.img")))
         )
           images.push({
+            id: `${api}/${tag}/x86_64`,
+            minRamMb: /16k/i.test(tag + (properties["SystemImage.TagId"] || "")) ? 4096 : 1536,
             directory,
             api: properties["AndroidVersion.ApiLevel"],
             description: properties["Pkg.Desc"] || tag,
@@ -66,6 +69,7 @@ export async function discoverRuntime() {
     emulator,
     adb,
     image,
+    images,
     message: available
       ? `Motor Android local disponível · API ${image.api} · x86_64. Primeiro boot pode demorar alguns minutos.`
       : "Instale Android Emulator, Platform Tools e uma imagem x86_64 no SDK Android local. O instalador Hot Profiles não inclui imagens Android.",
@@ -77,7 +81,7 @@ export function runtimeConfig(image) {
   return `AvdId=HotProfiles\navd.ini.encoding=UTF-8\nabi.type=x86_64\nhw.cpu.arch=x86_64\nhw.cpu.ncore=2\nhw.ramSize=1536\nhw.lcd.width=540\nhw.lcd.height=960\nhw.lcd.density=240\nhw.keyboard=yes\nhw.gpu.enabled=yes\nhw.gpu.mode=auto\nhw.audioInput=no\nhw.audioOutput=no\nhw.camera.back=none\nhw.camera.front=none\nhw.sdCard=no\ndisk.dataPartition.size=2G\nfastboot.forceColdBoot=yes\nimage.sysdir.1=${image.directory.replace(/\\/g, "/")}/\nshowDeviceFrame=no\n`;
 }
 
-export function runtimeArguments(name, consolePort) {
+export function runtimeArguments(name, consolePort, settings = androidSettings(), image = {}) {
   return [
     "-avd",
     name,
@@ -85,12 +89,17 @@ export function runtimeArguments(name, consolePort) {
     String(consolePort),
     "-no-window",
     "-memory",
-    "1536",
+    String(Math.max(settings.ramMb, image.minRamMb || 1536)),
+    "-cores",
+    String(settings.cpuCores),
+    "-vsync-rate",
+    String(settings.fps),
+    ...(settings.memoryMode === "low" ? ["-lowram"] : []),
     "-no-audio",
     "-no-boot-anim",
     "-no-snapshot",
     "-gpu",
-    "auto",
+    settings.graphics === "software" ? "swiftshader" : settings.graphics,
     "-feature",
     "-WiFiPacketStream",
     "-no-metrics",
@@ -146,7 +155,12 @@ export async function startLocalAndroid(
     fail("Identidade do celular local inválida.");
   if (signal?.aborted) fail("Abertura cancelada.", 409);
   const configuration = await discoverRuntime();
+  const settings = androidSettings(profile.androidSettings);
   if (!configuration.available) fail(configuration.message, 409);
+  if (settings.ramMb > os.totalmem() / 1024 ** 2 - 1024)
+    fail("Deixe pelo menos 1 GB de RAM reservado para o Windows. Reduza a RAM do celular.", 409);
+  if (settings.cpuCores > os.availableParallelism())
+    fail("A CPU selecionada excede os núcleos disponíveis neste computador.", 409);
   if (os.freemem() < 1024 ** 3)
     fail("Libere pelo menos 1 GB de RAM antes de iniciar o Android local.", 409);
   const base = path.join(directory, "android-runtime");
@@ -187,6 +201,7 @@ export async function startLocalAndroid(
   };
   delete env.ADB_SERVER_SOCKET;
   let adbPort;
+  const recorders = new Set();
   const run = async (binary, args, commandOptions = {}) =>
     (
       await execute(binary, ["-P", String(adbPort), ...args], {
@@ -202,6 +217,10 @@ export async function startLocalAndroid(
     if (stopping) fail("O Android já está encerrando. Aguarde.", 409);
     stopping = true;
     try {
+      for (const recorder of recorders) {
+        recorder.stdout.destroy();
+        recorder.kill();
+      }
       if (child && !exited) {
         try {
           await run(configuration.adb, ["-s", `emulator-${ports.port}`, "emu", "kill"]);
@@ -224,7 +243,10 @@ export async function startLocalAndroid(
   };
   try {
     await mkdir(androidHome, { recursive: true });
-    let image = configuration.image;
+    let image = settings.imageId
+      ? configuration.images.find((item) => item.id === settings.imageId)
+      : configuration.image;
+    if (!image) fail("A imagem selecionada não está instalada no SDK deste computador.", 409);
     const manifest = path.join(device, "runtime.json");
     try {
       const previous = JSON.parse(await readFile(manifest, "utf8"));
@@ -237,6 +259,13 @@ export async function startLocalAndroid(
           409,
         );
       image = { ...image, directory: previous.imageDirectory };
+      const original = configuration.images.find(
+        (item) => item.directory === previous.imageDirectory,
+      );
+      if (!original) fail("Restaure a imagem original do celular no SDK.", 409);
+      if (settings.imageId && settings.imageId !== original.id)
+        fail("Crie outro perfil para trocar a imagem Android e preservar os dados atuais.", 409);
+      image = original;
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
       await writeFile(
@@ -247,6 +276,11 @@ export async function startLocalAndroid(
     }
     if (!(await present(path.join(device, "config.ini"))))
       await writeFile(path.join(device, "config.ini"), runtimeConfig(image), { flag: "wx" });
+    const configPath = path.join(device, "config.ini");
+    await writeFile(
+      configPath,
+      updateRuntimeConfig(await readFile(configPath, "utf8"), settings, image),
+    );
     await writeFile(path.join(base, `${name}.ini`), `avd.ini.encoding=UTF-8\npath=${device}\n`);
     server = await reserve();
     adbPort = server.port;
@@ -255,7 +289,7 @@ export async function startLocalAndroid(
     await run(configuration.adb, ["start-server"]);
     ports = await consolePair();
     await ports.close();
-    child = spawn(configuration.emulator, runtimeArguments(name, ports.port), {
+    child = spawn(configuration.emulator, runtimeArguments(name, ports.port, settings, image), {
       windowsHide: true,
       env,
       stdio: ["ignore", "pipe", "pipe"],
@@ -328,6 +362,38 @@ export async function startLocalAndroid(
       { timeout: 60000, signal },
     );
     await sleep(3000);
+    for (const key of [
+      "window_animation_scale",
+      "transition_animation_scale",
+      "animator_duration_scale",
+    ])
+      await run(configuration.adb, [
+        "-s",
+        serial,
+        "shell",
+        "settings",
+        "put",
+        "global",
+        key,
+        settings.animations ? "1" : "0",
+      ]);
+    const hardware = imageProperties(
+      (await readFile(path.join(device, "hardware-qemu.ini"), "utf8")).replace(/\s*=\s*/g, "="),
+    );
+    const runtimeInfo = {
+      requestedRamMb: settings.ramMb,
+      effectiveRamMb: Number(hardware["hw.ramSize"]) || Math.max(settings.ramMb, image.minRamMb),
+      cpuCores: Number(hardware["hw.cpu.ncore"]) || settings.cpuCores,
+      resolution: settings.resolution,
+      graphics: settings.graphics,
+      memoryMode: settings.memoryMode,
+      targetFps: settings.fps,
+      imageId: image.id,
+    };
+    Object.defineProperty(runtimeInfo, "videoClients", {
+      enumerable: true,
+      get: () => recorders.size,
+    });
     const effective = { ...profile, hostAddress: "127.0.0.1" };
     runtime = await startAndroid(effective, gateway, signal, onResolved, {
       findAdb: async () => configuration.adb,
@@ -347,6 +413,65 @@ export async function startLocalAndroid(
     });
     return {
       ...runtime,
+      info: runtimeInfo,
+      stream(response) {
+        if (exited || stopped) fail("O Android encerrou.", 409);
+        if (recorders.size)
+          fail(
+            "A tela em vídeo já está aberta em outra janela. Feche-a antes de conectar novamente.",
+            409,
+          );
+        const recorder = spawn(
+          configuration.adb,
+          [
+            "-P",
+            String(adbPort),
+            "-s",
+            serial,
+            "exec-out",
+            "screenrecord",
+            "--output-format=h264",
+            "--bit-rate",
+            settings.fps === 15 ? "1000000" : "2500000",
+            "--size",
+            settings.resolution,
+            "--time-limit",
+            "170",
+            "-",
+          ],
+          { windowsHide: true, env, stdio: ["ignore", "pipe", "pipe"] },
+        );
+        recorders.add(recorder);
+        response.writeHead(200, {
+          "Content-Type": "video/h264",
+          "Cache-Control": "no-store",
+          "X-Content-Type-Options": "nosniff",
+        });
+        let waiting;
+        recorder.stdout.on("data", (bytes) => {
+          if (!response.write(bytes)) {
+            recorder.stdout.pause();
+            waiting = setTimeout(() => response.destroy(), 1500);
+          }
+        });
+        response.on("drain", () => {
+          clearTimeout(waiting);
+          recorder.stdout.resume();
+        });
+        const close = () => {
+          clearTimeout(waiting);
+          recorders.delete(recorder);
+          recorder.stdout.destroy();
+          recorder.kill();
+          if (!response.destroyed) response.end();
+        };
+        response.once("close", close);
+        recorder.once("error", close);
+        recorder.once("exit", close);
+        recorder.stderr.on("data", (bytes) =>
+          options.onVideoDiagnostic?.(bytes.toString().slice(0, 1000)),
+        );
+      },
       async frame() {
         if (exited) fail("O motor Android encerrou. Encerre a sessão e inicie novamente.", 409);
         return runtime.frame();

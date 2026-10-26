@@ -84,6 +84,7 @@ const sessionInfo = (session) => ({
   error: session.error || null,
   needsCleanup: session.status === "error" && !!session.runtime,
   androidBinding: session.androidBinding || null,
+  runtimeInfo: session.runtime?.info || null,
 });
 const active = (id) => {
   const session = sessions.get(id);
@@ -327,6 +328,12 @@ const server = http.createServer(async (request, response) => {
           available: runtime.available,
           message: runtime.message,
           api: runtime.image?.api,
+          images: runtime.images.map(({ id, api, description, minRamMb }) => ({
+            id,
+            api,
+            description,
+            minRamMb,
+          })),
         },
         browserAvailable: !!(await findBrowser()),
         performance: performanceInfo(limits.maxSessions),
@@ -413,6 +420,10 @@ const server = http.createServer(async (request, response) => {
     if (collection === "sessions" && id) {
       const session = sessions.get(id);
       if (!session || session.status !== "running") fail("Esta sessão não está em execução.", 409);
+      if (method === "GET" && action === "video" && session.runtime.stream) {
+        session.runtime.stream(response);
+        return;
+      }
       if (method === "POST" && action === "network" && session.profile.kind === "android") {
         send(response, 200, await session.runtime.network());
         return;

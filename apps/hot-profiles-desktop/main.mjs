@@ -281,6 +281,25 @@ async function runSelfTest() {
   }
   if (!(await window.webContents.executeJavaScript("Boolean(window.hotProfilesReady)")))
     throw new Error("Renderer not ready");
+  testStage = "android-settings-form";
+  await window.webContents.executeJavaScript(`(async()=>{
+    for(let n=0;n<100&&!document.body.textContent.includes('Aplicativo local conectado');n++)await new Promise(r=>setTimeout(r,100));
+    [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Novo perfil')?.click();
+    await new Promise(r=>setTimeout(r,200));
+    document.querySelector('input[value="android"]')?.click();
+    for(let n=0;n<100&&!document.querySelector('select[aria-label="RAM do Android"]');n++)await new Promise(r=>setTimeout(r,100));
+    if(!document.querySelector('select[aria-label="RAM do Android"]')||!document.querySelector('select[aria-label="Núcleos de CPU"]'))throw new Error('Android hardware controls missing');
+    [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Leve')?.click();
+    await new Promise(r=>setTimeout(r,100));
+    document.querySelector('select[aria-label="RAM do Android"]')?.closest('fieldset')?.scrollIntoView({block:'start'});
+    await new Promise(r=>setTimeout(r,150));
+  })()`);
+  const settingsScreenshot = argument("--self-test-settings-screenshot");
+  if (settingsScreenshot)
+    await writeFile(settingsScreenshot, (await window.webContents.capturePage()).toPNG());
+  await window.webContents.executeJavaScript(
+    `document.querySelector('button[aria-label="Fechar janela"]')?.click()`,
+  );
   testStage = "profile-api";
   const result = await window.webContents.executeJavaScript(`(async()=>{
     const c=await window.hotProfilesDesktop.connect();
@@ -327,29 +346,31 @@ async function runSelfTest() {
     `(async()=>{const c=await window.hotProfilesDesktop.connect();const s=await(await fetch(c.url+'/v1/state',{headers:{Authorization:'Bearer '+c.token}})).json();return s.profiles.some(p=>p.id===${JSON.stringify(result.id)});})()`,
   );
   if (!persisted) throw new Error("Persistence failed");
-  const androidSmoke = process.argv.includes("--self-test-android");
+  const videoSmoke = process.argv.includes("--self-test-video");
+  let videoMeasurements = null;
+  const androidSmoke = process.argv.includes("--self-test-android") || videoSmoke;
   if (androidSmoke) {
     testStage = "own-android-in-desktop";
     await window.webContents.executeJavaScript(`(async()=>{
       const c=await window.hotProfilesDesktop.connect();
       const call=async(route,input)=>{const r=await fetch(c.url+route,{method:input?'POST':'GET',headers:{Authorization:'Bearer '+c.token,...(input?{'Content-Type':'application/json'}:{})},body:input?JSON.stringify(input):undefined});const data=await r.json();if(!r.ok)throw new Error(data.error||'Android API failed');return data;};
-      const p=await call('/v1/profiles',{kind:'android',deviceId:'runtime:new',name:'Android próprio de teste',notes:'Celular vazio temporário',tags:['teste'],startUrls:[]});
+      const p=await call('/v1/profiles',{kind:'android',deviceId:'runtime:new',name:'Android próprio de teste',notes:'Celular vazio temporário',tags:['teste'],startUrls:[],androidSettings:{ramMb:4096,cpuCores:4,resolution:'360x640',graphics:'auto',memoryMode:'low',fps:30,animations:false,imageId:''}});
       const wait=ms=>new Promise(r=>setTimeout(r,ms));
       let clicked=false;
       for(let n=0;n<50;n++){const row=[...document.querySelectorAll('article')].find(e=>e.querySelector('h3')?.textContent===p.name);if(row){[...row.querySelectorAll('button')].find(e=>e.textContent.trim()==='Iniciar')?.click();clicked=true;break;}await wait(300);}
       if(!clicked)throw new Error('Android start button unavailable');
       let running=false;
-      for(let n=0;n<240;n++){const state=await call('/v1/state');const s=state.sessions.find(s=>s.profileId===p.id);if(s?.status==='error')throw new Error(s.error);if(s?.status==='running'){running=true;break;}await wait(1500);}
+      for(let n=0;n<240;n++){const state=await call('/v1/state');const s=state.sessions.find(s=>s.profileId===p.id);if(s?.status==='error')throw new Error(s.error);if(s?.status==='running'){if(s.runtimeInfo?.cpuCores!==4||s.runtimeInfo.resolution!=='360x640'||s.runtimeInfo.effectiveRamMb<4096)throw new Error('Android settings not applied');running=true;break;}await wait(1500);}
       if(!running)throw new Error('Own Android boot timed out');
       const f=await call('/v1/sessions/'+p.id+'/frame');if(!f.image?.startsWith('data:image/png;base64,'))throw new Error('Own Android screen missing');
       await call('/v1/sessions/'+p.id+'/control',{action:'key',key:'home'});
-      for(let n=0;n<100;n++){if(document.querySelector('img[alt="Tela atual de Android próprio de teste"]'))return true;await wait(300);}
+      for(let n=0;n<100;n++){if(document.querySelector('img[alt="Tela atual de Android próprio de teste"],canvas[data-live="true"]'))return true;await wait(300);}
       throw new Error('Own Android screen not shown in desktop viewer');
     })()`);
     let rendered = false;
     for (let n = 0; n < 60; n++) {
       const source = await window.webContents.executeJavaScript(
-        `document.querySelector('img[alt="Tela atual de Android próprio de teste"]')?.src || ''`,
+        `document.querySelector('canvas[data-live="true"]')?.toDataURL('image/png') || document.querySelector('img[alt="Tela atual de Android próprio de teste"]')?.src || ''`,
       );
       if (source) {
         const pixels = nativeImage.createFromDataURL(source).toBitmap();
@@ -369,6 +390,34 @@ async function runSelfTest() {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
     if (!rendered) throw new Error("Android viewer received only blank frames");
+    if (videoSmoke) {
+      testStage = "android-video-decoding";
+      videoMeasurements = await window.webContents.executeJavaScript(`(async()=>{
+        const c=await window.hotProfilesDesktop.connect();const state=await(await fetch(c.url+'/v1/state',{headers:{Authorization:'Bearer '+c.token}})).json();const p=state.profiles.find(p=>p.kind==='android');
+        const start=performance.now();
+        for(let n=0;n<40;n++){
+          const canvas=document.querySelector('canvas[data-live="true"]');
+          if(Number(canvas?.dataset.frames)>=20){
+            const headers={Authorization:'Bearer '+c.token,'Content-Type':'application/json'};
+            await fetch(c.url+'/v1/sessions/'+p.id+'/control',{method:'POST',headers,body:JSON.stringify({action:'settings'})});
+            await new Promise(r=>setTimeout(r,4000));
+            const first=Number(canvas.dataset.frames),sampleStart=performance.now(),latencies=[];
+            for(let k=0;k<12;k++){const before=performance.now();await fetch(c.url+'/v1/sessions/'+p.id+'/control',{method:'POST',headers,body:JSON.stringify({action:'scroll',deltaY:k%2?-100:100})});latencies.push(performance.now()-before);await new Promise(r=>setTimeout(r,200));}
+            const elapsed=performance.now()-sampleStart,decoded=Number(canvas.dataset.frames)-first;
+            [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Perfis')?.click();
+            let paused=false;for(let k=0;k<40;k++){const s=await(await fetch(c.url+'/v1/state',{headers})).json();if(s.sessions.find(s=>s.profileId===p.id)?.runtimeInfo?.videoClients===0){paused=true;break;}await new Promise(r=>setTimeout(r,100));}
+            if(!paused)throw new Error('Video encoder did not stop when leaving the viewer');
+            const row=[...document.querySelectorAll('article')].find(e=>e.querySelector('h3')?.textContent===p.name);[...row.querySelectorAll('button')].find(b=>b.textContent.trim()==='Abrir')?.click();
+            let resumed=false;for(let k=0;k<100;k++){if(Number(document.querySelector('canvas[data-live="true"]')?.dataset.frames)>=5){resumed=true;break;}await new Promise(r=>setTimeout(r,200));}
+            if(!resumed)throw new Error('Video did not resume after returning to viewer');
+            return {framesDecoded:first+decoded,sampleFrames:decoded,sampleMs:Math.round(elapsed),receivedFps:Math.round(decoded*10000/elapsed)/10,meanGestureRoundTripMs:Math.round(latencies.reduce((a,b)=>a+b,0)/latencies.length),encoderPausedWhenLeaving:true,videoResumed:true};
+          }
+          await fetch(c.url+'/v1/sessions/'+p.id+'/control',{method:'POST',headers:{Authorization:'Bearer '+c.token,'Content-Type':'application/json'},body:JSON.stringify({action:'swipe',x:180,y:500,toX:180,toY:150})});
+          await new Promise(r=>setTimeout(r,500));
+        }
+        throw new Error('Continuous Android video did not decode enough frames');
+      })()`);
+    }
   }
   testStage = "screenshot";
   await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -386,6 +435,8 @@ async function runSelfTest() {
     profileSurvivesServiceRestart: true,
     realBrowserStartStop: browserSmoke,
     realAndroidInDesktop: androidSmoke,
+    realAndroidVideo: videoSmoke,
+    videoMeasurements,
     nodeIntegration: false,
     packaged: app.isPackaged,
     version: app.getVersion(),

@@ -1,0 +1,35 @@
+{
+  "version": "0.3.0",
+  "date": "2026-10-26",
+  "status": "experimental",
+  "testsPassed": 92,
+  "localPackagedTest": {
+    "browserStartStop": true,
+    "androidStartAndRenderedCanvas": true,
+    "ramMbEffective": 4096,
+    "cpuCoresEffective": 4,
+    "resolution": "360x640",
+    "graphics": "auto",
+    "memoryMode": "low",
+    "fpsLimit": 30,
+    "framesDecoded": 140,
+    "sampleFrames": 95,
+    "sampleMs": 11666,
+    "receivedFps": 8.1,
+    "meanGestureRoundTripMs": 763,
+    "encoderPausedWhenLeaving": true,
+    "videoResumed": true,
+    "settingsFormValidated": true
+  },
+  "scope": {
+    "usesEmptyTestAndroid": true,
+    "usesPersonalAccounts": false,
+    "usesPaidServices": false,
+    "deviceWideProxyVerified": false,
+    "instagramPerformanceVerified": false,
+    "fpsGuaranteed": false,
+    "stableLighterImageTested": false,
+    "ciRunsRealAndroid": false
+  },
+  "measurementNote": "Gesture round trip includes the 300 ms swipe. This is not an end-to-end video latency measurement. Static screens may emit few frames."
+}

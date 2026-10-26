@@ -1,8 +1,16 @@
-# Hot Profiles Desktop — Windows 0.2.0 experimental
+# Hot Profiles Desktop — Windows 0.3.0 experimental
 
 Aplicativo local com janela própria, instalador por usuário e execução do conector incluída. Reutiliza os formulários, central de proxies, sessões, navegador e adaptador Android do projeto. Não depende de site publicado, Supabase, Railway ou Node.js instalado pelo usuário. Não inclui um emulador, Chrome/Edge ou proxy contratada.
 
-Esta versão acrescenta **celular próprio do Hot Profiles**: cria um Android vazio por perfil, inicia o motor Android Emulator do SDK local sem janela externa e apresenta tela e controles na aba Sessões. Não depende do BlueStacks para esse modo. É um protótipo para primeiros testes, com tela por capturas, toque, gestos e teclado ASCII; não oferece vídeo fluido, áudio ou câmera.
+O **celular próprio do Hot Profiles** cria um Android vazio por perfil, inicia o motor Android Emulator do SDK local sem janela externa e apresenta tela e controles na aba Sessões. Não depende do BlueStacks para esse modo. A versão 0.3.0 acrescenta vídeo contínuo H.264 com WebCodecs, mantendo capturas como alternativa, e configurações de desempenho por perfil. Áudio e câmera ainda não são oferecidos.
+
+## Novidades de desempenho e criação de perfis
+
+- RAM de 1536 a 8192 MB, CPU de 1 a 8 núcleos (limitados pelo host), quatro resoluções, gráficos automático/GPU/software, modo de memória normal/econômico, limite de 15/30/60 FPS e animações opcionais. Presets Leve, Equilibrado e Desempenho; alterações aplicadas na próxima abertura.
+- O painel mostra RAM efetiva, CPU e resolução aplicadas pelo motor. Imagens de páginas de 16 KB impõem pelo menos 4096 MB; o seletor não promete contornar esse limite. Memória econômica é a opção low RAM do Android, não overclock da RAM física. Mais recursos alocados não garantem melhor desempenho no Windows.
+- **Novo igual** duplica as configurações para um celular vazio com identidade e disco exclusivos, sem copiar aplicativos, contas, sessões ou proxy. Para mudar a imagem Android de um celular existente, crie outro perfil.
+- Vídeo autenticado por loopback, sem senha/token em URL, sem gravar a tela em disco. O encoder só roda enquanto a sessão está sendo visualizada e para ao sair da aba; a tela retoma ao voltar. Há indicador de quadros recebidos, limite de fila e retorno às capturas se o vídeo não for suportado ou ficar sobrecarregado.
+- No computador local de 7,7 GB, o teste com a imagem API 37.1/16 KB recebeu cerca de 8,1 FPS durante rolagens a 360×640, com 4 núcleos. É uma medição limitada, não promessa de 30/60 FPS ou de fluidez em Instagram. Avaliar uma imagem padrão mais leve continua necessário neste PC.
 
 O instalador inclui o gerenciador e o provedor de runtime; **o SDK e a imagem Android não estão incluídos**. Tenha Android Emulator, Platform Tools e uma imagem x86_64 instalados em `%USERPROFILE%\AppData\Local\Android\Sdk`. Desenvolvedores podem indicar outra pasta com `HOT_PROFILES_ANDROID_SDK`. A imagem Google Play existente é usada somente localmente; não foi copiada para o pacote. Compatibilidade de aplicativos e serviços Google ainda precisa de validação.
 
@@ -48,3 +56,5 @@ O autoteste `HotProfiles.exe --self-test --self-test-report <caminho.json> --sel
 Com `--self-test-browser`, ele também abre e encerra um Chrome/Edge real em perfil temporário vazio, sem contas ou URLs externas. A interface e o executável empacotado passaram nesse teste no Windows do titular; isso não substitui a validação de proxy/DNS e aplicativos Android descrita nos limites acima.
 
 Com `--self-test-android`, o autoteste cria um celular próprio temporário pelo serviço, aciona Iniciar na interface e exige a tela Android dentro do visualizador. Requer o SDK instalado e memória livre; não é executado implicitamente nos computadores dos usuários. O teste opt-in `node tools/hot-profiles/verify-runtime.mjs --run-empty-device --directory <pasta exclusiva>` verifica boot, captura, comandos, tráfego por proxy simulada local, falha da proxy, acesso direto ao host e persistência após reiniciar. A pasta de teste é preservada para diagnóstico e contém apenas o Android vazio criado pelo próprio teste.
+
+`--self-test-video` também exige vídeo efetivamente decodificado, mede quadros recebidos durante gestos e confere pausa do encoder e retomada ao alternar a aba. A medição de duração da chamada de gesto inclui a própria animação de swipe de 300 ms; não representa latência ponta a ponta de toque ou de vídeo. O CI público valida instalador e navegador; o teste real de Android/vídeo é realizado localmente com um celular vazio.

@@ -13,8 +13,10 @@ import {
   Smartphone,
 } from "lucide-react";
 import { HotDialog, hotButton, hotInput, hotPrimary } from "./HotDialog";
+import { AndroidSettingsFields } from "./AndroidSettingsFields";
 import {
   pairComputer,
+  DEFAULT_ANDROID_SETTINGS,
   type HotConnection,
   type HotDevices,
   type HotProfile,
@@ -181,6 +183,9 @@ export function ProfileForm({
   const [urls, setUrls] = useState(profile?.startUrls.join("\n") ?? "");
   const [deviceId, setDeviceId] = useState(profile?.deviceId ?? "runtime:new");
   const [hostAddress, setHostAddress] = useState(profile?.hostAddress ?? "127.0.0.1");
+  const [androidSettings, setAndroidSettings] = useState(
+    profile?.androidSettings ?? DEFAULT_ANDROID_SETTINGS,
+  );
   const [resolution, setResolution] = useState(
     profile ? `${profile.viewport.width}x${profile.viewport.height}` : "1280x800",
   );
@@ -207,6 +212,7 @@ export function ProfileForm({
             .map((url) => url.trim())
             .filter(Boolean),
           deviceId,
+          androidSettings,
           hostAddress,
           viewport: { width, height },
         },
@@ -421,6 +427,20 @@ export function ProfileForm({
                 })}
               </select>
             </label>
+            {deviceId.startsWith("runtime:") && devices?.runtime?.images && (
+              <AndroidSettingsFields
+                value={androidSettings}
+                onChange={setAndroidSettings}
+                devices={devices}
+                existing={!!profile}
+              />
+            )}
+            {deviceId.startsWith("runtime:") && devices?.runtime && !devices.runtime.images && (
+              <p className="text-xs text-amber-500">
+                Atualize o aplicativo local para 0.3.0 para configurar RAM, CPU e desempenho. O
+                conector anterior não aplica essas configurações.
+              </p>
+            )}
             {deviceId.startsWith("runtime:") && (
               <div className="space-y-2 text-xs leading-5 text-muted-foreground">
                 <p>

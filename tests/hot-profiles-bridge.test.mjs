@@ -62,6 +62,7 @@ test("local bridge authenticates pairing, enforces origin and proxy ownership, a
     return { status: response.status, body: await response.json() };
   }
   assert.equal((await call("/v1/state")).status, 401);
+  assert.equal((await call("/v1/sessions/00000000-0000-0000-0000-000000000000/video")).status, 401);
   assert.equal(
     (await call("/pair", { input: { code }, origin: "https://unrelated.example" })).status,
     403,
@@ -69,6 +70,15 @@ test("local bridge authenticates pairing, enforces origin and proxy ownership, a
   const paired = await call("/pair", { input: { code } });
   assert.equal(paired.status, 200);
   const token = paired.body.token;
+  assert.equal(
+    (
+      await call("/v1/sessions/00000000-0000-0000-0000-000000000000/video", {
+        token,
+        origin: "https://unrelated.example",
+      })
+    ).status,
+    403,
+  );
   assert.equal(
     (await call("/v1/state", { token, origin: "https://unrelated.example" })).status,
     403,

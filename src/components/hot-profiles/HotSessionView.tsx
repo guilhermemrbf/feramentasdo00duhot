@@ -18,6 +18,7 @@ import {
   Plus,
   RefreshCw,
   Smartphone,
+  Settings,
   Square,
   Triangle,
   X,
@@ -30,6 +31,7 @@ import {
   type HotNetwork,
 } from "@/lib/hot-profiles";
 import { hotButton, hotInput } from "./HotDialog";
+import { AndroidVideo } from "./AndroidVideo";
 
 export function HotSessionView({
   session,
@@ -52,6 +54,8 @@ export function HotSessionView({
   const [prompt, setPrompt] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [lastFrame, setLastFrame] = useState(0);
+  const [videoLive, setVideoLive] = useState(false);
+  const onVideoLive = useCallback((live: boolean) => setVideoLive(live), []);
   const [previewRate, setPreviewRate] = useState<"economy" | "balanced" | "responsive">("balanced");
   const screen = useRef<HTMLDivElement>(null);
   const currentFrame = useRef<HotFrame | null>(null);
@@ -70,7 +74,7 @@ export function HotSessionView({
   );
 
   useEffect(() => {
-    if (session.status !== "running") return;
+    if (session.status !== "running" || videoLive) return;
     const abort = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     async function capture() {
@@ -112,7 +116,7 @@ export function HotSessionView({
       abort.abort();
       clearTimeout(timer);
     };
-  }, [connection, prefix, session.status, session.kind, previewRate]);
+  }, [connection, prefix, session.status, session.kind, previewRate, videoLive]);
   const activeTab = frame?.tabs.find((tab) => tab.active);
   useEffect(() => {
     if (!editing)
@@ -124,8 +128,11 @@ export function HotSessionView({
     let pending = false;
     const wheel = (event: WheelEvent) => {
       event.preventDefault();
-      const image = target.querySelector("img");
-      const current = currentFrame.current;
+      const image = target.querySelector("canvas[data-live='true'],img");
+      const current =
+        image instanceof HTMLCanvasElement
+          ? { width: image.width, height: image.height }
+          : currentFrame.current;
       if (pending || !image || !current) return;
       const rect = image.getBoundingClientRect();
       pending = true;
@@ -143,8 +150,10 @@ export function HotSessionView({
     return () => target.removeEventListener("wheel", wheel);
   }, [control, session.status]);
   function position(event: ReactPointerEvent<HTMLDivElement>) {
-    const image = screen.current?.querySelector("img");
-    if (!image || !frame) return null;
+    const image = screen.current?.querySelector("canvas[data-live='true'],img");
+    if (!image || (!frame && !(image instanceof HTMLCanvasElement))) return null;
+    const dimensions =
+      image instanceof HTMLCanvasElement ? { width: image.width, height: image.height } : frame!;
     const rect = image.getBoundingClientRect();
     if (
       event.clientX < rect.left ||
@@ -154,8 +163,8 @@ export function HotSessionView({
     )
       return null;
     return {
-      x: ((event.clientX - rect.left) * frame.width) / rect.width,
-      y: ((event.clientY - rect.top) * frame.height) / rect.height,
+      x: ((event.clientX - rect.left) * dimensions.width) / rect.width,
+      y: ((event.clientY - rect.top) * dimensions.height) / rect.height,
     };
   }
   function navigate(event: React.FormEvent) {
@@ -242,18 +251,24 @@ export function HotSessionView({
       }
     >
       <label className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2 text-xs text-muted-foreground">
-        Atualização da tela{" "}
-        <select
-          aria-label="Velocidade da prévia"
-          value={previewRate}
-          onChange={(event) => setPreviewRate(event.target.value as typeof previewRate)}
-          className="rounded border border-border bg-background px-2 py-1"
-        >
-          <option value="economy">Econômica</option>
-          <option value="balanced">Equilibrada</option>
-          <option value="responsive">Mais rápida</option>
-        </select>
-        <span>Mais rápida usa mais CPU. Android usa capturas de tela, sem áudio.</span>
+        {videoLive ? "Vídeo ao vivo" : "Atualização por capturas"}{" "}
+        {!videoLive && (
+          <select
+            aria-label="Velocidade da prévia"
+            value={previewRate}
+            onChange={(event) => setPreviewRate(event.target.value as typeof previewRate)}
+            className="rounded border border-border bg-background px-2 py-1"
+          >
+            <option value="economy">Econômica</option>
+            <option value="balanced">Equilibrada</option>
+            <option value="responsive">Mais rápida</option>
+          </select>
+        )}
+        <span>
+          {videoLive
+            ? "Transmissão H.264 com baixa latência, sem áudio."
+            : "Mais rápida usa mais CPU. Capturas são a alternativa quando o vídeo não está disponível."}
+        </span>
       </label>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-3">
         <div className="flex min-w-0 items-center gap-2">
@@ -265,7 +280,7 @@ export function HotSessionView({
           <h3 className="truncate text-sm font-bold">{session.name}</h3>
           <span className="flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-1 text-xs font-semibold text-success">
             <span className="size-1.5 rounded-full bg-success" />
-            {lastFrame ? "Tela conectada" : "Conectando tela"}
+            {videoLive ? "Vídeo conectado" : lastFrame ? "Tela conectada" : "Conectando tela"}
           </span>
         </div>
         <div className="flex gap-2">
@@ -287,30 +302,41 @@ export function HotSessionView({
       {session.kind === "android" && (
         <div className="space-y-2 border-b border-border bg-amber-500/5 p-3 text-xs leading-5">
           <p className="font-semibold">Isolamento de rede ainda não comprovado</p>
-          <p>
-            {session.androidBinding?.deviceId.startsWith("runtime:")
-              ? "Android próprio experimental: rede restrita e proxy HTTP por canal local. Aplicativos que ignoram proxy HTTP podem ficar sem conexão. Sem áudio ou câmera; isolamento integral em validação."
-              : "O proxy HTTP do sistema pode ser ignorado por aplicativos. Esta sessão não garante IP exclusivo, DNS pela proxy ou bloqueio quando ela falha."}
-          </p>
-          {session.androidBinding && (
+          {session.runtimeInfo && (
             <p>
-              ADB: {session.androidBinding.endpoint} · vínculo persistido com a instância deste
-              perfil.
+              RAM efetiva: {session.runtimeInfo.effectiveRamMb} MB (solicitada:{" "}
+              {session.runtimeInfo.requestedRamMb} MB) · CPU: {session.runtimeInfo.cpuCores} ·{" "}
+              {session.runtimeInfo.resolution} · limite {session.runtimeInfo.targetFps} FPS ·
+              gráficos {session.runtimeInfo.graphics}
             </p>
           )}
-          <button
-            className={hotButton}
-            disabled={checkingNetwork}
-            onClick={() => void checkNetwork()}
-          >
-            {checkingNetwork ? "Conferindo…" : "Conferir configuração de rede"}
-          </button>
-          {network && (
-            <p role="status">
-              {network.message} Conferido em{" "}
-              {new Date(network.checkedAt).toLocaleTimeString("pt-BR")}.
+          <details>
+            <summary className="cursor-pointer font-semibold">Detalhes da rede e conexão</summary>
+            <p>
+              {session.androidBinding?.deviceId.startsWith("runtime:")
+                ? "Android próprio experimental: rede restrita e proxy HTTP por canal local. Aplicativos que ignoram proxy HTTP podem ficar sem conexão. Sem áudio ou câmera; isolamento integral em validação."
+                : "O proxy HTTP do sistema pode ser ignorado por aplicativos. Esta sessão não garante IP exclusivo, DNS pela proxy ou bloqueio quando ela falha."}
             </p>
-          )}
+            {session.androidBinding && (
+              <p>
+                ADB: {session.androidBinding.endpoint} · vínculo persistido com a instância deste
+                perfil.
+              </p>
+            )}
+            <button
+              className={hotButton}
+              disabled={checkingNetwork}
+              onClick={() => void checkNetwork()}
+            >
+              {checkingNetwork ? "Conferindo…" : "Conferir configuração de rede"}
+            </button>
+            {network && (
+              <p role="status">
+                {network.message} Conferido em{" "}
+                {new Date(network.checkedAt).toLocaleTimeString("pt-BR")}.
+              </p>
+            )}
+          </details>
         </div>
       )}
       {session.kind === "browser" && (
@@ -505,7 +531,16 @@ export function HotSessionView({
             void control({ action: "text", text: event.clipboardData.getData("text") });
           }}
         >
-          {frame?.image ? (
+          {session.androidBinding?.deviceId.startsWith("runtime:") && session.runtimeInfo && (
+            <AndroidVideo
+              connection={connection}
+              profileId={session.profileId}
+              name={session.name}
+              running={session.status === "running"}
+              onLive={onVideoLive}
+            />
+          )}
+          {frame?.image && !videoLive ? (
             <img
               src={frame.image}
               alt={`Tela atual de ${session.name}`}
@@ -518,17 +553,24 @@ export function HotSessionView({
                   : "h-auto w-full"
               }
             />
-          ) : (
+          ) : !videoLive ? (
             <div className="flex min-h-80 items-center justify-center gap-3 p-8 text-sm text-muted-foreground">
               <LoaderCircle className="size-5 animate-spin" />
               Recebendo a tela…
             </div>
-          )}
+          ) : null}
         </div>
       </div>
       <footer className="space-y-3 border-t border-border p-3">
         {session.kind === "android" && (
           <div className="flex justify-center gap-6">
+            <button
+              onClick={() => void control({ action: "settings" })}
+              className={iconButton}
+              aria-label="Android: configurações"
+            >
+              <Settings className="size-4" />
+            </button>
             <button
               onClick={() => void control({ action: "key", key: "back" })}
               className={iconButton}
@@ -596,6 +638,12 @@ export function HotSessionView({
             <a
               href={frame.image}
               download={`${session.name.replace(/[^a-z0-9_-]/gi, "-")}.${session.kind === "android" ? "png" : "jpg"}`}
+              onClick={(event) => {
+                const canvas = screen.current?.querySelector<HTMLCanvasElement>(
+                  'canvas[data-live="true"]',
+                );
+                if (canvas) event.currentTarget.href = canvas.toDataURL("image/png");
+              }}
               className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-primary"
             >
               <Download className="size-3.5" />

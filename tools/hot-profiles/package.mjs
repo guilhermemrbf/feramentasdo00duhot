@@ -15,6 +15,7 @@ const files = [
   "browser.mjs",
   "android.mjs",
   "android-runtime.mjs",
+  "android-settings.mjs",
   "android-discovery.mjs",
   "verify-android.mjs",
   "Iniciar Hot Profiles.cmd",

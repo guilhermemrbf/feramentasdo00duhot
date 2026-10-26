@@ -1,4 +1,24 @@
 export type ProfileKind = "browser" | "android";
+export type AndroidSettings = {
+  ramMb: number;
+  cpuCores: number;
+  resolution: string;
+  graphics: "auto" | "host" | "software";
+  memoryMode: "normal" | "low";
+  fps: 15 | 30 | 60;
+  animations: boolean;
+  imageId: string;
+};
+export const DEFAULT_ANDROID_SETTINGS: AndroidSettings = {
+  ramMb: 2048,
+  cpuCores: 2,
+  resolution: "540x960",
+  graphics: "auto",
+  memoryMode: "normal",
+  fps: 30,
+  animations: false,
+  imageId: "",
+};
 export type HotProfile = {
   id: string;
   kind: ProfileKind;
@@ -13,6 +33,7 @@ export type HotProfile = {
   createdAt: string;
   updatedAt: string;
   androidBinding?: { deviceId: string; endpoint: string; verifiedAt: string };
+  androidSettings?: AndroidSettings;
 };
 export type HotProxy = {
   id: string;
@@ -32,6 +53,16 @@ export type HotSession = {
   error: string | null;
   needsCleanup?: boolean;
   androidBinding?: { deviceId: string; endpoint: string; verifiedAt: string } | null;
+  runtimeInfo?: {
+    requestedRamMb: number;
+    effectiveRamMb: number;
+    cpuCores: number;
+    resolution: string;
+    graphics: string;
+    memoryMode: string;
+    targetFps: number;
+    imageId: string;
+  } | null;
 };
 export type HotNetwork = {
   checkedAt: string;
@@ -63,7 +94,12 @@ export type HotPerformance = {
   platform: string;
 };
 export type HotDevices = {
-  runtime?: { available: boolean; message: string; api?: string };
+  runtime?: {
+    available: boolean;
+    message: string;
+    api?: string;
+    images?: { id: string; api: string; description: string; minRamMb: number }[];
+  };
   performance?: HotPerformance;
   devices: HotDevice[];
   adbAvailable: boolean;
