@@ -1,5 +1,7 @@
 # Hot Profiles 0.3.0 — desempenho e perfis
 
+[Download Windows](https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/hot-profiles-desktop-4-1), fonte `4f71c2316adf3244e5793e7b17c5124f67dcb4a3`, [CI Windows aprovado](https://github.com/guilhermemrbf/feramentasdo00duhot/actions/runs/40365104657). Instalador e ZIP públicos foram lidos integralmente por streaming: HTTP 200, bytes e assinaturas PE/ZIP corretos, SHA-256 conferido com manifesto e digest GitHub. Instalador: 123747511 bytes, SHA-256 `c156181ff452d04879a72d0cd7ffb2e3d2723cab7f71d1c5363d59fd6f7bd70f`. ZIP: 155541343 bytes, SHA-256 `63cee43399c3b6058703708db9e15f38ed5b91e0c95e8f67da2b5bec31eb55f1`.
+
 ## Alterações
 
 As configurações opcionais `androidSettings` são validadas no servidor e persistidas no perfil. O adaptador próprio aplica RAM/CPU/FPS/GPU à linha de comando e atualiza somente campos de hardware na configuração do AVD, preservando imagem, tamanho do disco e campos desconhecidos do motor. Não há migração ou limpeza dos dados Android. Perfis antigos recebem valores padrão; o SDK preserva a imagem original de cada disco.

@@ -69,7 +69,7 @@ npm run dev
 
 - **Protótipo Android próprio 0.2.0:** cria celulares vazios com discos por perfil, inicia o Android Emulator do SDK local e apresenta tela e controles dentro do aplicativo. Não requer BlueStacks nesse modo; SDK/imagem não acompanham o instalador. Um celular próprio ativo por vez, rede restrita e isolamento integral ainda em validação. [Arquitetura e evidências](docs/hot-profiles-android-runtime.md).
 
-- [Hot Profiles Desktop 0.2.0 experimental para Windows](https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/hot-profiles-desktop-3-1): instalador, janela própria e conector incluído. Preserva os perfis locais existentes; não exige Node.js do usuário final nem o site publicado. O Android próprio usa SDK/imagem previamente instalados. [Instruções](apps/hot-profiles-desktop/README.md) e [validação 0.2.0](docs/hot-profiles-desktop-020-validation.md). Isolamento integral de rede e compatibilidade de aplicativos ainda não comprovados.
+- [Hot Profiles Desktop 0.3.0 experimental para Windows](https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/hot-profiles-desktop-4-1): instalador, janela própria e conector incluído. Preserva os perfis locais existentes; não exige Node.js do usuário final nem o site publicado. O Android próprio usa SDK/imagem previamente instalados. [Instruções](apps/hot-profiles-desktop/README.md) e [validação de desempenho](docs/hot-profiles-performance.md). Isolamento integral de rede e compatibilidade de aplicativos ainda não comprovados.
 
 - `npm run profiles:bridge`: inicia o conector local (Node.js 22+).
 - `npm run profiles:package`: gera `public/hot-profiles-connector.zip`, disponível no botão de conexão do painel. Execute novamente após alterar os arquivos do conector.

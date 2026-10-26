@@ -15,8 +15,8 @@ export const downloads = {
   },
   hotProfiles: packageDownload("hot-profiles-local-2-1", "hot-profiles-connector.zip"),
   hotProfilesDesktop: {
-    version: "0.2.0",
-    ...packageDownload("hot-profiles-desktop-3-1", "HotProfiles-0.2.0-x64.exe"),
-    portable: `${releases}/download/hot-profiles-desktop-3-1/HotProfiles-0.2.0-x64.zip`,
+    version: "0.3.0",
+    ...packageDownload("hot-profiles-desktop-4-1", "HotProfiles-0.3.0-x64.exe"),
+    portable: `${releases}/download/hot-profiles-desktop-4-1/HotProfiles-0.3.0-x64.zip`,
   },
 } as const;

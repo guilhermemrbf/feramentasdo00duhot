@@ -11,7 +11,7 @@ Na conferência de 25/10/2026, o acesso inicial ao projeto privado estava bloque
 ## Frontend esperado
 
 - `/hot-profiles`: modo **Meu computador** por padrão, central local de perfis/proxies e botão **Baixar aplicativo Windows**.
-- O download central em `src/lib/downloads.ts` aponta para o instalador 0.2.0 experimental da release verificada `hot-profiles-desktop-3-1`; o link não depende de contratar hospedagem ou instalar Node.js no computador do usuário. O Android próprio requer SDK/imagem locais, fora do instalador.
+- O download central em `src/lib/downloads.ts` aponta para o instalador 0.3.0 experimental da release verificada `hot-profiles-desktop-4-1`; o link não depende de contratar hospedagem ou instalar Node.js no computador do usuário. O Android próprio requer SDK/imagem locais, fora do instalador.
 - `/hot-profiles?mode=cloud`: modo **Nuvem** anterior preservado, com seu login e cadastros próprios.
 - O site pode controlar o conector tradicional por localhost e pareamento. O aplicativo desktop usa seu próprio painel e canal privado; não permite que o site se conecte automaticamente ao serviço privado do aplicativo. Feche um antes de abrir outro sobre a mesma pasta de dados.
 - O aviso de isolamento Android não comprovado permanece visível. A presença de proxy cadastrada não significa bloqueio de conexão direta.
@@ -43,6 +43,8 @@ O commit `627205c6a2f9884720359d66fea92c0fa6462ab4` foi enviado à main após 88
 A release `hot-profiles-desktop-3-1` aponta para esse commit. Instalador e ZIP foram verificados integralmente por HTTP 200 e SHA-256 antes de atualizar os links centrais do frontend. [Evidências da versão 0.2.0](hot-profiles-desktop-020-validation.md). O modo nuvem, configurações e migrações Supabase foram preservados.
 
 ## Conferência no preview Lovable
+
+A atualização de desempenho foi integrada pelo commit `4f71c2316adf3244e5793e7b17c5124f67dcb4a3`, com 92 testes, tipos e builds aprovados. O frontend compartilhado oferece os ajustes somente quando o conector informa suporte; versões antigas mostram orientação de atualização. Vídeo contínuo usa o serviço local autenticado e não passa pelo Supabase. [Release 0.3.0](https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/hot-profiles-desktop-4-1) e [evidências](hot-profiles-performance.md). Nenhuma publicação do site ou migração Supabase foi executada.
 
 1. Confirmar o repositório e a branch ativa `main` no Git sync.
 2. Abrir `/hot-profiles` no preview e conferir o modo local, o botão do aplicativo e a release de destino.
