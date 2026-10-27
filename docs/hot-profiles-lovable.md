@@ -53,3 +53,10 @@ A atualização de desempenho foi integrada pelo commit `4f71c2316adf3244e5793e7
 5. Publicar pelo Lovable somente quando o titular decidir. Não executar `supabase db push`, migrações, deploy de funções ou alterações de segredos apenas para atualizar essa interface.
 
 Referências oficiais: [sincronização GitHub](https://docs.lovable.dev/integrations/github) e [publicação de versões](https://docs.lovable.dev/features/publish).
+
+
+## Publicação de 27/10/2026 — versão 0.3.1
+
+O titular autorizou publicação automática desta vez. O código `f82246f` simplifica cadastro de proxy e orientação de primeiro uso; `7625260` fixa os downloads verificados. Os dois commits apareceram na sincronização GitHub do editor. A prévia foi reconstruída pelo botão Atualizar prévia, exibiu 0.3.1, e a publicação terminou com **Seu site foi atualizado**.
+
+A [página pública Hot Profiles](https://feramentasdo00duhot.lovable.app/hot-profiles) foi aberta após o deploy e mostrou o instalador desktop-5-1. O conector tradicional também foi atualizado para local-6-1. [Testes, hashes e limites da entrega](hot-profiles-031-validation.md). As observações anteriores de publicação manual acima são registros históricos e foram substituídas pela autorização desta entrega. Nenhuma migração ou credencial Supabase foi modificada.

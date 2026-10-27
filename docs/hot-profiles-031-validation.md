@@ -31,4 +31,6 @@ Fonte do instalador: `f82246f983b2371b74ab3640909c1e8ac456aee5`.
 - [Conector](https://github.com/guilhermemrbf/feramentasdo00duhot/releases/tag/hot-profiles-local-6-1): testes Windows/Linux aprovados; 37918 bytes, SHA-256 `8eed405f53d780b923ddb329f7fc4f5f026f54891ce2255723801c4f56996a8a`.
 - Downloads lidos integralmente por streaming: HTTP 200, tamanho, assinatura PE/ZIP, digest GitHub e manifesto coincidentes. Nenhum binário baixado foi executado no PC do titular.
 
-Publicação Lovable pendente da atualização dos links verificados na main.
+Em 27/10/2026, após autorização explícita do titular, o frontend do commit `7625260` foi sincronizado no projeto Lovable e a prévia reconstruída. Ela exibiu versão 0.3.1 e o destino desktop-5-1. A ação **Publicar alterações** terminou com **Seu site foi atualizado**. A página pública `https://feramentasdo00duhot.lovable.app/hot-profiles` abriu e confirmou os mesmos links.
+
+Evidências locais: `.hot-profiles/lovable-published-031.png` (confirmação Lovable) e `.hot-profiles/hot-profiles-live-031.png` (página pública). O acesso público existente foi mantido. Nenhum serviço pago ou provedor de Android em nuvem foi contratado. Backend/migrações Supabase não exigiram alteração nesta entrega. A verificação pública confirma carregamento e download; não é um teste de login, RLS, banco remoto ou de aplicativos Android.
