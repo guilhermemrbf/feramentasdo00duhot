@@ -4,14 +4,14 @@
 
 O projeto indicado pelo repositório é [03560931-5f6a-41e1-a222-0510d1828a23](https://lovable.dev/projects/03560931-5f6a-41e1-a222-0510d1828a23), ligado a `guilhermemrbf/feramentasdo00duhot`. O README indica `main` como branch de sincronização. O Lovable sincroniza uma branch por vez; é preciso confirmar no editor se a branch ativa continua sendo `main`.
 
-Alterações mantidas somente na branch do PR não ficam automaticamente disponíveis no preview da main. A integração deve ser feita por merge normal, preservando os commits, sem force push. Depois, conferir o preview dentro do Lovable. Sincronização de código e publicação do site são etapas diferentes; a publicação permanece manual, pelo titular na Lovable.
+Alterações mantidas somente na branch do PR não ficam automaticamente disponíveis no preview da main. A integração deve ser feita por merge normal, preservando os commits, sem force push. Depois, conferir o preview dentro do Lovable. Sincronização de código e publicação do site são etapas diferentes; em 27/10/2026 o titular autorizou também a publicação automática pelo Lovable.
 
 Na conferência de 25/10/2026, o acesso inicial ao projeto privado estava bloqueado. Depois de o titular entrar com sua conta, o editor ficou acessível. O PR #14 foi integrado à `main` pelo merge `103ecd95aca5d1a2e23f0af00a788702a50d7756`, preservando o histórico. O editor Lovable mostrou a entrada **Pushed from GitHub — Merge Hot Profiles local desktop and Lovable frontend integration**. A prévia foi atualizada e as rotas local e nuvem foram conferidas dentro do próprio projeto, sem publicação.
 
 ## Frontend esperado
 
 - `/hot-profiles`: modo **Meu computador** por padrão, central local de perfis/proxies e botão **Baixar aplicativo Windows**.
-- O download central em `src/lib/downloads.ts` aponta para o instalador 0.3.0 experimental da release verificada `hot-profiles-desktop-4-1`; o link não depende de contratar hospedagem ou instalar Node.js no computador do usuário. O Android próprio requer SDK/imagem locais, fora do instalador.
+- O download central em `src/lib/downloads.ts` aponta para o instalador 0.3.1 experimental da release verificada `hot-profiles-desktop-5-1`; o link não depende de contratar hospedagem ou instalar Node.js no computador do usuário. O Android próprio requer SDK/imagem locais, fora do instalador.
 - `/hot-profiles?mode=cloud`: modo **Nuvem** anterior preservado, com seu login e cadastros próprios.
 - O site pode controlar o conector tradicional por localhost e pareamento. O aplicativo desktop usa seu próprio painel e canal privado; não permite que o site se conecte automaticamente ao serviço privado do aplicativo. Feche um antes de abrir outro sobre a mesma pasta de dados.
 - O aviso de isolamento Android não comprovado permanece visível. A presença de proxy cadastrada não significa bloqueio de conexão direta.
