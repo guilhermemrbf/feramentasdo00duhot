@@ -5,7 +5,6 @@ import {
   Cable,
   Check,
   Download,
-  Globe2,
   LoaderCircle,
   Monitor,
   Plus,
@@ -453,9 +452,9 @@ export function ProfileForm({
                   celular e mantém seus dados.
                 </p>
                 <p>
-                  Protótipo com tela por capturas e controles de toque/teclado, sem áudio ou câmera.
-                  Rede restrita: aplicativos que ignoram proxy HTTP podem ficar sem conexão.
-                  Isolamento integral ainda em validação.
+                  Tela com vídeo ao vivo e controles de toque/teclado, sem áudio ou câmera. Rede
+                  restrita: aplicativos que ignoram proxy HTTP podem ficar sem conexão. Isolamento
+                  integral ainda em validação.
                 </p>
               </div>
             )}
@@ -619,6 +618,13 @@ export function ProxyForm({
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const [paste, setPaste] = useState("");
+  const [mode, setMode] = useState<"quick" | "manual">(proxy ? "manual" : "quick");
+  let preview: ReturnType<typeof parseProxyAddress> | null = null;
+  try {
+    if (paste.trim()) preview = parseProxyAddress(paste);
+  } catch {
+    // Keep incomplete pasted input editable until it forms a valid endpoint.
+  }
   function parsePaste() {
     try {
       const parsed = parseProxyAddress(paste);
@@ -627,8 +633,10 @@ export function ProxyForm({
       setPort(String(parsed.port));
       setUsername(parsed.username);
       setPassword(parsed.password);
+      setClearPassword(!!proxy?.hasPassword && !parsed.password);
       if (!name.trim()) setName(`Proxy ${parsed.host}:${parsed.port}`.slice(0, 80));
       setPaste("");
+      setMode("manual");
       setError("");
     } catch {
       setError("Use protocolo://usuario:senha@host:porta, host:porta ou host:porta:usuario:senha.");
@@ -639,8 +647,15 @@ export function ProxyForm({
     setBusy(true);
     setError("");
     try {
+      const address = mode === "quick" ? parseProxyAddress(paste) : null;
       await onSave(
-        { name, protocol, host, port: Number(port), username, password, clearPassword },
+        address
+          ? {
+              ...address,
+              name: name.trim() || `Proxy ${address.host}:${address.port}`.slice(0, 80),
+              clearPassword: !!proxy?.hasPassword && !address.password,
+            }
+          : { name, protocol, host, port: Number(port), username, password, clearPassword },
         proxy?.id,
       );
     } catch (reason) {
@@ -651,29 +666,93 @@ export function ProxyForm({
   }
   const form = (
     <form onSubmit={save} className="space-y-4">
-      <details className="rounded-xl border border-border bg-background/60 p-3 text-sm">
-        <summary className="cursor-pointer font-semibold">Preencher colando um endereço</summary>
-        <label className="mt-3 block space-y-2">
-          <span className="text-xs text-muted-foreground">
-            protocolo://usuario:senha@host:porta ou host:porta:usuario:senha
-          </span>
-          <input
-            type="password"
-            autoComplete="off"
-            value={paste}
-            onChange={(event) => setPaste(event.target.value)}
-            className={hotInput}
-          />
-        </label>
-        <button type="button" onClick={parsePaste} className={`${hotButton} mt-2`}>
-          <Globe2 className="size-4" />
-          Preencher campos
-        </button>
-      </details>
+      <div className="grid grid-cols-2 gap-2" aria-label="Como cadastrar a proxy">
+        {(
+          [
+            ["quick", "Colar endereço"],
+            ["manual", "Preencher campos"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={mode === value}
+            className={mode === value ? hotPrimary : hotButton}
+            onClick={() => {
+              if (value === "manual" && paste.trim()) parsePaste();
+              else {
+                setMode(value);
+                setError("");
+              }
+            }}
+            disabled={busy}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {mode === "quick" && (
+        <section className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+          <p className="font-semibold">1. Cole os dados recebidos do seu fornecedor</p>
+          <label className="block space-y-2">
+            <span>Endereço completo da proxy</span>
+            <input
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              required
+              maxLength={1600}
+              value={paste}
+              onChange={(event) => {
+                setPaste(event.target.value);
+                setError("");
+              }}
+              className={hotInput}
+              placeholder="host:porta:usuario:senha"
+            />
+            <span className="text-xs text-muted-foreground">
+              Aceita host:porta, host:porta:usuario:senha ou protocolo://usuario:senha@host:porta.
+              Sem protocolo, usamos HTTP.
+            </span>
+          </label>
+          {preview ? (
+            <div
+              role="status"
+              aria-label="Conferência da proxy"
+              className="rounded-lg border border-border bg-background p-3"
+            >
+              <p className="font-semibold">2. Confira a conexão</p>
+              <p className="mt-1 break-all">
+                {preview.protocol.toUpperCase()} · {preview.host}:{preview.port}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {preview.username ? "Usuário informado" : "Sem usuário"} ·{" "}
+                {preview.password ? "Senha informada e oculta" : "Sem senha"}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Formato reconhecido. A conexão será verificada depois de salvar, pelo botão
+                Verificar conexão.
+              </p>
+              <button type="button" onClick={parsePaste} className={`${hotButton} mt-2`}>
+                Ajustar campos individualmente
+              </button>
+            </div>
+          ) : paste.trim() ? (
+            <p role="status" className="text-xs text-muted-foreground">
+              Endereço incompleto ou inválido. Confira host, porta e o formato acima.
+            </p>
+          ) : null}
+        </section>
+      )}
       <label className="block space-y-2 text-sm font-semibold">
-        <span>Nome do proxy</span>
+        <span>
+          Nome da proxy{" "}
+          {mode === "quick" && (
+            <span className="font-normal text-muted-foreground">(opcional)</span>
+          )}
+        </span>
         <input
-          required
+          required={mode === "manual"}
           maxLength={80}
           value={name}
           onChange={(event) => setName(event.target.value)}
@@ -681,30 +760,34 @@ export function ProxyForm({
           className={hotInput}
         />
       </label>
-      <div className="grid grid-cols-3 gap-3">
-        <label className="block space-y-2 text-sm font-semibold">
-          <span>Protocolo</span>
-          <select
-            value={protocol}
-            onChange={(event) => setProtocol(event.target.value as HotProxy["protocol"])}
-            className={hotInput}
-          >
-            <option value="http">HTTP</option>
-            <option value="https">HTTPS</option>
-            <option value="socks5">SOCKS5</option>
-          </select>
-        </label>
-        <label className="col-span-2 block space-y-2 text-sm font-semibold">
-          <span>Host ou IP</span>
-          <input
-            required
-            value={host}
-            onChange={(event) => setHost(event.target.value)}
-            placeholder="proxy.exemplo.com"
-            className={hotInput}
-          />
-        </label>
-      </div>
+      {mode === "manual" && (
+        <>
+          <div className="grid grid-cols-3 gap-3">
+            <label className="block space-y-2 text-sm font-semibold">
+              <span>Protocolo</span>
+              <select
+                value={protocol}
+                onChange={(event) => setProtocol(event.target.value as HotProxy["protocol"])}
+                className={hotInput}
+              >
+                <option value="http">HTTP</option>
+                <option value="https">HTTPS</option>
+                <option value="socks5">SOCKS5</option>
+              </select>
+            </label>
+            <label className="col-span-2 block space-y-2 text-sm font-semibold">
+              <span>Host ou IP</span>
+              <input
+                required
+                value={host}
+                onChange={(event) => setHost(event.target.value)}
+                placeholder="proxy.exemplo.com"
+                className={hotInput}
+              />
+            </label>
+          </div>
+        </>
+      )}
       {storage === "cloud" && (
         <p className="text-xs leading-5 text-muted-foreground">
           Navegadores na nuvem aceitam HTTP e HTTPS. SOCKS5 pode ser cadastrado, mas não pode ser
@@ -712,61 +795,70 @@ export function ProxyForm({
           rede dedicado.
         </p>
       )}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block space-y-2 text-sm font-semibold">
-          <span>Porta</span>
-          <input
-            type="number"
-            required
-            min={1}
-            max={65535}
-            value={port}
-            onChange={(event) => setPort(event.target.value)}
-            className={hotInput}
-          />
-        </label>
-        <label className="block space-y-2 text-sm font-semibold">
-          <span>Usuário (opcional)</span>
-          <input
-            autoComplete="off"
-            maxLength={200}
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            className={hotInput}
-          />
-        </label>
-      </div>
-      <label className="block space-y-2 text-sm font-semibold">
-        <span>Senha (opcional)</span>
-        <input
-          type="password"
-          autoComplete="new-password"
-          maxLength={1000}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          placeholder={
-            proxy?.hasPassword ? "Senha já salva. Deixe vazio para manter." : "Senha do proxy"
-          }
-          disabled={clearPassword}
-          className={hotInput}
-        />
-      </label>
-      {proxy?.hasPassword && (
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={clearPassword}
-            onChange={(event) => setClearPassword(event.target.checked)}
-          />
-          Remover a senha salva
-        </label>
+      {mode === "manual" && (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-2 text-sm font-semibold">
+              <span>Porta</span>
+              <input
+                type="number"
+                required
+                min={1}
+                max={65535}
+                value={port}
+                onChange={(event) => setPort(event.target.value)}
+                className={hotInput}
+              />
+            </label>
+            <label className="block space-y-2 text-sm font-semibold">
+              <span>Usuário (opcional)</span>
+              <input
+                autoComplete="off"
+                maxLength={200}
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                className={hotInput}
+              />
+            </label>
+          </div>
+          <label className="block space-y-2 text-sm font-semibold">
+            <span>Senha (opcional)</span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              maxLength={1000}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder={
+                proxy?.hasPassword ? "Senha já salva. Deixe vazio para manter." : "Senha do proxy"
+              }
+              disabled={clearPassword}
+              className={hotInput}
+            />
+          </label>
+          {proxy?.hasPassword && (
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={clearPassword}
+                onChange={(event) => setClearPassword(event.target.checked)}
+              />
+              Remover a senha salva
+            </label>
+          )}
+        </>
       )}
+      <p className="text-xs leading-5 text-muted-foreground">
+        Depois de salvar: clique em Verificar conexão na aba Proxies e selecione-a no perfil
+        desejado. Cada perfil usa uma proxy cadastrada diferente; o IP é fornecido pelo seu
+        provedor.
+      </p>
       <FormError error={error} />
       <footer className="flex justify-end gap-2 border-t border-border pt-4">
         <button type="button" disabled={busy} onClick={onClose} className={hotButton}>
           Cancelar
         </button>
-        <button disabled={busy} className={hotPrimary}>
+        <button disabled={busy || (mode === "quick" && !preview)} className={hotPrimary}>
           {busy && <LoaderCircle className="size-4 animate-spin" />}
           {proxy ? "Salvar proxy" : "Adicionar proxy"}
         </button>

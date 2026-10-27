@@ -1,10 +1,18 @@
-# Hot Profiles Desktop — Windows 0.3.0 experimental
+# Hot Profiles Desktop — Windows 0.3.1 experimental
 
 Aplicativo local com janela própria, instalador por usuário e execução do conector incluída. Reutiliza os formulários, central de proxies, sessões, navegador e adaptador Android do projeto. Não depende de site publicado, Supabase, Railway ou Node.js instalado pelo usuário. Não inclui um emulador, Chrome/Edge ou proxy contratada.
 
 O **celular próprio do Hot Profiles** cria um Android vazio por perfil, inicia o motor Android Emulator do SDK local sem janela externa e apresenta tela e controles na aba Sessões. Não depende do BlueStacks para esse modo. A versão 0.3.0 acrescenta vídeo contínuo H.264 com WebCodecs, mantendo capturas como alternativa, e configurações de desempenho por perfil. Áudio e câmera ainda não são oferecidos.
 
-## Novidades de desempenho e criação de perfis
+## Cadastro simplificado na versão 0.3.1
+
+- **Colar endereço** é a opção inicial: cole os dados do fornecedor e confira protocolo, host, porta e presença de autenticação. A senha permanece oculta. O nome é opcional e pode ser gerado automaticamente.
+- O modo **Preencher campos** continua disponível para ajustes. A edição de uma proxy abre nesse modo e mantém a senha salva quando o campo fica vazio.
+- Salvar volta à central de proxies com a orientação **Verificar conexão**; reconhecer o formato não significa que a proxy foi testada.
+- O painel inclui um guia de três passos: proxy, perfil e Iniciar. O guia começa aberto quando ainda não existem perfis.
+- Os ajustes de RAM/CPU, presets e vídeo da 0.3.0 continuam disponíveis. Esta atualização simplifica a interface; não modifica a imagem Android nem promete aumento de FPS.
+
+## Desempenho e criação de perfis
 
 - RAM de 1536 a 8192 MB, CPU de 1 a 8 núcleos (limitados pelo host), quatro resoluções, gráficos automático/GPU/software, modo de memória normal/econômico, limite de 15/30/60 FPS e animações opcionais. Presets Leve, Equilibrado e Desempenho; alterações aplicadas na próxima abertura.
 - O painel mostra RAM efetiva, CPU e resolução aplicadas pelo motor. Imagens de páginas de 16 KB impõem pelo menos 4096 MB; o seletor não promete contornar esse limite. Memória econômica é a opção low RAM do Android, não overclock da RAM física. Mais recursos alocados não garantem melhor desempenho no Windows.
@@ -18,7 +26,7 @@ O instalador inclui o gerenciador e o provedor de runtime; **o SDK e a imagem An
 
 1. Execute o instalador Windows e abra **Hot Profiles** pelo atalho. Não precisa de administrador nem código de pareamento.
 2. Feche o conector antigo antes de abrir o aplicativo: ambos usam a mesma pasta de dados e o bloqueio impede duas cópias simultâneas.
-3. Cadastre uma proxy e um perfil. Use uma conexão diferente por perfil e confira o resultado dos testes; cadastros separados não garantem IPs diferentes no fornecedor.
+3. Em Proxies → Adicionar proxy, cole o endereço do fornecedor, confira os dados e salve. Clique em **Verificar conexão**. Depois crie um perfil e selecione a proxy. Use uma conexão diferente por perfil e confira o resultado dos testes; cadastros separados não garantem IPs diferentes no fornecedor.
 4. Para navegador, tenha Chrome ou Edge instalado. Para Android próprio: Novo perfil → Celular Android → Criar / usar celular próprio do Hot Profiles → Salvar → Iniciar. O primeiro boot pode levar alguns minutos. Comece com um único celular e libere RAM antes de iniciar. Sem proxy, o protótipo usa rede restrita para testar tela e controles.
 5. Encerre os ambientes pelo painel. Encerrar um celular próprio desliga o motor e preserva seu disco. Ao fechar o aplicativo, os ambientes próprios também são encerrados. Se o encerramento falhar, a janela permanece aberta para tentar novamente.
 6. O adaptador BlueStacks antigo continua disponível para perfis existentes. Somente nesse modo é necessário abrir uma instância externa e habilitar ADB local; encerrar seu controle não desliga o BlueStacks. Cadastros e instâncias existentes não são convertidos ou importados.

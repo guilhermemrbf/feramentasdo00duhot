@@ -67,6 +67,10 @@ test("proxy paste handles credentials, defaults and IPv6, without accepting webs
     "ftp://proxy.example:21",
     "http://user%0A:x@host:80",
     "http://user%3Ax:x@host:80",
+    "host:0",
+    "host:65536",
+    "host:8080\nhost:8081",
+    "http://ho\tst:8080",
   ])
     assert.throws(() => parseProxyAddress(value));
 });

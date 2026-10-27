@@ -300,6 +300,44 @@ async function runSelfTest() {
   await window.webContents.executeJavaScript(
     `document.querySelector('button[aria-label="Fechar janela"]')?.click()`,
   );
+  testStage = "proxy-quick-form";
+  await window.webContents.executeJavaScript(`(async()=>{
+    const wait=()=>new Promise(r=>setTimeout(r,100));
+    const button=(text)=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()===text);
+    button('Proxies')?.click(); await wait(); button('Adicionar proxy')?.click(); await wait();
+    const dialog=()=>document.querySelector('[role="dialog"]');
+    const input=dialog()?.querySelector('input[type="password"]');
+    const submit=()=>dialog()?.querySelector('button[type="submit"]') || [...(dialog()?.querySelectorAll('button')||[])].find(b=>b.textContent.trim()==='Adicionar proxy');
+    if(!input || !submit()?.disabled)throw new Error('Quick form missing or empty submit enabled');
+    const fill=(el,value)=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));};
+    fill(input,'http://fixture.invalid/path'); await wait();
+    if(!submit()?.disabled)throw new Error('Invalid proxy accepted');
+    fill(input,'fixture.invalid:8080:fixture-user:fixture-password'); await wait();
+    const review=dialog()?.querySelector('[aria-label="Conferência da proxy"]');
+    if(!review?.textContent.includes('HTTP') || review.textContent.includes('fixture-password') || review.textContent.includes('fixture-user') || submit()?.disabled)throw new Error('Proxy preview missing or credentials exposed');
+  })()`);
+  const proxyScreenshot = argument("--self-test-proxy-screenshot");
+  if (proxyScreenshot) {
+    window.showInactive();
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await writeFile(proxyScreenshot, (await window.webContents.capturePage()).toPNG());
+    window.hide();
+  }
+  await window.webContents.executeJavaScript(`(async()=>{
+    const wait=()=>new Promise(r=>setTimeout(r,100));
+    const dialog=document.querySelector('[role="dialog"]');
+    dialog.querySelector('form').requestSubmit();
+    for(let n=0;n<100&&document.querySelector('[role="dialog"]');n++)await wait();
+    if(document.querySelector('[role="dialog"]'))throw new Error('Quick save did not finish');
+    const c=await window.hotProfilesDesktop.connect();
+    const response=await fetch(c.url+'/v1/state',{headers:{Authorization:'Bearer '+c.token}});
+    const state=await response.json(); const p=state.proxies.find(p=>p.host==='fixture.invalid');
+    if(!p || p.port!==8080 || !p.hasPassword || p.username!=='fixture-user' || 'password' in p || 'secret' in p)throw new Error('Proxy roundtrip failed');
+    const removed=await fetch(c.url+'/v1/proxies/'+p.id,{method:'DELETE',headers:{Authorization:'Bearer '+c.token}});
+    if(!removed.ok)throw new Error('Proxy fixture cleanup failed');
+    [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Perfis')?.click();
+    await wait();
+  })()`);
   testStage = "profile-api";
   const result = await window.webContents.executeJavaScript(`(async()=>{
     const c=await window.hotProfilesDesktop.connect();
@@ -432,6 +470,7 @@ async function runSelfTest() {
     authenticatedLocalApi: true,
     unauthenticatedRequestRejected: true,
     foreignOriginRejected: true,
+    proxyQuickForm: true,
     profileSurvivesServiceRestart: true,
     realBrowserStartStop: browserSmoke,
     realAndroidInDesktop: androidSmoke,

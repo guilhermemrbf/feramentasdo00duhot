@@ -47,7 +47,7 @@ jobs:
         shell: pwsh
         run: |
           $release = Join-Path $PWD 'apps/hot-profiles-desktop/dist/release'
-          $installer = Join-Path $release 'HotProfiles-0.3.0-x64.exe'
+          $installer = Join-Path $release 'HotProfiles-0.3.1-x64.exe'
           $install = Join-Path $env:RUNNER_TEMP 'HotProfilesInstallerTest'
           $markerFolder = Join-Path $env:LOCALAPPDATA '00duHot/HotProfiles'
           New-Item -ItemType Directory -Force -Path $markerFolder | Out-Null
@@ -60,7 +60,7 @@ jobs:
           $test = Start-Process -FilePath (Join-Path $install 'HotProfiles.exe') -ArgumentList @('--self-test','--self-test-browser','--self-test-report',$report,'--self-test-screenshot',$image) -WindowStyle Hidden -Wait -PassThru
           if ($test.ExitCode -ne 0) { throw 'Installed application self-test failed' }
           $result = Get-Content -Raw -LiteralPath $report | ConvertFrom-Json
-          if (!$result.ok -or !$result.packaged -or !$result.profileSurvivesServiceRestart -or !$result.realBrowserStartStop) { throw 'Incomplete application validation' }
+          if (!$result.ok -or !$result.packaged -or !$result.proxyQuickForm -or !$result.profileSurvivesServiceRestart -or !$result.realBrowserStartStop) { throw 'Incomplete application validation' }
           $uninstaller = Get-ChildItem -LiteralPath $install -Filter 'Uninstall*.exe' | Select-Object -First 1
           if (!$uninstaller) { throw 'Uninstaller missing' }
           $removed = Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -WindowStyle Hidden -Wait -PassThru
@@ -72,12 +72,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $release = 'apps/hot-profiles-desktop/dist/release'
-          $installer = "$release/HotProfiles-0.3.0-x64.exe"
-          $portable = "$release/HotProfiles-0.3.0-x64.zip"
+          $installer = "$release/HotProfiles-0.3.1-x64.exe"
+          $portable = "$release/HotProfiles-0.3.1-x64.zip"
           $lines = @($installer,$portable) | ForEach-Object { $hash=(Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLower(); "$hash  $([System.IO.Path]::GetFileName($_))" }
           $lines | Set-Content -LiteralPath "$release/SHA256SUMS.txt" -Encoding ascii
           $tag = 'hot-profiles-desktop-' + '${{ github.run_number }}' + '-' + '${{ github.run_attempt }}'
-          gh release create $tag $installer $portable "$release/SHA256SUMS.txt" "$release/desktop-self-test.json" "$release/desktop-home.png" 'docs/hot-profiles-performance-validation.json' --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Hot Profiles Desktop 0.3.0 experimental — Windows' --notes-file apps/hot-profiles-desktop/README.md --prerelease
+          gh release create $tag $installer $portable "$release/SHA256SUMS.txt" "$release/desktop-self-test.json" "$release/desktop-home.png" 'docs/hot-profiles-performance-validation.json' --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Hot Profiles Desktop 0.3.1 experimental — Windows' --notes-file apps/hot-profiles-desktop/README.md --prerelease
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

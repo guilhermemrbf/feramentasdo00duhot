@@ -335,6 +335,44 @@ export function LegacyLocalWorkspace({
             </div>
           </section>
         )}
+        {online && (
+          <details
+            open={workspace.profiles.length === 0}
+            className="rounded-2xl border border-primary/25 bg-primary/5 p-4"
+          >
+            <summary className="cursor-pointer text-sm font-bold">
+              Comece por aqui · proxy → perfil → iniciar
+            </summary>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <button
+                onClick={createProxy}
+                className="rounded-xl border border-border bg-card p-4 text-left hover:border-primary"
+              >
+                <span className="text-sm font-bold">1. Adicione uma proxy</span>
+                <span className="mt-2 block text-xs leading-5 text-muted-foreground">
+                  Cole o endereço do fornecedor. Na aba Proxies, clique em Verificar conexão.
+                </span>
+              </button>
+              <button
+                onClick={() => create()}
+                className="rounded-xl border border-border bg-card p-4 text-left hover:border-primary"
+              >
+                <span className="text-sm font-bold">2. Crie seu perfil</span>
+                <span className="mt-2 block text-xs leading-5 text-muted-foreground">
+                  Escolha Navegador ou Android e selecione a proxy. Para Android, comece com o
+                  ajuste Leve.
+                </span>
+              </button>
+              <div className="rounded-xl border border-border bg-card p-4">
+                <span className="text-sm font-bold">3. Clique em Iniciar</span>
+                <span className="mt-2 block text-xs leading-5 text-muted-foreground">
+                  A tela aparece em Sessões. Encerrar preserva seus dados. Use Novo igual para criar
+                  outro perfil vazio e escolher outra proxy.
+                </span>
+              </div>
+            </div>
+          </details>
+        )}
         {online && workspace.performance && (
           <section
             aria-label="Capacidade do computador"
@@ -1056,7 +1094,10 @@ export function LegacyLocalWorkspace({
                   return next;
                 });
               setProxyForm(null);
-              setMessage("Proxy salvo no computador.");
+              setTab("proxies");
+              setMessage(
+                "Proxy salva. Clique em Verificar conexão e depois selecione-a ao criar ou editar um perfil.",
+              );
             }}
           />
         )}

@@ -1,7 +1,8 @@
 /** Parse only proxy endpoints; do not accept website paths or query strings. */
 export function parseProxyAddress(value: string) {
   const text = value.trim();
-  if (!text || text.length > 1600) throw new Error("Informe o endereço do proxy.");
+  if (!text || text.length > 1600 || /[\r\n\t]/.test(text))
+    throw new Error("Informe um único endereço do proxy.");
   const parts = !text.includes("://") ? text.match(/^([^:\s]+):(\d{1,5}):([^:]*):(.*)$/) : null;
   const address = parts
     ? `http://${encodeURIComponent(parts[3])}:${encodeURIComponent(parts[4])}@${parts[1]}:${parts[2]}`
@@ -28,10 +29,12 @@ export function parseProxyAddress(value: string) {
       password.length > 1000
     )
       throw new Error();
+    const port = Number(url.port || (protocol === "https" ? 443 : protocol === "http" ? 80 : 1080));
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error();
     return {
       protocol: protocol as "http" | "https" | "socks5",
       host: url.hostname.replace(/^\[|\]$/g, ""),
-      port: Number(url.port || (protocol === "https" ? 443 : protocol === "http" ? 80 : 1080)),
+      port,
       username,
       password,
     };
