@@ -21,6 +21,7 @@ class Window:
         self.busy=False;self.closing=False;self.login_dialog=None;self.task_dialog=None
         self.operation_buttons=[];self.job_counts={};self.jobs_data={};self.active_page='home'
         self.source=tk.StringVar();self.destination=tk.StringVar();self.mode=tk.StringVar(value='history');self.authorized=tk.BooleanVar()
+        self.copy_method=tk.StringVar(value='forward100')
         self.resolved=tk.StringVar();self.status=tk.StringVar(value='Conecte sua conta e escolha o que deseja fazer abaixo.')
         self.account=tk.StringVar(value='Conta salva neste Windows' if store.setting('account') else 'Telegram não conectado')
         root.title('Telegram Sync · 00duHot')
@@ -31,7 +32,7 @@ class Window:
         self.brand_mark=brand_image(40);root.iconphoto(True,self.brand_mark)
         ttk.Label(top,image=self.brand_mark).pack(side='left',padx=(0,10))
         ttk.Label(top,text='Telegram Sync',style='Heading.TLabel').pack(side='left')
-        ttk.Label(top,text='00duHot · v0.5.2',style='Muted.TLabel').pack(side='left',padx=14)
+        ttk.Label(top,text='00duHot · v0.6.0',style='Muted.TLabel').pack(side='left',padx=14)
         self.account_controls=ttk.Frame(top);self.account_controls.pack(side='right')
         ttk.Label(self.account_controls,textvariable=self.account,style='Muted.TLabel').pack(side='left',padx=12)
         self.connect_button=ttk.Button(self.account_controls,text='Conectar Telegram',style='Primary.TButton',command=self.login)
@@ -62,7 +63,7 @@ class Window:
         self.editor_tab=EditorTab(self,self.operation_host)
         self.activity_section=Fold(body,'Histórico e ajuda')
         self.build_activity(self.activity_section.body)
-        self.reload_rules();self.reload();self.show_operation('copy');self.update_buttons()
+        self.reload_rules();self.reload();self.show_operation('copy');self.copy_method_changed();self.update_buttons()
         self.poll_id=root.after(150,self.poll);self.tick_id=root.after(1000,self.tick)
         root.protocol('WM_DELETE_WINDOW',self.close)
 
@@ -102,14 +103,59 @@ class Window:
         for index,(label,var) in enumerate([('De qual canal?',self.source),('Para qual canal?',self.destination)]):
             fields.columnconfigure(index,weight=1,uniform='copy')
             block=ttk.Frame(fields,style='Card.TFrame',padding=(0,0,10 if index==0 else 0,0));block.grid(row=0,column=index,sticky='ew')
-            ttk.Label(block,text=label,style='Card.TLabel').pack(anchor='w');ttk.Entry(block,textvariable=var).pack(fill='x',pady=(5,8))
+            ttk.Label(block,text=label,style='Card.TLabel').pack(anchor='w')
+            row=ttk.Frame(block,style='Card.TFrame');row.pack(fill='x',pady=(5,8))
+            ttk.Entry(row,textvariable=var,width=16).pack(side='left',fill='x',expand=True,padx=(0,6))
+            self.button(row,'Selecionar…',lambda v=var:self.choose_channel(v))
+        choice=ttk.Frame(self.copy_form,style='Card.TFrame');choice.pack(fill='x',pady=8)
+        ttk.Radiobutton(choice,text='Até 100 mensagens · ocultar autores',variable=self.copy_method,value='forward100',command=self.copy_method_changed).pack(anchor='w')
+        ttk.Radiobutton(choice,text='Histórico completo · com substituições opcionais',variable=self.copy_method,value='rewrite',command=self.copy_method_changed).pack(anchor='w',pady=(5,0))
+        self.forward_hint=ttk.Label(self.copy_form,text='Seleciona as mensagens mais recentes, até 100 no total, contando cada mídia. Álbuns inteiros: se o próximo ultrapassar 100, fica de fora. Envia em ordem, oculta autores e mantém legendas. Não repete lotes.',style='CardMuted.TLabel',wraplength=900)
+        self.forward_hint.pack(fill='x',pady=(0,8))
         self.copy_options=Fold(self.copy_form,'Continuar copiando novos posts (opcional)')
         ttk.Checkbutton(self.copy_options.body,text='Copiar o histórico e continuar acompanhando novas publicações',variable=self.mode,onvalue='continuous',offvalue='history').pack(anchor='w')
         ttk.Label(self.copy_options.body,text='Desmarcado: copia apenas o histórico existente. O aplicativo precisa continuar aberto.',style='CardMuted.TLabel').pack(anchor='w')
         ttk.Checkbutton(self.copy_form,text='Tenho autorização para copiar o conteúdo deste canal.',variable=self.authorized).pack(anchor='w')
         create_row=ttk.Frame(self.copy_form,style='Card.TFrame');create_row.pack(fill='x')
         self.create_button=self.button(create_row,'Criar sincronização',self.create,True)
+        self.forward_hint.pack_configure(after=create_row)
+        self.copy_options.pack_configure(after=self.forward_hint)
         ttk.Label(self.copy_form,text='Os canais são verificados ao criar. A cópia fica pausada até você clicar em Iniciar.',style='CardMuted.TLabel',wraplength=900).pack(anchor='w',pady=(6,0))
+
+    def copy_method_changed(self):
+        native=self.copy_method.get()=='forward100'
+        self.create_button.configure(text='Preparar encaminhamento' if native else 'Criar sincronização')
+        self.forward_hint.configure(text=('Seleciona as mensagens mais recentes, até 100 no total, contando cada mídia. Álbuns inteiros: se o próximo ultrapassar 100, fica de fora. Envia em ordem, oculta autores e mantém legendas. Não repete lotes.' if native else 'Copia o histórico inteiro recriando textos e mídias. Permite substituições e acompanhamento de novos posts; não usa o limite total de 100.'))
+        self.copy_options.toggle.configure(state='disabled' if native else 'normal')
+        if native:self.copy_options.set_open(False)
+        if hasattr(self,'rules_section'):
+            self.rules_section.toggle.configure(state='disabled' if native else 'normal')
+            if native:self.rules_section.set_open(False)
+
+    def choose_channel(self,variable):
+        if not self.store.setting('account'):
+            self.login();self.notify('Conecte o Telegram para listar seus canais e grupos.');return
+        self.dispatch(self.runtime.engine.channels(),lambda channels:self.channel_picker(variable,channels))
+
+    def channel_picker(self,variable,channels):
+        dialog=tk.Toplevel(self.root);dialog.title('Selecionar canal ou grupo');dialog.geometry('650x450');dialog.transient(self.root);dialog.grab_set()
+        frame=ttk.Frame(dialog,padding=16);frame.pack(fill='both',expand=True)
+        ttk.Label(frame,text='Busque pelo nome e selecione abaixo.',style='Muted.TLabel').pack(anchor='w')
+        search=tk.StringVar();entry=ttk.Entry(frame,textvariable=search);entry.pack(fill='x',pady=10)
+        listing=table(frame,[('title','Canal ou grupo',400),('id','ID',150)],height=10)
+        note=tk.StringVar();ttk.Label(frame,textvariable=note,style='Muted.TLabel').pack(anchor='w',pady=8)
+        def refresh(*_):
+            listing.delete(*listing.get_children())
+            for item in channels:
+                if search.get().casefold() in item['title'].casefold():listing.insert('', 'end',iid=item['id'],values=(item['title'],item['id']))
+            note.set('O destino será verificado antes de criar a cópia.' if listing.get_children() else 'Nenhum canal encontrado. Você também pode informar @nome ou ID no formulário.')
+        def select(*_):
+            chosen=listing.selection()
+            if chosen:variable.set(chosen[0]);dialog.destroy()
+        search.trace_add('write',refresh);listing.bind('<Double-1>',select);listing.bind('<Return>',select)
+        ttk.Button(frame,text='Selecionar',style='Primary.TButton',command=select).pack(side='right')
+        ttk.Button(frame,text='Cancelar',command=dialog.destroy).pack(side='right',padx=8)
+        refresh();entry.focus_set()
 
     def build_tasks(self,parent):
         filters=card(parent,'Suas sincronizações');self.tasks_card=filters
@@ -292,7 +338,8 @@ class Window:
         if not self.store.setting('account'):
             self.login();self.notify('Conecte sua conta acima. Seus canais preenchidos serão mantidos.');return
         def done(job_id): self.task_created(job_id)
-        self.dispatch(self.runtime.engine.create(self.source.get(),self.destination.get(),self.mode.get(),list(self.rules),self.authorized.get()),done)
+        native=self.copy_method.get()=='forward100'
+        self.dispatch(self.runtime.engine.create(self.source.get(),self.destination.get(),'history' if native else self.mode.get(),[] if native else list(self.rules),self.authorized.get(),self.copy_method.get()),done)
 
     def selected(self):
         selected=self.jobs.selection()
@@ -346,7 +393,7 @@ class Window:
         self.authorized.set(False)
         self.task_filter.set('Todas');self.search.set('');self.reload();self.navigate('tasks')
         self.jobs.selection_set(str(job_id));self.jobs.see(str(job_id));self.details()
-        self.notify('Sincronização pronta. Confira origem e destino abaixo e clique em Iniciar cópia.')
+        self.notify('Cópia preparada. Confira origem, destino e quantidade abaixo; clique em Iniciar cópia para enviar.')
 
     def details(self):
         if not hasattr(self,'start_button'):return
@@ -361,6 +408,9 @@ class Window:
         counts=self.job_counts.get(job['id'],{'sent':0,'skipped':0,'sending':0})
         next_step={'paused':'Pronta para continuar. Clique em Iniciar cópia.','running':'Acompanhe os envios. Você pode pausar a qualquer momento.','completed':'O histórico foi concluído. Nenhuma ação é necessária.','cancelled':'Esta tarefa foi cancelada. As publicações enviadas permanecem no destino.','attention':'Confira a mensagem abaixo. Se houver envio sem confirmação, abra o destino e use Conferir envio.'}[job['status']]
         mode='Histórico + novos posts' if job['mode']=='continuous' else 'Somente histórico'
+        if job.get('copy_method')=='forward100':
+            mode=f"Seleção de {len(json.loads(job['selection']))} mensagens · autores ocultos · legendas mantidas"
+            if job['status']=='completed':next_step='Seleção concluída. Nenhum outro lote será enviado.'
         text=f"{job['source_title']} → {job['destination_title']}\n{LABELS[job['status']]} · {mode}\n\n{readable_count(counts['sent'])} publicadas  ·  {readable_count(counts['skipped'])} ignoradas  ·  {readable_count(counts['sending'])} sem confirmação\n\n{job['error'] or next_step}"
         self.detail.set(text)
         active=job['status']=='running'

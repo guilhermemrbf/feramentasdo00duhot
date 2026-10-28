@@ -48,6 +48,19 @@ class StoreTests(unittest.TestCase):
         job=self.create()
         with self.assertRaises(ValueError):self.store.patch(job,source='3')
         with self.assertRaises(UserError):self.store.create('3','4','x','y','history',[{'find':'','replacement':'x'}],0)
+
+    def test_forward_selection_rejects_more_than_100_rules_continuous_and_duplicate_ids(self):
+        for mode,rules,ids in [('history',[],list(range(1,102))),('continuous',[],[1]),('history',[{'find':'a','replacement':'b'}],[1]),('history',[],[1,1]),('history',[],[])]:
+            with self.assertRaises(UserError):self.store.create('1','2','A','B',mode,rules,101,'forward100',ids)
+
+    def test_legacy_jobs_keep_method_rules_and_checkpoint_after_column_migration(self):
+        job=self.create();self.store.patch(job,checkpoint=42)
+        self.store.conn.execute('alter table jobs drop column copy_method')
+        self.store.conn.execute('alter table jobs drop column selection');self.store.conn.commit()
+        self.store.close();self.store=Store(self.path)
+        saved=self.store.job(job)
+        self.assertEqual(saved['copy_method'],'rewrite');self.assertEqual(saved['selection'],'[]')
+        self.assertEqual(saved['checkpoint'],42);self.assertEqual(saved['rules'],'[]')
     def test_retry_before_side_effect(self):
         job=self.create();self.store.patch(job,status='attention',error='Permissão');self.store.control(job,'start')
         self.assertEqual(self.store.job(job)['status'],'running')

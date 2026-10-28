@@ -3,7 +3,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-VERSION = '0.5.2'
+VERSION = '0.6.0'
 
 
 def data_directory():
@@ -40,6 +40,7 @@ def self_test():
         store=Store(Path(directory)/'test.sqlite3')
         job=store.create('1','2','Origem','Destino','history',[],0)
         assert store.job(job)['status']=='paused'
+        forward_job=store.create('3','4','Origem de teste','Destino de teste','history',[],98,'forward100',list(range(1,99)))
         assert replace('hello old',[{'find':'old','replacement':'new'}])=='hello new'
         if os.name=='nt':
             from local_app.secrets import protect,unprotect
@@ -47,6 +48,9 @@ def self_test():
         root=tk.Tk();root.withdraw()
         window=Window(root,store)
         root.update()
+        assert window.copy_method.get()=='forward100'
+        window.jobs.selection_set(str(forward_job));window.details()
+        assert '98 mensagens' in window.detail.get()
         assert window.brand_mark.width()>0
         # Exercise the editor widgets in the packaged Windows application.
         from local_app.editor import DEFAULT_URL, rewrite, encode_entities

@@ -65,3 +65,18 @@ A criação da sincronização agora usa o formulário na tela principal. A vali
 O login acontece na própria tela, sem uma janela auxiliar. Código e senha de duas etapas são mostrados somente na etapa solicitada pelo Telegram. As credenciais persistidas continuam protegidas pelo DPAPI e os segredos transitórios continuam sendo limpos. Nenhuma conexão acontece apenas por abrir ou alternar formulários.
 
 No editor, **Ver prévia** prepara a análise, depois **Aplicar alterações** fica disponível. Mudar canal, destino ou opções invalida a aplicação da prévia no formulário até analisar de novo (ou voltar aos campos anteriores). A confirmação final identifica o canal, destino, quantidade e escopo. Backups, restauração, seleção múltipla, CSV e tratamento de conflitos continuam disponíveis. Não há migração de dados nem mudança na política de publicação/reenvio.
+
+
+## Encaminhamento nativo 0.6.0 — seleção única de até 100
+
+O novo padrão em **Copiar para outro canal** é **Até 100 mensagens · ocultar autores**. Selecione origem e destino pela lista pesquisável ou informe @nome/link/ID, confirme autorização e clique **Preparar encaminhamento**. A tarefa mostra os nomes dos canais e a quantidade selecionada, começa pausada e só publica ao clicar **Iniciar cópia**.
+
+A seleção captura as mensagens mais recentes até o último ID observado na preparação; cada mídia conta como uma mensagem. Ela para antes do primeiro álbum completo que faria ultrapassar 100, sem recortar esse álbum ou preencher a diferença com mensagens ainda mais antigas. Portanto pode conter menos de 100. O envio segue ordem cronológica, usando a operação nativa de encaminhamento com `drop_author=True` e `drop_media_captions=False`, preservando textos, entidades e legendas em vez de reconstruí-los. Não altera nomes dentro do texto ou da mídia.
+
+Os IDs escolhidos ficam congelados no SQLite. Depois da confirmação, a tarefa termina: não processa outro lote e não acompanha novos posts. Criar outra tarefa é uma nova seleção e pode repetir mensagens. Avisos de serviço não entram na seleção; proteção de conteúdo e permissões continuam sendo respeitadas. Se a seleção contém mensagens apagadas/inacessíveis antes de enviar, a operação é bloqueada para preparar novamente.
+
+O modo **Histórico completo · com substituições opcionais** mantém a implementação anterior. Regras de texto e acompanhamento contínuo são exclusivos desse modo; não são aplicados silenciosamente ao encaminhamento nativo. A migração aditiva do SQLite mantém tarefas antigas com `copy_method=rewrite`, regras e checkpoints preservados.
+
+Uma reserva durável antecede o único pedido de até 100 IDs da mesma origem. Timeout ou resposta parcial deixam a seleção sem confirmação para conferência manual; não há repetição automática ambígua. FloodWait definitivo libera a reserva e adia a mesma seleção. Pausar durante um pedido em andamento não desfaz publicações já aceitas.
+
+Testes utilizam mensagens/contas fictícias e transporte simulado, incluindo a construção do pedido real pela versão fixada de Telethon 1.40.0. Não enviam mensagens aos canais do usuário. A conferência final de mídia e aparência no Telegram real continua sendo um teste do titular em canais próprios.

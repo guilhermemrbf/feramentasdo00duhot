@@ -75,6 +75,21 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(str(self.window.create_button['state']),'disabled')
         self.assertEqual(str(self.window.connect_button['state']),'disabled')
 
+    def test_native_copy_defaults_and_picker_select_without_network_or_send(self):
+        self.assertEqual(self.window.copy_method.get(),'forward100')
+        self.assertEqual(str(self.window.rules_section.toggle['state']),'disabled')
+        self.window.channel_picker(self.window.source,[{'id':'-100123','title':'Origem de teste'}])
+        dialog=next(widget for widget in self.root.winfo_children() if isinstance(widget,tk.Toplevel))
+        def descendants(widget):
+            return [widget]+[child for inner in widget.winfo_children() for child in descendants(inner)]
+        tree=next(widget for widget in descendants(dialog) if isinstance(widget,ttk.Treeview))
+        tree.selection_set('-100123')
+        next(widget for widget in descendants(dialog) if isinstance(widget,ttk.Button) and str(widget['text'])=='Selecionar').invoke()
+        self.assertEqual(self.window.source.get(),'-100123')
+        self.window.runtime.engine.connected.assert_not_awaited()
+        self.window.copy_method.set('rewrite');self.window.copy_method_changed()
+        self.assertEqual(str(self.window.rules_section.toggle['state']),'normal')
+
     def test_live_editor_counters_filters_and_backup_preview(self):
         editor=self.window.editor_tab
         original={'text':'VIP','entities':encode_entities([types.MessageEntityTextUrl(0,3,'https://old.example')]),'media':None,'preview':False,'buttons':None}

@@ -1,4 +1,4 @@
-TELEGRAM SYNC 0.5.2 — 00duHot
+TELEGRAM SYNC 0.6.0 — 00duHot
 WINDOWS 10/11 64 BITS · GRATUITO E LOCAL
 
 PARA ABRIR OU ATUALIZAR
@@ -11,15 +11,24 @@ O painel no topo mostra as cópias publicadas, em execução, pausadas e com
 alerta. Ele continua visível quando você rola a tela. Escolha abaixo:
 
 COPIAR PARA OUTRO CANAL
-1. Preencha origem e destino: @nome, link público t.me ou ID numérico.
-2. Confirme que tem autorização para copiar e clique Criar sincronização.
-3. Confira os nomes na lista, selecione a tarefa e clique Iniciar cópia.
-Os canais são verificados ao criar. Nada começa automaticamente.
-Para acompanhar novos posts, abra a opção Continuar copiando novos posts.
-Sem marcar essa opção, copia apenas o histórico existente.
-Para mudar textos/links nas novas cópias, abra a opção de substituições.
-As regras são copiadas para a tarefa ao criar; alterações futuras nas regras
-não mudam tarefas já criadas.
+1. Informe origem e destino ou clique Selecionar para buscar seus canais/grupos.
+2. Mantenha Até 100 mensagens · ocultar autores. Confirme sua autorização
+   e clique Preparar encaminhamento. Nenhuma mensagem é enviada nesta etapa.
+3. Confira origem, destino e quantidade na tarefa pausada. Clique Iniciar cópia.
+Seleciona as mensagens mais recentes disponíveis ao preparar, até 100 no total.
+Cada foto, vídeo ou outro item de mídia conta como uma mensagem. Álbuns ficam
+inteiros: se o próximo álbum ultrapassar 100, ele fica de fora da seleção.
+Encaminha em ordem cronológica com nomes de autores ocultos e legendas mantidas.
+Termina após a seleção; não envia outro lote nem acompanha mensagens novas.
+As mensagens de serviço não são encaminhadas. Conteúdo protegido é bloqueado.
+Se uma mensagem selecionada sumir antes do envio, prepare uma nova seleção.
+Recriar uma cópia seleciona novamente as mais recentes e pode duplicar envios.
+
+HISTÓRICO COMPLETO E SUBSTITUIÇÕES
+Selecione explicitamente Histórico completo para usar a função anterior,
+recriando textos e mídias. Nesse modo, o limite total de 100 não se aplica.
+Para novos posts, abra Continuar copiando novos posts. Para trocar textos e
+links, abra as substituições opcionais. Tarefas antigas mantêm esse método.
 
 TROCAR LINKS DO MEU CANAL
 1. Escolha um canal que você administra e informe o novo link.

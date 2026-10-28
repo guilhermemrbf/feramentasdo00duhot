@@ -38,6 +38,13 @@ class Store:
                 id integer primary key, job_id integer references jobs(id) on delete cascade,
                 event text not null, created_at text not null);
         ''')
+        # Existing jobs retain the historical rewrite behavior and checkpoints.
+        columns = {row['name'] for row in self.conn.execute('pragma table_info(jobs)')}
+        with self.conn:
+            if 'copy_method' not in columns:
+                self.conn.execute("alter table jobs add column copy_method text not null default 'rewrite'")
+            if 'selection' not in columns:
+                self.conn.execute("alter table jobs add column selection text not null default '[]'")
         # A prior process can have died after a send but before confirmation.
         with self.lock, self.conn:
             self.conn.execute("update jobs set status='attention',error='Envio sem confirmação. Confira o destino antes de decidir a recuperação.' where id in (select job_id from messages where state='sending') and status not in ('completed','cancelled')")
@@ -78,10 +85,19 @@ class Store:
                 raise UserError('Tarefa não encontrada.')
             return dict(row)
 
-    def create(self, source, destination, source_title, destination_title, mode, rules, until_id):
+    def create(self, source, destination, source_title, destination_title, mode, rules, until_id, copy_method='rewrite', selection=None):
         if mode not in ('history','continuous') or source == destination:
             raise UserError('Origem, destino ou modo inválidos.')
         rules = validate_rules(rules)
+        selection = [] if selection is None else selection
+        if copy_method not in ('rewrite', 'forward100'):
+            raise UserError('Tipo de cópia inválido.')
+        if not isinstance(selection, list) or any(type(value) is not int or value <= 0 for value in selection) or selection != sorted(set(selection)):
+            raise UserError('Seleção de mensagens inválida.')
+        if copy_method == 'forward100' and (mode != 'history' or rules or not 1 <= len(selection) <= 100):
+            raise UserError('O encaminhamento usa até 100 mensagens no total, sem substituições ou acompanhamento contínuo.')
+        if copy_method == 'rewrite' and selection:
+            raise UserError('Seleção incompatível com a cópia de histórico.')
         with self.lock, self.conn:
             edges = self.conn.execute("select source,destination from jobs where status in ('running','paused','attention')").fetchall()
             pending, visited = [destination], set()
@@ -94,8 +110,8 @@ class Store:
                     pending.extend(edge['destination'] for edge in edges if edge['source'] == node)
             if any(edge['source'] == source and edge['destination'] == destination for edge in edges):
                 raise UserError('Já existe uma tarefa pendente para estes canais.')
-            cursor = self.conn.execute('insert into jobs(source,destination,source_title,destination_title,mode,rules,until_id,authorized_at,created_at) values (?,?,?,?,?,?,?,?,?)',
-                (source,destination,source_title,destination_title,mode,json.dumps(rules),until_id,now(),now()))
+            cursor = self.conn.execute('insert into jobs(source,destination,source_title,destination_title,mode,rules,until_id,authorized_at,created_at,copy_method,selection) values (?,?,?,?,?,?,?,?,?,?,?)',
+                (source,destination,source_title,destination_title,mode,json.dumps(rules),until_id,now(),now(),copy_method,json.dumps(selection)))
             job_id = cursor.lastrowid
             self.log(job_id,'Tarefa criada, pausada. Clique em Iniciar para publicar.')
             return job_id
