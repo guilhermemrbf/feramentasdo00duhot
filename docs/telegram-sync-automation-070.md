@@ -29,3 +29,10 @@ A conta e as permissões são conferidas a cada publicação. Ciclos e duplicida
 - ZIP público lido integralmente: HTTP 200, assinatura ZIP, 19171067 bytes; SHA-256 `35d334f51709f7f280f85bb8d1e1b59190d664f6b1eb8f408b3f29cd0d2a3551`, coincidente com manifesto e digest GitHub. Binário público não executado no PC do titular; CI executou o binário que gerou.
 
 Validação em canais reais, aparência das mídias e permissões da conta do titular continuam pendentes de teste pelo usuário. Não há prova de exactly-once distribuído; conferência manual errada pode duplicar mensagens.
+
+
+## Publicação
+
+O commit `980ff81` atualizou instruções e links verificados. Em 28/10/2026, o preview Lovable exibiu versão 0.7.0, release desktop-17-1 e seção Automação. Publicar alterações terminou com **Seu site foi atualizado**. A página pública `https://feramentasdo00duhot.lovable.app/telegram-sync` confirmou versão, link e instruções de uma a cinco execuções diárias.
+
+Evidências locais ignoradas: `.hot-profiles/telegram-070-published.png`, `.hot-profiles/telegram-070-live.png` e `.hot-profiles/telegram-070-ui-automation.png`. O acesso público existente foi mantido. Nenhuma sessão, canal real ou credencial foi enviada ao Lovable. Supabase e Hot Profiles não foram modificados nesta entrega.
