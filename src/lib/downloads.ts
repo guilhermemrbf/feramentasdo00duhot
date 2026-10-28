@@ -10,8 +10,8 @@ function packageDownload(tag: string, filename: string) {
 
 export const downloads = {
   telegramSync: {
-    version: "0.5.2",
-    ...packageDownload("telegram-sync-desktop-15-1", "TelegramSync-Windows.zip"),
+    version: "0.6.0",
+    ...packageDownload("telegram-sync-desktop-16-1", "TelegramSync-Windows.zip"),
   },
   hotProfiles: packageDownload("hot-profiles-local-6-1", "hot-profiles-connector.zip"),
   hotProfilesDesktop: {

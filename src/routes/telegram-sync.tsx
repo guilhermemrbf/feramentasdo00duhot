@@ -69,8 +69,8 @@ function TelegramSync() {
             },
             {
               icon: CheckCircle2,
-              title: "Histórico e novos posts",
-              text: "Importe o histórico ou mantenha a sincronização de novas publicações enquanto o programa estiver aberto.",
+              title: "Até 100 mensagens",
+              text: "Encaminhe uma seleção única com autores ocultos e legendas mantidas. Álbuns ficam inteiros dentro do limite.",
             },
             {
               icon: ShieldCheck,
@@ -96,11 +96,11 @@ function TelegramSync() {
               ],
               [
                 "Configure a cópia",
-                "Na mesma tela, escolha Copiar para outro canal e informe origem e destino. Se precisar trocar textos ou links, abra as substituições opcionais.",
+                "Escolha Copiar para outro canal, selecione origem e destino e mantenha Até 100 mensagens · ocultar autores. Para copiar todo o histórico com substituições, escolha esse outro modo explicitamente.",
               ],
               [
-                "Crie e inicie a tarefa",
-                "Clique em Criar sincronização. A tarefa nasce pausada: confira os canais e clique em Iniciar cópia. Teste primeiro entre dois canais seus.",
+                "Prepare e confira antes de enviar",
+                "Clique em Preparar encaminhamento. A tarefa nasce pausada: confira os canais e a quantidade e clique em Iniciar cópia. Envia as mais recentes em ordem, até 100 no total, e termina. Teste primeiro entre dois canais seus.",
               ],
             ].map(([title, text], index) => (
               <li key={title} className="flex gap-3">
@@ -128,10 +128,10 @@ function TelegramSync() {
           <p className="text-sm leading-6 text-muted-foreground">
             Na própria tela do aplicativo, pause as sincronizações e escolha Trocar links do meu
             canal. Escolha um canal que você administra, informe o novo destino e clique em Analisar
-            canal. Confira os totais e clique em Aplicar todos os links. Uma confirmação inicia
-            o lote inteiro; seleção e filtros servem apenas para conferir. O dashboard ao vivo
-            mostra posts e links pendentes, alterados, ignorados e a publicação em andamento.
-            Quando o Telegram exigir uma espera, a contagem regressiva aparece e o lote retoma
+            canal. Confira os totais e clique em Aplicar todos os links. Uma confirmação inicia o
+            lote inteiro; seleção e filtros servem apenas para conferir. O dashboard ao vivo mostra
+            posts e links pendentes, alterados, ignorados e a publicação em andamento. Quando o
+            Telegram exigir uma espera, a contagem regressiva aparece e o lote retoma
             automaticamente ao terminar, enquanto o aplicativo permanecer aberto.
           </p>
           <p className="text-sm leading-6 text-muted-foreground">
