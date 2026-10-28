@@ -30,3 +30,10 @@ O modo anterior de histórico completo/substituições é uma escolha separada. 
 `TelegramSync-Windows.zip`: 19143218 bytes; SHA-256 `fa529deeabc13ba2d36b9f3e662635c8c0fb52b2144f0d6c31f311ae4368af43`. Download integral por streaming, HTTP 200, assinatura ZIP e hash coincidentes com manifesto e digest GitHub. O binário público não foi executado no PC do titular; o CI executou o binário que gerou.
 
 A atualização preserva a pasta local de dados. Nenhuma migração Supabase, provedor pago, regra do Hot Profiles ou configuração do BlueStacks foi alterada.
+
+
+## Publicação Lovable
+
+O commit `e40d3ae` atualizou instruções e download do frontend. Em 28/10/2026 a prévia Lovable foi reconstruída e conferida em `/telegram-sync`: versão 0.6.0, release desktop-16-1, limite total e instrução Preparar encaminhamento. Publicar alterações terminou com **Seu site foi atualizado**. A página pública `https://feramentasdo00duhot.lovable.app/telegram-sync` abriu com o mesmo download e texto.
+
+Evidências locais ignoradas: `.hot-profiles/telegram-060-published.png`, `.hot-profiles/telegram-060-live.png` e capturas fictícias do CI `.hot-profiles/telegram-060-ui-home.png` / `telegram-060-ui-tasks.png`. O acesso público existente foi mantido. Não houve envio de mensagens ou credenciais ao Lovable.
