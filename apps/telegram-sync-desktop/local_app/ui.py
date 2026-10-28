@@ -32,13 +32,15 @@ class Window:
         self.brand_mark=brand_image(40);root.iconphoto(True,self.brand_mark)
         ttk.Label(top,image=self.brand_mark).pack(side='left',padx=(0,10))
         ttk.Label(top,text='Telegram Sync',style='Heading.TLabel').pack(side='left')
-        ttk.Label(top,text='00duHot · v0.6.0',style='Muted.TLabel').pack(side='left',padx=14)
+        ttk.Label(top,text='00duHot · v0.7.0',style='Muted.TLabel').pack(side='left',padx=14)
         self.account_controls=ttk.Frame(top);self.account_controls.pack(side='right')
         ttk.Label(self.account_controls,textvariable=self.account,style='Muted.TLabel').pack(side='left',padx=12)
         self.connect_button=ttk.Button(self.account_controls,text='Conectar Telegram',style='Primary.TButton',command=self.login)
         self.disconnect_button=ttk.Button(self.account_controls,text='Desconectar',style='Quiet.TButton',command=self.disconnect)
         dashboard=ttk.Frame(self.shell,padding=(22,0,22,0));dashboard.pack(fill='x');self.copy_dashboard=dashboard
         self.edit_dashboard=ttk.Frame(self.shell,padding=(22,0,22,0))
+        self.automation_dashboard=ttk.Frame(self.shell,padding=(22,0,22,0))
+        self.automation_metrics=metrics(self.automation_dashboard,[('sent','Cópias automáticas','Mensagens confirmadas',GREEN),('active','Agendas ativas','Aguardam os horários',BLUE),('paused','Pausadas','Sem novos envios',AMBER),('attention','Precisam de atenção','Confira antes de retomar',RED)],compact=True)
         self.edit_metrics=metrics(self.edit_dashboard,[('pending','Posts pendentes','Aguardam alteração',AMBER),('applied','Posts alterados','Confirmados no Telegram',GREEN),('restored','Restaurados','Backup aplicado',BLUE),('conflict','Ignorados','Confira o motivo no post',RED)],compact=True)
         self.home_metrics=metrics(dashboard,[('sent','Cópias publicadas','Mensagens confirmadas',GREEN),('running','Copiando agora','Sincronizações em execução',BLUE),('paused','Pausadas','Aguardando você iniciar',AMBER),('attention','Precisam de atenção','Confira antes de retomar',RED)],compact=True)
         footer=ttk.Frame(self.shell,padding=(22,10));footer.pack(side='bottom',fill='x')
@@ -51,7 +53,7 @@ class Window:
         chooser=ttk.Frame(body);self.chooser=chooser;chooser.pack(fill='x',pady=(0,12))
         ttk.Label(chooser,text='O que você quer fazer?',style='Heading.TLabel').pack(side='left',padx=(0,18))
         self.mode_buttons={}
-        for value,title in [('copy','Copiar para outro canal'),('edit','Trocar links do meu canal')]:
+        for value,title in [('copy','Copiar para outro canal'),('edit','Trocar links do meu canal'),('automation','Automação')]:
             button=ttk.Button(chooser,text=title,command=lambda v=value:self.show_operation(v));button.pack(side='left',padx=(0,8));self.mode_buttons[value]=button
         self.operation_host=ttk.Frame(body);self.operation_host.pack(fill='x')
         self.copy_panel=ttk.Frame(self.operation_host)
@@ -61,6 +63,8 @@ class Window:
         self.build_rules(self.rules_section.body)
         from .editor_ui import EditorTab
         self.editor_tab=EditorTab(self,self.operation_host)
+        from .automation_ui import AutomationTab
+        self.automation_tab=AutomationTab(self,self.operation_host)
         self.activity_section=Fold(body,'Histórico e ajuda')
         self.build_activity(self.activity_section.body)
         self.reload_rules();self.reload();self.show_operation('copy');self.copy_method_changed();self.update_buttons()
@@ -82,16 +86,18 @@ class Window:
 
     def show_operation(self, value):
         self.operation_choice.set(value)
-        self.copy_dashboard.pack_forget();self.edit_dashboard.pack_forget()
-        (self.copy_dashboard if value=='copy' else self.edit_dashboard).pack(fill='x',after=self.shell.winfo_children()[0])
-        self.copy_panel.pack_forget();self.editor_tab.frame.pack_forget()
-        (self.copy_panel if value=='copy' else self.editor_tab.frame).pack(fill='x')
+        self.page.canvas.yview_moveto(0)
+        self.copy_dashboard.pack_forget();self.edit_dashboard.pack_forget();self.automation_dashboard.pack_forget()
+        {'copy':self.copy_dashboard,'edit':self.edit_dashboard,'automation':self.automation_dashboard}[value].pack(fill='x',after=self.shell.winfo_children()[0])
+        self.copy_panel.pack_forget();self.editor_tab.frame.pack_forget();self.automation_tab.frame.pack_forget()
+        {'copy':self.copy_panel,'edit':self.editor_tab.frame,'automation':self.automation_tab.frame}[value].pack(fill='x')
         for key,button in self.mode_buttons.items():button.configure(style='Primary.TButton' if key==value else 'TButton')
-        self.active_page='tasks' if value=='copy' else 'editor'
+        self.active_page={'copy':'tasks','edit':'editor','automation':'automation'}[value]
 
     def navigate(self,key):
         if key in ('home','tasks','rules'):self.show_operation('copy')
         elif key=='editor':self.show_operation('edit')
+        elif key=='automation':self.show_operation('automation')
         if key=='rules':self.rules_section.set_open(True);self.scroll_to(self.rules_section)
         elif key=='activity':self.activity_section.set_open(True);self.scroll_to(self.activity_section)
         elif key=='tasks':self.scroll_to(self.tasks_card)
@@ -234,6 +240,7 @@ class Window:
             self.login_cancel.configure(state='disabled' if self.busy else 'normal')
         self.details()
         if hasattr(self,'editor_tab'):self.editor_tab.update_buttons()
+        if hasattr(self,'automation_tab'):self.automation_tab.update_buttons()
 
     def dispatch(self,coro,callback=None):
         if self.busy:coro.close();self.notify('Aguarde a operação atual.');return
@@ -429,6 +436,7 @@ class Window:
         else:self.recover_button.pack_forget()
 
     def reload(self):
+        if hasattr(self,'automation_tab'):self.automation_tab.refresh()
         jobs=self.store.jobs();self.jobs_data={j['id']:j for j in jobs};self.job_counts=self.store.message_counts()
         empty={'sent':0,'skipped':0,'sending':0}
         totals={k:sum(c.get(k,0) for c in self.job_counts.values()) for k in empty}

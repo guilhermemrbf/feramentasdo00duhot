@@ -3,7 +3,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-VERSION = '0.6.0'
+VERSION = '0.7.0'
 
 
 def data_directory():
@@ -48,6 +48,9 @@ def self_test():
         root=tk.Tk();root.withdraw()
         window=Window(root,store)
         root.update()
+        auto_id=window.runtime.engine.automation.db.save('5','6','Origem automática de teste','Destino automático de teste',321,'https://novo.example/entrar',['09:00','18:00'])
+        window.automation_tab.refresh();window.automation_tab.tree.selection_set(str(auto_id));window.automation_tab.select()
+        assert window.runtime.engine.automation.db.row(auto_id)['state']=='paused'
         assert window.copy_method.get()=='forward100'
         window.jobs.selection_set(str(forward_job));window.details()
         assert '98 mensagens' in window.detail.get()
@@ -74,7 +77,7 @@ def self_test():
             # CI-only screenshots of this temporary fixture; never a real account.
             import subprocess
             destination=Path('dist');destination.mkdir(exist_ok=True)
-            for page in ('home','tasks','editor'):
+            for page in ('home','tasks','editor','automation'):
                 window.navigate(page);root.update()
                 path=str((destination/('ui-'+page+'.png')).resolve()).replace("'","''")
                 script=("Add-Type -AssemblyName System.Drawing; "

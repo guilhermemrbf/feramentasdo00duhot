@@ -56,7 +56,7 @@ def telegram_client(session, api_id, api_hash, *, login=False):
     return TelegramClient(StringSession(session),api_id,api_hash,
         flood_sleep_threshold=0, request_retries=3 if login else 0,
         raise_last_call_error=True, connection_retries=2, timeout=20,
-        device_model='Telegram Sync Desktop', app_version='0.6.0')
+        device_model='Telegram Sync Desktop', app_version='0.7.0')
 
 
 class Engine:
@@ -68,6 +68,8 @@ class Engine:
         self.stopping = False
         from .editor import ChannelEditor
         self.editor = ChannelEditor(self)
+        from .automation import Automation
+        self.automation = Automation(self)
 
     async def begin_login(self, api_id, api_hash, phone):
         async with self.lock:
@@ -163,6 +165,8 @@ class Engine:
 
     async def disconnect(self, revoke=False):
         async with self.lock:
+            if any(row['state'] in ('active','attention') for row in self.automation.db.rows()):
+                raise UserError('Pause as automações e confira os envios pendentes antes de desconectar.')
             if any(j['status'] in ('running','paused','attention') for j in self.store.jobs()):
                 raise UserError('Cancele as tarefas pendentes antes de desconectar a conta.')
             if revoke:
@@ -361,6 +365,9 @@ class Engine:
                         self.store.log(job['id'],message)
                     self.emit('refresh',None)
                 await asyncio.sleep(0)
+            if not self.stopping:
+                async with self.lock:
+                    await self.automation.tick()
             await asyncio.sleep(0.5)
 
     async def shutdown(self):

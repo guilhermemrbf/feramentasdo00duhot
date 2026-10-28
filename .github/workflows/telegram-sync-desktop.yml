@@ -51,4 +51,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = 'telegram-sync-desktop-' + '${{ github.run_number }}' + '-' + '${{ github.run_attempt }}'
-          gh release create $tag dist/TelegramSync-Windows.zip dist/SHA256SUMS.txt dist/ui-home.png dist/ui-tasks.png dist/ui-editor.png --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Telegram Sync Desktop 0.6.0 — Windows' --notes-file LEIA-ME.txt --prerelease
+          gh release create $tag dist/TelegramSync-Windows.zip dist/SHA256SUMS.txt dist/ui-home.png dist/ui-tasks.png dist/ui-editor.png dist/ui-automation.png --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Telegram Sync Desktop 0.7.0 — Windows' --notes-file LEIA-ME.txt --prerelease

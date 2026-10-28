@@ -80,3 +80,20 @@ O modo **Histórico completo · com substituições opcionais** mantém a implem
 Uma reserva durável antecede o único pedido de até 100 IDs da mesma origem. Timeout ou resposta parcial deixam a seleção sem confirmação para conferência manual; não há repetição automática ambígua. FloodWait definitivo libera a reserva e adia a mesma seleção. Pausar durante um pedido em andamento não desfaz publicações já aceitas.
 
 Testes utilizam mensagens/contas fictícias e transporte simulado, incluindo a construção do pedido real pela versão fixada de Telethon 1.40.0. Não enviam mensagens aos canais do usuário. A conferência final de mídia e aparência no Telegram real continua sendo um teste do titular em canais próprios.
+
+
+## Automação 0.7.0 — cópia com links e agenda local
+
+A terceira ferramenta **Automação** reúne cópia e troca de links. Configure origem, destino, novo link HTTPS e de um a cinco horários diários, ajustáveis no formato HH:MM. Salvar cria a agenda pausada; **Ativar agenda** autoriza os próximos horários, sem envio imediato. Horários usam o fuso local do Windows. O PC e o aplicativo precisam permanecer ligados; atrasos superiores a cinco minutos sem execução iniciada são pulados, sem rajada de compensação.
+
+Em cada horário, seleciona até 100 mensagens recentes com álbuns inteiros, depois filtra IDs já confirmados pela mesma automação. Não preenche a diferença com posts mais antigos. Se chegarem mais de 100 mensagens entre horários, parte do histórico ficará fora dessa janela. Deduplicação persistida no SQLite não identifica envios manuais, outras automações ou contas; trocar link/horários não republica IDs já confirmados.
+
+Prepara os links antes de enviar cópias novas, sem cabeçalho de encaminhamento. Reutiliza o transformador do editor: muda destinos de entidades de URL, inclusive URLs escritas, mantendo o rótulo visível, texto, formatação UTF-16 e legendas. Não edita a origem ou publicações anteriores. Copia também posts sem links. @menções não são URLs. Botões e mídias fora de fotos/documentos bloqueiam a execução para conferência. Referências Telegram de mídia são reutilizadas, sem baixar arquivos ou usar FFmpeg.
+
+Cada álbum de até dez mídias gera uma operação de publicação com entidades de legenda explícitas; não se divide um álbum. Cada publicação tem reserva durável antes do pedido. Confirmação parcial ou timeout deixam a agenda em atenção sem nova tentativa automática. **Conferir envio** permite registrar confirmação do operador ou autorizar retry, com aviso de possível duplicação. FloodWait definitivo adia a mesma seleção. Um item por ciclo libera o motor para os controles da interface e demais tarefas.
+
+Agendas futuras ativas persistem entre aberturas. Seleções interrompidas sem envio incerto ficam pausadas e podem continuar no próximo horário após reativar; envios incertos ficam em atenção. Pausa não desfaz um pedido já aceito. A seleção pendente pode ser descartada depois de pausar e conferir respostas incertas, preservando todos os IDs já confirmados. Alterações de configuração exigem agenda pausada e nenhuma seleção pendente. Canais ficam fixos em uma agenda; outro par exige outra automação.
+
+A conta da agenda é verificada a cada publicação, bem como permissões e proteção da origem. Agendas ativas bloqueiam edição manual pelo editor e revogação da sessão. A validação de ciclos inclui tanto sincronizações quanto automações. As novas tabelas SQLite são aditivas; tarefas, sessões e backups existentes são preservados. Não usa agendador do Windows, servidor remoto, Supabase, serviço pago ou inicialização automática do programa.
+
+Testes de agenda e transporte são simulados. Não foram executados envios reais ou acessadas sessões pessoais durante o desenvolvimento. Faça o primeiro teste entre dois canais próprios.

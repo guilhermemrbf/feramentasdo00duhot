@@ -1,4 +1,4 @@
-TELEGRAM SYNC 0.6.0 — 00duHot
+TELEGRAM SYNC 0.7.0 — 00duHot
 WINDOWS 10/11 64 BITS · GRATUITO E LOCAL
 
 PARA ABRIR OU ATUALIZAR
@@ -29,6 +29,32 @@ Selecione explicitamente Histórico completo para usar a função anterior,
 recriando textos e mídias. Nesse modo, o limite total de 100 não se aplica.
 Para novos posts, abra Continuar copiando novos posts. Para trocar textos e
 links, abra as substituições opcionais. Tarefas antigas mantêm esse método.
+
+AUTOMAÇÃO — COPIAR E TROCAR LINKS COM AGENDA
+1. Abra Automação. Escolha origem, destino e o novo link HTTPS.
+2. Selecione de 1 a 5 vezes por dia e ajuste os horários HH:MM, separados por
+   vírgulas. São horários locais do Windows, sem servidor contratado.
+3. Confirme autorização e clique Salvar automação pausada.
+4. Confira a configuração na lista e clique Ativar agenda. O primeiro envio
+   ocorre no próximo horário escolhido, enquanto o PC e o aplicativo estiverem ligados.
+Cada execução verifica as 100 mensagens mais recentes, contando cada mídia,
+e copia só as novas que ainda não foram confirmadas por esta automação.
+Álbuns ficam inteiros; se ultrapassarem o limite, ficam de fora. Se houver
+mais de 100 mensagens entre horários, as mais antigas podem não ser copiadas.
+Troca os destinos clicáveis de links ocultos e URLs escritas, preservando o
+texto visível, legendas, entidades e mídias compatíveis. Não edita a origem.
+Posts sem links também são copiados. Não altera @menções ou links em botões.
+Posts protegidos, com botões ou mídias não suportadas param a execução para
+conferência. Fotos, vídeos e documentos são reutilizados sem baixar arquivos.
+Pausar interrompe os próximos pedidos; um pedido em andamento pode concluir.
+Horários perdidos por mais de 5 minutos são pulados, sem acumular execuções.
+FloodWait adia a mesma seleção, mantendo a agenda e o controle contra duplicações.
+Após reiniciar, agendas sem execução pendente continuam nos próximos horários.
+Uma seleção interrompida exige reativação; resposta incerta exige Conferir envio.
+Nunca autorize nova tentativa sem conferir o destino. Isso pode duplicar posts.
+Para ajustar link ou horários, pause primeiro. Conclua ou descarte a seleção
+pendente antes de editar. O registro de envios confirmados permanece salvo.
+A deduplicação vale por automação; não identifica cópias manuais ou outras contas.
 
 TROCAR LINKS DO MEU CANAL
 1. Escolha um canal que você administra e informe o novo link.

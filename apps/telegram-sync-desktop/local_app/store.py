@@ -72,7 +72,16 @@ class Store:
         with self.lock, self.conn:
             if self.conn.execute("select 1 from jobs where status in ('running','paused','attention')").fetchone():
                 raise UserError('Cancele as tarefas pendentes antes de desconectar.')
+            if self.conn.execute("select 1 from sqlite_master where type='table' and name='automations'").fetchone() and self.conn.execute("select 1 from automations where state in ('active','attention')").fetchone():
+                raise UserError('Pause as automações e confira os envios pendentes antes de desconectar.')
             self.conn.execute("delete from settings where key='account'")
+
+    def publication_edges(self,exclude_automation=None):
+        with self.lock:
+            edges=[tuple(row) for row in self.conn.execute("select source,destination from jobs where status in ('running','paused','attention')")]
+            if self.conn.execute("select 1 from sqlite_master where type='table' and name='automations'").fetchone():
+                edges.extend(tuple(row) for row in self.conn.execute("select source,destination from automations where state<>'cancelled' and (? is null or id<>?)",(exclude_automation,exclude_automation)))
+            return edges
 
     def jobs(self):
         with self.lock:
@@ -99,7 +108,7 @@ class Store:
         if copy_method == 'rewrite' and selection:
             raise UserError('Seleção incompatível com a cópia de histórico.')
         with self.lock, self.conn:
-            edges = self.conn.execute("select source,destination from jobs where status in ('running','paused','attention')").fetchall()
+            edges = [{'source':source,'destination':destination} for source,destination in self.publication_edges()]
             pending, visited = [destination], set()
             while pending:
                 node = pending.pop()

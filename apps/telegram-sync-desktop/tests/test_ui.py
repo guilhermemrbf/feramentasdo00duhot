@@ -90,6 +90,17 @@ class InterfaceTests(unittest.TestCase):
         self.window.copy_method.set('rewrite');self.window.copy_method_changed()
         self.assertEqual(str(self.window.rules_section.toggle['state']),'normal')
 
+    def test_automation_tab_shows_schedule_and_explicit_activation_without_send(self):
+        panel=self.window.automation_tab
+        identifier=panel.db.save('3','4','Origem automática','Destino automático',7,'https://new.example',['09:00','18:00'])
+        self.window.show_operation('automation');panel.refresh();panel.tree.selection_set(str(identifier));panel.select();self.root.update()
+        self.assertEqual(panel.frequency.get(),'2');self.assertEqual(panel.times.get(),'09:00, 18:00')
+        self.assertIn('09:00',panel.detail.get());self.assertEqual(panel.db.row(identifier)['state'],'paused')
+        self.assertTrue(panel.frame.winfo_manager());self.window.runtime.engine.connected.assert_not_awaited()
+        self.window.busy=True;self.window.update_buttons()
+        self.assertEqual(str(panel.save_button['state']),'disabled')
+        self.assertEqual(str(panel.activate_button['state']),'disabled')
+
     def test_live_editor_counters_filters_and_backup_preview(self):
         editor=self.window.editor_tab
         original={'text':'VIP','entities':encode_entities([types.MessageEntityTextUrl(0,3,'https://old.example')]),'media':None,'preview':False,'buttons':None}
@@ -116,11 +127,11 @@ class InterfaceTests(unittest.TestCase):
 
     def test_dashboard_stays_visible_when_scrolling_at_980_by_640(self):
         self.root.geometry('980x640');self.root.deiconify();self.root.update()
-        for operation in ('copy','edit'):
+        for operation in ('copy','edit','automation'):
             self.window.show_operation(operation);self.window.page.canvas.yview_moveto(0);self.root.update()
-            action=self.window.create_button if operation=='copy' else self.window.editor_tab.scan_button
+            action={'copy':self.window.create_button,'edit':self.window.editor_tab.scan_button,'automation':self.window.automation_tab.save_button}[operation]
             self.assertLessEqual(action.winfo_rooty()+action.winfo_height(),self.window.page.canvas.winfo_rooty()+self.window.page.canvas.winfo_height())
-            metric=(self.window.home_metrics['sent'] if operation=='copy' else self.window.edit_metrics['pending']).frame
+            metric={'copy':self.window.home_metrics['sent'],'edit':self.window.edit_metrics['pending'],'automation':self.window.automation_metrics['sent']}[operation].frame
             y=metric.winfo_rooty()
             self.window.page.canvas.yview_moveto(1);self.root.update()
             self.assertEqual(metric.winfo_rooty(),y)

@@ -176,6 +176,8 @@ class ChannelEditor:
     def idle_sync(self):
         if any(j['status'] == 'running' for j in self.engine.store.jobs()):
             raise UserError('Pause as sincronizações antes de analisar ou editar um canal.')
+        if hasattr(self.engine,'automation') and any(row['state']=='active' for row in self.engine.automation.db.rows()):
+            raise UserError('Pause as automações antes de analisar ou editar um canal.')
 
     async def channels(self):
         async with self.engine.lock:
