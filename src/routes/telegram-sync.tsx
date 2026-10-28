@@ -123,16 +123,37 @@ function TelegramSync() {
             Abrir portal oficial do Telegram <ArrowRight className="size-4" />
           </a>
         </section>
+        <section className="space-y-3 rounded-2xl border border-primary/25 bg-primary/5 p-6">
+          <h2 className="font-display text-xl font-semibold">Automação: copiar e trocar links</h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            No aplicativo, abra Automação e escolha origem, destino e o novo link HTTPS. Selecione
+            de uma a cinco vezes por dia e ajuste os horários locais do Windows. Clique em Salvar
+            automação pausada, confira os dados e use Ativar agenda. O primeiro envio acontece no
+            próximo horário escolhido.
+          </p>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Em cada horário, verifica até 100 mensagens recentes e copia apenas as novas, sem
+            repetir as já confirmadas por essa automação. Preserva álbuns inteiros e troca os
+            destinos clicáveis dos links antes de publicar, mantendo o texto visível, legendas e
+            mídias compatíveis. A origem permanece preservada.
+          </p>
+          <p className="text-xs leading-6 text-muted-foreground">
+            Mantenha o computador e o aplicativo ligados. Horários perdidos por mais de cinco
+            minutos são pulados. Se chegarem mais de 100 mensagens entre execuções, as mais antigas
+            podem ficar fora da seleção. Envios sem confirmação exigem conferência; conteúdo
+            protegido, botões e mídias não suportadas interrompem a automação.
+          </p>
+        </section>
         <section className="space-y-3 rounded-2xl border border-border bg-card p-6">
           <h2 className="font-display text-xl font-semibold">Editar links de posts existentes</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            Na própria tela do aplicativo, pause as sincronizações e escolha Trocar links do meu
-            canal. Escolha um canal que você administra, informe o novo destino e clique em Analisar
-            canal. Confira os totais e clique em Aplicar todos os links. Uma confirmação inicia o
-            lote inteiro; seleção e filtros servem apenas para conferir. O dashboard ao vivo mostra
-            posts e links pendentes, alterados, ignorados e a publicação em andamento. Quando o
-            Telegram exigir uma espera, a contagem regressiva aparece e o lote retoma
-            automaticamente ao terminar, enquanto o aplicativo permanecer aberto.
+            Na própria tela do aplicativo, pause as sincronizações e automações e escolha Trocar
+            links do meu canal. Escolha um canal que você administra, informe o novo destino e
+            clique em Analisar canal. Confira os totais e clique em Aplicar todos os links. Uma
+            confirmação inicia o lote inteiro; seleção e filtros servem apenas para conferir. O
+            dashboard ao vivo mostra posts e links pendentes, alterados, ignorados e a publicação em
+            andamento. Quando o Telegram exigir uma espera, a contagem regressiva aparece e o lote
+            retoma automaticamente ao terminar, enquanto o aplicativo permanecer aberto.
           </p>
           <p className="text-sm leading-6 text-muted-foreground">
             A edição troca os destinos de todos os links do texto, qualquer que seja o título
