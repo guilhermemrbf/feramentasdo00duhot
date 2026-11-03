@@ -30,4 +30,10 @@ Em 03/11/2026, o titular cancelou o desenvolvimento do encaminhamento por clique
 
 ## Atualização
 
-Feche o executável anterior antes de abrir o novo. A atualização usa a pasta de dados existente e não desinstala versões antigas nem apaga publicações no Telegram. O aplicativo não inclui assinatura digital comercial. A publicação da página Lovable será registrada após sua confirmação no editor e no site público.
+Feche o executável anterior antes de abrir o novo. A atualização usa a pasta de dados existente e não desinstala versões antigas nem apaga publicações no Telegram. O aplicativo não inclui assinatura digital comercial.
+
+## Publicação Lovable confirmada
+
+Em 03/11/2026, a prévia do projeto Lovable conectado foi atualizada com o frontend `3aecf77`. A página `/telegram-sync` mostrou **Trocar links do meu canal**, versão **0.7.1** e o download da tag **18-1**, sem oferecer cópia ou agenda. Após **Publicar alterações**, a Lovable confirmou **Seu site foi atualizado**.
+
+A página pública https://feramentasdo00duhot.lovable.app/telegram-sync foi aberta e confirmou o mesmo título, versão, conteúdo e URL de download. A captura de comprovação contém apenas a página pública; ficou em arquivo local ignorado pelo Git. Nenhuma publicação do Telegram, migração Supabase, instalação paga ou deploy em outro provedor foi realizado.
