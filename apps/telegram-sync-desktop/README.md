@@ -1,99 +1,34 @@
-# Telegram Sync Desktop
+# Telegram Sync Desktop 0.7.1
 
-Aplicativo Windows local e gratuito, independente de Railway, Supabase e Lovable. Usa Tkinter, Telethon, SQLite e DPAPI do usuário Windows. Não abre porta HTTP, não inclui credenciais de terceiros e não usa serviços pagos.
+Aplicativo gratuito para Windows, dedicado a **Trocar links do meu canal**. A interface contém apenas o editor, a conexão da conta e o histórico de análises e backups. Não depende de Railway, Supabase ou de uma aba Lovable aberta.
 
-## Executar do código
+## Usar e atualizar
 
-No Windows 10/11 x64 com Python 3.12 e Tcl/Tk: `python -m pip install -r requirements.txt`, depois `python main.py`. Em produção, distribua o executável portátil.
+Feche a versão anterior, extraia o ZIP e abra `TelegramSync.exe`. O executável não requer Python. Conta e backups permanecem em `%LOCALAPPDATA%/00duHot/TelegramSync`; não exclua essa pasta durante a atualização.
 
-## Gerar o executável sem custo de hospedagem
+1. Conecte sua conta no aplicativo, se necessário.
+2. Escolha um canal que você administra e informe o novo destino HTTPS.
+3. Clique **Analisar canal** para preparar uma prévia sem editar o Telegram.
+4. Confira o resultado e confirme **Aplicar todos os links**.
 
-Execute `./build.ps1` no Windows, ou use o workflow **Telegram Sync Windows** do GitHub Actions no repositório público. Ele testa, empacota com PyInstaller, executa o autoteste Windows (incluindo Tk e DPAPI) e publica um pré-lançamento com ZIP e SHA-256. O workflow é bloqueado em repositórios privados para não consumir franquia potencialmente faturável. Não muda a visibilidade de repositórios e não usa executores grandes.
+Troca os destinos clicáveis de links ocultos e URLs por extenso, preservando texto visível, linhas, formatação UTF-16 e mídias existentes. Não baixa nem republica arquivos de mídia. Menções e links em botões não são alterados. A conta precisa ser dona do canal ou administradora com permissão para editar mensagens; as permissões são verificadas antes das alterações.
 
-O executável Windows precisa ser gerado no Windows; não se renomeia um binário Linux como `.exe`. Não inclui assinatura digital comercial. O build local requer Python; usuários do executável não precisam instalá-lo. Dados e conta ficam fora do executável em `%LOCALAPPDATA%/00duHot/TelegramSync`, permitindo atualizar o programa sem apagar tarefas.
+A prévia cobre todos os posts elegíveis da análise. Seleção e filtros servem para conferência, sem reduzir silenciosamente o lote aplicado. Mudar o canal, destino ou opções invalida a aplicação até preparar uma nova prévia. Durante a edição, indicadores e progresso são atualizados na mesma janela. Uma pausa interrompe as próximas edições; um pedido já aceito pelo Telegram pode concluir.
 
-## Segurança e retomada
+## Backups e recuperação
 
-Não há backend nem porta local. Telethon conecta diretamente ao Telegram; credenciais persistidas são protegidas com Windows DPAPI. A segurança depende também da conta e do dispositivo Windows. Código de login e senha 2FA não persistem. Os logs não registram conteúdo das mensagens ou respostas brutas do provedor. O editor de canais guarda textos e entidades originais no SQLite local para restauração; esses backups não incluem arquivos de mídia e não são enviados a outro servidor. A sessão `StringSession` só existe em memória e no registro criptografado; nenhum arquivo `.session` é criado.
+Textos e entidades originais ficam nas tabelas locais `edit_batches`/`edit_items`. Antes de editar ou restaurar, o programa relê o post; alterações posteriores são preservadas como conflitos. Retomar compara o estado remoto, evitando repetir uma edição já aceita após uma resposta incerta. FloodWait é respeitado e a espera pode ser interrompida. O relatório CSV exclui sessões, credenciais e corpos completos das mensagens.
 
-Um lock de processo impede duas cópias de usarem o mesmo banco. O worker assíncrono opera em thread separada da UI e uma única conexão publica lotes curtos. Cada publicação reserva todos os IDs do álbum em transação antes do envio e confirma mapeamento/checkpoint após a resposta. Envios ambíguos nunca são reenviados automaticamente. Ao reiniciar, tarefas em execução viram pausadas; reservas pendentes exigem revisão. Após revisão manual, pode-se confirmar como enviado sem inventar IDs de destino, ou autorizar uma nova tentativa. Álbuns parcialmente publicados exigem revisão fora do fluxo automático.
+Credenciais persistidas usam Windows DPAPI. Código de login e senha de duas etapas não persistem. Não há porta HTTP local, serviço pago ou acesso por terceiros à conta. A segurança também depende do dispositivo e do usuário Windows.
 
-A sincronização contínua importa o histórico e depois consulta novos posts. Não replica edições/exclusões, membros, reações, tópicos ou respostas. A conversão de entidades preserva URLs ocultas com offsets UTF-16 e converte formatação em texto simples. Fotos, vídeos e documentos são republicados por referências Telegram; não há armazenamento de mídia no SQLite. Regras são literais, simultâneas e congeladas por tarefa.
+## Recursos retirados em 0.7.1
 
-## Verificação
+**Copiar para outro canal**, encaminhamento de 100 mensagens, sincronização contínua, substituições durante cópias e agendas de **Automação** foram removidos da interface e do motor executável. Não há worker de publicação em segundo plano. Tarefas e agendas antigas são marcadas como encerradas na abertura, inclusive as pendentes, sem apagar seus registros, checkpoints ou comprovantes de envio. Backups do editor e a conta são preservados. A atualização não apaga publicações no Telegram.
 
-`python -m unittest discover -s tests -v`. Testes de DPAPI e interface precisam de Windows; o workflow os executa. Testes de integração real exigem conta Telegram e dois canais próprios/autorizados. Não há garantia de entrega exatamente uma vez entre banco e Telegram; o mecanismo de conferência torna a ambiguidade explícita.
+Versões anteriores já instaladas continuam sendo programas independentes; feche-as e use o novo executável. Os documentos de versões anteriores registram o histórico do projeto e não descrevem funções disponíveis nesta versão.
 
-## Correção 0.1.1
+## Executar e empacotar
 
-O login agora permite até três novas tentativas na camada MTProto, necessárias quando o Telegram exige troca de data center. A versão anterior, com `request_retries=0`, era reproduzivelmente incapaz de concluir `auth.sendCode` após `PHONE_MIGRATE`. O teste de regressão exercita o código real `_call` do Telethon com transporte simulado, sem conta ou tráfego Telegram. Depois do login, a conexão é fechada e restaurada sob a política de publicação sem repetição automática. Erros conhecidos têm mensagens específicas; erros desconhecidos mostram apenas o nome da classe, nunca a resposta bruta ou as credenciais. Telefone aceita formatação comum e é normalizado antes do envio.
+Windows 10/11 x64 com Python 3.12 e Tcl/Tk: `python -m pip install -r requirements.txt`, depois `python main.py`. Para gerar o executável, execute `./build.ps1` ou o workflow **Telegram Sync Windows** no GitHub Actions do repositório público. O fluxo roda os testes, verifica a interface, empacota com PyInstaller e testa o executável, publicando ZIP e SHA-256 como pré-lançamento. O workflow não executa em repositórios privados para evitar consumo faturável.
 
-## Editor de canais 0.2.0
-
-A aba **Editar links no canal** usa a conta salva para listar canais administrados, analisar todo o histórico sem alterá-lo e exibir uma prévia persistente. Troca os destinos de entidades `MessageEntityTextUrl` (Ctrl+K), mantendo o texto clicável, formatação UTF-16 e mídias existentes. URLs por extenso podem ser incluídas por opção: o texto visível permanece e o destino clicável é alterado. Menções e posts com teclados de botões são ignorados. A prévia considera todos os links elegíveis, não apenas links de bot ou textos específicos: confira antes de aplicar.
-
-O destino inicial é `https://t.me/vipacessoliberado_bot`. A opção de limpeza remove apenas linhas cujo texto, sem emojis/espaços/pontuação, seja “outros grupos” ou “Hentai”. Não apaga publicações inteiras, não altera títulos de canais e não baixa arquivos. Uma legenda que ficaria vazia é ignorada.
-
-O editor exige canal broadcast e conta dona ou administradora com `edit_messages`, tanto na análise quanto na aplicação/restauração. A proteção contra encaminhamento não bloqueia a edição legítima do próprio canal. Sincronizações precisam ser pausadas antes de editar. A aplicação requer confirmação do canal, ID, destino e quantidade no aplicativo. Não há alterações ao apenas abrir, listar canais ou analisar.
-
-Backups e propostas ficam nas tabelas locais `edit_batches`/`edit_items`, separados das filas de sincronização. Antes de cada edição o conteúdo é relido: se mudou desde a prévia, é marcado como conflito e preservado. A restauração só é aplicada se o post ainda corresponde à proposta; não sobrescreve alterações posteriores. Interrupções e respostas ambíguas ficam pausadas; a retomada primeiro compara o estado remoto, sem repetir uma edição já confirmada. Análises incompletas não podem ser aplicadas. FloodWait é persistido e impede retomada antes do prazo. O programa respeita os limites do Telegram, mas não pode garantir ausência de novos limites.
-
-Testes automatizados usam transporte simulado. A verificação final no canal real depende da sessão e da confirmação do usuário no Windows; não há credenciais de Telegram disponíveis no ambiente de desenvolvimento.
-
-## Interface 0.3.0
-
-Visual inspirado no painel 00duHot: fundo escuro, destaque azul, menu lateral, cartões de indicadores e páginas com rolagem. Sem bibliotecas adicionais, servidor HTTP, cobrança ou migração do banco existente. A sessão, as tarefas, as regras e os backups continuam na mesma pasta.
-
-A visão geral mostra os resultados das sincronizações. “Publicadas” conta somente registros `sent`, incluindo os confirmados pelo operador; `skipped` e `sending` não são publicados. A coluna antiga `processed` inclui ignoradas e não é mais exibida como publicadas. O número da última mensagem nunca vira porcentagem, pois IDs podem ter lacunas. A tabela tem busca, filtros por estado e ações habilitadas conforme a tarefa selecionada. A criação abre um formulário em três etapas e continua criando tarefas pausadas.
-
-O editor tem indicadores próprios para a análise selecionada, progresso sobre o conjunto conhecido de propostas e comparação original/proposta lado a lado. Durante a análise, o progresso é indeterminado. Estados e contadores são atualizados sem recarregar os backups a cada edição. Busca e filtro alteram apenas a visualização: a aplicação mantém o escopo da análise salva e confirma a quantidade completa antes de editar. Restauração e conferência de envio permanecem com confirmação explícita.
-
-Os testes reais de Tk verificam navegação, busca, filtros, publicação versus ignoradas/sem confirmação, atualizações do editor, ações bloqueadas e rolagem em 980×640. Executam no Windows no workflow; em Linux requerem display gráfico. Não acessam Telegram. Horários da atividade usam o fuso local do computador.
-
-## Interface e seleção 0.4.0
-
-Marca original 00duHot incorporada ao executável, paleta neutra e destaque dourado discreto. O editor aceita seleção múltipla com Ctrl/Shift e escopo explícito: toda a análise ou somente os selecionados. O motor local valida todos os IDs antes de conectar ao Telegram; seleção inválida não inicia operações. Propostas não selecionadas continuam pendentes e a análise permanece disponível para retomada. Filtros de busca continuam alterando apenas a visualização.
-
-O relatório CSV é exportado somente por ação do operador. Inclui canal, destino, ID, título, situação e contagem de links; exclui sessão, API Hash e corpos completos. Campos com prefixos interpretáveis como fórmulas por planilhas são escapados. Não há alteração de esquema do banco. A marca é incluída com `--add-data` e o autoteste verifica que foi carregada tanto do código quanto do executável.
-
-## Tela única 0.5.0
-
-O dashboard fica fixo no topo, inclusive ao rolar. Sai o menu lateral e as cinco páginas: na própria janela, escolha **Copiar para outro canal** ou **Trocar links do meu canal**. A escolha só apresenta o formulário correspondente; não inicia operações. Regras, filtros, histórico e restauração ficam recolhidos. O modo de cópia padrão continua sendo somente histórico, sem acompanhamento de novos posts até marcar a opção.
-
-A criação da sincronização agora usa o formulário na tela principal. A validação dos canais ocorre ao criar, removendo o botão de verificação duplicada. A tarefa continua nascendo pausada e requer **Iniciar cópia**. Autorização de republicação permanece obrigatória e é desmarcada após criar. Pausa e conferência de envio aparecem quando são relevantes para a tarefa selecionada.
-
-O login acontece na própria tela, sem uma janela auxiliar. Código e senha de duas etapas são mostrados somente na etapa solicitada pelo Telegram. As credenciais persistidas continuam protegidas pelo DPAPI e os segredos transitórios continuam sendo limpos. Nenhuma conexão acontece apenas por abrir ou alternar formulários.
-
-No editor, **Ver prévia** prepara a análise, depois **Aplicar alterações** fica disponível. Mudar canal, destino ou opções invalida a aplicação da prévia no formulário até analisar de novo (ou voltar aos campos anteriores). A confirmação final identifica o canal, destino, quantidade e escopo. Backups, restauração, seleção múltipla, CSV e tratamento de conflitos continuam disponíveis. Não há migração de dados nem mudança na política de publicação/reenvio.
-
-
-## Encaminhamento nativo 0.6.0 — seleção única de até 100
-
-O novo padrão em **Copiar para outro canal** é **Até 100 mensagens · ocultar autores**. Selecione origem e destino pela lista pesquisável ou informe @nome/link/ID, confirme autorização e clique **Preparar encaminhamento**. A tarefa mostra os nomes dos canais e a quantidade selecionada, começa pausada e só publica ao clicar **Iniciar cópia**.
-
-A seleção captura as mensagens mais recentes até o último ID observado na preparação; cada mídia conta como uma mensagem. Ela para antes do primeiro álbum completo que faria ultrapassar 100, sem recortar esse álbum ou preencher a diferença com mensagens ainda mais antigas. Portanto pode conter menos de 100. O envio segue ordem cronológica, usando a operação nativa de encaminhamento com `drop_author=True` e `drop_media_captions=False`, preservando textos, entidades e legendas em vez de reconstruí-los. Não altera nomes dentro do texto ou da mídia.
-
-Os IDs escolhidos ficam congelados no SQLite. Depois da confirmação, a tarefa termina: não processa outro lote e não acompanha novos posts. Criar outra tarefa é uma nova seleção e pode repetir mensagens. Avisos de serviço não entram na seleção; proteção de conteúdo e permissões continuam sendo respeitadas. Se a seleção contém mensagens apagadas/inacessíveis antes de enviar, a operação é bloqueada para preparar novamente.
-
-O modo **Histórico completo · com substituições opcionais** mantém a implementação anterior. Regras de texto e acompanhamento contínuo são exclusivos desse modo; não são aplicados silenciosamente ao encaminhamento nativo. A migração aditiva do SQLite mantém tarefas antigas com `copy_method=rewrite`, regras e checkpoints preservados.
-
-Uma reserva durável antecede o único pedido de até 100 IDs da mesma origem. Timeout ou resposta parcial deixam a seleção sem confirmação para conferência manual; não há repetição automática ambígua. FloodWait definitivo libera a reserva e adia a mesma seleção. Pausar durante um pedido em andamento não desfaz publicações já aceitas.
-
-Testes utilizam mensagens/contas fictícias e transporte simulado, incluindo a construção do pedido real pela versão fixada de Telethon 1.40.0. Não enviam mensagens aos canais do usuário. A conferência final de mídia e aparência no Telegram real continua sendo um teste do titular em canais próprios.
-
-
-## Automação 0.7.0 — cópia com links e agenda local
-
-A terceira ferramenta **Automação** reúne cópia e troca de links. Configure origem, destino, novo link HTTPS e de um a cinco horários diários, ajustáveis no formato HH:MM. Salvar cria a agenda pausada; **Ativar agenda** autoriza os próximos horários, sem envio imediato. Horários usam o fuso local do Windows. O PC e o aplicativo precisam permanecer ligados; atrasos superiores a cinco minutos sem execução iniciada são pulados, sem rajada de compensação.
-
-Em cada horário, seleciona até 100 mensagens recentes com álbuns inteiros, depois filtra IDs já confirmados pela mesma automação. Não preenche a diferença com posts mais antigos. Se chegarem mais de 100 mensagens entre horários, parte do histórico ficará fora dessa janela. Deduplicação persistida no SQLite não identifica envios manuais, outras automações ou contas; trocar link/horários não republica IDs já confirmados.
-
-Prepara os links antes de enviar cópias novas, sem cabeçalho de encaminhamento. Reutiliza o transformador do editor: muda destinos de entidades de URL, inclusive URLs escritas, mantendo o rótulo visível, texto, formatação UTF-16 e legendas. Não edita a origem ou publicações anteriores. Copia também posts sem links. @menções não são URLs. Botões e mídias fora de fotos/documentos bloqueiam a execução para conferência. Referências Telegram de mídia são reutilizadas, sem baixar arquivos ou usar FFmpeg.
-
-Cada álbum de até dez mídias gera uma operação de publicação com entidades de legenda explícitas; não se divide um álbum. Cada publicação tem reserva durável antes do pedido. Confirmação parcial ou timeout deixam a agenda em atenção sem nova tentativa automática. **Conferir envio** permite registrar confirmação do operador ou autorizar retry, com aviso de possível duplicação. FloodWait definitivo adia a mesma seleção. Um item por ciclo libera o motor para os controles da interface e demais tarefas.
-
-Agendas futuras ativas persistem entre aberturas. Seleções interrompidas sem envio incerto ficam pausadas e podem continuar no próximo horário após reativar; envios incertos ficam em atenção. Pausa não desfaz um pedido já aceito. A seleção pendente pode ser descartada depois de pausar e conferir respostas incertas, preservando todos os IDs já confirmados. Alterações de configuração exigem agenda pausada e nenhuma seleção pendente. Canais ficam fixos em uma agenda; outro par exige outra automação.
-
-A conta da agenda é verificada a cada publicação, bem como permissões e proteção da origem. Agendas ativas bloqueiam edição manual pelo editor e revogação da sessão. A validação de ciclos inclui tanto sincronizações quanto automações. As novas tabelas SQLite são aditivas; tarefas, sessões e backups existentes são preservados. Não usa agendador do Windows, servidor remoto, Supabase, serviço pago ou inicialização automática do programa.
-
-Testes de agenda e transporte são simulados. Não foram executados envios reais ou acessadas sessões pessoais durante o desenvolvimento. Faça o primeiro teste entre dois canais próprios.
+Validação: `python -m unittest discover -s tests -v`. Testes usam dados e transporte simulados; os testes Windows incluem Tk e DPAPI. Nenhuma conta real é usada no CI. O executável não inclui assinatura digital comercial.

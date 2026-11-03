@@ -14,7 +14,6 @@ class Runtime:
 
     def _run(self):
         asyncio.set_event_loop(self.loop)
-        self.worker = self.loop.create_task(self.engine.run())
         self.loop.run_forever()
         self.loop.close()
 
@@ -34,12 +33,7 @@ class Runtime:
         self.closed = True
         async def stop():
             self.engine.stopping = True
-            self.worker.cancel()
-            try:
-                await self.worker
-            except asyncio.CancelledError:
-                pass
-            # Any interrupted publication remains 'sending' for review at next startup.
+            self.engine.editor.cancel.set()
             try:
                 await asyncio.wait_for(self.engine.shutdown(),timeout=5)
             except (Exception,asyncio.CancelledError):

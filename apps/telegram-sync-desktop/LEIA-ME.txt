@@ -1,113 +1,48 @@
-TELEGRAM SYNC 0.7.0 — 00duHot
+TELEGRAM SYNC 0.7.1 — EDITOR DE LINKS
 WINDOWS 10/11 64 BITS · GRATUITO E LOCAL
 
 PARA ABRIR OU ATUALIZAR
-Feche o aplicativo antigo, extraia o ZIP e abra TelegramSync.exe.
-Não precisa instalar Python. Sua conta, tarefas e backups ficam mantidos em
+Feche a versão anterior, extraia o ZIP e abra TelegramSync.exe.
+Não precisa instalar Python. Sua conta e seus backups permanecem em
 %LOCALAPPDATA%\00duHot\TelegramSync. Não apague essa pasta.
 
-TUDO NA MESMA TELA
-O painel no topo mostra as cópias publicadas, em execução, pausadas e com
-alerta. Ele continua visível quando você rola a tela. Escolha abaixo:
-
-COPIAR PARA OUTRO CANAL
-1. Informe origem e destino ou clique Selecionar para buscar seus canais/grupos.
-2. Mantenha Até 100 mensagens · ocultar autores. Confirme sua autorização
-   e clique Preparar encaminhamento. Nenhuma mensagem é enviada nesta etapa.
-3. Confira origem, destino e quantidade na tarefa pausada. Clique Iniciar cópia.
-Seleciona as mensagens mais recentes disponíveis ao preparar, até 100 no total.
-Cada foto, vídeo ou outro item de mídia conta como uma mensagem. Álbuns ficam
-inteiros: se o próximo álbum ultrapassar 100, ele fica de fora da seleção.
-Encaminha em ordem cronológica com nomes de autores ocultos e legendas mantidas.
-Termina após a seleção; não envia outro lote nem acompanha mensagens novas.
-As mensagens de serviço não são encaminhadas. Conteúdo protegido é bloqueado.
-Se uma mensagem selecionada sumir antes do envio, prepare uma nova seleção.
-Recriar uma cópia seleciona novamente as mais recentes e pode duplicar envios.
-
-HISTÓRICO COMPLETO E SUBSTITUIÇÕES
-Selecione explicitamente Histórico completo para usar a função anterior,
-recriando textos e mídias. Nesse modo, o limite total de 100 não se aplica.
-Para novos posts, abra Continuar copiando novos posts. Para trocar textos e
-links, abra as substituições opcionais. Tarefas antigas mantêm esse método.
-
-AUTOMAÇÃO — COPIAR E TROCAR LINKS COM AGENDA
-1. Abra Automação. Escolha origem, destino e o novo link HTTPS.
-2. Selecione de 1 a 5 vezes por dia e ajuste os horários HH:MM, separados por
-   vírgulas. São horários locais do Windows, sem servidor contratado.
-3. Confirme autorização e clique Salvar automação pausada.
-4. Confira a configuração na lista e clique Ativar agenda. O primeiro envio
-   ocorre no próximo horário escolhido, enquanto o PC e o aplicativo estiverem ligados.
-Cada execução verifica as 100 mensagens mais recentes, contando cada mídia,
-e copia só as novas que ainda não foram confirmadas por esta automação.
-Álbuns ficam inteiros; se ultrapassarem o limite, ficam de fora. Se houver
-mais de 100 mensagens entre horários, as mais antigas podem não ser copiadas.
-Troca os destinos clicáveis de links ocultos e URLs escritas, preservando o
-texto visível, legendas, entidades e mídias compatíveis. Não edita a origem.
-Posts sem links também são copiados. Não altera @menções ou links em botões.
-Posts protegidos, com botões ou mídias não suportadas param a execução para
-conferência. Fotos, vídeos e documentos são reutilizados sem baixar arquivos.
-Pausar interrompe os próximos pedidos; um pedido em andamento pode concluir.
-Horários perdidos por mais de 5 minutos são pulados, sem acumular execuções.
-FloodWait adia a mesma seleção, mantendo a agenda e o controle contra duplicações.
-Após reiniciar, agendas sem execução pendente continuam nos próximos horários.
-Uma seleção interrompida exige reativação; resposta incerta exige Conferir envio.
-Nunca autorize nova tentativa sem conferir o destino. Isso pode duplicar posts.
-Para ajustar link ou horários, pause primeiro. Conclua ou descarte a seleção
-pendente antes de editar. O registro de envios confirmados permanece salvo.
-A deduplicação vale por automação; não identifica cópias manuais ou outras contas.
-
 TROCAR LINKS DO MEU CANAL
-1. Escolha um canal que você administra e informe o novo link.
-2. Clique Analisar canal. Isso percorre o histórico sem alterar publicações.
-3. Confira os totais e clique Aplicar todos os links. Confirme uma vez
-   para executar o lote inteiro e acompanhe o dashboard ao vivo.
-Se mudar canal, link ou opções, prepare uma nova prévia.
-Troca todos os destinos de links do texto, inclusive URLs por extenso,
-independentemente do título. Preserva texto, linhas, formatação e mídia.
-Não remove linhas. Posts com botões continuam ignorados.
-Analise novamente para encontrar destinos diferentes do novo link.
-Seleção e filtros servem para conferir e não limitam o lote aplicado.
-Restauração, análises anteriores e relatório CSV estão na opção abaixo
-da prévia. O backup guarda textos/formatação, não os arquivos de mídia.
+1. Conecte sua conta no botão do topo, se necessário.
+2. Escolha um canal que você administra e informe o novo link HTTPS.
+3. Clique Analisar canal. Essa etapa prepara a prévia sem editar o canal.
+4. Confira os totais e confirme Aplicar todos os links.
+
+Troca os destinos clicáveis dos links, incluindo URLs escritas por extenso,
+preservando texto visível, linhas, formatação e mídias existentes.
+Não baixa nem republica mídias. Não altera menções ou links em botões.
+A conta deve ser dona do canal ou ter permissão para editar mensagens.
+Alterar canal, link ou opções exige preparar outra prévia antes de aplicar.
+Seleção e filtros servem para conferir; a confirmação aplica o lote inteiro.
+
+BACKUPS E PROGRESSO
+Acompanhe posts e links pendentes, alterados e ignorados nos indicadores.
+Pausar interrompe as próximas edições; a edição em andamento pode terminar.
+Análises anteriores, restauração e CSV ficam nas opções abaixo da prévia.
+O backup guarda textos e formatação, não arquivos de mídia.
 Posts alterados depois da prévia são preservados como conflitos.
+Limites de espera do Telegram são respeitados; o PC e o aplicativo precisam
+ficar ligados durante uma operação.
+
+FUNÇÕES REMOVIDAS
+Copiar para outro canal e Automação não estão disponíveis nesta versão.
+Tarefas e agendas antigas são encerradas na abertura e não são executadas
+em segundo plano. Seus registros históricos não são apagados. Conta e
+backups do editor são mantidos. A atualização não apaga posts no Telegram.
+Feche executáveis antigos antes de usar esta versão.
 
 CONECTAR TELEGRAM
-Clique Conectar Telegram no topo. Obtenha gratuitamente API ID e API Hash
-em https://my.telegram.org > API development tools. Informe os dados e
-o telefone com +55. Código e senha de duas etapas aparecem apenas quando
-forem solicitados. O login ocorre na própria tela.
-A sessão e o API Hash usam Windows DPAPI para seu usuário. Código e senha
-2FA não são salvos. Não compartilhe a pasta de dados. Para revogar o acesso,
-desconecte pelo aplicativo ou em Telegram > Configurações > Dispositivos.
+Obtenha gratuitamente API ID e API Hash em https://my.telegram.org.
+Informe-os no aplicativo, junto do telefone com código do país.
+Código e senha de duas etapas aparecem somente quando solicitados.
+Código e senha 2FA não são salvos. A sessão persistida usa Windows DPAPI.
+Não compartilhe sua pasta de dados com terceiros.
+Para revogar o acesso, use Desconectar ou Telegram > Configurações > Dispositivos.
 
-ENTENDER OS NÚMEROS
-Publicadas = mensagens confirmadas. Ignoradas e envios sem confirmação
-não entram nesse total. No editor, os números são da análise selecionada,
-separados das cópias do painel.
-Se um envio ficar sem confirmação, confira o destino antes de autorizar
-um reenvio: uma decisão incorreta pode duplicar publicações. Álbuns
-parcialmente publicados exigem revisão; mantenha a tarefa parada.
-
-FUNCIONAMENTO E LIMITES
-Não precisa de Railway, Supabase, Lovable ou servidor pago. Precisa de
-computador ligado, internet e aplicativo aberto. Ao fechar ou suspender,
-as operações param. Ao reabrir, você decide quando retomar.
-Não contorna proteção de conteúdo nem copia membros, tópicos, respostas,
-reações, visualizações ou edições/exclusões posteriores. A cópia converte
-a formatação em texto simples e expande links ocultos. A edição de links
-no próprio canal preserva formatação e mídias. Posts com botões são ignorados
-pelo editor. Tipos de mídia/legendas não suportados exigem revisão.
-Uma edição ou envio já em andamento pode terminar após pedir pausa.
-Limites do Telegram são respeitados: a contagem regressiva aparece e o lote
-retoma automaticamente, sem clicar novamente. Você pode pausar a espera.
-Ao fechar o aplicativo, a retomada na próxima abertura exige sua ação.
-Não há telemetria ou envio aos servidores 00duHot. O aplicativo conversa
-com o Telegram; ajuda abre o portal oficial. O relatório CSV é local e não
-inclui credenciais nem corpos completos, mas inclui canais e destinos.
-
-VERSÃO DE TESTE
-O executável não possui assinatura digital comercial. Confira o ZIP com
-SHA256SUMS.txt da mesma release. Não desative as proteções do Windows.
-Teste primeiro com poucos posts em dois canais seus antes de distribuir.
-
-EDITOR DE LINKS: Analise o canal e clique em Aplicar todos os links. A seleção e os filtros servem apenas para conferir. O dashboard acompanha posts e links pendentes/alterados, o post atual e o motivo de pausas. O lote é processado automaticamente, respeitando limites do Telegram. Posts sem permissão individual são ignorados; erros de conexão pausam para conferência; limites do Telegram aguardam o prazo e retomam automaticamente.
+Use apenas canais e conteúdos que você tem autorização para editar.
+Não exige servidor, assinatura paga ou página Lovable aberta.
+O executável não inclui assinatura digital comercial.

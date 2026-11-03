@@ -3,13 +3,10 @@ import json
 import re
 import contextlib
 import time
-from datetime import datetime, timezone
-from telethon import TelegramClient, errors, types
+from telethon import TelegramClient, errors
 from telethon.sessions import StringSession
-from telethon.utils import get_peer_id
-from .domain import UserError, channel_ref, caption, media_batches, validate_rules
+from .domain import UserError
 from .secrets import protect, unprotect
-from .forwarding import latest_selection
 
 
 def safe_error(reason):
@@ -56,7 +53,7 @@ def telegram_client(session, api_id, api_hash, *, login=False):
     return TelegramClient(StringSession(session),api_id,api_hash,
         flood_sleep_threshold=0, request_retries=3 if login else 0,
         raise_last_call_error=True, connection_retries=2, timeout=20,
-        device_model='Telegram Sync Desktop', app_version='0.7.0')
+        device_model='Telegram Sync Desktop', app_version='0.7.1')
 
 
 class Engine:
@@ -68,8 +65,7 @@ class Engine:
         self.stopping = False
         from .editor import ChannelEditor
         self.editor = ChannelEditor(self)
-        from .automation import Automation
-        self.automation = Automation(self)
+        self.store.retire_publication_features()
 
     async def begin_login(self, api_id, api_hash, phone):
         async with self.lock:
@@ -165,10 +161,6 @@ class Engine:
 
     async def disconnect(self, revoke=False):
         async with self.lock:
-            if any(row['state'] in ('active','attention') for row in self.automation.db.rows()):
-                raise UserError('Pause as automações e confira os envios pendentes antes de desconectar.')
-            if any(j['status'] in ('running','paused','attention') for j in self.store.jobs()):
-                raise UserError('Cancele as tarefas pendentes antes de desconectar a conta.')
             if revoke:
                 tg = await self.connected()
                 await tg.log_out()
@@ -178,200 +170,9 @@ class Engine:
             self.store.clear_account()
             self.emit('account','Desconectado')
 
-    async def entity(self, tg, reference):
-        ref = channel_ref(reference)
-        try:
-            entity = await tg.get_entity(ref)
-        except ValueError:
-            await tg.get_dialogs(limit=None)
-            entity = await tg.get_entity(ref)
-        if not isinstance(entity,(types.Channel,types.Chat)):
-            raise UserError('Selecione um canal ou grupo, não uma pessoa.')
-        if getattr(entity,'noforwards',False):
-            raise UserError('O canal tem proteção de conteúdo. A cópia foi bloqueada.')
-        return entity
-
-    async def pair(self, tg, source, destination):
-        src, dst = await self.entity(tg,source), await self.entity(tg,destination)
-        if get_peer_id(src) == get_peer_id(dst):
-            raise UserError('Origem e destino precisam ser diferentes.')
-        permissions = await tg.get_permissions(dst,'me')
-        if not (permissions.is_creator or permissions.is_admin):
-            raise UserError('A conta conectada precisa administrar o destino.')
-        if isinstance(dst,types.Channel) and dst.broadcast and not (permissions.is_creator or permissions.post_messages):
-            raise UserError('Falta permissão para publicar no canal de destino.')
-        return src,dst
-
-    async def resolve(self, source, destination):
-        async with self.lock:
-            tg = await self.connected()
-            src,dst = await self.pair(tg,source,destination)
-            return f'{src.title} ({get_peer_id(src)}) → {dst.title} ({get_peer_id(dst)})'
-
-    async def channels(self):
-        async with self.lock:
-            tg = await self.connected()
-            dialogs = await tg.get_dialogs(limit=None)
-            return sorted([
-                {'id':str(get_peer_id(dialog.entity)), 'title':dialog.title}
-                for dialog in dialogs
-                if isinstance(dialog.entity,(types.Channel,types.Chat))
-                and not getattr(dialog.entity,'noforwards',False)
-            ],key=lambda item:item['title'].casefold())
-
-    async def create(self, source, destination, mode, rules, authorized, copy_method='forward100'):
-        if not authorized:
-            raise UserError('Confirme que tem autorização para republicar o conteúdo.')
-        rules = validate_rules(rules)
-        if copy_method not in ('rewrite','forward100'):
-            raise UserError('Tipo de cópia inválido.')
-        if copy_method == 'forward100' and (mode != 'history' or rules):
-            raise UserError('O encaminhamento de até 100 mensagens mantém os textos e termina após o envio.')
-        async with self.lock:
-            tg = await self.connected()
-            src,dst = await self.pair(tg,source,destination)
-            latest = await tg.get_messages(src,limit=1)
-            if latest and latest[0].grouped_id and (datetime.now(timezone.utc)-latest[0].date).total_seconds()<5:
-                raise UserError('Um álbum acabou de chegar à origem. Aguarde alguns segundos e crie novamente.')
-            upper = latest[0].id if latest else 0
-            selection = []
-            if copy_method == 'forward100':
-                chosen = await latest_selection(tg.iter_messages(src,max_id=upper+1,limit=None)) if upper else []
-                if not chosen:
-                    raise UserError('Não há mensagens disponíveis para encaminhar nesta origem.')
-                if any(getattr(message,'noforwards',False) for message in chosen):
-                    raise UserError('A seleção contém uma publicação protegida. A cópia foi bloqueada.')
-                selection = [message.id for message in chosen]
-            job_id = self.store.create(str(get_peer_id(src)),str(get_peer_id(dst)),src.title,dst.title,mode,rules,upper,copy_method,selection)
-            self.emit('refresh',None)
-            return job_id
-
-    async def process(self, job):
-        tg = await self.connected()
-        src,dst = await self.pair(tg,job['source'],job['destination'])
-        if job.get('copy_method') == 'forward100':
-            await self.process_forward(tg,src,dst,job)
-            return
-        upper = job['until_id']
-        if job['mode'] == 'continuous':
-            latest = await tg.get_messages(src,limit=1)
-            upper = latest[0].id if latest else job['checkpoint']
-        messages = [m async for m in tg.iter_messages(src,min_id=job['checkpoint'],max_id=upper+1,reverse=True,limit=25)]
-        if messages and messages[-1].grouped_id:
-            tail = messages[-1]
-            async for message in tg.iter_messages(src,min_id=tail.id,max_id=upper+1,reverse=True,limit=10):
-                if message.grouped_id != tail.grouped_id:
-                    break
-                messages.append(message)
-        for batch in media_batches(messages):
-            if self.stopping or self.store.job(job['id'])['status'] != 'running':
-                return
-            if job['mode']=='continuous' and batch[0].grouped_id and (datetime.now(timezone.utc)-batch[-1].date).total_seconds()<5:
-                return
-            if any(getattr(m,'noforwards',False) for m in batch):
-                raise UserError('Publicação protegida. A tarefa foi interrompida.')
-            ids = [m.id for m in batch]
-            # Validate everything before the durable reservation (no side effects yet).
-            service = all(isinstance(m,types.MessageService) for m in batch)
-            texts = [] if service else [caption(m,json.loads(job['rules'])) for m in batch]
-            if not service:
-                for text,message in zip(texts,batch):
-                    media = message.media and not isinstance(message.media,types.MessageMediaWebPage)
-                    if media and not isinstance(message.media,(types.MessageMediaPhoto,types.MessageMediaDocument)):
-                        raise UserError('Esta publicação contém um tipo de mídia ainda não suportado.')
-                    if len(text.encode('utf-16-le'))//2 > (1024 if media else 4096):
-                        raise UserError('O texto após as substituições ultrapassou o limite do Telegram.')
-                if len(batch)>1 and not all(isinstance(m.media,(types.MessageMediaPhoto,types.MessageMediaDocument)) for m in batch):
-                    raise UserError('Álbum com mídia incompatível. Confira a origem.')
-            if not self.store.reserve(job['id'],ids):
-                self.store.advance_confirmed(job['id'],ids)
-                continue
-            try:
-                if service:
-                    sent = []
-                elif len(batch)>1:
-                    sent = await tg.send_file(dst,[m.media for m in batch],caption=texts,parse_mode=None)
-                elif batch[0].media and not isinstance(batch[0].media,types.MessageMediaWebPage):
-                    sent = [await tg.send_file(dst,batch[0].media,caption=texts[0],parse_mode=None)]
-                elif texts[0]:
-                    sent = [await tg.send_message(dst,texts[0],parse_mode=None,link_preview=False)]
-                else:
-                    sent = []
-            except errors.FloodWaitError as reason:
-                # Telegram definitively rejected this operation; safely release its reservation.
-                self.store.defer(job['id'],ids,reason.seconds)
-                self.store.log(job['id'],f'Limite Telegram: aguardando {reason.seconds} segundos.')
-                return
-            self.store.confirm(job['id'],ids,[m.id for m in sent])
-            self.store.log(job['id'],f'Origem {ids[0]}–{ids[-1]}: '+('publicado.' if sent else 'mensagem de serviço/vazia ignorada.'))
-            self.emit('refresh',None)
-            await asyncio.sleep(1)
-        current = self.store.job(job['id'])
-        if current['status'] == 'running':
-            if job['mode']=='history' and len(messages)<25:
-                self.store.patch(job['id'],status='completed',error=None)
-                self.store.log(job['id'],'Importação concluída.')
-            else:
-                self.store.patch(job['id'],next_run=time.time()+10,error=None)
-
-    async def process_forward(self, tg, src, dst, job):
-        ids = json.loads(job['selection'])
-        if not ids or len(ids)>100 or ids != sorted(set(ids)):
-            raise UserError('Seleção inválida. Nenhuma mensagem foi encaminhada.')
-        messages = await tg.get_messages(src,ids=ids)
-        if len(messages)!=len(ids) or any(not isinstance(message,types.Message) or message.id!=value for message,value in zip(messages,ids)):
-            raise UserError('Uma mensagem selecionada foi removida ou não está disponível. Crie uma nova seleção.')
-        if any(getattr(message,'noforwards',False) for message in messages):
-            raise UserError('Publicação protegida. O encaminhamento foi bloqueado.')
-        if self.stopping or self.store.job(job['id'])['status'] != 'running':
-            return
-        if self.store.reserve(job['id'],ids):
-            try:
-                sent = await tg.forward_messages(dst,ids,from_peer=src,drop_author=True,drop_media_captions=False)
-            except errors.FloodWaitError as reason:
-                self.store.defer(job['id'],ids,reason.seconds)
-                self.store.log(job['id'],f'Limite Telegram: aguardando {reason.seconds} segundos.')
-                return
-            if not isinstance(sent,(list,tuple)) or len(sent)!=len(ids) or any(message is None or not getattr(message,'id',None) for message in sent):
-                raise UserError('O Telegram não confirmou toda a seleção. Confira o destino antes de retomar.')
-            self.store.confirm(job['id'],ids,[message.id for message in sent])
-            self.store.log(job['id'],f'{len(ids)} mensagens encaminhadas com autores ocultos e legendas mantidas.')
-        else:
-            self.store.advance_confirmed(job['id'],ids)
-        # This is a one-shot selection, never another batch or new posts.
-        if self.store.job(job['id'])['status']=='running':
-            self.store.patch(job['id'],status='completed',error=None)
-        self.emit('refresh',None)
-
-    async def run(self):
-        while not self.stopping:
-            due = [j for j in self.store.jobs() if j['status']=='running' and j['next_run']<=time.time()]
-            # Oldest first; use a short batch to allow other jobs and controls to progress.
-            for job in reversed(due):
-                if self.stopping:
-                    break
-                async with self.lock:
-                    if self.store.job(job['id'])['status'] != 'running':
-                        continue
-                    try:
-                        await self.process(job)
-                    except asyncio.CancelledError:
-                        raise
-                    except errors.FloodWaitError as reason:
-                        self.store.patch(job['id'],next_run=time.time()+reason.seconds+1,error='Aguardando limite do Telegram.')
-                    except Exception as reason:
-                        message = ('Envio sem confirmação. Confira o destino antes de decidir a recuperação.' if self.store.pending(job['id']) else safe_error(reason))
-                        self.store.patch(job['id'],status='attention',error=message)
-                        self.store.log(job['id'],message)
-                    self.emit('refresh',None)
-                await asyncio.sleep(0)
-            if not self.stopping:
-                async with self.lock:
-                    await self.automation.tick()
-            await asyncio.sleep(0.5)
-
     async def shutdown(self):
         self.stopping = True
+        self.editor.cancel.set()
         await self._abort_login()
         if self.client:
             await self.client.disconnect()

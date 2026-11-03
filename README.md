@@ -80,8 +80,8 @@ Instruções do conector: [LEIA-ME](tools/hot-profiles/LEIA-ME.md), [estrutura l
 
 ## Telegram Sync
 
-Módulo de clonagem e sincronização autorizada de canais e grupos, com substituição de links, painel autenticado e worker Python isolado. Veja [configuração e limites](docs/telegram-sync.md).
+Aplicativo Windows para **Trocar links do meu canal**, com análise, prévia, aplicação e restauração de backups locais. Cópia entre canais e agendas foram retiradas na versão 0.7.1. Veja [instruções e limites](apps/telegram-sync-desktop/README.md).
 
 ### Telegram Sync Desktop gratuito
 
-A rota `/telegram-sync` agora distribui a versão local para Windows, sem banco remoto ou servidor. Código e instruções: [apps/telegram-sync-desktop](apps/telegram-sync-desktop). A implementação cloud anterior foi preservada para evolução futura. O executável é gerado e testado no workflow `Telegram Sync Windows`, apenas em repositórios públicos com executor padrão.
+A rota `/telegram-sync` distribui o editor local para Windows, sem banco remoto ou servidor. Código e instruções: [apps/telegram-sync-desktop](apps/telegram-sync-desktop). A implementação cloud anterior é histórica e não está integrada à plataforma. O executável é gerado e testado no workflow `Telegram Sync Windows`, apenas em repositórios públicos com executor padrão.

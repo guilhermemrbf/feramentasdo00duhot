@@ -3,7 +3,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-VERSION = '0.7.0'
+VERSION = '0.7.1'
 
 
 def data_directory():
@@ -40,7 +40,6 @@ def self_test():
         store=Store(Path(directory)/'test.sqlite3')
         job=store.create('1','2','Origem','Destino','history',[],0)
         assert store.job(job)['status']=='paused'
-        forward_job=store.create('3','4','Origem de teste','Destino de teste','history',[],98,'forward100',list(range(1,99)))
         assert replace('hello old',[{'find':'old','replacement':'new'}])=='hello new'
         if os.name=='nt':
             from local_app.secrets import protect,unprotect
@@ -48,12 +47,9 @@ def self_test():
         root=tk.Tk();root.withdraw()
         window=Window(root,store)
         root.update()
-        auto_id=window.runtime.engine.automation.db.save('5','6','Origem automática de teste','Destino automático de teste',321,'https://novo.example/entrar',['09:00','18:00'])
-        window.automation_tab.refresh();window.automation_tab.tree.selection_set(str(auto_id));window.automation_tab.select()
-        assert window.runtime.engine.automation.db.row(auto_id)['state']=='paused'
-        assert window.copy_method.get()=='forward100'
-        window.jobs.selection_set(str(forward_job));window.details()
-        assert '98 mensagens' in window.detail.get()
+        assert store.job(job)['status']=='cancelled'
+        assert not hasattr(window.runtime.engine,'automation')
+        assert not hasattr(window.runtime.engine,'process')
         assert window.brand_mark.width()>0
         # Exercise the editor widgets in the packaged Windows application.
         from local_app.editor import DEFAULT_URL, rewrite, encode_entities
@@ -64,7 +60,7 @@ def self_test():
         window.runtime.engine.editor.db.add(batch,7,original,desired,links)
         window.runtime.engine.editor.db.patch(batch,status='ready',note='Prévia de teste')
         window.editor_tab.complete(batch)
-        window.show_operation('edit')
+        window.navigate('editor')
         root.deiconify()
         root.update()
         window.editor_tab.tree.selection_set('7')
@@ -73,11 +69,11 @@ def self_test():
         assert DEFAULT_URL in window.editor_tab.detail.get('1.0','end')
         assert window.editor_tab.detail.winfo_height() >= 40
         assert window.editor_tab.tree.winfo_height() >= 40
-        if os.name=='nt' and os.environ.get('TELEGRAM_SYNC_UI_PREVIEW')=='1':
+        if os.name=='nt' and os.environ.get('GITHUB_ACTIONS')=='true' and os.environ.get('TELEGRAM_SYNC_UI_PREVIEW')=='1':
             # CI-only screenshots of this temporary fixture; never a real account.
             import subprocess
             destination=Path('dist');destination.mkdir(exist_ok=True)
-            for page in ('home','tasks','editor','automation'):
+            for page in ('editor',):
                 window.navigate(page);root.update()
                 path=str((destination/('ui-'+page+'.png')).resolve()).replace("'","''")
                 script=("Add-Type -AssemblyName System.Drawing; "

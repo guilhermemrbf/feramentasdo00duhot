@@ -1,6 +1,6 @@
 # Telegram Sync — instalação e operação
 
-> **Versão atual gratuita:** use o [aplicativo local Windows](../apps/telegram-sync-desktop/README.md). A página `/telegram-sync` oferece o download. As instruções de nuvem abaixo são históricas e opcionais; não são necessárias para usar o aplicativo local.
+> **Documento histórico:** a versão 0.7.1 mantém somente **Trocar links do meu canal** no [aplicativo local Windows](../apps/telegram-sync-desktop/README.md). Cópia entre canais e agendas foram removidas. A API cloud foi retirada da plataforma; as instruções abaixo registram a implementação antiga e não descrevem funções da versão atual.
 
 Não houve deploy ou aplicação automática da migração.
 

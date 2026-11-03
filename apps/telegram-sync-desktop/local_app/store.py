@@ -54,6 +54,15 @@ class Store:
         with self.lock:
             self.conn.close()
 
+    def retire_publication_features(self):
+        """Disable old publishers without deleting their records or editor backups."""
+        note='Função removida na versão 0.7.1. Histórico preservado; esta tarefa não será executada.'
+        with self.lock,self.conn:
+            self.conn.execute("update jobs set status='cancelled',error=?,next_run=0 where status in ('running','paused','attention')",(note,))
+            if self.conn.execute("select 1 from sqlite_master where type='table' and name='automations'").fetchone():
+                self.conn.execute("update automations set state='cancelled',note=?,next_run=0 where state<>'cancelled'",(note,))
+            self.conn.execute("insert or replace into settings(key,value) values ('publication_features_retired','1')")
+
     def setting(self, key):
         with self.lock:
             row = self.conn.execute('select value from settings where key=?', (key,)).fetchone()
@@ -70,9 +79,10 @@ class Store:
 
     def clear_account(self):
         with self.lock, self.conn:
-            if self.conn.execute("select 1 from jobs where status in ('running','paused','attention')").fetchone():
+            retired=self.setting('publication_features_retired')=='1'
+            if not retired and self.conn.execute("select 1 from jobs where status in ('running','paused','attention')").fetchone():
                 raise UserError('Cancele as tarefas pendentes antes de desconectar.')
-            if self.conn.execute("select 1 from sqlite_master where type='table' and name='automations'").fetchone() and self.conn.execute("select 1 from automations where state in ('active','attention')").fetchone():
+            if not retired and self.conn.execute("select 1 from sqlite_master where type='table' and name='automations'").fetchone() and self.conn.execute("select 1 from automations where state in ('active','attention')").fetchone():
                 raise UserError('Pause as automações e confira os envios pendentes antes de desconectar.')
             self.conn.execute("delete from settings where key='account'")
 
