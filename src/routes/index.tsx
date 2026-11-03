@@ -68,8 +68,8 @@ function Home() {
             },
             {
               to: "/telegram-sync" as const,
-              title: "Automatizar a rotina",
-              text: "Sincronização e edição de canais.",
+              title: "Atualizar links do canal",
+              text: "Prévia e troca de links dos seus posts.",
             },
           ].map((item) => (
             <Link key={item.to} to={item.to} className="workspace-shortcut">

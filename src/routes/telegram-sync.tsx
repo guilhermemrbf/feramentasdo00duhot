@@ -1,10 +1,10 @@
 import { downloads } from "@/lib/downloads";
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, Laptop, ShieldCheck, ArrowRight, CheckCircle2, Link2 } from "lucide-react";
+import { Download, Laptop, ShieldCheck, ArrowRight, Eye, Link2 } from "lucide-react";
 import { AppShell, PageIntro } from "@/components/AppShell";
 
 export const Route = createFileRoute("/telegram-sync")({
-  head: () => ({ meta: [{ title: "Telegram Sync gratuito para Windows — 00duHot" }] }),
+  head: () => ({ meta: [{ title: "Trocar links do meu canal — Telegram Sync · 00duHot" }] }),
   component: TelegramSync,
 });
 const { url: download, release } = downloads.telegramSync;
@@ -14,9 +14,9 @@ function TelegramSync() {
     <AppShell>
       <main className="mx-auto max-w-5xl space-y-7 p-5 sm:p-8">
         <PageIntro
-          eyebrow="APLICATIVO GRATUITO"
-          title="Telegram Sync"
-          description="Clone e sincronize canais e grupos autorizados do Telegram. Troque links de divulgação e organize suas tarefas diretamente no seu computador."
+          eyebrow="EDITOR DE LINKS · WINDOWS"
+          title="Trocar links do meu canal"
+          description="Atualize os destinos dos links em posts existentes de um canal que você administra. Analise os posts, confira o antes e depois e confirme as alterações no aplicativo Telegram Sync."
         />
         <section className="rounded-2xl border border-primary/25 bg-card p-6 sm:p-8">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
@@ -33,11 +33,11 @@ function TelegramSync() {
                 </span>
               </div>
               <h2 className="font-display text-2xl font-semibold">
-                Sua sincronização, no seu computador.
+                Telegram Sync · editor de links
               </h2>
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                Baixe, extraia o ZIP e abra TelegramSync.exe. Não precisa instalar Python, contratar
-                servidor ou assinar um plano para usar o aplicativo.
+                Baixe, extraia o ZIP e abra TelegramSync.exe. A edição acontece pelo aplicativo no
+                seu computador, com a sua conta e as permissões do seu canal.
               </p>
               <a
                 href={download}
@@ -46,7 +46,7 @@ function TelegramSync() {
                 <Download className="size-4" /> Baixar para Windows
               </a>
               <p className="text-xs leading-5 text-muted-foreground">
-                Aproximadamente 19 MB. O ZIP inclui o executável e as instruções.{" "}
+                O ZIP inclui o executável e as instruções.{" "}
                 <a
                   className="underline underline-offset-4"
                   href={release}
@@ -64,18 +64,18 @@ function TelegramSync() {
           {[
             {
               icon: Link2,
-              title: "Links personalizados",
-              text: "Troque links na sincronização ou edite links de posts existentes no seu canal, com prévia e restauração local.",
+              title: "Novo destino para os links",
+              text: "Informe o novo link HTTPS para substituir os destinos dos links nos posts do seu canal, mantendo o texto visível, as linhas, a formatação e as mídias compatíveis.",
             },
             {
-              icon: CheckCircle2,
-              title: "Até 100 mensagens",
-              text: "Encaminhe uma seleção única com autores ocultos e legendas mantidas. Álbuns ficam inteiros dentro do limite.",
+              icon: Eye,
+              title: "Confira antes de aplicar",
+              text: "Analise o canal e confira os posts e o antes e depois. A prévia não altera as publicações; a aplicação depende da sua confirmação.",
             },
             {
               icon: ShieldCheck,
-              title: "Conta no seu Windows",
-              text: "As credenciais são protegidas pelo Windows. Tarefas, regras e registros ficam no computador.",
+              title: "Backup no seu computador",
+              text: "As análises e os textos originais ficam salvos localmente para consulta, relatório CSV e restauração dos posts elegíveis.",
             },
           ].map(({ icon: Icon, title, text }) => (
             <article key={title} className="space-y-3 rounded-2xl border border-border bg-card p-5">
@@ -91,16 +91,16 @@ function TelegramSync() {
             {[
               ["Abra o aplicativo", "Extraia o ZIP no Windows e abra TelegramSync.exe."],
               [
-                "Conecte seu Telegram",
-                "Obtenha gratuitamente seu API ID e API Hash em my.telegram.org. Faça o login no aplicativo com seu telefone, código e, se solicitada, senha de duas etapas.",
+                "Conecte sua conta",
+                "Obtenha seu API ID e API Hash em my.telegram.org. Conecte sua conta no aplicativo com seu telefone, código e, se solicitada, senha de duas etapas.",
               ],
               [
-                "Configure a cópia",
-                "Escolha Copiar para outro canal, selecione origem e destino e mantenha Até 100 mensagens · ocultar autores. Para copiar todo o histórico com substituições, escolha esse outro modo explicitamente.",
+                "Escolha seu canal e analise",
+                "Em Trocar links do meu canal, escolha um canal que você administra, informe o novo link HTTPS e clique em Analisar canal.",
               ],
               [
-                "Prepare e confira antes de enviar",
-                "Clique em Preparar encaminhamento. A tarefa nasce pausada: confira os canais e a quantidade e clique em Iniciar cópia. Envia as mais recentes em ordem, até 100 no total, e termina. Teste primeiro entre dois canais seus.",
+                "Confira e aplique",
+                "Revise o antes e depois. Clique em Aplicar todos os links e confirme para editar todos os posts pendentes da análise. A seleção e os filtros servem para conferir a lista.",
               ],
             ].map(([title, text], index) => (
               <li key={title} className="flex gap-3">
@@ -123,61 +123,29 @@ function TelegramSync() {
             Abrir portal oficial do Telegram <ArrowRight className="size-4" />
           </a>
         </section>
-        <section className="space-y-3 rounded-2xl border border-primary/25 bg-primary/5 p-6">
-          <h2 className="font-display text-xl font-semibold">Automação: copiar e trocar links</h2>
-          <p className="text-sm leading-6 text-muted-foreground">
-            No aplicativo, abra Automação e escolha origem, destino e o novo link HTTPS. Selecione
-            de uma a cinco vezes por dia e ajuste os horários locais do Windows. Clique em Salvar
-            automação pausada, confira os dados e use Ativar agenda. O primeiro envio acontece no
-            próximo horário escolhido.
-          </p>
-          <p className="text-sm leading-6 text-muted-foreground">
-            Em cada horário, verifica até 100 mensagens recentes e copia apenas as novas, sem
-            repetir as já confirmadas por essa automação. Preserva álbuns inteiros e troca os
-            destinos clicáveis dos links antes de publicar, mantendo o texto visível, legendas e
-            mídias compatíveis. A origem permanece preservada.
-          </p>
-          <p className="text-xs leading-6 text-muted-foreground">
-            Mantenha o computador e o aplicativo ligados. Horários perdidos por mais de cinco
-            minutos são pulados. Se chegarem mais de 100 mensagens entre execuções, as mais antigas
-            podem ficar fora da seleção. Envios sem confirmação exigem conferência; conteúdo
-            protegido, botões e mídias não suportadas interrompem a automação.
-          </p>
-        </section>
         <section className="space-y-3 rounded-2xl border border-border bg-card p-6">
-          <h2 className="font-display text-xl font-semibold">Editar links de posts existentes</h2>
+          <h2 className="font-display text-xl font-semibold">Acompanhar e restaurar</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            Na própria tela do aplicativo, pause as sincronizações e automações e escolha Trocar
-            links do meu canal. Escolha um canal que você administra, informe o novo destino e
-            clique em Analisar canal. Confira os totais e clique em Aplicar todos os links. Uma
-            confirmação inicia o lote inteiro; seleção e filtros servem apenas para conferir. O
-            dashboard ao vivo mostra posts e links pendentes, alterados, ignorados e a publicação em
-            andamento. Quando o Telegram exigir uma espera, a contagem regressiva aparece e o lote
-            retoma automaticamente ao terminar, enquanto o aplicativo permanecer aberto.
+            O painel mostra os posts pendentes, alterados, restaurados e ignorados. Você pode pausar
+            a operação. Quando o Telegram exigir uma espera, o aplicativo mostra a contagem e retoma
+            o lote ao terminar, enquanto permanecer aberto.
           </p>
           <p className="text-sm leading-6 text-muted-foreground">
-            A edição troca os destinos de todos os links do texto, qualquer que seja o título
-            clicável, inclusive URLs por extenso. Mantém texto, linhas, formatação e mídias. Analise
-            novamente para encontrar destinos que ainda não apontam para o novo link. A restauração
-            continua disponível; posts alterados depois da prévia são preservados.
+            Em Análises anteriores, restaurar ou salvar relatório, consulte uma análise salva,
+            exporte o relatório CSV ou use Restaurar textos originais. A restauração usa o backup
+            local e preserva posts que receberam novas alterações depois da prévia.
           </p>
         </section>
         <aside className="space-y-3 rounded-2xl border border-border bg-secondary/40 p-6 text-sm leading-6 text-muted-foreground">
-          <h2 className="font-semibold text-foreground">O que precisa ficar ligado?</h2>
+          <h2 className="font-semibold text-foreground">Requisitos para editar seu canal</h2>
           <p>
-            O computador, a internet e o aplicativo. Ao fechar ou suspender o computador, a
-            sincronização para. Na próxima abertura, você escolhe quando retomar. A página na
-            Lovable não precisa ficar aberta.
+            Mantenha o computador, a internet e o aplicativo ligados durante a análise e a edição.
+            Sua conta precisa ter permissão para editar os posts do canal. Posts com botões e
+            conteúdos não compatíveis são ignorados; confira os motivos no painel.
           </p>
           <p>
-            Use conteúdo próprio ou autorizado. A ferramenta respeita proteção contra cópia e não
-            transfere membros, reações, tópicos ou alterações posteriores de posts. Se um envio
-            ficar sem confirmação, confira o destino antes de autorizar uma nova tentativa.
-          </p>
-          <p>
-            Esta versão não inclui assinatura digital comercial. Os testes automatizados incluem
-            abertura do executável no Windows; a validação com sua conta e seus canais deve ser
-            feita antes de usar em grande volume.
+            As credenciais são protegidas pelo Windows. Preserve a pasta de dados do aplicativo para
+            manter sua conta, suas análises e seus backups ao atualizar.
           </p>
         </aside>
       </main>

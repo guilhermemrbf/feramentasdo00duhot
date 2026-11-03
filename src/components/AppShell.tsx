@@ -244,7 +244,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
           {!searchTools(query).length && (
             <p className="p-6 text-sm text-muted-foreground">
-              Nenhuma ferramenta encontrada. Tente “vídeo”, “links” ou “Telegram”.
+              Nenhuma ferramenta encontrada. Tente “vídeo”, “links” ou “trocar links”.
             </p>
           )}
         </div>
