@@ -6,11 +6,12 @@ Construir um módulo original de gestão de vídeos e publicação para Instagra
 
 ## Estado atual
 
-- A rota `/automacao-instagram` apresenta o painel, contas, biblioteca, agendamento, legendas/hashtags e configurações.
-- A biblioteca e a fila desta primeira etapa são locais à sessão do navegador. Selecionar arquivos não significa fazer upload.
-- Nenhuma conta é conectada e nenhuma publicação real é feita.
-- As migrations abaixo definem uma fundação de dados e segurança; ainda precisam ser aplicadas e testadas em um projeto Supabase controlado pela equipe.
-- A API oficial da Meta, OAuth, Edge Functions, agendador, notificações e métricas ainda não estão ligados à interface.
+Atualizado em 04/11/2026. Consulte [operação e ativação](postkit-instagram-operation.md) para o estado implementado, testes e pendências.
+
+- A rota `/automacao-instagram` integra autenticação, workspaces, OAuth, upload privado, seleção de vídeos/contas, prévia, agendamento persistente e histórico com cancelamento.
+- O worker servidor retoma o processamento por etapas e exige conferência quando o resultado de uma publicação é incerto.
+- A publicação real depende de app Meta, conta profissional autorizada, segredos de servidor e agendador. Esses requisitos não são substituídos pelos testes locais.
+- Métricas externas, notificações e rotação automática de legendas não foram implementadas nesta entrega.
 
 ## Modelo de dados inicial
 
@@ -36,7 +37,7 @@ RLS está habilitado nas tabelas. Tokens não têm políticas de acesso para o c
 5. Execute testes com pelo menos dois usuários em workspaces separados, confirmando que cada um não consegue consultar, alterar ou baixar dados do outro.
 6. Configure secrets apenas depois de existir o código servidor correspondente. Nunca coloque credenciais privadas em variáveis `VITE_*`.
 
-Este repositório ainda não contém configuração de projeto Supabase nem um cliente Supabase instalado/configurado. Não aplique as migrations em produção sem revisão e testes.
+O repositório contém cliente Supabase e integração servidor. O projeto Lovable mostra as tabelas da fundação; a migração da fila deve ser aplicada antes de ativar o worker novo.
 
 ## Próximas entregas de implementação
 

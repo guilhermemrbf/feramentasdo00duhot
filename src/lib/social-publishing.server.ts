@@ -10,7 +10,7 @@ function getMetaGraphBaseUrl(): string {
 }
 
 async function instagramRequest<T>(url: URL, token: string, body?: URLSearchParams): Promise<T> {
-  if (!url.hostname.endsWith("instagram.com")) throw new Error("Unexpected Instagram API host.");
+  if (url.hostname !== "graph.instagram.com") throw new Error("Unexpected Instagram API host.");
   const response = await fetch(url, {
     method: body ? "POST" : "GET",
     // Meta's API accepts the token as a bearer header; do not put credentials
@@ -19,6 +19,7 @@ async function instagramRequest<T>(url: URL, token: string, body?: URLSearchPara
       ? { Authorization: `Bearer ${token}`, "Content-Type": "application/x-www-form-urlencoded" }
       : { Authorization: `Bearer ${token}` },
     body,
+    signal: AbortSignal.timeout(15_000),
   });
   const result = (await response.json().catch(() => null)) as
     | (T & { error?: { message?: string; type?: string; code?: number; fbtrace_id?: string } })
@@ -46,9 +47,7 @@ export class InstagramPublishAmbiguousError extends Error {
 }
 
 /** Publishes one Reel using Meta's container -> processing check -> publish flow. */
-export async function publishInstagramReel(
-  input: InstagramReelRequest,
-): Promise<{ mediaId: string }> {
+export async function createInstagramReelContainer(input: InstagramReelRequest): Promise<string> {
   if (!input.accessToken || !input.instagramUserId)
     throw new Error("Instagram authorization is missing.");
   if (input.caption.length > 2200) throw new Error("Instagram caption exceeds 2200 characters.");
@@ -70,37 +69,49 @@ export async function publishInstagramReel(
     createBody,
   );
   if (!container.id) throw new Error("Instagram did not return a Reel container ID.");
+  return container.id;
+}
 
-  const statusUrl = new URL(`${base}/${encodeURIComponent(container.id)}`);
+export async function getInstagramContainerStatus(accessToken: string, containerId: string) {
+  const statusUrl = new URL(`${getMetaGraphBaseUrl()}/${encodeURIComponent(containerId)}`);
   statusUrl.searchParams.set("fields", "status_code");
-  let ready = false;
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const status = await instagramRequest<{ status_code?: string }>(statusUrl, input.accessToken);
-    if (status.status_code === "FINISHED") {
-      ready = true;
-      break;
-    }
-    if (status.status_code === "ERROR" || status.status_code === "EXPIRED") {
-      throw new Error(`Instagram Reel processing ended with ${status.status_code}.`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-  }
-  if (!ready)
-    throw new Error("Instagram Reel processing is still pending; reconcile before retrying.");
+  const result = await instagramRequest<{ status_code?: string }>(statusUrl, accessToken);
+  return result.status_code ?? "UNKNOWN";
+}
 
+export async function publishInstagramContainer(input: {
+  accessToken: string;
+  instagramUserId: string;
+  containerId: string;
+}): Promise<{ mediaId: string }> {
   // Do not retry this call automatically on a timeout: a missing response can
   // mean that Meta accepted the publish even though the client did not see it.
-  const publishUrl = new URL(`${base}/${encodeURIComponent(input.instagramUserId)}/media_publish`);
+  const publishUrl = new URL(
+    `${getMetaGraphBaseUrl()}/${encodeURIComponent(input.instagramUserId)}/media_publish`,
+  );
   let published: { id: string };
   try {
     published = await instagramRequest<{ id: string }>(
       publishUrl,
       input.accessToken,
-      new URLSearchParams({ creation_id: container.id }),
+      new URLSearchParams({ creation_id: input.containerId }),
     );
   } catch {
     throw new InstagramPublishAmbiguousError();
   }
-  if (!published.id) throw new Error("Instagram did not confirm a published media ID.");
+  if (typeof published.id !== "string" || !published.id) throw new InstagramPublishAmbiguousError();
   return { mediaId: published.id };
+}
+
+/** One-shot helper for callers which do not use the durable worker. Never polls indefinitely. */
+export async function publishInstagramReel(
+  input: InstagramReelRequest,
+): Promise<{ mediaId: string }> {
+  const containerId = await createInstagramReelContainer(input);
+  if ((await getInstagramContainerStatus(input.accessToken, containerId)) !== "FINISHED") {
+    throw new Error(
+      "Instagram processing is pending; use the durable worker to resume this container.",
+    );
+  }
+  return publishInstagramContainer({ ...input, containerId });
 }

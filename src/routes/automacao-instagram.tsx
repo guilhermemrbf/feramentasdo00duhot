@@ -23,6 +23,8 @@ import { WorkspaceGate, type Workspace } from "@/components/postkit/WorkspaceGat
 import { supabase } from "@/integrations/supabase/client";
 import { startInstagramOAuth } from "@/lib/api/instagram-oauth.functions";
 import { zonedDateTimeToIso } from "@/lib/scheduling";
+import { InstagramHistory } from "@/components/postkit/InstagramHistory";
+import { validatePostkitVideo } from "@/lib/postkit-media";
 
 export const Route = createFileRoute("/automacao-instagram")({
   head: () => ({
@@ -38,7 +40,7 @@ export const Route = createFileRoute("/automacao-instagram")({
   component: AutomacaoInstagram,
 });
 
-type Tab = "dashboard" | "contas" | "biblioteca" | "fila" | "conteudo" | "config";
+type Tab = "dashboard" | "contas" | "biblioteca" | "fila" | "conteudo" | "config" | "historico";
 type VideoItem = {
   id: string;
   name: string;
@@ -56,6 +58,8 @@ type QueueItem = {
   time: string;
   caption: string;
   hashtags: string;
+  accountId: string;
+  accountName: string;
 };
 
 const tabItems = [
@@ -63,13 +67,16 @@ const tabItems = [
   { id: "contas", label: "Contas", icon: Users },
   { id: "biblioteca", label: "Biblioteca", icon: Library },
   { id: "fila", label: "Agendamento", icon: CalendarDays },
+  { id: "historico", label: "Histórico", icon: CheckCircle2 },
   { id: "conteudo", label: "Legendas e hashtags", icon: FileText },
   { id: "config", label: "Configurações", icon: Settings2 },
 ] as const;
 
 function AutomacaoInstagram() {
   return (
-    <WorkspaceGate>{(workspace) => <InstagramWorkspacePage workspace={workspace} />}</WorkspaceGate>
+    <WorkspaceGate>
+      {(workspace) => <InstagramWorkspacePage key={workspace.id} workspace={workspace} />}
+    </WorkspaceGate>
   );
 }
 
@@ -92,6 +99,14 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
   const [queueSaved, setQueueSaved] = useState(false);
   const [savingQueue, setSavingQueue] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [extraAccountIds, setExtraAccountIds] = useState<string[]>([]);
+  const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
+  const [repeatVideos, setRepeatVideos] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const uploadLock = useRef(false);
+  const [uploadProgress, setUploadProgress] = useState("");
+  const [historyRefresh, setHistoryRefresh] = useState(0);
+  const [savedCount, setSavedCount] = useState<number | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -128,7 +143,8 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
           setNotice(
             "Não foi possível carregar a biblioteca. Confira se as migrations do PostKit foram aplicadas.",
           );
-        else
+        else {
+          setSelectedVideoIds((data ?? []).map((asset) => asset.id));
           setVideos(
             (data ?? []).map((asset) => ({
               id: asset.id,
@@ -139,45 +155,24 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
               status: asset.status,
             })),
           );
+        }
       });
   }, [workspace.id]);
 
   useEffect(() => {
+    let active = true;
     void supabase
       .from("posts")
-      .select("idempotency_key,media_asset_id,scheduled_at,caption,media_assets(original_filename)")
+      .select("id", { count: "exact", head: true })
       .eq("workspace_id", workspace.id)
-      .eq("status", "scheduled")
-      .order("scheduled_at", { ascending: true })
-      .then(({ data }) => {
-        if (!data?.length) return;
-        const saved: QueueItem[] = data.flatMap((post) => {
-          if (!post.scheduled_at) return [];
-          const when = new Date(post.scheduled_at);
-          return [
-            {
-              id: post.idempotency_key,
-              assetId: post.media_asset_id,
-              video: post.media_assets?.original_filename ?? "Vídeo",
-              scheduledAt: post.scheduled_at,
-              date: new Intl.DateTimeFormat("pt-BR", {
-                timeZone: workspace.timezone,
-                dateStyle: "short",
-              }).format(when),
-              time: new Intl.DateTimeFormat("pt-BR", {
-                timeZone: workspace.timezone,
-                hour: "2-digit",
-                minute: "2-digit",
-              }).format(when),
-              caption: post.caption,
-              hashtags: "",
-            },
-          ];
-        });
-        setQueue(saved);
-        setQueueSaved(true);
+      .eq("status", "published")
+      .then(({ count, error }) => {
+        if (active) setSavedCount(error ? null : count);
       });
-  }, [workspace.id, workspace.timezone]);
+    return () => {
+      active = false;
+    };
+  }, [workspace.id, historyRefresh]);
 
   useEffect(() => {
     const result = new URLSearchParams(window.location.search).get("instagram");
@@ -212,60 +207,70 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
       : `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
 
   const uploadFiles = async (files: File[]) => {
-    const valid = files.filter(
-      (file) =>
-        ["video/mp4", "video/quicktime"].includes(file.type) && file.size <= 500 * 1024 * 1024,
-    );
-    if (!valid.length) {
-      setNotice("Selecione vídeos MP4 ou MOV com até 500 MB.");
-      return;
-    }
-    setNotice("Enviando vídeos para a biblioteca privada do workspace…");
+    if (uploadLock.current || !files.length) return;
+    uploadLock.current = true;
+    setUploading(true);
+    setNotice("Enviando vídeos para sua biblioteca privada…");
     const uploaded: VideoItem[] = [];
-    for (const file of valid) {
-      const id = crypto.randomUUID();
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120) || "video.mp4";
-      const storagePath = `${workspace.id}/${id}/${safeName}`;
-      const { error: uploadError } = await supabase.storage
-        .from("postkit-media")
-        .upload(storagePath, file, {
-          contentType: file.type,
-          upsert: false,
+    const errors: string[] = [];
+    try {
+      for (const [index, file] of files.entries()) {
+        setUploadProgress(`Arquivo ${index + 1} de ${files.length}: ${file.name}`);
+        let mimeType: string;
+        try {
+          mimeType = await validatePostkitVideo(file);
+        } catch (error) {
+          errors.push(
+            `${file.name}: ${error instanceof Error ? error.message : "Arquivo inválido"}`,
+          );
+          continue;
+        }
+        const id = crypto.randomUUID();
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120) || "video.mp4";
+        const storagePath = `${workspace.id}/${id}/${safeName}`;
+        const { error: uploadError } = await supabase.storage
+          .from("postkit-media")
+          .upload(storagePath, file, {
+            contentType: mimeType,
+            upsert: false,
+          });
+        if (uploadError) {
+          errors.push(`${file.name}: falha no envio.`);
+          continue;
+        }
+        const { error: assetError } = await supabase.from("media_assets").insert({
+          id,
+          workspace_id: workspace.id,
+          original_filename: file.name,
+          storage_path: storagePath,
+          mime_type: mimeType,
+          size_bytes: file.size,
+          status: "uploaded",
         });
-      if (uploadError) {
-        setNotice(
-          "O envio falhou. Confira o bucket privado postkit-media e as políticas de acesso do workspace.",
-        );
-        continue;
+        if (assetError) {
+          await supabase.storage.from("postkit-media").remove([storagePath]);
+          errors.push(`${file.name}: não foi possível registrar na biblioteca.`);
+          continue;
+        }
+        uploaded.push({
+          id,
+          name: file.name,
+          size: file.size,
+          type: mimeType,
+          storagePath,
+          status: "uploaded",
+        });
       }
-      const { error: assetError } = await supabase.from("media_assets").insert({
-        id,
-        workspace_id: workspace.id,
-        original_filename: file.name,
-        storage_path: storagePath,
-        mime_type: file.type,
-        size_bytes: file.size,
-        status: "uploaded",
-      });
-      if (assetError) {
-        await supabase.storage.from("postkit-media").remove([storagePath]);
-        setNotice(
-          "O arquivo foi enviado, mas não pôde ser registrado na biblioteca. Confira as migrations do PostKit.",
-        );
-        continue;
-      }
-      uploaded.push({
-        id,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        storagePath,
-        status: "uploaded",
-      });
+    } finally {
+      uploadLock.current = false;
+      setUploading(false);
+      setUploadProgress("");
+      setVideos((current) => [...uploaded, ...current]);
+      setSelectedVideoIds((current) => [...uploaded.map((file) => file.id), ...current]);
     }
-    setVideos((current) => [...uploaded, ...current]);
-    if (uploaded.length === valid.length)
-      setNotice(`${uploaded.length} vídeo(s) enviado(s) para a biblioteca privada.`);
+    setNotice(
+      `${uploaded.length} vídeo(s) salvo(s). ${errors.slice(0, 3).join(" ")}${errors.length > 3 ? ` E mais ${errors.length - 3} arquivo(s) com erro.` : ""}`,
+    );
   };
 
   const addFiles = (event: ChangeEvent<HTMLInputElement>) => {
@@ -278,25 +283,29 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
     );
   };
 
-  const removeVideo = (id: string) => {
-    const removed = videos.find((video) => video.id === id);
-    setVideos((current) => current.filter((video) => video.id !== id));
-    if (removed) {
-      setQueue((current) => current.filter((post) => post.assetId !== removed.id));
-    }
-  };
-
   const timeSlots = useMemo(
     () =>
       times
         .split(",")
         .map((value) => value.trim())
-        .filter((value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value)),
+        .filter((value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value))
+        .filter((value, index, all) => all.indexOf(value) === index)
+        .sort(),
     [times],
   );
 
   const generatePreview = () => {
-    if (!videos.length) {
+    const selectedVideos = videos.filter((video) => selectedVideoIds.includes(video.id));
+    const accountIds = [...new Set([selectedAccountId, ...extraAccountIds])].filter(Boolean);
+    const accounts = connectedAccounts.filter(
+      (account) => accountIds.includes(account.id) && account.connection_status === "connected",
+    );
+    if (!accounts.length) {
+      setNotice("Conecte e selecione pelo menos uma conta na seção Contas.");
+      setTab("contas");
+      return;
+    }
+    if (!selectedVideos.length) {
       setNotice("Adicione pelo menos um vídeo antes de montar a prévia.");
       setTab("biblioteca");
       return;
@@ -306,6 +315,16 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
       return;
     }
     const count = Math.max(1, Math.min(100, Number(quantity) || 1));
+    if (!repeatVideos && count > selectedVideos.length) {
+      setNotice(
+        "A quantidade é maior que os vídeos selecionados. Reduza a quantidade ou permita a repetição do acervo.",
+      );
+      return;
+    }
+    if (count * accounts.length > 500) {
+      setNotice("Divida a programação em lotes de até 500 publicações.");
+      return;
+    }
     const perDay = Math.max(1, Math.min(10, Number(dailyLimit) || 1));
     try {
       const [startYear, startMonth, startDay] = startDate.split("-").map(Number);
@@ -318,8 +337,10 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
         const scheduledAt = zonedDateTimeToIso(dateValue, time, workspace.timezone);
         return {
           id: crypto.randomUUID(),
-          assetId: videos[index % videos.length].id,
-          video: videos[index % videos.length].name,
+          assetId: selectedVideos[index % selectedVideos.length].id,
+          video: selectedVideos[index % selectedVideos.length].name,
+          accountId: accounts[0].id,
+          accountName: accounts[0].username,
           scheduledAt,
           date: new Intl.DateTimeFormat("pt-BR", {
             timeZone: workspace.timezone,
@@ -346,7 +367,16 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
         setNotice("Escolha apenas horários futuros no fuso horário do workspace.");
         return;
       }
-      setQueue(next);
+      setQueue(
+        accounts.flatMap((account) =>
+          next.map((post) => ({
+            ...post,
+            id: crypto.randomUUID(),
+            accountId: account.id,
+            accountName: account.username,
+          })),
+        ),
+      );
       setQueueSaved(false);
       setNotice("Prévia criada. Revise os horários antes de salvar o agendamento.");
       setTab("fila");
@@ -360,8 +390,11 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
   const saveQueue = async () => {
     if (savingQueue || queueSaved) return;
     if (
-      !connectedAccounts.some(
-        (account) => account.id === selectedAccountId && account.connection_status === "connected",
+      queue.some(
+        (post) =>
+          !connectedAccounts.some(
+            (account) => account.id === post.accountId && account.connection_status === "connected",
+          ),
       )
     ) {
       setNotice("A conta selecionada não está conectada. Reconecte antes de salvar.");
@@ -377,7 +410,7 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
       setNotice("Há horários vencidos ou inválidos. Gere uma nova prévia antes de salvar.");
       return;
     }
-    if (!queue.length || !selectedAccountId) {
+    if (!queue.length) {
       setNotice("Conecte e selecione uma conta profissional antes de salvar o agendamento.");
       return;
     }
@@ -400,7 +433,7 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
         queue.map((post) => ({
           idempotency_key: post.id,
           workspace_id: workspace.id,
-          instagram_account_id: selectedAccountId,
+          instagram_account_id: post.accountId,
           media_asset_id: post.assetId,
           content_type: "reel",
           caption: [post.caption.trim(), post.hashtags.trim()].filter(Boolean).join("\n\n"),
@@ -418,9 +451,8 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
         return;
       }
       setQueueSaved(true);
-      setNotice(
-        "Agendamento salvo no Supabase. A publicação automática será ativada quando o worker estiver configurado.",
-      );
+      setHistoryRefresh((value) => value + 1);
+      setNotice("Programação salva. Acompanhe cada publicação na seção Histórico.");
     } catch {
       setNotice(
         "Não foi possível confirmar o salvamento. Reabra os agendamentos antes de tentar novamente.",
@@ -441,16 +473,16 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <PageIntro
           eyebrow="PostKit · Automação"
-          title="Automação Instagram"
+          title="Automatic Post · Instagram"
           description="Conecte contas profissionais, envie vídeos para a biblioteca privada e organize sua programação do Instagram."
         />
 
         <div className="mt-5 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs leading-5">
           <AlertCircle className="size-4 shrink-0 text-amber-500" />
           <span>
-            <strong>Publicação por etapas:</strong> contas, biblioteca privada e fila agendada estão
-            integradas. A publicação automática começa quando o worker de produção estiver
-            configurado.
+            <strong>Organize e acompanhe:</strong> escolha os vídeos e as contas, revise a
+            programação e acompanhe as confirmações no Histórico. O serviço de publicação precisa
+            estar ativado no servidor para executar os horários salvos.
           </span>
         </div>
 
@@ -505,10 +537,10 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
                 detail="Instagram profissional"
               />
               <Metric
-                label="Vídeos nesta sessão"
+                label="Vídeos na biblioteca"
                 value={String(videoCount)}
                 icon={Video}
-                detail="Ainda não enviados ao servidor"
+                detail="Salvos na biblioteca privada"
               />
               <Metric
                 label={queueSaved ? "Itens agendados" : "Itens na prévia"}
@@ -518,9 +550,9 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
               />
               <Metric
                 label="Publicações realizadas"
-                value="—"
+                value={savedCount === null ? "—" : String(savedCount)}
                 icon={CheckCircle2}
-                detail="Disponível após integrar a Meta"
+                detail="Confirmadas no histórico"
               />
             </div>
             <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
@@ -542,7 +574,7 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
                   <Empty
                     icon={CalendarDays}
                     title="Sua fila começa aqui"
-                    text="Adicione vídeos à biblioteca e monte uma prévia da programação. A fila real será salva no backend."
+                    text="Adicione vídeos à biblioteca e monte sua programação. Os agendamentos salvos aparecem no Histórico."
                   />
                 )}
               </Panel>
@@ -570,6 +602,14 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
               </Panel>
             </div>
           </section>
+        )}
+
+        {tab === "historico" && (
+          <InstagramHistory
+            workspaceId={workspace.id}
+            timezone={workspace.timezone}
+            refreshKey={historyRefresh}
+          />
         )}
 
         {tab === "contas" && (
@@ -635,13 +675,15 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
               <input
                 ref={fileInput}
                 type="file"
-                accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"
+                accept="video/mp4,video/quicktime,.mp4,.mov"
+                disabled={uploading}
                 multiple
                 className="hidden"
                 onChange={addFiles}
               />
               <button
                 onClick={() => fileInput.current?.click()}
+                disabled={uploading}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
                   event.preventDefault();
@@ -654,13 +696,17 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
                 className="w-full rounded-lg border border-dashed border-border bg-secondary/20 px-6 py-10 text-center transition-colors hover:border-primary/60"
               >
                 <Upload className="mx-auto size-7 text-primary" />
-                <p className="mt-3 text-sm font-semibold">Selecione ou arraste seus vídeos</p>
+                <p className="mt-3 text-sm font-semibold" role="status">
+                  {uploading ? uploadProgress : "Selecione ou arraste seus vídeos"}
+                </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   MP4 ou MOV · até 500 MB · armazenamento privado por workspace
                 </p>
               </button>
               <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                <span>{videos.length} arquivo(s) nesta sessão</span>
+                <span>
+                  {selectedVideoIds.length} selecionado(s) de {videos.length} arquivo(s) salvos
+                </span>
                 <span>
                   {formattedSize(videos.reduce((total, video) => total + video.size, 0))} no total
                 </span>
@@ -678,13 +724,18 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
                           {formattedSize(video.size)} · {video.type || "tipo não identificado"}
                         </p>
                       </div>
-                      <button
-                        onClick={() => removeVideo(video.id)}
-                        aria-label={`Remover ${video.name}`}
-                        className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                      >
-                        <X className="size-4" />
-                      </button>
+                      <input
+                        type="checkbox"
+                        aria-label={`Usar ${video.name}`}
+                        checked={selectedVideoIds.includes(video.id)}
+                        onChange={(event) =>
+                          setSelectedVideoIds((current) =>
+                            event.target.checked
+                              ? [...current, video.id]
+                              : current.filter((id) => id !== video.id),
+                          )
+                        }
+                      />
                     </div>
                   ))}
                 </div>
@@ -700,8 +751,44 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
         {tab === "fila" && (
           <section className="mt-6 space-y-4">
             <Panel title="Montar prévia de agendamento">
+              <fieldset className="mb-5 rounded-md border border-border p-3">
+                <legend className="px-1 text-xs font-semibold">Publicar nas contas</legend>
+                {connectedAccounts
+                  .filter((account) => account.connection_status === "connected")
+                  .map((account) => (
+                    <label
+                      key={account.id}
+                      className="mr-4 inline-flex items-center gap-2 py-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={
+                          account.id === selectedAccountId || extraAccountIds.includes(account.id)
+                        }
+                        onChange={(event) => {
+                          if (event.target.checked)
+                            setExtraAccountIds((current) => [...current, account.id]);
+                          else {
+                            if (account.id === selectedAccountId) setSelectedAccountId("");
+                            setExtraAccountIds((current) =>
+                              current.filter((id) => id !== account.id),
+                            );
+                          }
+                        }}
+                      />{" "}
+                      @{account.username}
+                    </label>
+                  ))}
+                {!connectedAccounts.some(
+                  (account) => account.connection_status === "connected",
+                ) && (
+                  <p className="text-xs text-muted-foreground">
+                    Conecte sua primeira conta na seção Contas.
+                  </p>
+                )}
+              </fieldset>
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Quantidade de publicações">
+                <Field label="Publicações por conta">
                   <input
                     type="number"
                     min={1}
@@ -747,10 +834,18 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
                   />
                 </Field>
                 <div className="rounded-md border border-border bg-secondary/30 p-3 text-xs leading-5 text-muted-foreground">
-                  O intervalo de {intervalMinutes} minutos fica registrado como preferência de
-                  interface nesta fase. A validação real dos horários será implementada no backend.
+                  Fuso: {workspace.timezone}. A prévia verifica o intervalo mínimo entre os horários
+                  deste lote. Confira também os agendamentos anteriores no Histórico.
                 </div>
               </div>
+              <label className="mt-4 flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={repeatVideos}
+                  onChange={(event) => setRepeatVideos(event.target.checked)}
+                />{" "}
+                Permitir repetir os vídeos selecionados quando o lote for maior que o acervo.
+              </label>
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-4">
                 <div>
                   <p className="text-sm font-semibold">Gerar prévia local</p>
@@ -781,22 +876,10 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
             >
               {queue.length ? (
                 <>
-                  <Field label="Publicar em qual conta">
-                    <select
-                      className="field"
-                      value={selectedAccountId}
-                      onChange={(event) => setSelectedAccountId(event.target.value)}
-                    >
-                      <option value="">Selecione uma conta conectada</option>
-                      {connectedAccounts
-                        .filter((account) => account.connection_status === "connected")
-                        .map((account) => (
-                          <option key={account.id} value={account.id}>
-                            @{account.username}
-                          </option>
-                        ))}
-                    </select>
-                  </Field>
+                  <p className="text-xs text-muted-foreground">
+                    As contas e legendas abaixo fazem parte desta prévia. Para mudar, ajuste as
+                    opções e gere uma nova prévia.
+                  </p>
                   <div className="mt-4 max-h-[560px] overflow-auto">
                     {queue.map((post, index) => (
                       <div
@@ -808,9 +891,14 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
                         </span>
                         <Video className="size-4 shrink-0 text-primary" />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">{post.video}</p>
+                          <p className="truncate text-sm font-medium">
+                            {post.video} · @{post.accountName}
+                          </p>
                           <p className="text-xs text-muted-foreground">
                             {post.date} · {post.time} ({workspace.timezone})
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
+                            {post.caption || "Sem legenda"}
                           </p>
                         </div>
                         <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold">
@@ -821,18 +909,21 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
                   </div>
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-secondary/30 p-4">
                     <p className="max-w-xl text-xs leading-5 text-muted-foreground">
-                      Salvar registra a fila no Supabase. A publicação automática só começa depois
-                      que o worker de produção estiver ativo.
+                      Confira contas, vídeos e horários. Salvar autoriza a programação deste lote; o
+                      Histórico mostra o resultado individual de cada publicação.
                     </p>
                     <button
                       onClick={() => void saveQueue()}
                       disabled={
                         savingQueue ||
                         queueSaved ||
-                        !connectedAccounts.some(
-                          (account) =>
-                            account.id === selectedAccountId &&
-                            account.connection_status === "connected",
+                        queue.some(
+                          (post) =>
+                            !connectedAccounts.some(
+                              (account) =>
+                                account.id === post.accountId &&
+                                account.connection_status === "connected",
+                            ),
                         )
                       }
                       className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
@@ -914,11 +1005,7 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
             <Panel title="Preferências de agendamento">
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="Fuso horário de referência">
-                  <select className="field" defaultValue="America/Bahia">
-                    <option value="America/Bahia">Bahia (America/Bahia)</option>
-                    <option value="America/Sao_Paulo">São Paulo (America/Sao_Paulo)</option>
-                    <option value="UTC">UTC</option>
-                  </select>
+                  <input className="field" value={workspace.timezone} readOnly />
                 </Field>
                 <Field label="Limite diário padrão">
                   <input
