@@ -1,335 +1,310 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import type { Session } from "@supabase/supabase-js";
-import { Loader2, LogOut } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { Loader2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
-import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/AppShell";
-import { Input } from "@/components/ui/input";
+import type { PostkitDatabase } from "@/lib/postkit-database";
+import {
+  createPostkitInvitation,
+  ensurePostkitSession,
+  hashPostkitInvitation,
+} from "@/lib/postkit-access";
 
 export type Workspace = { id: string; name: string; timezone: string; owner_id: string };
-
 const STORAGE_KEY = "postkit.workspace";
+const client = () => supabase as unknown as SupabaseClient<PostkitDatabase>;
+let opening: Promise<{ list: Workspace[]; selected: string; userId: string }> | null = null;
 
-function AuthCard() {
-  const [mode, setMode] = useState<"in" | "up">("in");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    setMsg("");
+function openWorkspace() {
+  if (opening) return opening;
+  opening = (async () => {
+    const session = await ensurePostkitSession(supabase.auth);
+    let selected = "";
     try {
-      const res =
-        mode === "in"
-          ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
-          : await supabase.auth.signUp({
-              email: email.trim(),
-              password,
-              options: { emailRedirectTo: `${window.location.origin}/automacao-instagram` },
-            });
-      if (res.error) {
-        setMsg(res.error.message);
-        return;
-      }
-      if (mode === "up" && !res.data.session)
-        setMsg("Confira seu e-mail para confirmar o cadastro.");
+      selected = localStorage.getItem(STORAGE_KEY) ?? "";
     } catch {
-      setMsg("Não foi possível conectar. Confira sua internet e tente novamente.");
-    } finally {
-      setBusy(false);
+      /* optional */
     }
-  };
-  const google = async () => {
-    if (busy) return;
-    setBusy(true);
-    setMsg("");
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + "/automacao-instagram",
+    const invite = new URLSearchParams(window.location.hash.slice(1)).get("postkit-invite");
+    if (invite) {
+      const accepted = await client().rpc("accept_postkit_device_invite", {
+        p_token_hash: await hashPostkitInvitation(invite),
       });
-      if (result.error)
-        setMsg("Não foi possível entrar com Google. Tente novamente ou use e-mail e senha.");
-    } catch {
-      setMsg("Não foi possível iniciar o acesso com Google.");
-    } finally {
-      setBusy(false);
+      if (accepted.error || !accepted.data) {
+        throw new Error("O convite expirou ou já foi usado. Peça um novo convite à equipe.");
+      }
+      selected = accepted.data;
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      try {
+        localStorage.setItem(STORAGE_KEY, selected);
+      } catch {
+        /* optional */
+      }
     }
-  };
-
-  return (
-    <div className="mx-auto mt-8 max-w-sm rounded-lg border border-border bg-card p-6">
-      <h2 className="font-display text-lg font-semibold">
-        {mode === "in" ? "Entrar" : "Criar conta"}
-      </h2>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Acesse para salvar sua automação com segurança.
-      </p>
-      <form onSubmit={submit} className="mt-5 space-y-3">
-        <label className="block text-xs" htmlFor="workspace-email">
-          E-mail
-        </label>
-        <Input
-          id="workspace-email"
-          autoComplete="email"
-          type="email"
-          required
-          placeholder="E-mail"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <label className="block text-xs" htmlFor="workspace-password">
-          Senha
-        </label>
-        <Input
-          id="workspace-password"
-          autoComplete={mode === "in" ? "current-password" : "new-password"}
-          type="password"
-          required
-          minLength={6}
-          placeholder="Senha"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <Button type="submit" className="w-full" disabled={busy}>
-          {busy && <Loader2 className="size-4 animate-spin" />}
-          {mode === "in" ? "Entrar" : "Criar conta"}
-        </Button>
-      </form>
-      <Button variant="outline" className="mt-3 w-full" disabled={busy} onClick={google}>
-        Continuar com Google
-      </Button>
-      {msg && (
-        <p role="status" className="mt-3 text-xs text-muted-foreground">
-          {msg}
-        </p>
-      )}
-      <button
-        disabled={busy}
-        className="mt-4 text-xs text-primary"
-        onClick={() => setMode(mode === "in" ? "up" : "in")}
-      >
-        {mode === "in" ? "Não tem conta? Criar agora" : "Já tem conta? Entrar"}
-      </button>
-    </div>
-  );
+    const result = await client().rpc("ensure_postkit_workspace");
+    if (result.error || !result.data?.length) {
+      throw new Error("Não foi possível abrir sua operação. Tente novamente em instantes.");
+    }
+    return { list: result.data, selected, userId: session.user.id };
+  })();
+  void opening
+    .finally(() => {
+      opening = null;
+    })
+    .catch(() => undefined);
+  return opening;
 }
 
 export function WorkspaceGate({ children }: { children: (ws: Workspace) => ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [ready, setReady] = useState(false);
   const [list, setList] = useState<Workspace[] | null>(null);
-  const [currentId, setCurrentId] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [err, setErr] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [newWorkspace, setNewWorkspace] = useState(false);
-
+  const [currentId, setCurrentId] = useState("");
+  const [userId, setUserId] = useState("");
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
     let active = true;
-    const { data } = supabase.auth.onAuthStateChange((_event, value) => {
-      if (active) setSession(value);
-    });
-    supabase.auth
-      .getSession()
-      .then(({ data: d, error }) => {
-        if (!active) return;
-        setSession(d.session);
-        if (error) setErr("Não foi possível restaurar a sessão. Entre novamente.");
-        setReady(true);
-      })
-      .catch(() => {
+    setError("");
+    void openWorkspace()
+      .then((value) => {
         if (active) {
-          setErr("Não foi possível conectar ao serviço de contas.");
-          setReady(true);
+          setList(value.list);
+          setCurrentId(value.selected);
+          setUserId(value.userId);
         }
-      });
-    try {
-      setCurrentId(localStorage.getItem(STORAGE_KEY));
-    } catch {
-      /* Selection is optional. */
-    }
-    return () => {
-      active = false;
-      data.subscription.unsubscribe();
-    };
-  }, []);
-  const userId = session?.user.id;
-  useEffect(() => {
-    setList(null);
-    if (!userId) return;
-    let active = true;
-    Promise.resolve(
-      supabase.from("workspaces").select("id,name,timezone,owner_id").order("created_at"),
-    )
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error)
-          setErr("Não foi possível carregar seus workspaces. Atualize a página e tente novamente.");
-        setList(data ?? []);
       })
-      .catch(() => {
-        if (active) {
-          setErr("Falha de conexão ao carregar os workspaces.");
-          setList([]);
-        }
+      .catch((reason) => {
+        if (active)
+          setError(
+            reason instanceof Error ? reason.message : "Não foi possível abrir sua operação.",
+          );
       });
     return () => {
       active = false;
     };
-  }, [userId]);
-
-  const select = (id: string) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, id);
-    } catch {
-      /* Keep selection in memory. */
-    }
-    setNewWorkspace(false);
-    setCurrentId(id);
-  };
-
-  const create = async (event: FormEvent) => {
-    event.preventDefault();
-    if (creating) return;
-    const title = name.trim();
-    if (!title) {
-      setErr("Dê um nome ao workspace.");
-      return;
-    }
-    setCreating(true);
-    setErr("");
-    try {
-      const { data, error } = await supabase
-        .from("workspaces")
-        .insert({ name: title })
-        .select("id,name,timezone,owner_id")
-        .single();
-      if (error || !data) {
-        setErr("Não foi possível criar o workspace. Confira o acesso e tente novamente.");
-        return;
-      }
-      setList((current) => [...(current ?? []), data]);
-      setName("");
-      select(data.id);
-    } catch {
-      setErr("A conexão foi interrompida. Atualize a lista antes de tentar criar novamente.");
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  if (!ready)
+  }, [retry]);
+  const current = list?.find((workspace) => workspace.id === currentId) ?? list?.[0];
+  if (!current)
     return (
       <AppShell>
-        <Loader2 className="mx-auto my-20 size-5 animate-spin text-muted-foreground" />
-      </AppShell>
-    );
-  if (!session)
-    return (
-      <AppShell>
-        <AuthCard />
-        {err && (
-          <p role="alert" className="mx-auto mt-4 max-w-sm text-xs text-muted-foreground">
-            {err}
-          </p>
-        )}
-      </AppShell>
-    );
-  if (!list)
-    return (
-      <AppShell>
-        <Loader2 className="mx-auto my-20 size-5 animate-spin text-muted-foreground" />
-      </AppShell>
-    );
-
-  const current = newWorkspace
-    ? undefined
-    : (list.find((w) => w.id === currentId) ?? (list.length === 1 ? list[0] : undefined));
-
-  const bar = (
-    <div className="mt-5 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-xs">
-      <span className="text-muted-foreground">Workspace</span>
-      <select
-        className="rounded-md border border-border bg-background px-2 py-1"
-        aria-label="Workspace atual"
-        value={current?.id ?? ""}
-        onChange={(e) =>
-          e.target.value === "__new" ? setNewWorkspace(true) : select(e.target.value)
-        }
-      >
-        {!current && <option value="">Selecione…</option>}
-        {list.map((w) => (
-          <option key={w.id} value={w.id}>
-            {w.name}
-          </option>
-        ))}
-        <option value="__new">+ Novo workspace</option>
-      </select>
-      <span className="ml-auto text-muted-foreground">{session.user.email}</span>
-      <button
-        aria-label="Sair"
-        onClick={() =>
-          void supabase.auth
-            .signOut()
-            .then(({ error }) => {
-              if (error) setErr("Não foi possível sair. Tente novamente.");
-            })
-            .catch(() => setErr("Não foi possível sair. Confira sua conexão."))
-        }
-        className="text-muted-foreground hover:text-foreground"
-      >
-        <LogOut className="size-4" />
-      </button>
-    </div>
-  );
-
-  if (!current) {
-    return (
-      <AppShell>
-        <div className="mx-auto max-w-7xl px-5 pb-10">
-          {bar}
-          <form
-            onSubmit={create}
-            className="mx-auto mt-8 max-w-sm rounded-lg border border-border bg-card p-6"
-          >
-            <h2 className="font-display text-lg font-semibold">Criar workspace</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Cada workspace tem suas próprias contas, vídeos e programações.
-            </p>
-            <Input
-              className="mt-4"
-              required
-              maxLength={120}
-              placeholder="Ex.: Minha operação"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <Button type="submit" disabled={creating || !name.trim()} className="mt-3 w-full">
-              {creating ? "Criando…" : "Criar workspace"}
-            </Button>
-            {err && <p className="mt-3 text-xs text-destructive">{err}</p>}
-          </form>
+        <div className="mx-auto my-16 max-w-md rounded-lg border border-border bg-card p-6 text-center">
+          {error ? (
+            <>
+              <p role="alert" className="text-sm">
+                {error}
+              </p>
+              <button
+                className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+                onClick={() => setRetry((value) => value + 1)}
+              >
+                Tentar novamente
+              </button>
+            </>
+          ) : (
+            <>
+              <Loader2 className="mx-auto size-6 animate-spin text-primary" />
+              <p className="mt-3 text-sm">Abrindo sua operação…</p>
+              <p className="mt-1 text-xs text-muted-foreground">Sem cadastro e sem senha.</p>
+            </>
+          )}
         </div>
       </AppShell>
     );
-  }
-
   return (
     <AppShell>
-      <div className="mx-auto max-w-7xl px-5">
-        {bar}
-        {err && (
-          <p role="alert" className="mt-3 text-xs text-destructive">
-            {err}
-          </p>
-        )}
+      <div className="mx-auto max-w-7xl px-5 pt-5">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-xs">
+          <span className="text-muted-foreground">Sua operação</span>
+          <select
+            aria-label="Operação atual"
+            value={current.id}
+            className="rounded-md border border-border bg-background p-2"
+            onChange={(event) => {
+              setCurrentId(event.target.value);
+              try {
+                localStorage.setItem(STORAGE_KEY, event.target.value);
+              } catch {
+                /* optional */
+              }
+            }}
+          >
+            {list?.map((workspace) => (
+              <option key={workspace.id} value={workspace.id}>
+                {workspace.name}
+              </option>
+            ))}
+          </select>
+          <span className="ml-auto text-muted-foreground">Acesso salvo neste navegador</span>
+        </div>
+        <TeamAccess key={current.id} workspace={current} userId={userId} />
       </div>
       {children(current)}
     </AppShell>
+  );
+}
+
+function TeamAccess({ workspace, userId }: { workspace: Workspace; userId: string }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [invitation, setInvitation] = useState<{ url: string; hash: string } | null>(null);
+  const [message, setMessage] = useState("");
+  const [members, setMembers] = useState<{ user_id: string; role: string; created_at: string }[]>(
+    [],
+  );
+  const owner = workspace.owner_id === userId;
+  const loadMembers = async () => {
+    const result = await supabase
+      .from("workspace_members")
+      .select("user_id,role,created_at")
+      .eq("workspace_id", workspace.id);
+    if (result.error) throw result.error;
+    setMembers(result.data ?? []);
+  };
+  const invite = async () => {
+    if (busy) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      if (invitation)
+        await client().rpc("revoke_postkit_device_invite", { p_token_hash: invitation.hash });
+      const value = await createPostkitInvitation();
+      const created = await client().rpc("create_postkit_device_invite", {
+        p_workspace_id: workspace.id,
+        p_token_hash: value.hash,
+      });
+      if (created.error) throw created.error;
+      setInvitation({
+        url: `${window.location.origin}/automacao-instagram#postkit-invite=${value.token}`,
+        hash: value.hash,
+      });
+    } catch {
+      setMessage("Não foi possível criar o convite. Tente novamente.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const revoke = async () => {
+    if (busy || !invitation) return;
+    setBusy(true);
+    try {
+      const result = await client().rpc("revoke_postkit_device_invite", {
+        p_token_hash: invitation.hash,
+      });
+      if (result.error) throw result.error;
+      setInvitation(null);
+      setMessage("Convite cancelado.");
+    } catch {
+      setMessage("Não foi possível cancelar o convite.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async (memberId: string) => {
+    if (!owner || busy) return;
+    setBusy(true);
+    try {
+      const result = await supabase
+        .from("workspace_members")
+        .delete()
+        .eq("workspace_id", workspace.id)
+        .eq("user_id", memberId)
+        .select("user_id");
+      if (result.error || !result.data?.length) throw new Error("Not removed");
+      await loadMembers();
+      setMessage("Acesso do dispositivo revogado.");
+    } catch {
+      setMessage("Não foi possível revogar o acesso.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-3 text-xs">
+      <button
+        className="inline-flex items-center gap-2 text-muted-foreground"
+        onClick={() => {
+          setOpen(!open);
+          if (!open)
+            void loadMembers().catch(() =>
+              setMessage("Sem conexão para carregar os dispositivos."),
+            );
+        }}
+      >
+        <Users className="size-4" /> Equipe e dispositivos
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3 rounded-lg border border-border bg-card p-4">
+          <p>
+            Este navegador guarda seu acesso. Antes de limpar os dados do navegador ou trocar de
+            computador, vincule outro dispositivo da equipe.
+          </p>
+          {owner ? (
+            <>
+              <p>
+                O convite permite que outro dispositivo gerencie vídeos, contas e agendamentos desta
+                operação. Compartilhe somente com sua equipe. Válido por 30 minutos, uma única vez.
+              </p>
+              <button
+                disabled={busy}
+                onClick={() => void invite()}
+                className="rounded-md bg-primary px-3 py-2 text-primary-foreground disabled:opacity-50"
+              >
+                {busy ? "Aguarde…" : "Gerar convite para a equipe"}
+              </button>
+              {invitation && (
+                <div className="space-y-2">
+                  <input
+                    aria-label="Convite de acesso da equipe"
+                    className="w-full rounded-md border border-border bg-background p-2"
+                    readOnly
+                    value={invitation.url}
+                  />
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() =>
+                        void navigator.clipboard
+                          .writeText(invitation.url)
+                          .then(() => setMessage("Convite copiado."))
+                          .catch(() => setMessage("Selecione e copie o convite acima."))
+                      }
+                    >
+                      Copiar convite
+                    </button>
+                    <button disabled={busy} onClick={() => void revoke()}>
+                      Cancelar convite
+                    </button>
+                  </div>
+                </div>
+              )}
+              {members
+                .filter((member) => member.user_id !== userId)
+                .map((member, index) => (
+                  <div
+                    key={member.user_id}
+                    className="flex items-center justify-between gap-3 border-t border-border pt-2"
+                  >
+                    <span>
+                      Dispositivo {index + 1} · adicionado em{" "}
+                      {new Intl.DateTimeFormat("pt-BR").format(new Date(member.created_at))}
+                    </span>
+                    <button disabled={busy} onClick={() => void remove(member.user_id)}>
+                      Revogar acesso
+                    </button>
+                  </div>
+                ))}
+            </>
+          ) : (
+            <p>
+              Você está em uma operação compartilhada. Para vincular outro dispositivo, peça um
+              convite ao responsável.
+            </p>
+          )}
+          {message && (
+            <p role="status" className="text-muted-foreground">
+              {message}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

@@ -11,6 +11,16 @@ export type LeasedInstagramPost = Database["public"]["Tables"]["posts"]["Row"] &
 export type PostkitDatabase = Database & {
   public: Database["public"] & {
     Functions: Database["public"]["Functions"] & {
+      ensure_postkit_workspace: {
+        Args: Record<string, never>;
+        Returns: Database["public"]["Tables"]["workspaces"]["Row"][];
+      };
+      create_postkit_device_invite: {
+        Args: { p_workspace_id: string; p_token_hash: string };
+        Returns: undefined;
+      };
+      accept_postkit_device_invite: { Args: { p_token_hash: string }; Returns: string };
+      revoke_postkit_device_invite: { Args: { p_token_hash: string }; Returns: undefined };
       claim_instagram_publish_step: { Args: Record<string, never>; Returns: LeasedInstagramPost[] };
       checkpoint_instagram_publish: {
         Args: {
