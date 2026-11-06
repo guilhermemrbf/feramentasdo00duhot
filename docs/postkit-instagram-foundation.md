@@ -37,20 +37,15 @@ RLS está habilitado nas tabelas. Tokens não têm políticas de acesso para o c
 5. Execute testes com pelo menos dois usuários em workspaces separados, confirmando que cada um não consegue consultar, alterar ou baixar dados do outro.
 6. Configure secrets apenas depois de existir o código servidor correspondente. Nunca coloque credenciais privadas em variáveis `VITE_*`.
 
-O repositório contém cliente Supabase e integração servidor. O projeto Lovable mostra as tabelas da fundação; a migração da fila deve ser aplicada antes de ativar o worker novo.
+O repositório contém cliente Supabase e integração servidor. A migração da fila foi aplicada e verificada no Lovable em 06/11/2026, após autorização específica para substituir a política de escrita dos posts.
 
 ## Próximas entregas de implementação
 
-1. Criar ambiente de desenvolvimento Supabase e validar migrations/RLS.
-2. Integrar autenticação do app ao Supabase e criar fluxo de criação/seleção de workspace.
-3. Integrar biblioteca à tabela `media_assets` e ao bucket privado, incluindo limites de upload e validação real de formato/duração.
-4. Persistir legendas, hashtags, preferências e fila.
-5. Criar app Meta for Developers, OAuth e callback servidor; guardar tokens fora do acesso do cliente.
-6. Implementar publicação de Reels com as permissões e tipos de conta aceitos pela API no momento da integração.
-7. Implementar fila agendada com execução no servidor, idempotência, controle de concorrência, retries seguros e tratamento de resultados ambíguos.
-8. Implementar histórico e notificações.
-9. Adicionar insights apenas para métricas que a API disponibilize para o tipo de conta e conteúdo.
-10. Considerar carrosséis e Stories separadamente após validar suporte, permissões e limitações atuais da API.
+1. Configurar app Meta, permissões, segredos de servidor e execução periódica do worker; o código OAuth e de publicação já existe.
+2. Validar uma publicação real em conta profissional de teste autorizada.
+3. Adicionar validação completa de codec/duração e persistência de modelos de legenda e preferências (a fila já persiste).
+4. Implementar notificações e insights para métricas disponíveis na API.
+5. Considerar carrosséis e Stories separadamente após validar suporte, permissões e limitações atuais.
 
 ## Regras de segurança e confiabilidade
 

@@ -2,6 +2,14 @@
 
 Implementação de 04/11/2026, integrada ao 00duHot na rota `/automacao-instagram`. Código original; a pesquisa pública está em `scalereels-pesquisa-00duhot.md`.
 
+## Publicação verificada em 06/11/2026
+
+- Commit de implementação `39616d4`, enviado à main e sincronizado no projeto Lovable `03560931-5f6a-41e1-a222-0510d1828a23`.
+- Migrações de worker e fila aplicadas em transação pelo editor SQL do Lovable. O usuário autorizou especificamente a substituição da política de posts após bloqueio da revisão automática.
+- Consulta posterior confirmou os seis itens: função de fila, função de cancelamento, nova política de agendamento, remoção da antiga política ampla, worker restrito ao servidor e função antiga desativada para service_role.
+- Lovable confirmou “Seu site foi atualizado”. A rota pública `https://feramentasdo00duhot.lovable.app/automacao-instagram` carregou a tela de login.
+- Nenhum segredo foi cadastrado e nenhuma publicação Instagram foi executada. Login para validação interativa, app Meta/conta profissional, segredos e agendador continuam necessários para validar a operação completa.
+
 ## Fluxo disponível
 
 1. Entrar no 00duHot e escolher/criar um workspace.
