@@ -366,6 +366,47 @@ export type Database = {
           },
         ]
       }
+      postkit_device_invites: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          revoked_at: string | null
+          token_hash: string
+          used_at: string | null
+          used_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          revoked_at?: string | null
+          token_hash: string
+          used_at?: string | null
+          used_by?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          revoked_at?: string | null
+          token_hash?: string
+          used_at?: string | null
+          used_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "postkit_device_invites_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           attempt_count: number
@@ -380,15 +421,20 @@ export type Database = {
           last_error_code: string | null
           last_error_message: string | null
           media_asset_id: string
+          meta_container_id: string | null
           meta_media_id: string | null
           next_attempt_at: string | null
           permalink: string | null
+          processing_started_at: string | null
+          publish_phase: string
           published_at: string | null
           schedule_id: string | null
           scheduled_at: string | null
           status: Database["public"]["Enums"]["post_status"]
           timezone: string
           updated_at: string
+          worker_lease_id: string | null
+          worker_lease_until: string | null
           workspace_id: string
         }
         Insert: {
@@ -404,15 +450,20 @@ export type Database = {
           last_error_code?: string | null
           last_error_message?: string | null
           media_asset_id: string
+          meta_container_id?: string | null
           meta_media_id?: string | null
           next_attempt_at?: string | null
           permalink?: string | null
+          processing_started_at?: string | null
+          publish_phase?: string
           published_at?: string | null
           schedule_id?: string | null
           scheduled_at?: string | null
           status?: Database["public"]["Enums"]["post_status"]
           timezone?: string
           updated_at?: string
+          worker_lease_id?: string | null
+          worker_lease_until?: string | null
           workspace_id: string
         }
         Update: {
@@ -428,15 +479,20 @@ export type Database = {
           last_error_code?: string | null
           last_error_message?: string | null
           media_asset_id?: string
+          meta_container_id?: string | null
           meta_media_id?: string | null
           next_attempt_at?: string | null
           permalink?: string | null
+          processing_started_at?: string | null
+          publish_phase?: string
           published_at?: string | null
           schedule_id?: string | null
           scheduled_at?: string | null
           status?: Database["public"]["Enums"]["post_status"]
           timezone?: string
           updated_at?: string
+          worker_lease_id?: string | null
+          worker_lease_until?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -702,6 +758,122 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_postkit_device_invite: {
+        Args: { p_token_hash: string }
+        Returns: string
+      }
+      cancel_scheduled_instagram_post: {
+        Args: { p_post_id: string }
+        Returns: boolean
+      }
+      checkpoint_instagram_publish: {
+        Args: {
+          p_container_id?: string
+          p_error_code?: string
+          p_lease_id: string
+          p_media_id?: string
+          p_outcome: string
+          p_post_id: string
+        }
+        Returns: boolean
+      }
+      claim_due_instagram_posts: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempt_count: number
+          caption: string
+          content_type: string
+          created_at: string
+          created_by: string | null
+          hashtags: string[]
+          id: string
+          idempotency_key: string
+          instagram_account_id: string
+          last_error_code: string | null
+          last_error_message: string | null
+          media_asset_id: string
+          meta_container_id: string | null
+          meta_media_id: string | null
+          next_attempt_at: string | null
+          permalink: string | null
+          processing_started_at: string | null
+          publish_phase: string
+          published_at: string | null
+          schedule_id: string | null
+          scheduled_at: string | null
+          status: Database["public"]["Enums"]["post_status"]
+          timezone: string
+          updated_at: string
+          worker_lease_id: string | null
+          worker_lease_until: string | null
+          workspace_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "posts"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      claim_instagram_publish_step: {
+        Args: never
+        Returns: {
+          attempt_count: number
+          caption: string
+          content_type: string
+          created_at: string
+          created_by: string | null
+          hashtags: string[]
+          id: string
+          idempotency_key: string
+          instagram_account_id: string
+          last_error_code: string | null
+          last_error_message: string | null
+          media_asset_id: string
+          meta_container_id: string | null
+          meta_media_id: string | null
+          next_attempt_at: string | null
+          permalink: string | null
+          processing_started_at: string | null
+          publish_phase: string
+          published_at: string | null
+          schedule_id: string | null
+          scheduled_at: string | null
+          status: Database["public"]["Enums"]["post_status"]
+          timezone: string
+          updated_at: string
+          worker_lease_id: string | null
+          worker_lease_until: string | null
+          workspace_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "posts"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      create_postkit_device_invite: {
+        Args: { p_token_hash: string; p_workspace_id: string }
+        Returns: undefined
+      }
+      ensure_postkit_workspace: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          timezone: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "workspaces"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       has_workspace_role: {
         Args: {
           allowed_roles: Database["public"]["Enums"]["workspace_role"][]
@@ -712,6 +884,10 @@ export type Database = {
       is_workspace_member: {
         Args: { target_workspace: string }
         Returns: boolean
+      }
+      revoke_postkit_device_invite: {
+        Args: { p_token_hash: string }
+        Returns: undefined
       }
     }
     Enums: {
