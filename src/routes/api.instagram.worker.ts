@@ -34,9 +34,9 @@ export const Route = createFileRoute("/api/instagram/worker")({
                 p_post_id: post.id,
                 p_lease_id: post.worker_lease_id!,
                 p_outcome: value.outcome,
-                p_container_id: value.containerId ?? null,
-                p_media_id: value.mediaId ?? null,
-                p_error_code: value.errorCode ?? null,
+                p_container_id: value.containerId ?? undefined,
+                p_media_id: value.mediaId ?? undefined,
+                p_error_code: value.errorCode ?? undefined,
               });
               if (result.error || result.data !== true) throw new Error("Checkpoint not confirmed");
             },
@@ -67,7 +67,11 @@ export const Route = createFileRoute("/api/instagram/worker")({
             },
             readStatus: async (containerId) => {
               const account = await authorizedAccount(supabaseAdmin, post);
-              return getInstagramContainerStatus(account.accessToken, containerId);
+              return getInstagramContainerStatus(
+                account.accessToken,
+                containerId,
+                account.authMode,
+              );
             },
             publish: async (containerId) => {
               const account = await authorizedAccount(supabaseAdmin, post);
@@ -98,14 +102,17 @@ async function authorizedAccount(
 ) {
   const { data, error } = await client
     .from("instagram_accounts")
-    .select("instagram_user_id,connection_status")
+    .select("instagram_user_id,connection_status,auth_mode")
     .eq("id", post.instagram_account_id)
     .eq("workspace_id", post.workspace_id)
     .maybeSingle();
   if (error || !data || data.connection_status !== "connected")
     throw new Error("Account unavailable");
+  const authMode: "instagram_login" | "facebook_login" =
+    data.auth_mode === "facebook_login" ? "facebook_login" : "instagram_login";
   return {
     instagramUserId: data.instagram_user_id,
+    authMode,
     accessToken: await getInstagramAccountAccessToken(post.instagram_account_id),
   };
 }

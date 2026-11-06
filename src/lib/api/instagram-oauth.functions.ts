@@ -5,7 +5,12 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export const startInstagramOAuth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator(z.object({ workspaceId: z.string().uuid() }))
+  .validator(
+    z.object({
+      workspaceId: z.string().uuid(),
+      mode: z.enum(["instagram_login", "facebook_login"]).default("instagram_login"),
+    }),
+  )
   .handler(async ({ data, context }) => {
     const { data: canManageWorkspace, error } = await context.supabase.rpc("has_workspace_role", {
       target_workspace: data.workspaceId,
@@ -15,6 +20,7 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
 
     const {
       createInstagramOAuthState,
+      facebookAuthorizationUrl,
       instagramAuthorizationUrl,
       instagramOAuthCookieOptions,
       instagramOAuthCookieName,
@@ -22,7 +28,13 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
     const state = await createInstagramOAuthState({
       workspaceId: data.workspaceId,
       userId: context.userId,
+      mode: data.mode,
     });
     setCookie(instagramOAuthCookieName(), state, instagramOAuthCookieOptions());
-    return { authorizationUrl: instagramAuthorizationUrl(state) };
+    return {
+      authorizationUrl:
+        data.mode === "facebook_login"
+          ? facebookAuthorizationUrl(state)
+          : instagramAuthorizationUrl(state),
+    };
   });

@@ -183,12 +183,12 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
       );
   }, []);
 
-  const connectInstagram = async () => {
+  const connectInstagram = async (mode: "instagram_login" | "facebook_login") => {
     setConnecting(true);
     setNotice("");
     try {
       const { authorizationUrl } = await startInstagramOAuth({
-        data: { workspaceId: workspace.id },
+        data: { workspaceId: workspace.id, mode },
       });
       window.location.assign(authorizationUrl);
     } catch {
@@ -640,21 +640,38 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
                 <p className="text-sm font-semibold">O que será necessário</p>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-muted-foreground">
                   <li>
-                    Aplicativo Meta com Instagram Login e as permissões de publicação aprovadas.
+                    Aplicativo Meta com as permissões de publicação aprovadas
+                    (pages_show_list, pages_read_engagement, instagram_basic,
+                    instagram_content_publish).
                   </li>
                   <li>Domínio HTTPS e callback OAuth registrados no aplicativo Meta.</li>
                   <li>
-                    Supabase de desenvolvimento configurado e migrations do PostKit aplicadas.
+                    Para conectar pelo Facebook: conta profissional do Instagram vinculada a uma
+                    Página do Facebook.
                   </li>
                 </ul>
               </div>
-              <button
-                onClick={() => void connectInstagram()}
-                disabled={connecting}
-                className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                <Plus className="size-3" /> {connecting ? "Abrindo autorização…" : "Conectar conta"}
-              </button>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  onClick={() => void connectInstagram("facebook_login")}
+                  disabled={connecting}
+                  className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                >
+                  <Plus className="size-3" />{" "}
+                  {connecting ? "Abrindo autorização…" : "Conectar com Facebook"}
+                </button>
+                <button
+                  onClick={() => void connectInstagram("instagram_login")}
+                  disabled={connecting}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary/40 px-4 py-2 text-xs font-semibold disabled:opacity-50"
+                >
+                  <Instagram className="size-3" /> Conectar com Instagram
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Recomendado: conectar com Facebook, para contas profissionais vinculadas a uma
+                Página do Facebook.
+              </p>
             </Panel>
           </section>
         )}

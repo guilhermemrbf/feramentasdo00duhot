@@ -15,6 +15,13 @@
       "when": 1792048927529,
       "tag": "0001_postkit_grants_storage_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794009181586,
+      "tag": "0002_add_instagram_accounts_auth_mode",
+      "breakpoints": true
     }
   ]
 }

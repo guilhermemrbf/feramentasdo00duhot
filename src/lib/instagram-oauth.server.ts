@@ -1,5 +1,19 @@
 const OAUTH_TTL_SECONDS = 10 * 60;
 
+export type InstagramAuthMode = "instagram_login" | "facebook_login";
+
+export const INSTAGRAM_LOGIN_SCOPES = [
+  "instagram_business_basic",
+  "instagram_business_content_publish",
+] as const;
+
+export const FACEBOOK_LOGIN_SCOPES = [
+  "pages_show_list",
+  "pages_read_engagement",
+  "instagram_basic",
+  "instagram_content_publish",
+] as const;
+
 function requiredEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`Missing server environment variable: ${name}`);
@@ -54,6 +68,7 @@ async function signState(payload: string): Promise<Uint8Array> {
 export async function createInstagramOAuthState(input: {
   workspaceId: string;
   userId: string;
+  mode: InstagramAuthMode;
 }): Promise<string> {
   const nonce = globalThis.crypto.getRandomValues(new Uint8Array(32));
   const payload = base64Url(
@@ -69,6 +84,7 @@ export async function createInstagramOAuthState(input: {
 export async function verifyInstagramOAuthState(state: string): Promise<{
   workspaceId: string;
   userId: string;
+  mode: InstagramAuthMode;
 }> {
   const [payload, signature, extra] = state.split(".");
   if (!payload || !signature || extra) throw new Error("Invalid OAuth state.");
@@ -86,6 +102,7 @@ export async function verifyInstagramOAuthState(state: string): Promise<{
   const parsed = JSON.parse(new TextDecoder().decode(decodeBase64Url(payload))) as {
     workspaceId?: string;
     userId?: string;
+    mode?: string;
     nonce?: string;
     expiresAt?: number;
   };
@@ -98,7 +115,9 @@ export async function verifyInstagramOAuthState(state: string): Promise<{
   ) {
     throw new Error("OAuth state expired.");
   }
-  return { workspaceId: parsed.workspaceId, userId: parsed.userId };
+  const mode: InstagramAuthMode =
+    parsed.mode === "facebook_login" ? "facebook_login" : "instagram_login";
+  return { workspaceId: parsed.workspaceId, userId: parsed.userId, mode };
 }
 
 export async function encryptInstagramToken(token: string): Promise<string> {
@@ -150,16 +169,36 @@ export async function getInstagramAccountAccessToken(accountId: string): Promise
   const expiresAt = new Date(data.token_expires_at).getTime();
   if (expiresAt <= Date.now()) throw new Error("Instagram account authorization expired.");
 
-  // Long-lived Instagram tokens are refreshed before expiry, but never more
-  // often than once per day. Avoids putting a refresh request on every job.
+  const { data: accountRow, error: accountLookupError } = await supabaseAdmin
+    .from("instagram_accounts")
+    .select("auth_mode")
+    .eq("id", accountId)
+    .maybeSingle();
+  if (accountLookupError || !accountRow) throw new Error("Instagram account is unavailable.");
+  const mode: InstagramAuthMode =
+    accountRow.auth_mode === "facebook_login" ? "facebook_login" : "instagram_login";
+
+  // Long-lived tokens are refreshed before expiry, but never more often than
+  // once per day. Avoids putting a refresh request on every job.
   const refreshedRecently = Date.now() - new Date(data.updated_at).getTime() < 24 * 60 * 60 * 1000;
   if (expiresAt - Date.now() < 7 * 24 * 60 * 60 * 1000 && !refreshedRecently) {
-    const { graphBaseUrl } = getInstagramOAuthConfig();
-    const url = new URL(`${graphBaseUrl}/refresh_access_token`);
-    url.search = new URLSearchParams({
-      grant_type: "ig_refresh_token",
-      access_token: accessToken,
-    }).toString();
+    const config = getInstagramOAuthConfig();
+    let url: URL;
+    if (mode === "facebook_login") {
+      url = new URL(`${config.facebookGraphBaseUrl}/oauth/access_token`);
+      url.search = new URLSearchParams({
+        grant_type: "fb_exchange_token",
+        client_id: config.appId,
+        client_secret: config.appSecret,
+        fb_exchange_token: accessToken,
+      }).toString();
+    } else {
+      url = new URL(`${config.graphBaseUrl}/refresh_access_token`);
+      url.search = new URLSearchParams({
+        grant_type: "ig_refresh_token",
+        access_token: accessToken,
+      }).toString();
+    }
     const response = await fetch(url);
     if (!response.ok) throw new Error("Instagram access token refresh failed.");
     const refreshed = (await response.json()) as { access_token?: string; expires_in?: number };
@@ -214,7 +253,9 @@ export function getInstagramOAuthConfig() {
     appSecret: requiredEnv("META_APP_SECRET"),
     callbackUrl: callbackUrl.href,
     appBaseUrl: baseUrl,
+    graphApiVersion: version,
     graphBaseUrl: `https://graph.instagram.com/${version}`,
+    facebookGraphBaseUrl: `https://graph.facebook.com/${version}`,
   };
 }
 
@@ -225,7 +266,20 @@ export function instagramAuthorizationUrl(state: string): string {
     client_id: appId,
     redirect_uri: callbackUrl,
     response_type: "code",
-    scope: "instagram_business_basic,instagram_business_content_publish",
+    scope: INSTAGRAM_LOGIN_SCOPES.join(","),
+    state,
+  }).toString();
+  return url.href;
+}
+
+export function facebookAuthorizationUrl(state: string): string {
+  const { appId, callbackUrl, graphApiVersion } = getInstagramOAuthConfig();
+  const url = new URL(`https://www.facebook.com/${graphApiVersion}/dialog/oauth`);
+  url.search = new URLSearchParams({
+    client_id: appId,
+    redirect_uri: callbackUrl,
+    response_type: "code",
+    scope: FACEBOOK_LOGIN_SCOPES.join(","),
     state,
   }).toString();
   return url.href;

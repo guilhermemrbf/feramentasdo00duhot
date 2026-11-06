@@ -1,16 +1,20 @@
 /** Instagram publishing API adapter. Treat an ambiguous publish response as a
  * reconciliation task; callers must never blindly retry media_publish. */
 
-function getMetaGraphBaseUrl(): string {
+export type InstagramAuthMode = "instagram_login" | "facebook_login";
+
+function getMetaGraphBaseUrl(mode: InstagramAuthMode = "instagram_login"): string {
   const version = process.env["META_GRAPH_API_VERSION"];
   if (!version || !/^v\d+\.\d+$/.test(version)) {
     throw new Error("Set META_GRAPH_API_VERSION to a supported Meta Graph API version.");
   }
-  return `https://graph.instagram.com/${version}`;
+  const host = mode === "facebook_login" ? "graph.facebook.com" : "graph.instagram.com";
+  return `https://${host}/${version}`;
 }
 
 async function instagramRequest<T>(url: URL, token: string, body?: URLSearchParams): Promise<T> {
-  if (url.hostname !== "graph.instagram.com") throw new Error("Unexpected Instagram API host.");
+  if (url.hostname !== "graph.instagram.com" && url.hostname !== "graph.facebook.com")
+    throw new Error("Unexpected Instagram API host.");
   const response = await fetch(url, {
     method: body ? "POST" : "GET",
     // Meta's API accepts the token as a bearer header; do not put credentials
@@ -37,6 +41,7 @@ export type InstagramReelRequest = {
   publicVideoUrl: string;
   caption: string;
   shareToFeed?: boolean;
+  authMode?: InstagramAuthMode;
 };
 
 export class InstagramPublishAmbiguousError extends Error {
@@ -55,7 +60,7 @@ export async function createInstagramReelContainer(input: InstagramReelRequest):
   if (videoUrl.protocol !== "https:")
     throw new Error("Instagram media must use a public HTTPS URL.");
 
-  const base = getMetaGraphBaseUrl();
+  const base = getMetaGraphBaseUrl(input.authMode);
   const createUrl = new URL(`${base}/${encodeURIComponent(input.instagramUserId)}/media`);
   const createBody = new URLSearchParams({
     media_type: "REELS",
@@ -72,8 +77,12 @@ export async function createInstagramReelContainer(input: InstagramReelRequest):
   return container.id;
 }
 
-export async function getInstagramContainerStatus(accessToken: string, containerId: string) {
-  const statusUrl = new URL(`${getMetaGraphBaseUrl()}/${encodeURIComponent(containerId)}`);
+export async function getInstagramContainerStatus(
+  accessToken: string,
+  containerId: string,
+  authMode: InstagramAuthMode = "instagram_login",
+) {
+  const statusUrl = new URL(`${getMetaGraphBaseUrl(authMode)}/${encodeURIComponent(containerId)}`);
   statusUrl.searchParams.set("fields", "status_code");
   const result = await instagramRequest<{ status_code?: string }>(statusUrl, accessToken);
   return result.status_code ?? "UNKNOWN";
@@ -83,11 +92,12 @@ export async function publishInstagramContainer(input: {
   accessToken: string;
   instagramUserId: string;
   containerId: string;
+  authMode?: InstagramAuthMode;
 }): Promise<{ mediaId: string }> {
   // Do not retry this call automatically on a timeout: a missing response can
   // mean that Meta accepted the publish even though the client did not see it.
   const publishUrl = new URL(
-    `${getMetaGraphBaseUrl()}/${encodeURIComponent(input.instagramUserId)}/media_publish`,
+    `${getMetaGraphBaseUrl(input.authMode)}/${encodeURIComponent(input.instagramUserId)}/media_publish`,
   );
   let published: { id: string };
   try {

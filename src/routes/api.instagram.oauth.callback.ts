@@ -7,6 +7,13 @@ type InstagramTokenResponse = {
   expires_in?: number;
 };
 type InstagramProfile = { user_id?: number | string; username?: string; account_type?: string };
+type FacebookPagesResponse = {
+  data?: Array<{
+    id?: string;
+    name?: string;
+    instagram_business_account?: { id?: string; username?: string; name?: string };
+  }>;
+};
 
 function redirectToApp(baseUrl: URL, result: string) {
   const target = new URL("/automacao-instagram", baseUrl);
@@ -44,7 +51,7 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
         }
 
         try {
-          const { workspaceId, userId } = await verifyInstagramOAuthState(returnedState);
+          const { workspaceId, userId, mode } = await verifyInstagramOAuthState(returnedState);
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const [{ data: workspace }, { data: membership }] = await Promise.all([
             supabaseAdmin.from("workspaces").select("owner_id").eq("id", workspaceId).maybeSingle(),
@@ -61,6 +68,9 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
               !["owner", "admin", "editor"].includes(membership?.role ?? ""))
           ) {
             throw new Error("Workspace access was revoked during Instagram authorization.");
+          }
+          if (mode === "facebook_login") {
+            return await connectViaFacebookLogin({ code, config, workspaceId, userId });
           }
           const tokenResponse = await fetch("https://api.instagram.com/oauth/access_token", {
             method: "POST",
@@ -114,6 +124,7 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
                 username: profile.username,
                 account_type: profile.account_type ?? null,
                 connection_status: "pending",
+                auth_mode: "instagram_login",
                 scopes: ["instagram_business_basic", "instagram_business_content_publish"],
                 token_expires_at: expiry,
                 last_verified_at: new Date().toISOString(),
@@ -151,3 +162,111 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
     },
   },
 });
+
+/** Facebook Login flow: exchanges the code for a long-lived user token, lists
+ * the user's Facebook Pages and connects every professional Instagram account
+ * linked to those Pages. */
+async function connectViaFacebookLogin(input: {
+  code: string;
+  config: ReturnType<
+    typeof import("@/lib/instagram-oauth.server").getInstagramOAuthConfig
+  >;
+  workspaceId: string;
+  userId: string;
+}) {
+  const { code, config, workspaceId, userId } = input;
+  const { encryptInstagramToken, FACEBOOK_LOGIN_SCOPES } = await import(
+    "@/lib/instagram-oauth.server"
+  );
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const shortTokenUrl = new URL(`${config.facebookGraphBaseUrl}/oauth/access_token`);
+  shortTokenUrl.search = new URLSearchParams({
+    client_id: config.appId,
+    client_secret: config.appSecret,
+    redirect_uri: config.callbackUrl,
+    code,
+  }).toString();
+  const shortTokenResponse = await fetch(shortTokenUrl);
+  if (!shortTokenResponse.ok) throw new Error("Facebook authorization code exchange failed.");
+  const shortToken = (await shortTokenResponse.json()) as InstagramTokenResponse;
+  if (!shortToken.access_token) throw new Error("Facebook did not return an access token.");
+
+  const longTokenUrl = new URL(`${config.facebookGraphBaseUrl}/oauth/access_token`);
+  longTokenUrl.search = new URLSearchParams({
+    grant_type: "fb_exchange_token",
+    client_id: config.appId,
+    client_secret: config.appSecret,
+    fb_exchange_token: shortToken.access_token,
+  }).toString();
+  const longTokenResponse = await fetch(longTokenUrl);
+  if (!longTokenResponse.ok) throw new Error("Facebook long-lived token exchange failed.");
+  const longToken = (await longTokenResponse.json()) as InstagramTokenResponse;
+  if (!longToken.access_token) throw new Error("Facebook did not return a long-lived token.");
+
+  const pagesUrl = new URL(`${config.facebookGraphBaseUrl}/me/accounts`);
+  pagesUrl.search = new URLSearchParams({
+    fields: "id,name,instagram_business_account{id,username,name}",
+    access_token: longToken.access_token,
+  }).toString();
+  const pagesResponse = await fetch(pagesUrl);
+  if (!pagesResponse.ok) throw new Error("Facebook Pages lookup failed.");
+  const pages = (await pagesResponse.json()) as FacebookPagesResponse;
+  const professionalAccounts = (pages.data ?? [])
+    .map((page) => ({
+      pageName: page.name ?? null,
+      ig: page.instagram_business_account,
+    }))
+    .filter((entry) => entry.ig?.id && entry.ig.username);
+  if (!professionalAccounts.length) {
+    throw new Error("No professional Instagram account is linked to the user's Facebook Pages.");
+  }
+
+  const expiry = new Date(
+    Date.now() + (longToken.expires_in ?? 5_184_000) * 1000,
+  ).toISOString();
+  for (const entry of professionalAccounts) {
+    const ig = entry.ig!;
+    const { data: account, error: accountError } = await supabaseAdmin
+      .from("instagram_accounts")
+      .upsert(
+        {
+          workspace_id: workspaceId,
+          instagram_user_id: String(ig.id),
+          username: ig.username!,
+          display_name: ig.name ?? entry.pageName,
+          account_type: "BUSINESS",
+          connection_status: "pending",
+          auth_mode: "facebook_login",
+          scopes: [...FACEBOOK_LOGIN_SCOPES],
+          token_expires_at: expiry,
+          last_verified_at: new Date().toISOString(),
+          connected_by: userId,
+          last_error_code: null,
+          last_error_message: null,
+        },
+        { onConflict: "workspace_id,instagram_user_id" },
+      )
+      .select("id")
+      .single();
+    if (accountError || !account) throw new Error("Instagram account could not be saved.");
+
+    const { error: tokenError } = await supabaseAdmin.from("instagram_tokens").upsert({
+      account_id: account.id,
+      access_token_ciphertext: await encryptInstagramToken(longToken.access_token!),
+      refresh_token_ciphertext: null,
+      encryption_key_version: "v1",
+      token_expires_at: expiry,
+      updated_at: new Date().toISOString(),
+    });
+    if (tokenError) throw new Error("Instagram token could not be stored.");
+
+    const { error: activateError } = await supabaseAdmin
+      .from("instagram_accounts")
+      .update({ connection_status: "connected", last_verified_at: new Date().toISOString() })
+      .eq("id", account.id);
+    if (activateError) throw new Error("Instagram account could not be activated.");
+  }
+
+  return redirectToApp(config.appBaseUrl, "connected");
+}

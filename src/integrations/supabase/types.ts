@@ -99,6 +99,7 @@ export type Database = {
       instagram_accounts: {
         Row: {
           account_type: string | null
+          auth_mode: string
           connected_by: string | null
           connection_status: Database["public"]["Enums"]["instagram_connection_status"]
           created_at: string
@@ -116,6 +117,7 @@ export type Database = {
         }
         Insert: {
           account_type?: string | null
+          auth_mode?: string
           connected_by?: string | null
           connection_status?: Database["public"]["Enums"]["instagram_connection_status"]
           created_at?: string
@@ -133,6 +135,7 @@ export type Database = {
         }
         Update: {
           account_type?: string | null
+          auth_mode?: string
           connected_by?: string | null
           connection_status?: Database["public"]["Enums"]["instagram_connection_status"]
           created_at?: string
