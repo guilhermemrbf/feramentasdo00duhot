@@ -1,0 +1,23 @@
+name: Postkit access tests
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/postkit-access.ts"
+      - "tests/postkit-access.test.mjs"
+      - ".github/workflows/postkit-access.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postkit-access:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test session restoration and invitation tokens
+        run: node --experimental-strip-types --test tests/postkit-access.test.mjs
