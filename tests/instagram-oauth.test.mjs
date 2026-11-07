@@ -19,8 +19,18 @@ test("Instagram OAuth state is signed and carries the authorized workspace and u
   assert.deepEqual(await verifyInstagramOAuthState(state), {
     workspaceId: "workspace-1",
     userId: "user-1",
+    mode: "instagram_login",
   });
   await assert.rejects(verifyInstagramOAuthState(`${state}tampered`), /invalid oauth state/i);
+});
+
+test("Facebook OAuth state preserves the selected authentication mode", async () => {
+  const state = await createInstagramOAuthState({
+    workspaceId: "workspace-1",
+    userId: "user-1",
+    mode: "facebook_login",
+  });
+  assert.equal((await verifyInstagramOAuthState(state)).mode, "facebook_login");
 });
 
 test("Instagram tokens are encrypted with unique AES-GCM nonces", async () => {

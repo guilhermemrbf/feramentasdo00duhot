@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { deleteCookie, getCookie } from "@tanstack/react-start/server";
+import { linkedFacebookInstagramPages } from "@/lib/facebook-instagram-pages";
 
 type InstagramTokenResponse = {
   access_token?: string;
@@ -11,6 +12,7 @@ type FacebookPagesResponse = {
   data?: Array<{
     id?: string;
     name?: string;
+    access_token?: string;
     instagram_business_account?: { id?: string; username?: string; name?: string };
   }>;
 };
@@ -206,18 +208,15 @@ async function connectViaFacebookLogin(input: {
 
   const pagesUrl = new URL(`${config.facebookGraphBaseUrl}/me/accounts`);
   pagesUrl.search = new URLSearchParams({
-    fields: "id,name,instagram_business_account{id,username,name}",
-    access_token: longToken.access_token,
+    fields: "id,name,access_token,instagram_business_account{id,username,name}",
   }).toString();
-  const pagesResponse = await fetch(pagesUrl);
+  const pagesResponse = await fetch(pagesUrl, {
+    headers: { Authorization: "Bearer " + longToken.access_token },
+    signal: AbortSignal.timeout(15_000),
+  });
   if (!pagesResponse.ok) throw new Error("Facebook Pages lookup failed.");
   const pages = (await pagesResponse.json()) as FacebookPagesResponse;
-  const professionalAccounts = (pages.data ?? [])
-    .map((page) => ({
-      pageName: page.name ?? null,
-      ig: page.instagram_business_account,
-    }))
-    .filter((entry) => entry.ig?.id && entry.ig.username);
+  const professionalAccounts = linkedFacebookInstagramPages(pages.data ?? []);
   if (!professionalAccounts.length) {
     throw new Error("No professional Instagram account is linked to the user's Facebook Pages.");
   }
@@ -253,7 +252,7 @@ async function connectViaFacebookLogin(input: {
 
     const { error: tokenError } = await supabaseAdmin.from("instagram_tokens").upsert({
       account_id: account.id,
-      access_token_ciphertext: await encryptInstagramToken(longToken.access_token!),
+      access_token_ciphertext: await encryptInstagramToken(entry.pageAccessToken!),
       refresh_token_ciphertext: null,
       encryption_key_version: "v1",
       token_expires_at: expiry,

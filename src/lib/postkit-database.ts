@@ -27,9 +27,9 @@ export type PostkitDatabase = Database & {
           p_post_id: string;
           p_lease_id: string;
           p_outcome: string;
-          p_container_id: string | null;
-          p_media_id: string | null;
-          p_error_code: string | null;
+          p_container_id?: string;
+          p_media_id?: string;
+          p_error_code?: string;
         };
         Returns: boolean;
       };

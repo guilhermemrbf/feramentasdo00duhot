@@ -178,27 +178,21 @@ export async function getInstagramAccountAccessToken(accountId: string): Promise
   const mode: InstagramAuthMode =
     accountRow.auth_mode === "facebook_login" ? "facebook_login" : "instagram_login";
 
+  // Facebook Login publishing uses a Page access token. It is not accepted by
+  // Instagram's refresh_access_token endpoint or the user-token fb_exchange_token
+  // exchange. Ask the user to reconnect when the stored authorization expires.
+  if (mode === "facebook_login") return accessToken;
+
   // Long-lived tokens are refreshed before expiry, but never more often than
   // once per day. Avoids putting a refresh request on every job.
   const refreshedRecently = Date.now() - new Date(data.updated_at).getTime() < 24 * 60 * 60 * 1000;
   if (expiresAt - Date.now() < 7 * 24 * 60 * 60 * 1000 && !refreshedRecently) {
     const config = getInstagramOAuthConfig();
-    let url: URL;
-    if (mode === "facebook_login") {
-      url = new URL(`${config.facebookGraphBaseUrl}/oauth/access_token`);
-      url.search = new URLSearchParams({
-        grant_type: "fb_exchange_token",
-        client_id: config.appId,
-        client_secret: config.appSecret,
-        fb_exchange_token: accessToken,
-      }).toString();
-    } else {
-      url = new URL(`${config.graphBaseUrl}/refresh_access_token`);
-      url.search = new URLSearchParams({
-        grant_type: "ig_refresh_token",
-        access_token: accessToken,
-      }).toString();
-    }
+    const url = new URL(config.graphBaseUrl + "/refresh_access_token");
+    url.search = new URLSearchParams({
+      grant_type: "ig_refresh_token",
+      access_token: accessToken,
+    }).toString();
     const response = await fetch(url);
     if (!response.ok) throw new Error("Instagram access token refresh failed.");
     const refreshed = (await response.json()) as { access_token?: string; expires_in?: number };
