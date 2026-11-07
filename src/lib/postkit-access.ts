@@ -2,25 +2,18 @@ import type { Session } from "@supabase/supabase-js";
 
 type DeviceAuth = {
   getSession: () => Promise<{ data: { session: Session | null }; error: unknown }>;
-  signInAnonymously: () => Promise<{ data: { session: Session | null }; error: unknown }>;
 };
-const pending = new WeakMap<DeviceAuth, Promise<Session>>();
+const pending = new WeakMap<DeviceAuth, Promise<Session | null>>();
 
-/** Reuse the device identity, including an existing Google/email identity. */
-export function ensurePostkitSession(auth: DeviceAuth): Promise<Session> {
+/** Restore the Google-authenticated device session; never create an anonymous identity. */
+export function getPostkitSession(auth: DeviceAuth): Promise<Session | null> {
   const previous = pending.get(auth);
   if (previous) return previous;
   const operation = (async () => {
     const restored = await auth.getSession();
     if (restored.error)
       throw new Error("Não foi possível recuperar o acesso deste navegador. Tente novamente.");
-    if (restored.data.session) return restored.data.session;
-    const created = await auth.signInAnonymously();
-    if (created.error || !created.data.session)
-      throw new Error(
-        "O acesso automático ainda não está disponível. Confira sua conexão ou a configuração do aplicativo.",
-      );
-    return created.data.session;
+    return restored.data.session;
   })();
   pending.set(auth, operation);
   void operation.finally(() => pending.delete(auth)).catch(() => undefined);
