@@ -1,31 +1,43 @@
 import { useEffect, useState, type ReactNode } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { Loader2, Users } from "lucide-react";
+import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import { Loader2, LogOut, Users } from "lucide-react";
+import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import type { PostkitDatabase } from "@/lib/postkit-database";
 import {
   createPostkitInvitation,
-  ensurePostkitSession,
+  getPostkitSession,
   hashPostkitInvitation,
 } from "@/lib/postkit-access";
 
 export type Workspace = { id: string; name: string; timezone: string; owner_id: string };
 const STORAGE_KEY = "postkit.workspace";
+const PENDING_INVITE_KEY = "postkit.pending-invite";
 const client = () => supabase as unknown as SupabaseClient<PostkitDatabase>;
-let opening: Promise<{ list: Workspace[]; selected: string; userId: string }> | null = null;
+let opening: { userId: string; promise: Promise<{ list: Workspace[]; selected: string; userId: string }> } | null = null;
 
-function openWorkspace() {
-  if (opening) return opening;
-  opening = (async () => {
-    const session = await ensurePostkitSession(supabase.auth);
+function invitationToken() {
+  try {
+    return (
+      new URLSearchParams(window.location.hash.slice(1)).get("postkit-invite") ??
+      sessionStorage.getItem(PENDING_INVITE_KEY)
+    );
+  } catch {
+    return null;
+  }
+}
+
+function openWorkspace(session: Session) {
+  if (opening?.userId === session.user.id) return opening.promise;
+  const promise = (async () => {
     let selected = "";
     try {
       selected = localStorage.getItem(STORAGE_KEY) ?? "";
     } catch {
       /* optional */
     }
-    const invite = new URLSearchParams(window.location.hash.slice(1)).get("postkit-invite");
+    const invite = invitationToken();
     if (invite) {
       const accepted = await client().rpc("accept_postkit_device_invite", {
         p_token_hash: await hashPostkitInvitation(invite),
@@ -34,37 +46,126 @@ function openWorkspace() {
         throw new Error("O convite expirou ou já foi usado. Peça um novo convite à equipe.");
       }
       selected = accepted.data;
-      window.history.replaceState(null, "", window.location.pathname + window.location.search);
       try {
+        sessionStorage.removeItem(PENDING_INVITE_KEY);
         localStorage.setItem(STORAGE_KEY, selected);
       } catch {
         /* optional */
       }
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
     const result = await client().rpc("ensure_postkit_workspace");
     if (result.error || !result.data?.length) {
-      throw new Error("Não foi possível abrir sua operação. Tente novamente em instantes.");
+      throw new Error("Não foi possível abrir sua operação. Confira o acesso e tente novamente.");
     }
     return { list: result.data, selected, userId: session.user.id };
   })();
-  void opening
+  const current = { userId: session.user.id, promise };
+  opening = current;
+  void promise
     .finally(() => {
-      opening = null;
+      if (opening === current) opening = null;
     })
     .catch(() => undefined);
-  return opening;
+  return promise;
+}
+
+function GoogleAccessCard({
+  error,
+}: {
+  error: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const signIn = async () => {
+    if (busy) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const invite = new URLSearchParams(window.location.hash.slice(1)).get("postkit-invite");
+      if (invite) sessionStorage.setItem(PENDING_INVITE_KEY, invite);
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin + window.location.pathname + window.location.search,
+      });
+      if (result.error) {
+        setMessage("Não foi possível entrar com Google. Tente novamente.");
+        setBusy(false);
+      }
+    } catch {
+      setMessage("Não foi possível iniciar o acesso com Google. Tente novamente.");
+      setBusy(false);
+    }
+  };
+  return (
+    <AppShell>
+      <div className="mx-auto my-16 max-w-md rounded-lg border border-border bg-card p-6 text-center">
+        <h2 className="font-display text-lg font-semibold">Entrar no 00duHot</h2>
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">
+          Use sua conta Google para abrir sua operação. Não há cadastro por e-mail e senha.
+        </p>
+        <button
+          type="button"
+          onClick={() => void signIn()}
+          disabled={busy}
+          className="mt-5 w-full rounded-md bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+        >
+          {busy ? "Abrindo Google…" : "Continuar com Google"}
+        </button>
+        {(error || message) && (
+          <p role="alert" className="mt-3 text-xs text-muted-foreground">
+            {message || error}
+          </p>
+        )}
+      </div>
+    </AppShell>
+  );
 }
 
 export function WorkspaceGate({ children }: { children: (ws: Workspace) => ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [list, setList] = useState<Workspace[] | null>(null);
   const [currentId, setCurrentId] = useState("");
   const [userId, setUserId] = useState("");
   const [error, setError] = useState("");
+  const [authError, setAuthError] = useState("");
   const [retry, setRetry] = useState(0);
+
   useEffect(() => {
     let active = true;
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!active) return;
+      setSession(nextSession);
+      setAuthReady(true);
+      setList(null);
+      setError("");
+    });
+    void getPostkitSession(supabase.auth)
+      .then((currentSession) => {
+        if (!active) return;
+        setSession(currentSession);
+        setAuthReady(true);
+        setAuthError("");
+      })
+      .catch(() => {
+        if (!active) return;
+        setAuthError("Não foi possível recuperar a sessão. Atualize a página e tente novamente.");
+        setAuthReady(true);
+      });
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!authReady || !session) {
+      setList(null);
+      return;
+    }
+    let active = true;
     setError("");
-    void openWorkspace()
+    void openWorkspace(session)
       .then((value) => {
         if (active) {
           setList(value.list);
@@ -73,15 +174,25 @@ export function WorkspaceGate({ children }: { children: (ws: Workspace) => React
         }
       })
       .catch((reason) => {
-        if (active)
+        if (active) {
+          setList([]);
           setError(
             reason instanceof Error ? reason.message : "Não foi possível abrir sua operação.",
           );
+        }
       });
     return () => {
       active = false;
     };
-  }, [retry]);
+  }, [authReady, session, retry]);
+
+  if (!authReady)
+    return (
+      <AppShell>
+        <Loader2 className="mx-auto my-20 size-5 animate-spin text-muted-foreground" />
+      </AppShell>
+    );
+  if (!session) return <GoogleAccessCard error={authError} />;
   const current = list?.find((workspace) => workspace.id === currentId) ?? list?.[0];
   if (!current)
     return (
@@ -89,21 +200,24 @@ export function WorkspaceGate({ children }: { children: (ws: Workspace) => React
         <div className="mx-auto my-16 max-w-md rounded-lg border border-border bg-card p-6 text-center">
           {error ? (
             <>
-              <p role="alert" className="text-sm">
-                {error}
-              </p>
+              <p role="alert" className="text-sm">{error}</p>
               <button
                 className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
                 onClick={() => setRetry((value) => value + 1)}
               >
                 Tentar novamente
               </button>
+              <button
+                className="mt-4 block w-full text-xs text-muted-foreground"
+                onClick={() => void supabase.auth.signOut()}
+              >
+                Sair da conta Google
+              </button>
             </>
           ) : (
             <>
               <Loader2 className="mx-auto size-6 animate-spin text-primary" />
               <p className="mt-3 text-sm">Abrindo sua operação…</p>
-              <p className="mt-1 text-xs text-muted-foreground">Sem cadastro e sem senha.</p>
             </>
           )}
         </div>
@@ -133,7 +247,14 @@ export function WorkspaceGate({ children }: { children: (ws: Workspace) => React
               </option>
             ))}
           </select>
-          <span className="ml-auto text-muted-foreground">Acesso salvo neste navegador</span>
+          <button
+            aria-label="Sair da conta Google"
+            title="Sair"
+            onClick={() => void supabase.auth.signOut()}
+            className="ml-auto text-muted-foreground hover:text-foreground"
+          >
+            <LogOut className="size-4" />
+          </button>
         </div>
         <TeamAccess key={current.id} workspace={current} userId={userId} />
       </div>
@@ -173,7 +294,7 @@ function TeamAccess({ workspace, userId }: { workspace: Workspace; userId: strin
       });
       if (created.error) throw created.error;
       setInvitation({
-        url: `${window.location.origin}/automacao-instagram#postkit-invite=${value.token}`,
+        url: window.location.origin + "/automacao-instagram#postkit-invite=" + value.token,
         hash: value.hash,
       });
     } catch {
