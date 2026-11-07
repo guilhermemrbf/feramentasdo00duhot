@@ -3,43 +3,45 @@ import { test } from "node:test";
 import { webcrypto } from "node:crypto";
 import {
   createPostkitInvitation,
-  ensurePostkitSession,
+  getPostkitSession,
   hashPostkitInvitation,
 } from "../src/lib/postkit-access.ts";
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
-test("device access restores an existing identity without creating another", async () => {
-  let created = 0;
-  const session = { user: { id: "device-1" } };
+test("Google login session is restored without creating an anonymous account", async () => {
+  const session = { user: { id: "google-user-1" } };
   const auth = {
     getSession: async () => ({ data: { session }, error: null }),
-    signInAnonymously: async () => {
-      created++;
-      return { data: { session }, error: null };
-    },
   };
-  assert.equal(await ensurePostkitSession(auth), session);
-  assert.equal(created, 0);
+  assert.equal(await getPostkitSession(auth), session);
 });
 
-test("device access creates only one anonymous session during concurrent startup", async () => {
-  let created = 0;
-  const session = { user: { id: "device-1" } };
+test("a missing session stays signed out; no anonymous session is created", async () => {
+  let calls = 0;
   const auth = {
-    getSession: async () => ({ data: { session: null }, error: null }),
-    signInAnonymously: async () => {
-      created++;
+    getSession: async () => {
+      calls += 1;
+      return { data: { session: null }, error: null };
+    },
+  };
+  assert.equal(await getPostkitSession(auth), null);
+  assert.equal(calls, 1);
+});
+
+test("concurrent session checks share one read", async () => {
+  let calls = 0;
+  const session = { user: { id: "google-user-1" } };
+  const auth = {
+    getSession: async () => {
+      calls += 1;
       return { data: { session }, error: null };
     },
   };
-  const [first, second] = await Promise.all([
-    ensurePostkitSession(auth),
-    ensurePostkitSession(auth),
-  ]);
+  const [first, second] = await Promise.all([getPostkitSession(auth), getPostkitSession(auth)]);
   assert.equal(first, session);
   assert.equal(second, session);
-  assert.equal(created, 1);
+  assert.equal(calls, 1);
 });
 
 test("team invitations use 256-bit tokens and only their hashes are stored", async () => {
