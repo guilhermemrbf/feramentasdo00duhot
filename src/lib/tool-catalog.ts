@@ -101,20 +101,20 @@ export const TOOL_CATALOG = [
   },
   {
     id: "social",
-    path: "/automacao-tiktok",
-    name: "Automatic Post",
+    path: "/automacao-instagram",
+    name: "Automatic Post · Instagram",
     category: "Automação",
-    mode: "TikTok manual · Instagram integrado",
-    summary: "Prepare posts do TikTok e organize programações do Instagram.",
-    input: "Vídeos, legendas e horários; no Instagram, conta autorizada no workspace.",
-    output: "Prévias de fila manual no TikTok e programações persistidas no Instagram.",
+    mode: "Instagram Reels",
+    summary: "Organize vídeos, legendas e programações de Reels no Instagram.",
+    input: "Vídeos, legendas, horários e conta profissional do Instagram autorizada no workspace.",
+    output: "Programações salvas de Reels e acompanhamento das confirmações no Histórico.",
     steps: [
-      "Escolha TikTok ou Instagram.",
-      "Cadastre a mídia e confira a prévia dos horários.",
-      "Publique pelo TikTok Studio ou salve sua fila do Instagram.",
+      "Abra seu workspace e conecte uma conta profissional do Instagram.",
+      "Envie os vídeos e revise as legendas, contas e horários.",
+      "Salve a programação de Reels e acompanhe as confirmações no Histórico.",
     ],
     requirement:
-      "No TikTok, a fila é local e a publicação é manual. No Instagram, o envio depende de OAuth e do worker configurado. Agendar ou marcar manualmente não confirma uma publicação.",
+      "Conta profissional do Instagram autorizada; a conexão via Facebook exige uma Página vinculada. O serviço de publicação precisa estar ativo para executar os horários salvos. Agendar não confirma uma publicação: confira o Histórico.",
   },
   {
     id: "funnels",
@@ -170,7 +170,7 @@ export function normalizeSearch(value: string) {
 }
 export function findTool(path: string) {
   return TOOL_CATALOG.find(
-    (tool) => tool.path === (path.startsWith("/automacao-instagram") ? "/automacao-tiktok" : path),
+    (tool) => tool.path === path,
   );
 }
 export function searchTools(query: string, category = "Todas") {
