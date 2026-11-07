@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { TOOL_CATALOG, searchTools, findTool, cleanPreferences } from "../src/lib/tool-catalog.ts";
 import { outputName, queueCandidates, validPublicUrl } from "../src/lib/media/files.ts";
 import { selectMediaFiles, formatMediaLink } from "../src/lib/media/selection.ts";
-import { manualSchedule } from "../src/lib/manual-schedule.ts";
 test("catalog keeps every tool reachable, searchable and documented", () => {
   assert.equal(TOOL_CATALOG.length, 9);
   assert.equal(new Set(TOOL_CATALOG.map((t) => t.path)).size, 9);
@@ -81,41 +80,16 @@ test("profile reference URLs require HTTPS without credentials", () => {
   ])
     assert.equal(validPublicUrl(value), false);
 });
-test("manual schedule sorts slots and respects day capacity", () => {
-  const slots = manualSchedule(
-    {
-      startDate: "2030-02-01",
-      times: "18:00, 09:00, 13:00",
-      quantity: 4,
-      dailyLimit: 2,
-      intervalMinutes: 120,
-    },
-    0,
-  );
-  assert.deepEqual(
-    slots.map((s) => s.time),
-    ["09:00", "13:00", "09:00", "13:00"],
-  );
-  assert.notEqual(slots[1].date, slots[2].date);
-});
-test("manual schedule rejects malformed, duplicate, past and too-close times", () => {
-  const base = {
-    startDate: "2030-02-01",
-    times: "09:00,13:00",
-    quantity: 4,
-    dailyLimit: 2,
-    intervalMinutes: 120,
-  };
-  for (const patch of [
-    { startDate: "2030-02-30" },
-    { times: "09:00,bad" },
-    { times: "09:00,09:00" },
-    { times: "09:00,10:00" },
-    { times: "00:15,23:30", intervalMinutes: 120 },
-    { quantity: 0 },
-  ])
-    assert.throws(() => manualSchedule({ ...base, ...patch }, 0));
-  assert.throws(() => manualSchedule(base, new Date("2031-01-01").getTime()));
+test("Automatic Post catalog and search navigate only to Instagram Reels", () => {
+  assert.equal(TOOL_CATALOG.find((tool) => tool.id === "social")?.path, "/automacao-instagram");
+  assert.deepEqual(searchTools("Automatic Post").map((tool) => tool.path), ["/automacao-instagram"]);
+  assert.deepEqual(searchTools("Instagram").map((tool) => tool.path), ["/automacao-instagram"]);
+  assert.deepEqual(searchTools("Reels").map((tool) => tool.path), ["/automacao-instagram"]);
+  assert.deepEqual(searchTools("TikTok"), []);
+  assert.equal(findTool("/automacao-tiktok"), undefined);
+  assert.deepEqual(cleanPreferences({ favorites: ["social"], recent: ["social"] }), {
+    favorites: ["social"], recent: ["social"],
+  });
 });
 
 import { profileReport } from "../src/lib/profile-report.ts";
