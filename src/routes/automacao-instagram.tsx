@@ -663,7 +663,7 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
                   <li>
                     Aplicativo Meta com as permissões de publicação aprovadas
                     (pages_show_list, pages_read_engagement, instagram_basic,
-                    instagram_content_publish).
+                    instagram_content_publish, business_management).
                   </li>
                   <li>Domínio HTTPS e callback OAuth registrados no aplicativo Meta.</li>
                   <li>
