@@ -37,7 +37,10 @@ function oauthFailureReason(error: unknown): string {
     "Facebook did not return a long-lived token.": "facebook_long_token_missing",
     "Facebook Pages lookup failed.": "facebook_pages_lookup",
     "Facebook Instagram profile lookup failed.": "facebook_instagram_profile_lookup",
-    "No professional Instagram account is linked to the user's Facebook Pages.": "no_linked_account",
+    "Facebook returned no accessible Pages.": "facebook_pages_empty",
+    "Facebook Pages did not include Page access tokens.": "facebook_page_token_missing",
+    "No professional Instagram account was found on the authorized Pages.": "instagram_not_linked_to_page",
+    "Professional Instagram profile data is incomplete.": "facebook_instagram_profile_lookup",
     "Instagram account could not be saved.": "account_save",
     "Instagram token could not be stored.": "token_save",
     "Instagram account could not be activated.": "account_activation",
@@ -240,9 +243,21 @@ async function connectViaFacebookLogin(input: {
   });
   if (!pagesResponse.ok) throw new Error("Facebook Pages lookup failed.");
   const pages = (await pagesResponse.json()) as FacebookPagesResponse;
-  const professionalAccounts = linkedFacebookInstagramPages(pages.data ?? []);
+  const availablePages = pages.data ?? [];
+  if (!availablePages.length) throw new Error("Facebook returned no accessible Pages.");
+  if (!availablePages.some((page) => page.access_token)) {
+    throw new Error("Facebook Pages did not include Page access tokens.");
+  }
+  if (
+    !availablePages.some(
+      (page) => page.instagram_business_account?.id || page.connected_instagram_account?.id,
+    )
+  ) {
+    throw new Error("No professional Instagram account was found on the authorized Pages.");
+  }
+  const professionalAccounts = linkedFacebookInstagramPages(availablePages);
   if (!professionalAccounts.length) {
-    throw new Error("No professional Instagram account is linked to the user's Facebook Pages.");
+    throw new Error("Professional Instagram profile data is incomplete.");
   }
 
   const expiry = new Date(
