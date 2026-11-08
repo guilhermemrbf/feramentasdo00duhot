@@ -12,6 +12,7 @@ export const FACEBOOK_LOGIN_SCOPES = [
   "pages_read_engagement",
   "instagram_basic",
   "instagram_content_publish",
+  "business_management",
 ] as const;
 
 function requiredEnv(name: string): string {
