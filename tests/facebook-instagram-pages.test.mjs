@@ -30,6 +30,26 @@ test("Facebook Login keeps the Page token for each linked professional account",
   );
 });
 
+test("Facebook Login accepts a professional account returned as connected_instagram_account", () => {
+  const linked = linkedFacebookInstagramPages([
+    {
+      id: "page-4",
+      name: "Creator Page",
+      access_token: "page-token-4",
+      connected_instagram_account: { id: "ig-4", username: "creator" },
+    },
+  ]);
+
+  assert.deepEqual(linked, [
+    {
+      pageName: "Creator Page",
+      pageAccessToken: "page-token-4",
+      isBusinessAccount: false,
+      ig: { id: "ig-4", username: "creator" },
+    },
+  ]);
+});
+
 test("Facebook Login keeps linked accounts when Meta omits the username in the Page response", () => {
   const linked = linkedFacebookInstagramPages([
     {

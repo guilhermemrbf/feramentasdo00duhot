@@ -9,12 +9,14 @@ type InstagramTokenResponse = {
 };
 type InstagramProfile = { user_id?: number | string; username?: string; account_type?: string };
 type FacebookInstagramProfile = { id?: string; username?: string; name?: string };
+type FacebookInstagramAccount = { id?: string; username?: string; name?: string };
 type FacebookPagesResponse = {
   data?: Array<{
     id?: string;
     name?: string;
     access_token?: string;
-    instagram_business_account?: { id?: string; username?: string; name?: string };
+    instagram_business_account?: FacebookInstagramAccount;
+    connected_instagram_account?: FacebookInstagramAccount;
   }>;
 };
 
@@ -230,7 +232,7 @@ async function connectViaFacebookLogin(input: {
 
   const pagesUrl = new URL(`${config.facebookGraphBaseUrl}/me/accounts`);
   pagesUrl.search = new URLSearchParams({
-    fields: "id,name,access_token,instagram_business_account{id,username,name}",
+    fields: "id,name,access_token,instagram_business_account{id,username,name},connected_instagram_account{id,username,name}",
   }).toString();
   const pagesResponse = await fetch(pagesUrl, {
     headers: { Authorization: "Bearer " + longToken.access_token },
@@ -274,7 +276,7 @@ async function connectViaFacebookLogin(input: {
           instagram_user_id: String(ig.id),
           username,
           display_name: displayName,
-          account_type: "BUSINESS",
+          account_type: entry.isBusinessAccount ? "BUSINESS" : null,
           connection_status: "pending",
           auth_mode: "facebook_login",
           scopes: [...FACEBOOK_LOGIN_SCOPES],
