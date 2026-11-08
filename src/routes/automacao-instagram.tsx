@@ -177,10 +177,27 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
   useEffect(() => {
     const result = new URLSearchParams(window.location.search).get("instagram");
     if (result === "connected") setNotice("Conta do Instagram conectada com sucesso.");
-    if (result === "connection_failed")
-      setNotice(
-        "A conexão do Instagram não foi concluída. Revise as configurações Meta e tente novamente.",
-      );
+    if (result === "connection_failed") {
+      const reason = new URLSearchParams(window.location.search).get("instagram_reason");
+      const reasonLabels: Record<string, string> = {
+        meta_denied: "a Meta não concluiu a autorização",
+        state_validation: "a validação de segurança da autorização",
+        authorization_code_missing: "o código de autorização retornado pela Meta",
+        workspace_access: "o acesso ao espaço de trabalho",
+        facebook_code_exchange: "a troca do código de autorização do Facebook",
+        facebook_token_missing: "o retorno do token temporário do Facebook",
+        facebook_token_exchange: "a troca pelo token de longa duração do Facebook",
+        facebook_long_token_missing: "o retorno do token de longa duração do Facebook",
+        facebook_pages_lookup: "a busca pelas Páginas do Facebook",
+        no_linked_account: "a busca por Instagram profissional vinculado a uma Página",
+        account_save: "o salvamento da conta do Instagram",
+        token_save: "o armazenamento seguro da autorização",
+        account_activation: "a ativação da conta no sistema",
+        server_configuration_or_unexpected: "uma configuração do servidor ou erro inesperado",
+      };
+      const detail = reason ? reasonLabels[reason] ?? "uma etapa não identificada" : "uma etapa não identificada";
+      setNotice(`A conexão não foi concluída. Falha em: ${detail}. Tente conectar novamente.`);
+    }
   }, []);
 
   const connectInstagram = async (mode: "instagram_login" | "facebook_login") => {
