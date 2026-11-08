@@ -22,6 +22,9 @@ export type PostkitDatabase = Database & {
       accept_postkit_device_invite: { Args: { p_token_hash: string }; Returns: string };
       revoke_postkit_device_invite: { Args: { p_token_hash: string }; Returns: undefined };
       claim_instagram_publish_step: { Args: Record<string, never>; Returns: LeasedInstagramPost[] };
+      verify_instagram_worker_secret: { Args: { p_token: string }; Returns: boolean };
+      enable_instagram_worker: { Args: Record<string, never>; Returns: boolean };
+      instagram_worker_is_active: { Args: Record<string, never>; Returns: boolean };
       checkpoint_instagram_publish: {
         Args: {
           p_post_id: string;

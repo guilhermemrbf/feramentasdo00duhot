@@ -22,6 +22,10 @@ import { AppShell, PageIntro } from "@/components/AppShell";
 import { WorkspaceGate, type Workspace } from "@/components/postkit/WorkspaceGate";
 import { supabase } from "@/integrations/supabase/client";
 import { startInstagramOAuth } from "@/lib/api/instagram-oauth.functions";
+import {
+  enableInstagramWorker,
+  getInstagramWorkerStatus,
+} from "@/lib/api/instagram-worker.functions";
 import { zonedDateTimeToIso } from "@/lib/scheduling";
 import { InstagramHistory } from "@/components/postkit/InstagramHistory";
 import { validatePostkitVideo } from "@/lib/postkit-media";
@@ -99,6 +103,8 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
   const [queueSaved, setQueueSaved] = useState(false);
   const [savingQueue, setSavingQueue] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [workerActive, setWorkerActive] = useState<boolean | null>(null);
+  const [activatingWorker, setActivatingWorker] = useState(false);
   const [extraAccountIds, setExtraAccountIds] = useState<string[]>([]);
   const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
   const [repeatVideos, setRepeatVideos] = useState(false);
@@ -480,6 +486,40 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
       );
     } finally {
       setSavingQueue(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab !== "config") return;
+    let current = true;
+    void getInstagramWorkerStatus({ data: { workspaceId: workspace.id } })
+      .then(({ active }) => {
+        if (current) setWorkerActive(active);
+      })
+      .catch(() => {
+        if (current) setWorkerActive(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [tab, workspace.id]);
+
+  const activateWorker = async () => {
+    if (activatingWorker || workerActive === true) return;
+    setActivatingWorker(true);
+    setNotice("");
+    try {
+      const result = await enableInstagramWorker({ data: { workspaceId: workspace.id } });
+      setWorkerActive(result.active);
+      setNotice(
+        result.active
+          ? "Processamento automático ativado. A fila será verificada periodicamente; confira cada resultado no Histórico."
+          : "Não foi possível confirmar a ativação do processamento.",
+      );
+    } catch {
+      setNotice("Não foi possível ativar o processamento. Confira se você é administradora do workspace.");
+    } finally {
+      setActivatingWorker(false);
     }
   };
 
@@ -1084,16 +1124,40 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
               </button>
             </Panel>
             <Panel title="Status da integração">
-              <div className="flex items-start gap-3 rounded-md border border-border bg-secondary/30 p-4">
-                <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
-                <div>
-                  <p className="text-sm font-semibold">Worker de publicação pendente</p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    Login, workspace, OAuth, biblioteca privada e fila persistida estão ligados ao
-                    Supabase. Falta ativar e validar o worker que envia os Reels no horário marcado.
-                    Nenhum segredo fica no frontend.
-                  </p>
+              <div className="flex flex-wrap items-start justify-between gap-4 rounded-md border border-border bg-secondary/30 p-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  {workerActive ? (
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+                  ) : (
+                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
+                  )}
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {workerActive === null
+                        ? "Verificando processamento"
+                        : workerActive
+                          ? "Processamento automático ativo"
+                          : "Processamento automático pendente"}
+                    </p>
+                    <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+                      O servidor verifica a fila a cada minuto usando credencial gerada e guardada
+                      no Vault do Supabase. Só publica itens que já foram agendados pela equipe.
+                      O horário real pode variar; acompanhe o resultado no Histórico.
+                    </p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => void activateWorker()}
+                  disabled={activatingWorker || workerActive === null || workerActive}
+                  className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                >
+                  {activatingWorker
+                    ? "Ativando…"
+                    : workerActive
+                      ? "Ativo"
+                      : "Ativar publicação automática"}
+                </button>
               </div>
             </Panel>
           </section>

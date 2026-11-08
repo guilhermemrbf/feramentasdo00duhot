@@ -45,11 +45,11 @@ Configurar no servidor (nunca no frontend ou em `VITE_*`):
 - `META_APP_ID`, `META_APP_SECRET`, `META_GRAPH_API_VERSION` compatível.
 - `INSTAGRAM_OAUTH_STATE_SECRET` e `INSTAGRAM_TOKEN_ENCRYPTION_KEY` conforme os validadores do servidor.
 - Credenciais de servidor Supabase já usadas pelo projeto.
-- `LOVABLE_CRON_SECRET` para a chamada autenticada do agendador; não registrar o valor em logs ou arquivos versionados.
+- O segredo do worker é criado no servidor e guardado no Vault do Supabase; o frontend nunca recebe seu valor.
 
-Cadastrar callback `<APP_BASE_URL>/api/instagram/oauth/callback` no app Meta. Autorizar `instagram_business_basic` e `instagram_business_content_publish`; verificar acesso de teste/revisão exigido pela Meta antes de atender outras contas. O usuário informou que ainda não possui app Meta/conta profissional de teste configurados.
+Cadastrar callback `<APP_BASE_URL>/api/instagram/oauth/callback` no app Meta. No login unificado do Instagram, autorizar `instagram_business_basic` e `instagram_business_content_publish`. No login do Facebook usado por esta conta, habilitar `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_content_publish` e `business_management`. Verificar acesso de teste/revisão exigido pela Meta antes de atender outras contas. O usuário informou que ainda não possui app Meta/conta profissional de teste configurados.
 
-No agendador do Lovable, chamar o endpoint autenticado periodicamente (começar a cada minuto). Uma chamada executa uma etapa de um post; antes de aumentar volume medir atraso da fila e ajustar capacidade com os limites da plataforma. A frequência de um minuto não significa publicação garantida em um minuto.
+Na aba Configurações do PostKit, uma pessoa owner/admin ativa o processamento. A ativação cria um segredo aleatório no servidor, guarda o valor no Vault do Supabase, grava apenas seu hash para validação e agenda `POST /api/instagram/worker` pelo `pg_cron`/`pg_net` a cada minuto. Uma chamada executa uma etapa; o tempo total depende da preparação da Meta e da fila. A frequência de um minuto não significa publicação exata em um minuto.
 
 Antes da liberação operacional: conectar conta de teste, enviar vídeo autorizado, agendar e verificar ID/resultado no Instagram; testar cancelamento, desconexão e recuperação. Não declarar publicação real aprovada com base em mocks.
 
