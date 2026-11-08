@@ -17,10 +17,28 @@ type FacebookPagesResponse = {
   }>;
 };
 
-function redirectToApp(baseUrl: URL, result: string) {
+function redirectToApp(baseUrl: URL, result: string, reason?: string) {
   const target = new URL("/automacao-instagram", baseUrl);
   target.searchParams.set("instagram", result);
+  if (reason) target.searchParams.set("instagram_reason", reason);
   return new Response(null, { status: 303, headers: { Location: target.href } });
+}
+
+function oauthFailureReason(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  const known: Record<string, string> = {
+    "Workspace access was revoked during Instagram authorization.": "workspace_access",
+    "Facebook authorization code exchange failed.": "facebook_code_exchange",
+    "Facebook did not return an access token.": "facebook_token_missing",
+    "Facebook long-lived token exchange failed.": "facebook_token_exchange",
+    "Facebook did not return a long-lived token.": "facebook_long_token_missing",
+    "Facebook Pages lookup failed.": "facebook_pages_lookup",
+    "No professional Instagram account is linked to the user's Facebook Pages.": "no_linked_account",
+    "Instagram account could not be saved.": "account_save",
+    "Instagram token could not be stored.": "token_save",
+    "Instagram account could not be activated.": "account_activation",
+  };
+  return known[message] ?? "server_configuration_or_unexpected";
 }
 
 export const Route = createFileRoute("/api/instagram/oauth/callback")({
@@ -42,14 +60,14 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
         const code = params.get("code");
         deleteCookie(cookieName, instagramOAuthCookieOptions());
 
-        if (
-          !cookieState ||
-          !returnedState ||
-          cookieState !== returnedState ||
-          !code ||
-          params.has("error")
-        ) {
-          return redirectToApp(config.appBaseUrl, "connection_failed");
+        if (params.has("error")) {
+          return redirectToApp(config.appBaseUrl, "connection_failed", "meta_denied");
+        }
+        if (!cookieState || !returnedState || cookieState !== returnedState) {
+          return redirectToApp(config.appBaseUrl, "connection_failed", "state_validation");
+        }
+        if (!code) {
+          return redirectToApp(config.appBaseUrl, "connection_failed", "authorization_code_missing");
         }
 
         try {
@@ -157,8 +175,10 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
           if (activateError) throw new Error("Instagram account could not be activated.");
 
           return redirectToApp(config.appBaseUrl, "connected");
-        } catch {
-          return redirectToApp(config.appBaseUrl, "connection_failed");
+        } catch (error) {
+          const reason = oauthFailureReason(error);
+          console.error("[instagram-oauth] connection failed", { reason });
+          return redirectToApp(config.appBaseUrl, "connection_failed", reason);
         }
       },
     },
