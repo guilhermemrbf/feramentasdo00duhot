@@ -8,6 +8,7 @@ type InstagramTokenResponse = {
   expires_in?: number;
 };
 type InstagramProfile = { user_id?: number | string; username?: string; account_type?: string };
+type FacebookInstagramProfile = { id?: string; username?: string; name?: string };
 type FacebookPagesResponse = {
   data?: Array<{
     id?: string;
@@ -33,6 +34,7 @@ function oauthFailureReason(error: unknown): string {
     "Facebook long-lived token exchange failed.": "facebook_token_exchange",
     "Facebook did not return a long-lived token.": "facebook_long_token_missing",
     "Facebook Pages lookup failed.": "facebook_pages_lookup",
+    "Facebook Instagram profile lookup failed.": "facebook_instagram_profile_lookup",
     "No professional Instagram account is linked to the user's Facebook Pages.": "no_linked_account",
     "Instagram account could not be saved.": "account_save",
     "Instagram token could not be stored.": "token_save",
@@ -246,14 +248,32 @@ async function connectViaFacebookLogin(input: {
   ).toISOString();
   for (const entry of professionalAccounts) {
     const ig = entry.ig!;
+    let username = ig.username;
+    let displayName = ig.name ?? entry.pageName;
+    if (!username) {
+      const profileUrl = new URL(
+        `${config.facebookGraphBaseUrl}/${encodeURIComponent(ig.id)}`,
+      );
+      profileUrl.search = new URLSearchParams({ fields: "id,username,name" }).toString();
+      const profileResponse = await fetch(profileUrl, {
+        headers: { Authorization: "Bearer " + entry.pageAccessToken },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!profileResponse.ok) throw new Error("Facebook Instagram profile lookup failed.");
+      const profile = (await profileResponse.json()) as FacebookInstagramProfile;
+      username = profile.username;
+      displayName = profile.name ?? displayName;
+    }
+    if (!username) throw new Error("Facebook Instagram profile lookup failed.");
+
     const { data: account, error: accountError } = await supabaseAdmin
       .from("instagram_accounts")
       .upsert(
         {
           workspace_id: workspaceId,
           instagram_user_id: String(ig.id),
-          username: ig.username!,
-          display_name: ig.name ?? entry.pageName,
+          username,
+          display_name: displayName,
           account_type: "BUSINESS",
           connection_status: "pending",
           auth_mode: "facebook_login",

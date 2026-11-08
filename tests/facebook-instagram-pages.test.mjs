@@ -30,13 +30,31 @@ test("Facebook Login keeps the Page token for each linked professional account",
   );
 });
 
-test("Facebook Login ignores pages missing a Page token or complete professional profile", () => {
+test("Facebook Login keeps linked accounts when Meta omits the username in the Page response", () => {
+  const linked = linkedFacebookInstagramPages([
+    {
+      id: "page-3",
+      name: "Creator Page",
+      access_token: "page-token-3",
+      instagram_business_account: { id: "ig-3" },
+    },
+  ]);
+
+  assert.deepEqual(linked, [
+    {
+      pageName: "Creator Page",
+      pageAccessToken: "page-token-3",
+      ig: { id: "ig-3" },
+    },
+  ]);
+});
+
+test("Facebook Login ignores pages missing a Page token or Instagram account ID", () => {
   const linked = linkedFacebookInstagramPages([
     { id: "page-no-token", instagram_business_account: { id: "ig-1", username: "brand" } },
     {
-      id: "page-no-username",
+      id: "page-no-instagram-id",
       access_token: "page-token",
-      instagram_business_account: { id: "ig-2" },
     },
     { id: "page-no-instagram", access_token: "page-token" },
   ]);

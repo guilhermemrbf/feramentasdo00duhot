@@ -22,11 +22,11 @@ export function linkedFacebookInstagramPages(
   const linked: LinkedFacebookInstagramPage[] = [];
   for (const page of pages) {
     const ig = page.instagram_business_account;
-    if (!page.access_token || !ig?.id || !ig.username) continue;
+    if (!page.access_token || !ig?.id) continue;
     linked.push({
       pageName: page.name ?? null,
       pageAccessToken: page.access_token,
-      ig,
+      ig: { ...ig, id: ig.id },
     });
   }
   return linked;
