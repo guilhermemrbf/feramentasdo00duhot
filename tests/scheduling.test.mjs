@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { zonedDateTimeToIso } from "../src/lib/scheduling.ts";
+import { calendarDateInZone, zonedDateTimeToIso } from "../src/lib/scheduling.ts";
+
+test("calendar shortcuts use the workspace day even across midnight UTC and month boundaries", () => {
+  const now = new Date("2026-12-01T01:00:00Z");
+  assert.equal(calendarDateInZone("America/Sao_Paulo", 0, now), "2026-11-30");
+  assert.equal(calendarDateInZone("America/Sao_Paulo", 1, now), "2026-12-01");
+  assert.equal(calendarDateInZone("Asia/Tokyo", 0, now), "2026-12-01");
+});
 
 test("scheduled local times convert using the workspace timezone", () => {
   assert.equal(

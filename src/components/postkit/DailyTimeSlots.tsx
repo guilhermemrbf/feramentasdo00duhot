@@ -1,4 +1,49 @@
 import { Plus, X } from "lucide-react";
+import { calendarDateInZone } from "@/lib/scheduling";
+
+export function ScheduleDate({
+  value,
+  timezone,
+  onChange,
+}: {
+  value: string;
+  timezone: string;
+  onChange: (value: string) => void;
+}) {
+  const now = new Date();
+  const today = calendarDateInZone(timezone, 0, now);
+  const tomorrow = calendarDateInZone(timezone, 1, now);
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm font-semibold">
+        Primeiro dia de publicação
+        <input
+          className="field mt-1"
+          type="date"
+          min={today}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      </label>
+      <div className="flex gap-2">
+        {[
+          ["Hoje", today],
+          ["Amanhã", tomorrow],
+        ].map(([label, date]) => (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={value === date}
+            onClick={() => onChange(date)}
+            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-secondary aria-pressed:border-primary/50 aria-pressed:bg-primary/10 aria-pressed:text-primary"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function DailyTimeSlots({
   value,

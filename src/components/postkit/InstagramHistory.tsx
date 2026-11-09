@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { PostkitDatabase } from "@/lib/postkit-database";
 
-const labels: Record<string, string> = {
+const labels = {
   scheduled: "Agendado",
   processing: "Preparando publicação",
   published: "Publicado",
@@ -12,7 +12,8 @@ const labels: Record<string, string> = {
   cancelled: "Cancelado",
   draft: "Rascunho",
   paused: "Pausado",
-};
+} as const;
+type Status = keyof typeof labels;
 type HistoryRow = {
   id: string;
   status: string;
@@ -29,13 +30,20 @@ export function InstagramHistory({
   workspaceId,
   timezone,
   refreshKey,
+  mode,
+  accounts,
+  onSchedule,
 }: {
   workspaceId: string;
   timezone: string;
   refreshKey: number;
+  mode: "queue" | "history";
+  accounts: Array<{ id: string; username: string }>;
+  onSchedule: () => void;
 }) {
   const [rows, setRows] = useState<HistoryRow[]>([]);
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState<"all" | Status>("all");
+  const [account, setAccount] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(0);
@@ -44,13 +52,20 @@ export function InstagramHistory({
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const result = await supabase
+      let query = supabase
         .from("posts")
         .select(
           "id,status,caption,scheduled_at,published_at,meta_media_id,last_error_message,instagram_accounts(username),media_assets(original_filename)",
         )
-        .eq("workspace_id", workspaceId)
-        .order("created_at", { ascending: false })
+        .eq("workspace_id", workspaceId);
+      if (account) query = query.eq("instagram_account_id", account);
+      if (filter !== "all") query = query.eq("status", filter);
+      else if (mode === "queue") query = query.in("status", ["scheduled", "processing"]);
+      const result = await query
+        .order(mode === "queue" ? "scheduled_at" : "created_at", {
+          ascending: mode === "queue",
+          nullsFirst: false,
+        })
         .limit(100);
       if (!active) return;
       setLoading(false);
@@ -75,7 +90,7 @@ export function InstagramHistory({
       active = false;
       window.clearInterval(timer);
     };
-  }, [workspaceId, refreshKey, refresh]);
+  }, [workspaceId, refreshKey, refresh, mode, filter, account]);
 
   const cancel = async (id: string) => {
     if (cancelling) return;
@@ -99,7 +114,8 @@ export function InstagramHistory({
       setCancelling(null);
     }
   };
-  const visible = rows.filter((row) => filter === "all" || row.status === filter);
+  const filters: Status[] =
+    mode === "queue" ? ["scheduled", "processing"] : (Object.keys(labels) as Status[]);
   return (
     <section
       className="mt-6 rounded-lg border border-border bg-card p-5"
@@ -107,22 +123,43 @@ export function InstagramHistory({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-semibold">Agendamentos e histórico</h2>
+          <h2 className="font-semibold">
+            {mode === "queue" ? "O que vai sair a seguir" : "Acompanhe suas publicações"}
+          </h2>
           <p className="text-xs text-muted-foreground">
-            Últimos 100 registros · horários em {timezone} · atualização a cada 30 segundos
+            Até 100 resultados · horários em {timezone} · atualização a cada 30 segundos
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <select
+            aria-label="Filtrar por conta"
+            value={account}
+            onChange={(event) => {
+              setLoading(true);
+              setAccount(event.target.value);
+            }}
+            className="rounded-md border border-border bg-background p-2 text-sm"
+          >
+            <option value="">Todas as contas</option>
+            {accounts.map((item) => (
+              <option value={item.id} key={item.id}>
+                @{item.username}
+              </option>
+            ))}
+          </select>
           <select
             aria-label="Filtrar histórico"
             value={filter}
-            onChange={(event) => setFilter(event.target.value)}
-            className="rounded-md border border-border bg-background p-2 text-xs"
+            onChange={(event) => {
+              setLoading(true);
+              setFilter(event.target.value as "all" | Status);
+            }}
+            className="rounded-md border border-border bg-background p-2 text-sm"
           >
             <option value="all">Todos os estados</option>
-            {Object.entries(labels).map(([value, label]) => (
+            {filters.map((value) => (
               <option key={value} value={value}>
-                {label}
+                {labels[value]}
               </option>
             ))}
           </select>
@@ -141,13 +178,22 @@ export function InstagramHistory({
       )}
       {loading ? (
         <p className="py-8 text-sm">Carregando histórico…</p>
-      ) : visible.length === 0 ? (
-        <p className="py-8 text-sm text-muted-foreground">
-          Nenhuma publicação encontrada neste filtro.
-        </p>
+      ) : rows.length === 0 ? (
+        <div className="py-8 text-sm text-muted-foreground">
+          <p>
+            {mode === "queue" && !account && filter === "all"
+              ? "A fila está vazia."
+              : "Nenhuma publicação encontrada neste filtro."}
+          </p>
+          {mode === "queue" && !account && filter === "all" && (
+            <button type="button" className="mt-3 font-semibold text-primary" onClick={onSchedule}>
+              Agendar um Reel
+            </button>
+          )}
+        </div>
       ) : (
         <div className="mt-4 divide-y divide-border">
-          {visible.map((row) => (
+          {rows.map((row) => (
             <article key={row.id} className="flex flex-wrap items-start justify-between gap-3 py-4">
               <div className="min-w-0 flex-1">
                 <p className="break-words text-sm font-medium">
@@ -176,7 +222,7 @@ export function InstagramHistory({
                 )}
               </div>
               <span className="rounded-full bg-secondary px-3 py-1 text-xs">
-                {labels[row.status] ?? row.status}
+                {labels[row.status as Status] ?? row.status}
               </span>
               {row.status === "scheduled" && (
                 <button

@@ -9,7 +9,9 @@ import {
   Hash,
   Instagram,
   Library,
+  LayoutDashboard,
   ListVideo,
+  Repeat2,
   Plus,
   Settings2,
   Sparkles,
@@ -18,8 +20,15 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import { AppShell, PageIntro } from "@/components/AppShell";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { WorkspaceGate, type Workspace } from "@/components/postkit/WorkspaceGate";
 import { supabase } from "@/integrations/supabase/client";
 import { startInstagramOAuth } from "@/lib/api/instagram-oauth.functions";
@@ -27,11 +36,13 @@ import {
   enableInstagramWorker,
   getInstagramWorkerStatus,
 } from "@/lib/api/instagram-worker.functions";
-import { zonedDateTimeToIso } from "@/lib/scheduling";
+import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
 import { InstagramHistory } from "@/components/postkit/InstagramHistory";
+import { InstagramDashboard } from "@/components/postkit/InstagramDashboard";
+import { InstagramLoops } from "@/components/postkit/InstagramLoops";
 import { InstagramStories } from "@/components/postkit/InstagramStories";
 import { InstagramProfileDrafts } from "@/components/postkit/InstagramProfileDrafts";
-import { DailyTimeSlots } from "@/components/postkit/DailyTimeSlots";
+import { DailyTimeSlots, ScheduleDate } from "@/components/postkit/DailyTimeSlots";
 import { validatePostkitVideo } from "@/lib/postkit-media";
 
 export const Route = createFileRoute("/automacao-instagram")({
@@ -60,7 +71,9 @@ type Tab =
   | "stories"
   | "conteudo"
   | "config"
-  | "historico";
+  | "historico"
+  | "publicacoes"
+  | "loops";
 type VideoItem = {
   id: string;
   name: string;
@@ -82,44 +95,65 @@ type QueueItem = {
   accountName: string;
 };
 
-const tabItems = [
-  { id: "dashboard", label: "Visão geral", icon: ListVideo },
-  { id: "perfis", label: "Novos perfis", icon: Plus },
-  { id: "contas", label: "Contas conectadas", icon: Users },
-  { id: "biblioteca", label: "Biblioteca", icon: Library },
-  { id: "fila", label: "Agendar Reels", icon: CalendarDays },
-  { id: "stories", label: "Stories", icon: Instagram },
-  { id: "historico", label: "Histórico", icon: CheckCircle2 },
-  { id: "conteudo", label: "Legendas e hashtags", icon: FileText },
-  { id: "config", label: "Configurações", icon: Settings2 },
+const tabGroups = [
+  { label: "Geral", items: [{ id: "dashboard", label: "Dashboard", icon: LayoutDashboard }] },
+  {
+    label: "Publicar",
+    items: [
+      { id: "fila", label: "Agendar Reels", icon: CalendarDays },
+      { id: "stories", label: "Stories", icon: Instagram },
+      { id: "loops", label: "Loops de Reels", icon: Repeat2 },
+    ],
+  },
+  {
+    label: "Organizar",
+    items: [
+      { id: "biblioteca", label: "Biblioteca", icon: Library },
+      { id: "contas", label: "Contas do Instagram", icon: Users },
+      { id: "perfis", label: "Novos perfis", icon: Plus },
+      { id: "conteudo", label: "Legendas e hashtags", icon: FileText },
+    ],
+  },
+  {
+    label: "Acompanhar",
+    items: [
+      { id: "publicacoes", label: "Fila de publicações", icon: ListVideo },
+      { id: "historico", label: "Histórico", icon: CheckCircle2 },
+      { id: "config", label: "Configurações", icon: Settings2 },
+    ],
+  },
 ] as const;
+
+const tabItems = tabGroups.flatMap(
+  ({ items }) => [...items] as ReadonlyArray<{ id: Tab; label: string }>,
+);
 
 const quickActions = [
   {
     tab: "contas",
-    title: "Conectar uma conta",
-    text: "Autorize um Instagram profissional para escolher onde publicar.",
+    title: "Conectar nova conta",
+    text: "Adicione a conta do Instagram em que você quer publicar.",
     icon: Users,
     tone: "bg-sky-500/10 text-sky-300",
   },
   {
     tab: "fila",
-    title: "Programar Reels",
-    text: "Escolha os vídeos, os dias e os horários da publicação automática.",
+    title: "Agendar Reels",
+    text: "Escolha seus vídeos e quando eles devem ser publicados.",
     icon: CalendarDays,
     tone: "bg-primary/10 text-primary",
   },
   {
     tab: "stories",
-    title: "Montar Stories",
-    text: "Posicione as figurinhas na prévia e receba um lembrete para publicar.",
+    title: "Preparar Stories",
+    text: "Monte a prévia com figurinhas e receba um lembrete para postar.",
     icon: Instagram,
     tone: "bg-fuchsia-500/10 text-fuchsia-300",
   },
   {
     tab: "perfis",
-    title: "Preparar um perfil novo",
-    text: "Organize nome, foto, bio e primeiros vídeos antes de criar a conta.",
+    title: "Planejar um novo perfil",
+    text: "Deixe nome, foto e bio prontos para criar o perfil no Instagram.",
     icon: Plus,
     tone: "bg-emerald-500/10 text-emerald-300",
   },
@@ -156,8 +190,12 @@ function InstagramWorkspacePage({
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [caption, setCaption] = useState("");
   const [hashtags, setHashtags] = useState("#reels #instagram");
+  const [reelMode, setReelMode] = useState<"single" | "batch">("batch");
+  const [singleVideoId, setSingleVideoId] = useState("");
+  const [singleTime, setSingleTime] = useState("18:00");
+  const [batchOrder, setBatchOrder] = useState("selection");
   const [quantity, setQuantity] = useState(3);
-  const [startDate, setStartDate] = useState(() => new Date().toLocaleDateString("en-CA"));
+  const [startDate, setStartDate] = useState(() => calendarDateInZone(workspace.timezone));
   const [times, setTimes] = useState("09:00, 13:00, 18:00");
   const [dailyLimit, setDailyLimit] = useState(3);
   const [intervalMinutes, setIntervalMinutes] = useState(120);
@@ -167,8 +205,10 @@ function InstagramWorkspacePage({
   >([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [queueSaved, setQueueSaved] = useState(false);
+  const [previewSettings, setPreviewSettings] = useState("");
+  const [previewError, setPreviewError] = useState("");
   const [savingQueue, setSavingQueue] = useState(false);
-  const [connecting, setConnecting] = useState(false);
+  const [connecting, setConnecting] = useState<"instagram_login" | "facebook_login" | null>(null);
   const [workerActive, setWorkerActive] = useState<boolean | null>(null);
   const [activatingWorker, setActivatingWorker] = useState(false);
   const [extraAccountIds, setExtraAccountIds] = useState<string[]>([]);
@@ -178,8 +218,10 @@ function InstagramWorkspacePage({
   const uploadLock = useRef(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [historyRefresh, setHistoryRefresh] = useState(0);
-  const [savedCount, setSavedCount] = useState<number | null>(null);
+  const [accountsLoaded, setAccountsLoaded] = useState(false);
+  const [videosLoaded, setVideosLoaded] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const reviewHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     void supabase
@@ -189,9 +231,10 @@ function InstagramWorkspacePage({
       .then(({ data, error }) => {
         if (error)
           setNotice(
-            "Não foi possível carregar as contas. Confira se as migrations do PostKit foram aplicadas no Supabase de desenvolvimento.",
+            "Não foi possível carregar suas contas do Instagram. Atualize a página para tentar novamente.",
           );
         else {
+          setAccountsLoaded(true);
           setConnectedAccounts(data ?? []);
           setSelectedAccountId(
             (current) =>
@@ -209,13 +252,16 @@ function InstagramWorkspacePage({
       .select("id,original_filename,size_bytes,mime_type,storage_path,status")
       .eq("workspace_id", workspace.id)
       .is("archived_at", null)
+      .in("mime_type", ["video/mp4", "video/quicktime"])
+      .in("status", ["uploaded", "ready"])
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
         if (error)
           setNotice(
-            "Não foi possível carregar a biblioteca. Confira se as migrations do PostKit foram aplicadas.",
+            "Não foi possível carregar seus vídeos. Atualize a página para tentar novamente.",
           );
         else {
+          setVideosLoaded(true);
           setSelectedVideoIds((data ?? []).map((asset) => asset.id));
           setVideos(
             (data ?? []).map((asset) => ({
@@ -232,24 +278,13 @@ function InstagramWorkspacePage({
   }, [workspace.id]);
 
   useEffect(() => {
-    let active = true;
-    void supabase
-      .from("posts")
-      .select("id", { count: "exact", head: true })
-      .eq("workspace_id", workspace.id)
-      .eq("status", "published")
-      .then(({ count, error }) => {
-        if (active) setSavedCount(error ? null : count);
-      });
-    return () => {
-      active = false;
-    };
-  }, [workspace.id, historyRefresh]);
-
-  useEffect(() => {
     const result = new URLSearchParams(window.location.search).get("instagram");
-    if (result === "connected") setNotice("Conta do Instagram conectada com sucesso.");
+    if (result === "connected") {
+      setTab("contas");
+      setNotice("Conexão concluída. Confira o @ em Suas contas.");
+    }
     if (result === "connection_failed") {
+      setTab("contas");
       const reason = new URLSearchParams(window.location.search).get("instagram_reason");
       const reasonLabels: Record<string, string> = {
         meta_denied: "a Meta não concluiu a autorização",
@@ -275,12 +310,12 @@ function InstagramWorkspacePage({
       const detail = reason
         ? (reasonLabels[reason] ?? "uma etapa não identificada")
         : "uma etapa não identificada";
-      setNotice(`A conexão não foi concluída. Falha em: ${detail}. Tente conectar novamente.`);
+      setNotice(`A conexão parou em ${detail}. Escolha uma opção abaixo para tentar novamente.`);
     }
   }, []);
 
   const connectInstagram = async (mode: "instagram_login" | "facebook_login") => {
-    setConnecting(true);
+    setConnecting(mode);
     setNotice("");
     try {
       const { authorizationUrl } = await startInstagramOAuth({
@@ -289,13 +324,12 @@ function InstagramWorkspacePage({
       window.location.assign(authorizationUrl);
     } catch {
       setNotice(
-        "Não foi possível iniciar a conexão. Confirme o login, o acesso ao workspace e as configurações do servidor.",
+        "Não foi possível abrir a tela de autorização. Atualize a página e tente conectar novamente.",
       );
-      setConnecting(false);
+      setConnecting(null);
     }
   };
 
-  const scheduledCount = queue.length;
   const videoCount = videos.length;
   const formattedSize = (bytes: number) =>
     bytes < 1024 * 1024
@@ -390,53 +424,91 @@ function InstagramWorkspacePage({
     [times],
   );
 
+  const readyAccounts = connectedAccounts.filter(
+    (account) => account.connection_status === "connected",
+  );
+  const reelAccounts = readyAccounts.filter(
+    (account) => account.id === selectedAccountId || extraAccountIds.includes(account.id),
+  );
+  const reelVideos = useMemo(() => {
+    const ids = new Set(selectedVideoIds);
+    return videos.filter((video) => ids.has(video.id));
+  }, [selectedVideoIds, videos]);
+  const scheduleVideos =
+    reelMode === "batch" ? reelVideos : videos.filter((video) => video.id === singleVideoId);
+  const reelsPerAccount =
+    reelMode === "single" ? 1 : Math.max(1, Math.min(100, Number(quantity) || 1));
+  const allowedPerDay = Math.max(1, Math.min(10, Number(dailyLimit) || 1));
+  const scheduleTimes = reelMode === "single" ? [singleTime].filter(Boolean) : timeSlots;
+  const slotsPerDay = Math.min(allowedPerDay, scheduleTimes.length);
+  const currentSettings = JSON.stringify([
+    reelAccounts.map((account) => account.id),
+    scheduleVideos.map((video) => video.id),
+    reelMode,
+    singleTime,
+    batchOrder,
+    startDate,
+    times,
+    quantity,
+    dailyLimit,
+    intervalMinutes,
+    repeatVideos,
+    caption,
+    hashtags,
+  ]);
+  const previewOutdated = !queueSaved && previewSettings !== currentSettings;
+
   const generatePreview = () => {
-    const selectedVideos = videos.filter((video) => selectedVideoIds.includes(video.id));
-    const accountIds = [...new Set([selectedAccountId, ...extraAccountIds])].filter(Boolean);
-    const accounts = connectedAccounts.filter(
-      (account) => accountIds.includes(account.id) && account.connection_status === "connected",
-    );
-    if (!accounts.length) {
-      setNotice("Conecte e selecione pelo menos uma conta na seção Contas.");
-      setTab("contas");
+    setPreviewError("");
+    if (!reelAccounts.length) {
+      setPreviewError("Marque pelo menos uma conta no primeiro passo.");
       return;
     }
-    if (!selectedVideos.length) {
-      setNotice("Adicione pelo menos um vídeo antes de montar a prévia.");
-      setTab("biblioteca");
+    if (!scheduleVideos.length) {
+      setPreviewError("Escolha pelo menos um vídeo no segundo passo.");
       return;
     }
-    if (!timeSlots.length || times.split(",").some((slot) => !slot.trim())) {
-      setNotice("Preencha todos os horários ou remova os campos que ficaram vazios.");
+    if (
+      !scheduleTimes.length ||
+      (reelMode === "batch" && times.split(",").some((slot) => !slot.trim()))
+    ) {
+      setPreviewError("Preencha todos os horários ou remova os campos vazios.");
       return;
     }
-    const count = Math.max(1, Math.min(100, Number(quantity) || 1));
-    if (!repeatVideos && count > selectedVideos.length) {
-      setNotice(
-        "A quantidade é maior que os vídeos selecionados. Reduza a quantidade ou permita a repetição do acervo.",
-      );
+    if (!repeatVideos && reelsPerAccount > scheduleVideos.length) {
+      setPreviewError("Escolha mais vídeos ou reduza o total de Reels por conta.");
       return;
     }
-    if (count * accounts.length > 500) {
-      setNotice("Divida a programação em lotes de até 500 publicações.");
+    if (reelsPerAccount * reelAccounts.length > 500) {
+      setPreviewError("Agende até 500 Reels por vez, somando todas as contas selecionadas.");
       return;
     }
-    const perDay = Math.max(1, Math.min(10, Number(dailyLimit) || 1));
+    if (!startDate) {
+      setPreviewError("Escolha o primeiro dia da programação.");
+      return;
+    }
     try {
+      const ordered = [...scheduleVideos];
+      if (reelMode === "batch" && batchOrder === "random") {
+        for (let index = ordered.length - 1; index > 0; index--) {
+          const other = Math.floor(Math.random() * (index + 1));
+          [ordered[index], ordered[other]] = [ordered[other], ordered[index]];
+        }
+      }
       const [startYear, startMonth, startDay] = startDate.split("-").map(Number);
       const base = new Date(Date.UTC(startYear, startMonth - 1, startDay));
-      const next: QueueItem[] = Array.from({ length: count }, (_, index) => {
+      const next: QueueItem[] = Array.from({ length: reelsPerAccount }, (_, index) => {
         const date = new Date(base);
-        date.setUTCDate(base.getUTCDate() + Math.floor(index / Math.min(perDay, timeSlots.length)));
+        date.setUTCDate(base.getUTCDate() + Math.floor(index / slotsPerDay));
         const dateValue = date.toISOString().slice(0, 10);
-        const time = timeSlots[index % Math.min(perDay, timeSlots.length)];
+        const time = scheduleTimes[index % slotsPerDay];
         const scheduledAt = zonedDateTimeToIso(dateValue, time, workspace.timezone);
         return {
           id: crypto.randomUUID(),
-          assetId: selectedVideos[index % selectedVideos.length].id,
-          video: selectedVideos[index % selectedVideos.length].name,
-          accountId: accounts[0].id,
-          accountName: accounts[0].username,
+          assetId: ordered[index % ordered.length].id,
+          video: ordered[index % ordered.length].name,
+          accountId: reelAccounts[0].id,
+          accountName: reelAccounts[0].username,
           scheduledAt,
           date: new Intl.DateTimeFormat("pt-BR", {
             timeZone: workspace.timezone,
@@ -456,15 +528,17 @@ function InstagramWorkspacePage({
               minimumIntervalMs,
         )
       ) {
-        setNotice("Os horários ficam mais próximos do que o intervalo mínimo configurado.");
+        setPreviewError("Separe mais os horários ou ajuste o intervalo mínimo em Mais opções.");
         return;
       }
       if (next.some((post) => new Date(post.scheduledAt).getTime() <= Date.now())) {
-        setNotice("Escolha apenas horários futuros no fuso horário do workspace.");
+        setPreviewError(
+          "Algum horário já passou. Escolha horários mais tarde ou comece em outro dia.",
+        );
         return;
       }
       setQueue(
-        accounts.flatMap((account) =>
+        reelAccounts.flatMap((account) =>
           next.map((post) => ({
             ...post,
             id: crypto.randomUUID(),
@@ -474,17 +548,16 @@ function InstagramWorkspacePage({
         ),
       );
       setQueueSaved(false);
-      setNotice("Prévia criada. Revise os horários antes de salvar o agendamento.");
-      setTab("fila");
-    } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Não foi possível montar os horários neste fuso.",
-      );
+      setPreviewSettings(currentSettings);
+      setNotice("");
+      requestAnimationFrame(() => reviewHeading.current?.focus());
+    } catch {
+      setPreviewError("Confira se a data e os horários existem no fuso do espaço de trabalho.");
     }
   };
 
   const saveQueue = async () => {
-    if (savingQueue || queueSaved) return;
+    if (savingQueue || queueSaved || previewOutdated) return;
     if (
       queue.some(
         (post) =>
@@ -601,13 +674,67 @@ function InstagramWorkspacePage({
   };
 
   return (
-    <>
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <PageIntro
-          eyebrow="PostKit · Instagram"
-          title="Automação Instagram"
-          description="Prepare perfis, agende Reels e monte Stories com prévia e lembretes, tudo no mesmo lugar."
-        />
+    <div className="mx-auto grid w-full max-w-[1600px] gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start lg:gap-6">
+      <aside className="lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:rounded-xl lg:border lg:border-border lg:bg-card lg:p-3">
+        <div className="mb-3 flex items-center gap-2 lg:px-2">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <Instagram className="size-4" />
+          </span>
+          <span className="font-display text-sm font-semibold">Automação Instagram</span>
+        </div>
+        <label className="block text-xs font-medium text-muted-foreground lg:hidden">
+          Seção do painel
+          <select
+            className="field mt-1"
+            value={tab}
+            onChange={(event) => setTab(event.target.value as Tab)}
+          >
+            {tabItems.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <nav aria-label="Seções da automação Instagram" className="hidden space-y-4 lg:block">
+          {tabGroups.map((group) => (
+            <div key={group.label}>
+              <p className="mb-1.5 px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {group.label}
+              </p>
+              {group.items.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setTab(id)}
+                  aria-current={tab === id ? "page" : undefined}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground aria-[current=page]:bg-primary/15 aria-[current=page]:text-primary"
+                >
+                  <Icon className="size-4 shrink-0" /> {label}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+      </aside>
+      <main className="min-w-0 rounded-2xl bg-[image:linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-size-[32px_32px]">
+        <header className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 sm:px-5">
+          <h1 className="font-display text-xl font-semibold">
+            {tabItems.find((item) => item.id === tab)?.label}
+          </h1>
+          {tab === "dashboard" && (
+            <button
+              type="button"
+              onClick={() => {
+                setReelMode("single");
+                setTab("fila");
+              }}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+            >
+              <Plus className="size-4" /> Nova publicação
+            </button>
+          )}
+        </header>
 
         {notice && (
           <div className="mt-4 flex items-start justify-between gap-3 rounded-md border border-border bg-secondary/50 px-4 py-3 text-sm">
@@ -622,35 +749,22 @@ function InstagramWorkspacePage({
           </div>
         )}
 
-        <nav
-          aria-label="Seções da automação Instagram"
-          className="mt-6 flex flex-wrap gap-1 rounded-xl border border-border bg-card p-1.5"
-        >
-          {tabItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setTab(item.id)}
-                aria-current={tab === item.id ? "page" : undefined}
-                className={
-                  "inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors " +
-                  (tab === item.id
-                    ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground")
-                }
-              >
-                <Icon className="size-4" />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-
         {tab === "dashboard" && (
-          <section className="mt-6 space-y-6">
+          <section className="mt-4 space-y-4">
+            <InstagramDashboard
+              workspaceId={workspace.id}
+              timezone={workspace.timezone}
+              accountCount={accountsLoaded ? readyAccounts.length : null}
+              videoCount={videosLoaded ? videoCount : null}
+              refreshKey={historyRefresh}
+              onAccounts={() => setTab("contas")}
+              onLibrary={() => setTab("biblioteca")}
+              onSchedule={() => setTab("fila")}
+              onQueue={() => setTab("publicacoes")}
+              onHistory={() => setTab("historico")}
+            />
             <Panel title="O que você quer fazer?">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {quickActions.map(({ tab: target, title, text, icon: Icon, tone }) => (
                   <button
                     key={target}
@@ -672,90 +786,13 @@ function InstagramWorkspacePage({
                 ))}
               </div>
             </Panel>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Metric
-                label="Contas conectadas"
-                value={String(
-                  connectedAccounts.filter((account) => account.connection_status === "connected")
-                    .length,
-                )}
-                icon={Instagram}
-                detail="Instagram profissional"
-              />
-              <Metric
-                label="Vídeos na biblioteca"
-                value={String(videoCount)}
-                icon={Video}
-                detail="Salvos na biblioteca privada"
-              />
-              <Metric
-                label={queueSaved ? "Itens agendados" : "Itens na prévia"}
-                value={String(scheduledCount)}
-                icon={CalendarDays}
-                detail={queueSaved ? "Salvos no workspace" : "Aguardando confirmação"}
-              />
-              <Metric
-                label="Publicações realizadas"
-                value={savedCount === null ? "—" : String(savedCount)}
-                icon={CheckCircle2}
-                detail="Confirmadas no histórico"
-              />
-            </div>
-            <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
-              <Panel title="Sua preparação">
-                {queue.length ? (
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      A última prévia tem {queue.length} itens e pode ser revisada na seção
-                      Agendamento.
-                    </p>
-                    <button
-                      onClick={() => setTab("fila")}
-                      className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
-                    >
-                      Revisar prévia
-                    </button>
-                  </div>
-                ) : (
-                  <Empty
-                    icon={CalendarDays}
-                    title="Sua fila começa aqui"
-                    text="Adicione vídeos à biblioteca e monte sua programação. Os agendamentos salvos aparecem no Histórico."
-                  />
-                )}
-              </Panel>
-              <Panel title="Próximos passos">
-                <div className="space-y-3">
-                  <Step
-                    number="1"
-                    title="Adicionar vídeos"
-                    text="Selecione arquivos do seu computador."
-                    onClick={() => setTab("biblioteca")}
-                  />
-                  <Step
-                    number="2"
-                    title="Preparar legendas"
-                    text="Defina o texto e as hashtags padrão."
-                    onClick={() => setTab("conteudo")}
-                  />
-                  <Step
-                    number="3"
-                    title="Montar a programação"
-                    text="Confira datas e horários na prévia."
-                    onClick={() => setTab("fila")}
-                  />
-                </div>
-              </Panel>
-            </div>
           </section>
         )}
 
         <div hidden={tab !== "perfis"}>
           <InstagramProfileDrafts
             workspaceId={workspace.id}
-            accounts={connectedAccounts.filter(
-              (account) => account.connection_status === "connected",
-            )}
+            accounts={readyAccounts}
             videos={videos}
             onConnect={() => setTab("contas")}
             onLibrary={() => setTab("biblioteca")}
@@ -768,6 +805,7 @@ function InstagramWorkspacePage({
               const available = videoIds.filter((id) => videos.some((video) => video.id === id));
               setQueue([]);
               setQueueSaved(false);
+              setReelMode("batch");
               setSelectedAccountId(accountId);
               setExtraAccountIds([]);
               setSelectedVideoIds(available);
@@ -790,24 +828,95 @@ function InstagramWorkspacePage({
           <InstagramStories
             workspaceId={workspace.id}
             timezone={workspace.timezone}
-            accounts={connectedAccounts.filter(
-              (account) => account.connection_status === "connected",
-            )}
+            accounts={readyAccounts}
+            onConnect={() => setTab("contas")}
             profileAccount={storyAccount}
           />
         </div>
 
-        {tab === "historico" && (
+        {(tab === "historico" || tab === "publicacoes") && (
           <InstagramHistory
+            key={tab}
+            mode={tab === "publicacoes" ? "queue" : "history"}
+            accounts={connectedAccounts}
+            onSchedule={() => setTab("fila")}
             workspaceId={workspace.id}
             timezone={workspace.timezone}
             refreshKey={historyRefresh}
           />
         )}
 
+        <div hidden={tab !== "loops"}>
+          {tab === "loops" && (
+            <InstagramLoops
+              workspaceId={workspace.id}
+              timezone={workspace.timezone}
+              accounts={readyAccounts}
+              videos={videos.filter(
+                (video) =>
+                  ["uploaded", "ready"].includes(video.status) &&
+                  ["video/mp4", "video/quicktime"].includes(video.type),
+              )}
+              onAccounts={() => setTab("contas")}
+              onLibrary={() => setTab("biblioteca")}
+            />
+          )}
+        </div>
+
         {tab === "contas" && (
-          <section className="mt-6">
-            <Panel title="Suas contas do Instagram">
+          <section className="mt-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <Panel title="Conectar uma conta">
+              <p className="text-sm text-muted-foreground">
+                Escolha como entrar. Você vai confirmar o acesso na tela oficial e voltar para cá. A
+                conta precisa ser profissional, do tipo empresa ou criador.
+              </p>
+              <div className="mt-4 grid gap-3">
+                <div className="space-y-2 rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/5 p-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <Instagram className="size-4 text-fuchsia-300" /> Entrar pelo Instagram
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Use os dados da própria conta do Instagram que você quer adicionar.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void connectInstagram("instagram_login")}
+                    disabled={!!connecting}
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                  >
+                    {connecting === "instagram_login"
+                      ? "Abrindo autorização…"
+                      : "Continuar com Instagram"}
+                    <ArrowRight className="size-4" />
+                  </button>
+                </div>
+                <div className="space-y-2 rounded-xl border border-sky-500/25 bg-sky-500/5 p-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <Users className="size-4 text-sky-300" /> Entrar pelo Facebook
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Escolha esta opção se seu Instagram está ligado a uma Página do Facebook que
+                    você gerencia.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void connectInstagram("facebook_login")}
+                    disabled={!!connecting}
+                    className="inline-flex items-center gap-2 rounded-md border border-sky-500/30 px-4 py-2 text-sm font-semibold hover:bg-sky-500/10 disabled:opacity-50"
+                  >
+                    {connecting === "facebook_login"
+                      ? "Abrindo autorização…"
+                      : "Continuar com Facebook"}
+                    <ArrowRight className="size-4" />
+                  </button>
+                </div>
+              </div>
+            </Panel>
+            <Panel title="Suas contas">
+              <p className="mb-3 text-sm text-muted-foreground">
+                Quando aparecer como conectada, a conta já pode ser escolhida ao preparar uma
+                publicação.
+              </p>
               {connectedAccounts.length ? (
                 <div className="space-y-2">
                   {connectedAccounts.map((account) => {
@@ -823,8 +932,8 @@ function InstagramWorkspacePage({
                             <p className="truncate text-sm font-semibold">@{account.username}</p>
                             <p className="text-xs text-muted-foreground">
                               {ready
-                                ? "Disponível para selecionar no agendamento"
-                                : "Autorize a conta novamente abaixo"}
+                                ? "Pode ser usada em Reels e Stories"
+                                : "Conecte esta conta novamente"}
                             </p>
                           </div>
                         </div>
@@ -841,40 +950,18 @@ function InstagramWorkspacePage({
                 <Empty
                   icon={Instagram}
                   title="Nenhuma conta conectada"
-                  text="Escolha abaixo como autorizar sua primeira conta profissional."
+                  text="Depois da autorização, o nome de usuário da conta aparece aqui."
                 />
               )}
-              <h3 className="mt-5 text-sm font-semibold">Adicionar uma conta profissional</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Autorize na página da Meta. Ao voltar, confira se o @ aparece como conectado acima.
-              </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <div className="space-y-3 rounded-lg border border-sky-500/25 bg-sky-500/5 p-4">
-                  <p className="text-sm text-muted-foreground">
-                    Use se o Instagram já está vinculado a uma Página do Facebook.
-                  </p>
-                  <button
-                    onClick={() => void connectInstagram("facebook_login")}
-                    disabled={connecting}
-                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
-                  >
-                    <Plus className="size-3" />{" "}
-                    {connecting ? "Abrindo autorização…" : "Conectar com Facebook"}
-                  </button>
-                </div>
-                <div className="space-y-3 rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/5 p-4">
-                  <p className="text-sm text-muted-foreground">
-                    Use para autorizar diretamente com sua conta profissional do Instagram.
-                  </p>
-                  <button
-                    onClick={() => void connectInstagram("instagram_login")}
-                    disabled={connecting}
-                    className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary/40 px-4 py-2 text-xs font-semibold disabled:opacity-50"
-                  >
-                    <Instagram className="size-3" /> Conectar com Instagram
-                  </button>
-                </div>
-              </div>
+              {!!readyAccounts.length && (
+                <button
+                  type="button"
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary"
+                  onClick={() => setTab("fila")}
+                >
+                  Ir para o agendamento de Reels <ArrowRight className="size-4" />
+                </button>
+              )}
             </Panel>
           </section>
         )}
@@ -882,7 +969,7 @@ function InstagramWorkspacePage({
         {tab === "biblioteca" && (
           <section className="mt-6 space-y-4">
             <Panel
-              title="Biblioteca de vídeos"
+              title="Vídeos para Reels"
               action={
                 <button
                   onClick={() => fileInput.current?.click()}
@@ -920,12 +1007,12 @@ function InstagramWorkspacePage({
                   {uploading ? uploadProgress : "Selecione ou arraste seus vídeos"}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  MP4 ou MOV · até 500 MB · armazenamento privado por workspace
+                  MP4 ou MOV, até 500 MB por vídeo. Os arquivos ficam na sua biblioteca privada.
                 </p>
               </button>
               <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
                 <span>
-                  {selectedVideoIds.length} selecionado(s) de {videos.length} arquivo(s) salvos
+                  {reelVideos.length} de {videoCount} para agendar
                 </span>
                 <span>
                   {formattedSize(videos.reduce((total, video) => total + video.size, 0))} no total
@@ -934,7 +1021,10 @@ function InstagramWorkspacePage({
               {videos.length ? (
                 <div className="mt-2 divide-y divide-border">
                   {videos.map((video) => (
-                    <div key={video.id} className="flex items-center gap-3 py-3">
+                    <label
+                      key={video.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-3 hover:bg-secondary/40"
+                    >
                       <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary">
                         <Video className="size-4" />
                       </div>
@@ -956,13 +1046,28 @@ function InstagramWorkspacePage({
                           )
                         }
                       />
-                    </div>
+                    </label>
                   ))}
                 </div>
               ) : (
                 <p className="mt-4 text-center text-xs text-muted-foreground">
-                  Nenhum vídeo selecionado ainda.
+                  Seus vídeos aparecem aqui depois do envio.
                 </p>
+              )}
+              {!!videoCount && (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-secondary/30 p-3">
+                  <p className="text-sm text-muted-foreground">
+                    Marque os vídeos que você quer usar na próxima programação.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={!reelVideos.length}
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                    onClick={() => setTab("fila")}
+                  >
+                    Ir para os dias e horários <ArrowRight className="size-4" />
+                  </button>
+                </div>
               )}
             </Panel>
           </section>
@@ -970,15 +1075,50 @@ function InstagramWorkspacePage({
 
         {tab === "fila" && (
           <section className="mt-6 space-y-4">
-            <Panel title="Programar publicações de Reels">
+            <Panel title="Agendar Reels">
+              <p className="mb-5 text-sm text-muted-foreground">
+                Escolha o que vai ao ar e quando. Depois de confirmar, os Reels entram na
+                programação automática.
+              </p>
+              <div
+                role="group"
+                aria-label="Tipo de agendamento"
+                className="mb-4 grid gap-2 sm:grid-cols-2"
+              >
+                {(
+                  [
+                    { id: "single", title: "Um Reel", help: "Escolha um vídeo e um horário." },
+                    {
+                      id: "batch",
+                      title: "Vários Reels",
+                      help: "Monte uma programação com vários vídeos.",
+                    },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    aria-pressed={reelMode === option.id}
+                    onClick={() => setReelMode(option.id)}
+                    className="rounded-lg border border-border p-3 text-left hover:bg-secondary/40 aria-pressed:border-primary/50 aria-pressed:bg-primary/10"
+                  >
+                    <span className="block text-sm font-semibold">{option.title}</span>
+                    <span className="mt-1 block text-xs text-muted-foreground">{option.help}</span>
+                  </button>
+                ))}
+              </div>
               <fieldset className="mb-5 rounded-md border border-border p-3">
-                <legend className="px-1 text-sm font-semibold">1. Escolha onde publicar</legend>
-                {connectedAccounts
-                  .filter((account) => account.connection_status === "connected")
-                  .map((account) => (
+                <legend className="px-1 text-sm font-semibold">1. Em quais contas?</legend>
+                {!!readyAccounts.length && (
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    Se marcar mais de uma conta, cada uma recebe a mesma programação.
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {readyAccounts.map((account) => (
                     <label
                       key={account.id}
-                      className="mr-4 inline-flex items-center gap-2 py-2 text-sm"
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm has-checked:border-primary/50 has-checked:bg-primary/10"
                     >
                       <input
                         type="checkbox"
@@ -999,9 +1139,8 @@ function InstagramWorkspacePage({
                       @{account.username}
                     </label>
                   ))}
-                {!connectedAccounts.some(
-                  (account) => account.connection_status === "connected",
-                ) && (
+                </div>
+                {!readyAccounts.length && (
                   <button
                     type="button"
                     className="py-1 text-sm font-semibold text-primary underline"
@@ -1013,101 +1152,195 @@ function InstagramWorkspacePage({
               </fieldset>
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
                 <div>
-                  <h3 className="text-sm font-semibold">2. Escolha os vídeos</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {selectedVideoIds.length} vídeos selecionados para este lote
-                  </p>
+                  <h3 className="text-sm font-semibold">
+                    {reelMode === "single" ? "2. Qual vídeo?" : "2. Quais vídeos?"}
+                  </h3>
+                  {reelMode === "single" && videos.length > 0 ? (
+                    <select
+                      aria-label="Escolha o vídeo do Reel"
+                      className="field mt-2"
+                      value={singleVideoId}
+                      onChange={(event) => setSingleVideoId(event.target.value)}
+                    >
+                      <option value="">Selecione na biblioteca</option>
+                      {videos.map((video) => (
+                        <option key={video.id} value={video.id}>
+                          {video.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {scheduleVideos.length === 1
+                        ? "1 vídeo escolhido"
+                        : scheduleVideos.length
+                          ? `${scheduleVideos.length} vídeos escolhidos`
+                          : "Escolha os vídeos na Biblioteca."}
+                    </p>
+                  )}
                 </div>
                 <button
                   type="button"
                   className="rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-secondary"
                   onClick={() => setTab("biblioteca")}
                 >
-                  {selectedVideoIds.length ? "Alterar seleção" : "Escolher na biblioteca"}
+                  {reelMode === "single"
+                    ? "Abrir biblioteca"
+                    : reelVideos.length
+                      ? "Trocar os vídeos"
+                      : "Escolher vídeos"}
                 </button>
               </div>
-              <h3 className="mb-1 text-sm font-semibold">3. Defina os dias e horários</h3>
+              <details className="mb-5 rounded-lg border border-border p-3">
+                <summary className="cursor-pointer text-sm font-semibold">
+                  Legenda e hashtags (opcional)
+                </summary>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <Field label="Legenda padrão">
+                    <textarea
+                      className="field min-h-20"
+                      value={caption}
+                      maxLength={2200}
+                      onChange={(event) => setCaption(event.target.value)}
+                    />
+                  </Field>
+                  <Field label="Hashtags ao final da legenda">
+                    <textarea
+                      className="field min-h-20"
+                      value={hashtags}
+                      maxLength={2200}
+                      onChange={(event) => setHashtags(event.target.value)}
+                    />
+                  </Field>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Esse texto vale para o lote inteiro. Você pode mudar a legenda de um vídeo na
+                  prévia.
+                </p>
+              </details>
+              <h3 className="mb-1 text-sm font-semibold">3. Quando publicar?</h3>
               <p className="mb-3 text-xs text-muted-foreground">
-                Horário local do espaço de trabalho ({workspace.timezone}).
+                {reelMode === "batch" &&
+                  "Os horários se repetem a cada dia até publicar o total escolhido. "}
+                Fuso da agenda: {workspace.timezone}.
               </p>
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Total de Reels por conta">
-                  <input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={quantity}
-                    onChange={(event) => setQuantity(Number(event.target.value))}
-                    className="field"
-                  />
-                </Field>
-                <Field label="Em que dia começar?">
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(event) => setStartDate(event.target.value)}
-                    className="field"
-                  />
-                </Field>
-                <div className="md:col-span-2">
-                  <DailyTimeSlots value={times} onChange={setTimes} limit={10} />
-                </div>
-                <Field label="Máximo de Reels por dia em cada conta">
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={dailyLimit}
-                    onChange={(event) => setDailyLimit(Number(event.target.value))}
-                    className="field"
-                  />
-                </Field>
-                <Field label="Intervalo mínimo (minutos)">
-                  <input
-                    type="number"
-                    min={1}
-                    value={intervalMinutes}
-                    onChange={(event) => setIntervalMinutes(Number(event.target.value))}
-                    className="field"
-                  />
-                </Field>
+                <ScheduleDate
+                  value={startDate}
+                  timezone={workspace.timezone}
+                  onChange={setStartDate}
+                />
+                {reelMode === "single" ? (
+                  <Field label="Horário de publicação">
+                    <input
+                      type="time"
+                      className="field"
+                      value={singleTime}
+                      onChange={(event) => setSingleTime(event.target.value)}
+                    />
+                  </Field>
+                ) : (
+                  <>
+                    <Field label="Quantos Reels por conta no total?">
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={quantity}
+                        onChange={(event) => setQuantity(Number(event.target.value))}
+                        className="field"
+                      />
+                    </Field>
+                    <div className="md:col-span-2">
+                      <DailyTimeSlots value={times} onChange={setTimes} limit={10} />
+                    </div>
+                    <Field label="Em que ordem?">
+                      <select
+                        className="field"
+                        value={batchOrder}
+                        onChange={(event) => setBatchOrder(event.target.value)}
+                      >
+                        <option value="selection">Na ordem da biblioteca</option>
+                        <option value="random">Embaralhar na prévia</option>
+                      </select>
+                    </Field>
+                  </>
+                )}
               </div>
-              <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                Se o máximo diário for menor que a quantidade de horários, a prévia usa os primeiros
-                horários de cada dia. Confira também as publicações que já estão no Histórico.
-              </p>
-              <label className="mt-4 flex items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={repeatVideos}
-                  onChange={(event) => setRepeatVideos(event.target.checked)}
-                />{" "}
-                Permitir repetir os vídeos selecionados quando o lote for maior que o acervo.
-              </label>
+              {reelMode === "batch" && (
+                <details className="mt-4 rounded-lg border border-border p-3">
+                  <summary className="cursor-pointer text-sm font-semibold">
+                    Mais opções de publicação
+                  </summary>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <Field label="Limite de Reels por dia em cada conta">
+                      <input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={dailyLimit}
+                        onChange={(event) => setDailyLimit(Number(event.target.value))}
+                        className="field"
+                      />
+                    </Field>
+                    <Field label="Tempo mínimo entre Reels (minutos)">
+                      <input
+                        type="number"
+                        min={1}
+                        value={intervalMinutes}
+                        onChange={(event) => setIntervalMinutes(Number(event.target.value))}
+                        className="field"
+                      />
+                    </Field>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Se você adicionar mais horários que o limite por dia, serão usados os primeiros
+                    horários do dia.
+                  </p>
+                  <label className="mt-3 flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={repeatVideos}
+                      onChange={(event) => setRepeatVideos(event.target.checked)}
+                    />{" "}
+                    Repetir vídeos quando faltarem arquivos para completar a programação.
+                  </label>
+                </details>
+              )}
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-4">
                 <div>
-                  <p className="text-sm font-semibold">4. Revise antes de salvar</p>
+                  <p className="text-sm font-semibold">4. Confira a programação</p>
                   <p className="text-xs text-muted-foreground">
-                    Usa os arquivos selecionados e não envia nada ao Instagram.
+                    {reelAccounts.length && slotsPerDay
+                      ? `${reelsPerAccount} por conta × ${reelAccounts.length} ${reelAccounts.length === 1 ? "conta" : "contas"} · Até ${Math.min(slotsPerDay, reelsPerAccount)} por dia em cada conta.`
+                      : "Escolha as contas, os vídeos e os horários para ver a prévia."}
                   </p>
                 </div>
                 <button
                   onClick={generatePreview}
+                  disabled={savingQueue}
                   className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
                 >
-                  <Sparkles className="size-3" /> Revisar agendamento
+                  <Sparkles className="size-3" /> Ver prévia dos Reels
                 </button>
+                {previewError && (
+                  <p role="alert" className="basis-full text-sm text-amber-300">
+                    {previewError}
+                  </p>
+                )}
               </div>
             </Panel>
             <Panel
-              title={`${queueSaved ? "Agendamentos salvos" : "Prévia da fila"} · ${queue.length} itens`}
+              title={queueSaved ? "Reels agendados" : "Prévia da programação"}
+              headingRef={reviewHeading}
               action={
                 queue.length > 0 && !queueSaved ? (
                   <button
                     onClick={clearQueue}
+                    disabled={savingQueue}
                     className="text-xs font-semibold text-muted-foreground hover:text-foreground"
                   >
-                    Limpar
+                    Limpar prévia
                   </button>
                 ) : undefined
               }
@@ -1115,9 +1348,18 @@ function InstagramWorkspacePage({
               {queue.length ? (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    As contas e legendas abaixo fazem parte desta prévia. Para mudar, ajuste as
-                    opções e gere uma nova prévia.
+                    {queue.length === 1 ? "1 publicação" : `${queue.length} publicações`} · Confira
+                    os vídeos, contas e horários abaixo.
                   </p>
+                  {previewOutdated && (
+                    <p
+                      role="status"
+                      className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200"
+                    >
+                      Você mudou a programação. Clique em “Ver prévia dos Reels” para revisar os
+                      novos dados.
+                    </p>
+                  )}
                   <div className="mt-4 max-h-[560px] overflow-auto">
                     {queue.map((post, index) => (
                       <div
@@ -1138,6 +1380,33 @@ function InstagramWorkspacePage({
                           <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
                             {post.caption || "Sem legenda"}
                           </p>
+                          {!queueSaved && !previewOutdated && (
+                            <details className="mt-2 text-xs">
+                              <summary className="cursor-pointer font-semibold text-primary">
+                                Editar só esta legenda
+                              </summary>
+                              <label className="mt-2 block">
+                                Legenda deste Reel
+                                <textarea
+                                  className="field mt-1 min-h-16"
+                                  value={post.caption}
+                                  maxLength={2200}
+                                  disabled={savingQueue}
+                                  onChange={(event) => {
+                                    const value = event.target.value;
+                                    setQueue((current) =>
+                                      current.map((item) =>
+                                        item.id === post.id ? { ...item, caption: value } : item,
+                                      ),
+                                    );
+                                  }}
+                                />
+                              </label>
+                              <p className="mt-1 text-muted-foreground">
+                                As hashtags do agendamento continuam ao final.
+                              </p>
+                            </details>
+                          )}
                         </div>
                         <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold">
                           {queueSaved ? "Agendado" : "Prévia"}
@@ -1155,6 +1424,7 @@ function InstagramWorkspacePage({
                       disabled={
                         savingQueue ||
                         queueSaved ||
+                        previewOutdated ||
                         queue.some(
                           (post) =>
                             !connectedAccounts.some(
@@ -1170,7 +1440,7 @@ function InstagramWorkspacePage({
                         ? "Salvando…"
                         : queueSaved
                           ? "Agendamento salvo"
-                          : "Salvar agendamento"}
+                          : "Confirmar agendamento"}
                     </button>
                   </div>
                 </>
@@ -1317,29 +1587,6 @@ function InstagramWorkspacePage({
           </section>
         )}
       </main>
-    </>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  icon: Icon,
-  detail,
-}: {
-  label: string;
-  value: string;
-  icon: typeof CalendarDays;
-  detail: string;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground">{label}</span>
-        <Icon className="size-4 text-primary" />
-      </div>
-      <p className="mt-3 font-display text-2xl font-bold">{value}</p>
-      <p className="mt-1 text-[11px] text-muted-foreground">{detail}</p>
     </div>
   );
 }
@@ -1347,16 +1594,24 @@ function Metric({
 function Panel({
   title,
   action,
+  headingRef,
   children,
 }: {
   title: string;
   action?: ReactNode;
+  headingRef?: Ref<HTMLHeadingElement>;
   children: ReactNode;
 }) {
   return (
     <div className="rounded-lg border border-border bg-card p-5">
       <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
-        <h2 className="font-display text-base font-semibold">{title}</h2>
+        <h2
+          ref={headingRef}
+          tabIndex={headingRef ? -1 : undefined}
+          className="scroll-mt-6 font-display text-base font-semibold"
+        >
+          {title}
+        </h2>
         {action}
       </div>
       <div className="pt-4">{children}</div>
@@ -1388,32 +1643,5 @@ function Empty({
       <p className="mt-3 text-sm font-semibold">{title}</p>
       <p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">{text}</p>
     </div>
-  );
-}
-
-function Step({
-  number,
-  title,
-  text,
-  onClick,
-}: {
-  number: string;
-  title: string;
-  text: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex w-full items-start gap-3 rounded-md border border-border p-3 text-left transition-colors hover:border-primary/50"
-    >
-      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-primary">
-        {number}
-      </span>
-      <span>
-        <span className="block text-sm font-semibold">{title}</span>
-        <span className="mt-1 block text-xs leading-5 text-muted-foreground">{text}</span>
-      </span>
-    </button>
   );
 }

@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { zonedDateTimeToIso } from "@/lib/scheduling";
-import { CalendarDays, CaseSensitive, Hash, ImagePlus, Link2, UserRound } from "lucide-react";
-import { DailyTimeSlots } from "@/components/postkit/DailyTimeSlots";
+import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
+import {
+  ArrowRight,
+  Bell,
+  CalendarDays,
+  CaseSensitive,
+  Hash,
+  ImagePlus,
+  Link2,
+  UserRound,
+} from "lucide-react";
+import { DailyTimeSlots, ScheduleDate } from "@/components/postkit/DailyTimeSlots";
 import {
   buildStorySchedule,
   clampSticker,
@@ -27,7 +36,7 @@ type Media = { id: string; file: File; url: string; mime: MediaType };
 type Planned = { media: Media; date: string; time: string };
 const stickerIcons = { link: Link2, mention: UserRound, hashtag: Hash, text: CaseSensitive };
 const stickerHelp = {
-  link: "Leva quem tocar na figurinha para o endereço escolhido.",
+  link: "Indique para onde a pessoa vai ao tocar na figurinha no Instagram.",
   mention: "Mostra o @ de outro perfil do Instagram.",
   hashtag: "Adiciona um tópico ao Story, como #oferta.",
   text: "Mostra uma frase sobre a foto ou o vídeo.",
@@ -80,18 +89,6 @@ const button =
 const primary =
   "rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50";
 const mediaBucket = "postkit-media";
-function localDate(zone: string) {
-  const pieces = new Intl.DateTimeFormat("en-CA", {
-    timeZone: zone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  return ["year", "month", "day"]
-    .map((type) => pieces.find((piece) => piece.type === type)?.value)
-    .join("-");
-}
-
 function saveDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -302,11 +299,13 @@ export function InstagramStories({
   workspaceId,
   timezone,
   accounts,
+  onConnect,
   profileAccount,
 }: {
   workspaceId: string;
   timezone: string;
   accounts: Account[];
+  onConnect: () => void;
   profileAccount?: { id: string; request: string; productUrl: string | null };
 }) {
   const [accountId, setAccountId] = useState("");
@@ -334,11 +333,15 @@ export function InstagramStories({
   const [stickerKind, setStickerKind] = useState<StickerKind>("link");
   const [uploadProgress, setUploadProgress] = useState("");
   const uploaded = useRef(new Set<string>());
-  const [date, setDate] = useState(() => localDate(timezone));
+  const [date, setDate] = useState(() => calendarDateInZone(timezone));
   const [times, setTimes] = useState("09:00, 18:00");
   const [order, setOrder] = useState("selection");
   const [plan, setPlan] = useState<Planned[]>([]);
   const [planError, setPlanError] = useState("");
+  const stickersHeading = useRef<HTMLHeadingElement>(null);
+  const scheduleHeading = useRef<HTMLHeadingElement>(null);
+  const reviewHeading = useRef<HTMLHeadingElement>(null);
+  const agendaHeading = useRef<HTMLHeadingElement>(null);
   const [saved, setSaved] = useState<Reminder[]>([]);
   const [opened, setOpened] = useState<{ row: Reminder; url: string } | null>(null);
   const [notice, setNotice] = useState("");
@@ -514,7 +517,7 @@ export function InstagramStories({
       if (!account || !media.length) throw new Error("Escolha a conta e pelo menos uma mídia.");
       if (times.split(",").some((slot) => !slot.trim()))
         throw new Error("Preencha todos os horários ou remova os campos que ficaram vazios.");
-      const today = localDate(timezone);
+      const today = calendarDateInZone(timezone);
       if (date < today) throw new Error("Escolha hoje ou uma data futura.");
       const currentTime = new Intl.DateTimeFormat("en-GB", {
         timeZone: timezone,
@@ -533,6 +536,7 @@ export function InstagramStories({
       setPlan(nextPlan);
       setSelectedId(nextPlan[0].media.id);
       setNotice("");
+      requestAnimationFrame(() => reviewHeading.current?.focus());
     } catch (error) {
       setPlanError(error instanceof Error ? error.message : "Não foi possível montar a sequência.");
     }
@@ -621,8 +625,9 @@ export function InstagramStories({
       setSelectedId("");
       await refresh();
       setNotice(
-        "Stories salvos na agenda. Use o calendário para receber lembretes com o site fechado.",
+        "Lembretes salvos. Para receber avisos com o site fechado, baixe e importe o calendário.",
       );
+      requestAnimationFrame(() => agendaHeading.current?.focus());
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Não foi possível salvar a agenda.");
     } finally {
@@ -692,19 +697,28 @@ export function InstagramStories({
   return (
     <section className="mt-6 space-y-4" aria-label="Stories">
       <div className="rounded-lg border border-border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold">Criar Stories no Instagram</h2>
+        <h2 className="font-display text-lg font-semibold">Preparar Stories com lembrete</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Monte até {storyBatchLimit} Stories, personalize cada um e distribua os lembretes pelos
-          próximos dias.
+          Escolha até {storyBatchLimit} fotos ou vídeos, monte cada Story e decida quando quer
+          publicar.
         </p>
-        <p className="mt-3 rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/5 p-3 text-sm">
-          <strong className="text-fuchsia-300">Publicação assistida.</strong> Quando chegar o
-          horário, abra o Instagram na conta escolhida, adicione as figurinhas e publique. Exporte
-          para o seu calendário se quiser receber lembretes com o site fechado.
-        </p>
+        <div className="mt-3 flex gap-3 rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/5 p-3">
+          <Bell className="mt-0.5 size-4 shrink-0 text-fuchsia-300" />
+          <div>
+            <p className="text-sm font-semibold text-fuchsia-200">
+              Você recebe o lembrete e publica pelo Instagram
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              No horário escolhido, use a foto ou o vídeo e adicione as figurinhas no Instagram
+              seguindo a prévia.
+            </p>
+          </div>
+        </div>
         {pendingDue.length > 0 && (
           <p className="mt-3 rounded-md bg-primary/10 p-3 text-sm" role="status">
-            {pendingDue.length} Story(s) pronto(s) para publicar.
+            {pendingDue.length === 1
+              ? "1 Story está no horário de postar."
+              : `${pendingDue.length} Stories estão no horário de postar.`}
           </p>
         )}
         {loadError && <p className="mt-3 text-sm text-amber-500">{loadError}</p>}
@@ -714,13 +728,18 @@ export function InstagramStories({
           </p>
         )}
         {!accounts.length && (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Conecte um perfil na aba Contas para montar a agenda.
-          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <p className="text-sm text-muted-foreground">
+              Conecte uma conta para escolher onde vai publicar.
+            </p>
+            <button type="button" className={primary} onClick={onConnect}>
+              Conectar conta
+            </button>
+          </div>
         )}
       </div>
 
-      {canEdit && (
+      {canEdit && !!accounts.length && (
         <fieldset disabled={busy || !account || !!loadError} className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(280px,0.85fr)_minmax(0,1fr)]">
             <div className="space-y-4 rounded-lg border border-border bg-card p-5 lg:col-start-2 lg:row-start-1">
@@ -732,7 +751,10 @@ export function InstagramStories({
                 <select
                   className="field mt-1"
                   value={account?.id ?? ""}
-                  onChange={(event) => setAccountId(event.target.value)}
+                  onChange={(event) => {
+                    setAccountId(event.target.value);
+                    setPlan([]);
+                  }}
                 >
                   {!account && <option value="">Selecione uma conta conectada</option>}
                   {accounts.map((item) => (
@@ -743,32 +765,34 @@ export function InstagramStories({
                 </select>
               </label>
               <label
-                className="block rounded-lg border border-dashed border-sky-500/40 bg-sky-500/5 p-3 text-sm"
+                className="block cursor-pointer rounded-xl border border-dashed border-sky-500/40 bg-sky-500/5 p-4 text-center hover:bg-sky-500/10"
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
                   event.preventDefault();
                   chooseFiles(event.dataTransfer.files);
                 }}
               >
-                Selecionar fotos ou vídeos
                 <input
                   type="file"
                   multiple
                   accept=".jpg,.jpeg,.png,.mp4,.mov,.webm"
-                  className="field mt-1"
+                  className="peer sr-only"
                   onChange={(event) => {
                     chooseFiles(event.target.files);
                     event.target.value = "";
                   }}
                 />
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  Arraste ou selecione até {storyBatchLimit} arquivos. Clique em um deles para
-                  editar na prévia.
+                <span className="inline-flex items-center gap-2 rounded-md border border-sky-500/35 px-3 py-2 text-sm font-semibold peer-focus-visible:ring-2 peer-focus-visible:ring-sky-300">
+                  <ImagePlus className="size-4 text-sky-300" /> Selecionar fotos ou vídeos
+                </span>
+                <span className="mt-2 block text-xs text-muted-foreground">
+                  Ou solte até {storyBatchLimit} arquivos aqui. Até 50 MB por arquivo.
                 </span>
               </label>
               {media.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  {media.length}/{storyBatchLimit} Stories. Use as setas para mudar a ordem.
+                  {media.length} de {storyBatchLimit} Stories. Clique no arquivo para editar. Use as
+                  setas para mudar a ordem.
                 </p>
               )}
               <div className="max-h-56 space-y-2 overflow-auto">
@@ -809,6 +833,15 @@ export function InstagramStories({
                   </div>
                 ))}
               </div>
+              {!!media.length && (
+                <button
+                  type="button"
+                  className={button}
+                  onClick={() => stickersHeading.current?.focus()}
+                >
+                  Ir para as figurinhas <ArrowRight className="size-3.5" />
+                </button>
+              )}
             </div>
             <div className="self-start rounded-lg border border-border bg-card p-5 lg:sticky lg:top-4 lg:col-start-1 lg:row-start-1 lg:row-end-3">
               <h3 className="mb-3 text-center text-sm font-semibold">Prévia no celular</h3>
@@ -851,8 +884,12 @@ export function InstagramStories({
             </div>
             <div className="space-y-4 rounded-lg border border-border bg-card p-5 lg:col-start-2 lg:row-start-2">
               <div className="space-y-3 rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/5 p-4">
-                <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <Link2 className="size-4 text-fuchsia-300" /> 2. Figurinhas e público
+                <h3
+                  ref={stickersHeading}
+                  tabIndex={-1}
+                  className="flex scroll-mt-6 items-center gap-2 text-sm font-semibold"
+                >
+                  <Link2 className="size-4 text-fuchsia-300" /> 2. Personalize as figurinhas
                 </h3>
                 <p className="text-xs text-muted-foreground">
                   Escolha uma figurinha e arraste-a no celular para marcar a posição.
@@ -884,10 +921,10 @@ export function InstagramStories({
                     );
                   })}
                 </div>
-                <p className="text-xs text-muted-foreground">{stickerHelp[stickerKind]}</p>
+                <p className="text-sm text-muted-foreground">{stickerHelp[stickerKind]}</p>
                 <label className="block text-sm">
                   {stickerKind === "link"
-                    ? "Endereço do link (URL)"
+                    ? "Cole o endereço da página"
                     : stickerKind === "mention"
                       ? "Perfil para mencionar"
                       : stickerKind === "hashtag"
@@ -927,7 +964,7 @@ export function InstagramStories({
                 </label>
                 {stickerKind === "link" && (
                   <label className="block text-sm">
-                    Texto que aparece na figurinha (opcional)
+                    O que vai escrito na figurinha? (opcional)
                     <input
                       disabled={!current}
                       className="field mt-1"
@@ -943,7 +980,7 @@ export function InstagramStories({
                       }}
                     />
                     <span className="mt-1 block text-xs text-muted-foreground">
-                      Exemplo: a pessoa vê “Saiba mais” e, ao tocar, vai para a URL acima.
+                      A pessoa vê “Saiba mais” e, ao tocar, abre o endereço que você colocou acima.
                     </span>
                   </label>
                 )}
@@ -984,7 +1021,7 @@ export function InstagramStories({
                       );
                     }}
                   >
-                    Repetir em todos os Stories
+                    Usar esta figurinha em todos
                   </button>
                 </div>
               </div>
@@ -1023,26 +1060,37 @@ export function InstagramStories({
                   ))}
                 </div>
               </div>
+              {!!media.length && (
+                <button
+                  type="button"
+                  className={button}
+                  onClick={() => scheduleHeading.current?.focus()}
+                >
+                  Ir para dias e horários <ArrowRight className="size-3.5" />
+                </button>
+              )}
               <div className="space-y-3 rounded-xl border border-border p-4">
-                <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <CalendarDays className="size-4 text-primary" /> 3. Dias, horários e ordem
+                <h3
+                  ref={scheduleHeading}
+                  tabIndex={-1}
+                  className="flex scroll-mt-6 items-center gap-2 text-sm font-semibold"
+                >
+                  <CalendarDays className="size-4 text-primary" /> 3. Quando quer postar?
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Um Story por horário. A sequência continua nos dias seguintes até completar o
-                  lote.
+                  Um Story por horário. Por exemplo, 9h e 18h geram até dois lembretes por dia até o
+                  fim da lista.
                 </p>
-                <label className="block max-w-xs text-sm font-semibold">
-                  Em que dia começar?
-                  <input
-                    className="field mt-1"
-                    type="date"
+                <div className="max-w-xs">
+                  <ScheduleDate
+                    timezone={timezone}
                     value={date}
-                    onChange={(event) => {
-                      setDate(event.target.value);
+                    onChange={(value) => {
+                      setDate(value);
                       setPlan([]);
                     }}
                   />
-                </label>
+                </div>
                 <DailyTimeSlots
                   value={times}
                   limit={storyBatchLimit}
@@ -1062,8 +1110,8 @@ export function InstagramStories({
                       },
                       {
                         id: "random",
-                        label: "Embaralhar Stories",
-                        help: "Sorteia a ordem quando você abre a revisão.",
+                        label: "Embaralhar a lista",
+                        help: "Sorteia qual Story vem primeiro, segundo e assim por diante.",
                       },
                     ].map((choice) => (
                       <label
@@ -1103,14 +1151,16 @@ export function InstagramStories({
                   onClick={generatePlan}
                   disabled={!media.length}
                 >
-                  Revisar programação de Stories
+                  Ver a agenda antes de salvar
                 </button>
               </div>
             </div>
           </div>
           {plan.length > 0 && (
             <div className="space-y-3 rounded-lg border border-border bg-card p-5">
-              <h3 className="font-semibold">4. Confira os lembretes de @{account?.username}</h3>
+              <h3 ref={reviewHeading} tabIndex={-1} className="scroll-mt-6 font-semibold">
+                4. Revise os lembretes de @{account?.username}
+              </h3>
               <p className="text-xs text-muted-foreground">
                 {plan.length} Stories · Fuso: {timezone}. Ajuste as datas e horários antes de
                 salvar.
@@ -1165,7 +1215,9 @@ export function InstagramStories({
 
       <div className="space-y-3 rounded-lg border border-border bg-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-semibold">Agenda de Stories</h3>
+          <h3 ref={agendaHeading} tabIndex={-1} className="scroll-mt-6 font-semibold">
+            Seus lembretes de Stories
+          </h3>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -1173,7 +1225,7 @@ export function InstagramStories({
               disabled={browserAlerts}
               onClick={() => void enableAlerts()}
             >
-              {browserAlerts ? "Avisos ativos" : "Ativar avisos"}
+              {browserAlerts ? "Avisos no navegador ativos" : "Ativar avisos no navegador"}
             </button>
             <button
               type="button"
@@ -1183,11 +1235,19 @@ export function InstagramStories({
               }
               onClick={() => exportCalendar(saved, accounts)}
             >
-              Exportar calendário
+              Baixar para meu calendário
             </button>
           </div>
         </div>
-        {!saved.length && <p className="text-sm text-muted-foreground">A agenda está vazia.</p>}
+        <p className="text-xs text-muted-foreground">
+          Os avisos do navegador funcionam com o site aberto. Importe o arquivo no seu calendário
+          para receber avisos com o site fechado.
+        </p>
+        {!saved.length && (
+          <p className="text-sm text-muted-foreground">
+            Os Stories aparecem aqui quando você salva os lembretes.
+          </p>
+        )}
         {saved.map((row) => (
           <div
             key={row.id}
@@ -1211,7 +1271,7 @@ export function InstagramStories({
                     : "Agendado"}
             </span>
             <button type="button" className={button} onClick={() => void openReminder(row)}>
-              Preparar Story
+              Abrir foto ou vídeo e figurinhas
             </button>
           </div>
         ))}

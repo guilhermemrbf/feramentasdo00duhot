@@ -19,6 +19,14 @@ export const Route = createFileRoute("/api/instagram/worker")({
         if (unauthorized) return unauthorized;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const client = supabaseAdmin as unknown as SupabaseClient<PostkitDatabase>;
+        // A loop failure must not block processing already-scheduled posts.
+        await client.rpc("enqueue_due_instagram_reel_loops").then(
+          ({ error }) => {
+            if (error && error.code !== "PGRST202")
+              console.error("Could not enqueue Instagram loops", error.code);
+          },
+          () => console.error("Could not reach the Instagram loops scheduler"),
+        );
         const { data, error } = await client.rpc("claim_instagram_publish_step");
         if (error)
           return Response.json(

@@ -1,3 +1,16 @@
+export function calendarDateInZone(timezone: string, offset = 0, now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const [year, month, day] = ["year", "month", "day"].map((type) =>
+    Number(parts.find((part) => part.type === type)?.value),
+  );
+  return new Date(Date.UTC(year, month - 1, day + offset)).toISOString().slice(0, 10);
+}
+
 export function zonedDateTimeToIso(date: string, time: string, timeZone: string): string {
   const [year, month, day] = date.split("-").map(Number);
   const [hour, minute] = time.split(":").map(Number);
