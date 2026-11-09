@@ -80,11 +80,18 @@ test("profile reference URLs require HTTPS without credentials", () => {
   ])
     assert.equal(validPublicUrl(value), false);
 });
-test("Automatic Post catalog and search navigate only to Instagram Reels", () => {
+test("catalog finds Automatic Post and Hot Profiles through their Instagram features", () => {
   assert.equal(TOOL_CATALOG.find((tool) => tool.id === "social")?.path, "/automacao-instagram");
   assert.deepEqual(searchTools("Automatic Post").map((tool) => tool.path), ["/automacao-instagram"]);
-  assert.deepEqual(searchTools("Instagram").map((tool) => tool.path), ["/automacao-instagram"]);
-  assert.deepEqual(searchTools("Reels").map((tool) => tool.path), ["/automacao-instagram"]);
+  assert.deepEqual(searchTools("Instagram").map((tool) => tool.path), [
+    "/automacao-instagram",
+    "/hot-profiles",
+  ]);
+  assert.deepEqual(searchTools("Reels").map((tool) => tool.path), [
+    "/automacao-instagram",
+    "/hot-profiles",
+  ]);
+  assert.deepEqual(searchTools("Hot Profiles").map((tool) => tool.path), ["/hot-profiles"]);
   assert.deepEqual(searchTools("TikTok"), []);
   assert.equal(findTool("/automacao-tiktok"), undefined);
   assert.deepEqual(cleanPreferences({ favorites: ["social"], recent: ["social"] }), {

@@ -137,18 +137,18 @@ export const TOOL_CATALOG = [
     id: "profiles",
     path: "/hot-profiles",
     name: "Hot Profiles",
-    category: "Ambientes",
-    mode: "Local · nuvem opcional",
-    summary: "Organize perfis, proxies e sessões de navegador em um workspace.",
-    input: "Conector local, navegador ou instância Android e seus proxies.",
-    output: "Perfis locais com dados separados, proxy por perfil e controle das sessões.",
+    category: "Automação",
+    mode: "Preparação de perfis",
+    summary: "Prepare e organize novos perfis para o agendamento de conteúdo no Instagram.",
+    input: "Nome, @, foto, bio, link do produto e seleção dos primeiros Reels.",
+    output: "Fichas em etapas com acesso às agendas de Reels e Stories.",
     steps: [
-      "Conecte seu computador com o código do conector.",
-      "Cadastre proxies na central e escolha um diferente em cada perfil.",
-      "Abra o ambiente e controle a sessão pelo painel.",
+      "Prepare a ficha e os primeiros vídeos.",
+      "Crie a conta no Instagram e conecte o perfil profissional pelo login oficial.",
+      "Revise a programação de Reels e prepare os Stories.",
     ],
     requirement:
-      "Local: Chrome/Edge instalado; Android exige instância própria, ADB e recursos de hardware. O computador precisa ficar ligado. Nuvem usa configuração separada e pode ter custos do provedor.",
+      "Entre no 00duHot para salvar fichas. Para agendar, conecte uma conta profissional que você administra.",
   },
 ] as const;
 export type Tool = (typeof TOOL_CATALOG)[number];

@@ -26,7 +26,7 @@ export function CloudAuth({ onClose }: { onClose: () => void }) {
           email,
           options: {
             shouldCreateUser: true,
-            emailRedirectTo: `${window.location.origin}/hot-profiles`,
+            emailRedirectTo: `${window.location.origin}/hot-profiles?mode=cloud`,
           },
         });
         if (error)

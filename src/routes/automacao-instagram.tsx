@@ -29,9 +29,13 @@ import {
 import { zonedDateTimeToIso } from "@/lib/scheduling";
 import { InstagramHistory } from "@/components/postkit/InstagramHistory";
 import { InstagramStories } from "@/components/postkit/InstagramStories";
+import { InstagramProfileDrafts } from "@/components/postkit/InstagramProfileDrafts";
 import { validatePostkitVideo } from "@/lib/postkit-media";
 
 export const Route = createFileRoute("/automacao-instagram")({
+  validateSearch: (search: Record<string, unknown>): { tab?: "perfis" } => ({
+    tab: search.tab === "perfis" ? "perfis" : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Automação Instagram — 00duHot" },
@@ -45,7 +49,7 @@ export const Route = createFileRoute("/automacao-instagram")({
   component: AutomacaoInstagram,
 });
 
-type Tab = "dashboard" | "contas" | "biblioteca" | "fila" | "stories" | "conteudo" | "config" | "historico";
+type Tab = "dashboard" | "perfis" | "contas" | "biblioteca" | "fila" | "stories" | "conteudo" | "config" | "historico";
 type VideoItem = {
   id: string;
   name: string;
@@ -69,6 +73,7 @@ type QueueItem = {
 
 const tabItems = [
   { id: "dashboard", label: "Visão geral", icon: ListVideo },
+  { id: "perfis", label: "Novos perfis", icon: Plus },
   { id: "contas", label: "Contas", icon: Users },
   { id: "biblioteca", label: "Biblioteca", icon: Library },
   { id: "fila", label: "Agendamento", icon: CalendarDays },
@@ -79,15 +84,18 @@ const tabItems = [
 ] as const;
 
 function AutomacaoInstagram() {
+  const { tab } = Route.useSearch();
   return (
     <WorkspaceGate>
-      {(workspace) => <InstagramWorkspacePage key={workspace.id} workspace={workspace} />}
+      {(workspace) => <InstagramWorkspacePage key={workspace.id} workspace={workspace} initialTab={tab} />}
     </WorkspaceGate>
   );
 }
 
-function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
-  const [tab, setTab] = useState<Tab>("dashboard");
+function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspace; initialTab?: Tab }) {
+  const [tab, setTab] = useState<Tab>(initialTab ?? "dashboard");
+  const [storyAccount, setStoryAccount] = useState<{ id: string; request: string; productUrl: string | null }>();
+  useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [caption, setCaption] = useState("");
@@ -667,11 +675,44 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
           </section>
         )}
 
+        <div hidden={tab !== "perfis"}>
+          <InstagramProfileDrafts
+            workspaceId={workspace.id}
+            accounts={connectedAccounts.filter((account) => account.connection_status === "connected")}
+            videos={videos}
+            onConnect={() => setTab("contas")}
+            onLibrary={() => setTab("biblioteca")}
+            onReels={(accountId, daily, videoIds) => {
+              if (queue.length && !queueSaved) {
+                setNotice("Revise ou salve a prévia de Reels já aberta antes de carregar a ficha.");
+                setTab("fila");
+                return;
+              }
+              const available = videoIds.filter((id) => videos.some((video) => video.id === id));
+              setQueue([]);
+              setQueueSaved(false);
+              setSelectedAccountId(accountId);
+              setExtraAccountIds([]);
+              setSelectedVideoIds(available);
+              setDailyLimit(daily);
+              setQuantity(available.length || daily);
+              setRepeatVideos(false);
+              setNotice("Conta e preferências da ficha carregadas. Gere uma prévia antes de agendar.");
+              setTab("fila");
+            }}
+            onStories={(accountId, productUrl) => {
+              setStoryAccount({ id: accountId, request: crypto.randomUUID(), productUrl });
+              setTab("stories");
+            }}
+          />
+        </div>
+
         <div hidden={tab !== "stories"}>
           <InstagramStories
             workspaceId={workspace.id}
             timezone={workspace.timezone}
             accounts={connectedAccounts.filter((account) => account.connection_status === "connected")}
+            profileAccount={storyAccount}
           />
         </div>
 

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LegacyLocalWorkspace } from "@/components/hot-profiles/LegacyLocalWorkspace";
 import { CloudWorkspace } from "@/components/hot-profiles/CloudWorkspace";
 
@@ -13,8 +13,12 @@ export const Route = createFileRoute("/hot-profiles")({
     ],
   }),
   validateSearch: (search: Record<string, unknown>): { mode?: "local" | "cloud" } => ({
-    mode: search.mode === "cloud" ? "cloud" : "local",
+    mode: search.mode === "cloud" || search.mode === "local" ? search.mode : undefined,
   }),
+  beforeLoad: ({ search }) => {
+    if (!search.mode)
+      throw redirect({ to: "/automacao-instagram", search: { tab: "perfis" }, replace: true });
+  },
   component: HotProfiles,
 });
 

@@ -293,10 +293,12 @@ export function InstagramStories({
   workspaceId,
   timezone,
   accounts,
+  profileAccount,
 }: {
   workspaceId: string;
   timezone: string;
   accounts: Account[];
+  profileAccount?: { id: string; request: string; productUrl: string | null };
 }) {
   const [accountId, setAccountId] = useState("");
   const account = accountId ? accounts.find((item) => item.id === accountId) : accounts[0];
@@ -333,6 +335,23 @@ export function InstagramStories({
   const [loadError, setLoadError] = useState("");
   const [now, setNow] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [profileLink, setProfileLink] = useState<{ id: string; url: string }>();
+  const handledProfile = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!profileAccount || handledProfile.current === profileAccount.request) return;
+    handledProfile.current = profileAccount.request;
+    if (busy || media.length) {
+      setNotice("Finalize o lote de Stories que já está aberto antes de carregar outra ficha.");
+      return;
+    }
+    setAccountId(profileAccount.id);
+    setProfileLink(
+      profileAccount.productUrl
+        ? { id: profileAccount.id, url: profileAccount.productUrl }
+        : undefined,
+    );
+    setNotice("Conta da ficha selecionada. Adicione a mídia para preparar os Stories.");
+  }, [profileAccount, busy, media.length]);
   const [browserAlerts, setBrowserAlerts] = useState(false);
   const urls = useRef(new Set<string>());
   const notified = useRef(new Set<string>());
@@ -444,6 +463,15 @@ export function InstagramStories({
       additions.push({ id: crypto.randomUUID(), file, url, mime });
     }
     setMedia((previous) => [...previous, ...additions]);
+    if (profileLink && profileLink.id === account?.id && additions.length) {
+      const link = profileLink.url;
+      setLayouts((previous) => ({
+        ...previous,
+        ...Object.fromEntries(
+          additions.map((item) => [item.id, { link: { ...stickerPositions.link, value: link } }]),
+        ),
+      }));
+    }
     setPlan([]);
     setNotice(
       skipped
