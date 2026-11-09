@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent } from "rea
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { zonedDateTimeToIso } from "@/lib/scheduling";
+import { CalendarDays, CaseSensitive, Hash, ImagePlus, Link2, UserRound } from "lucide-react";
+import { DailyTimeSlots } from "@/components/postkit/DailyTimeSlots";
 import {
   buildStorySchedule,
   clampSticker,
@@ -23,6 +25,13 @@ type Account = { id: string; username: string };
 type MediaType = "image/jpeg" | "image/png" | "video/mp4" | "video/quicktime" | "video/webm";
 type Media = { id: string; file: File; url: string; mime: MediaType };
 type Planned = { media: Media; date: string; time: string };
+const stickerIcons = { link: Link2, mention: UserRound, hashtag: Hash, text: CaseSensitive };
+const stickerHelp = {
+  link: "Leva quem tocar na figurinha para o endereço escolhido.",
+  mention: "Mostra o @ de outro perfil do Instagram.",
+  hashtag: "Adiciona um tópico ao Story, como #oferta.",
+  text: "Mostra uma frase sobre a foto ou o vídeo.",
+};
 type State = "pending" | "done" | "cancelled";
 type Reminder = {
   id: string;
@@ -329,6 +338,7 @@ export function InstagramStories({
   const [times, setTimes] = useState("09:00, 18:00");
   const [order, setOrder] = useState("selection");
   const [plan, setPlan] = useState<Planned[]>([]);
+  const [planError, setPlanError] = useState("");
   const [saved, setSaved] = useState<Reminder[]>([]);
   const [opened, setOpened] = useState<{ row: Reminder; url: string } | null>(null);
   const [notice, setNotice] = useState("");
@@ -499,8 +509,11 @@ export function InstagramStories({
   }
 
   function generatePlan() {
+    setPlanError("");
     try {
       if (!account || !media.length) throw new Error("Escolha a conta e pelo menos uma mídia.");
+      if (times.split(",").some((slot) => !slot.trim()))
+        throw new Error("Preencha todos os horários ou remova os campos que ficaram vazios.");
       const today = localDate(timezone);
       if (date < today) throw new Error("Escolha hoje ou uma data futura.");
       const currentTime = new Intl.DateTimeFormat("en-GB", {
@@ -521,7 +534,7 @@ export function InstagramStories({
       setSelectedId(nextPlan[0].media.id);
       setNotice("");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Não foi possível montar a sequência.");
+      setPlanError(error instanceof Error ? error.message : "Não foi possível montar a sequência.");
     }
   }
 
@@ -679,10 +692,15 @@ export function InstagramStories({
   return (
     <section className="mt-6 space-y-4" aria-label="Stories">
       <div className="rounded-lg border border-border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold">Stories com link</h2>
+        <h2 className="font-display text-lg font-semibold">Criar Stories no Instagram</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Organize a sequência aqui. No horário, abra o Instagram na conta indicada, adicione o
-          adesivo de link e publique.
+          Monte até {storyBatchLimit} Stories, personalize cada um e distribua os lembretes pelos
+          próximos dias.
+        </p>
+        <p className="mt-3 rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/5 p-3 text-sm">
+          <strong className="text-fuchsia-300">Publicação assistida.</strong> Quando chegar o
+          horário, abra o Instagram na conta escolhida, adicione as figurinhas e publique. Exporte
+          para o seu calendário se quiser receber lembretes com o site fechado.
         </p>
         {pendingDue.length > 0 && (
           <p className="mt-3 rounded-md bg-primary/10 p-3 text-sm" role="status">
@@ -705,9 +723,12 @@ export function InstagramStories({
       {canEdit && (
         <fieldset disabled={busy || !account || !!loadError} className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(280px,0.85fr)_minmax(0,1fr)]">
-            <div className="space-y-4 rounded-lg border border-border bg-card p-5 lg:order-2">
+            <div className="space-y-4 rounded-lg border border-border bg-card p-5 lg:col-start-2 lg:row-start-1">
+              <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <ImagePlus className="size-4 text-sky-300" /> 1. Conta, fotos e vídeos
+              </h3>
               <label className="block text-sm">
-                Conta
+                Em qual conta você vai publicar?
                 <select
                   className="field mt-1"
                   value={account?.id ?? ""}
@@ -722,14 +743,14 @@ export function InstagramStories({
                 </select>
               </label>
               <label
-                className="block rounded-md border border-dashed border-border p-3 text-sm"
+                className="block rounded-lg border border-dashed border-sky-500/40 bg-sky-500/5 p-3 text-sm"
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
                   event.preventDefault();
                   chooseFiles(event.dataTransfer.files);
                 }}
               >
-                Fotos e vídeos
+                Selecionar fotos ou vídeos
                 <input
                   type="file"
                   multiple
@@ -741,14 +762,20 @@ export function InstagramStories({
                   }}
                 />
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  Arraste os arquivos aqui ou use o seletor.
+                  Arraste ou selecione até {storyBatchLimit} arquivos. Clique em um deles para
+                  editar na prévia.
                 </span>
               </label>
+              {media.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {media.length}/{storyBatchLimit} Stories. Use as setas para mudar a ordem.
+                </p>
+              )}
               <div className="max-h-56 space-y-2 overflow-auto">
                 {media.map((item, i) => (
                   <div
                     key={item.id}
-                    className="flex items-center gap-2 rounded-md border border-border p-2"
+                    className={`flex items-center gap-2 rounded-md border p-2 ${current?.id === item.id ? "border-primary/50 bg-primary/10" : "border-border"}`}
                   >
                     <button
                       className="min-w-0 flex-1 truncate text-left text-xs"
@@ -782,32 +809,85 @@ export function InstagramStories({
                   </div>
                 ))}
               </div>
-              <div className="space-y-3 rounded-xl border border-border p-4">
-                <h3 className="text-sm font-semibold">Figurinhas interativas</h3>
+            </div>
+            <div className="self-start rounded-lg border border-border bg-card p-5 lg:sticky lg:top-4 lg:col-start-1 lg:row-start-1 lg:row-end-3">
+              <h3 className="mb-3 text-center text-sm font-semibold">Prévia no celular</h3>
+              <StoryPreview
+                source={current?.url}
+                mime={current?.mime}
+                stickers={currentLayout}
+                onSelect={setStickerKind}
+                onMove={(kind, next) => {
+                  const item = currentLayout[kind];
+                  if (current && item) setSticker(current.id, kind, { ...item, ...next });
+                }}
+              />
+              <p className="mt-3 text-center text-xs text-muted-foreground">
+                Arraste cada figurinha na prévia para definir a posição.
+              </p>
+              {current && (
+                <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+                  <button
+                    type="button"
+                    className={button}
+                    disabled={previewIndex < 1}
+                    onClick={() => setSelectedId(previewSequence[previewIndex - 1].id)}
+                  >
+                    Anterior
+                  </button>
+                  <span>
+                    {previewIndex + 1} de {previewSequence.length}
+                  </span>
+                  <button
+                    type="button"
+                    className={button}
+                    disabled={previewIndex >= previewSequence.length - 1}
+                    onClick={() => setSelectedId(previewSequence[previewIndex + 1].id)}
+                  >
+                    Próximo
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="space-y-4 rounded-lg border border-border bg-card p-5 lg:col-start-2 lg:row-start-2">
+              <div className="space-y-3 rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/5 p-4">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Link2 className="size-4 text-fuchsia-300" /> 2. Figurinhas e público
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Escolha uma figurinha e arraste-a no celular para marcar a posição.
+                </p>
                 <div
-                  className="grid grid-cols-4 gap-1 rounded-lg bg-background p-1"
+                  className="grid grid-cols-2 gap-1 rounded-lg bg-background p-1 sm:grid-cols-4"
+                  role="group"
                   aria-label="Tipo de figurinha"
                 >
-                  {stickerKinds.map((kind) => (
-                    <button
-                      type="button"
-                      key={kind}
-                      aria-pressed={kind === stickerKind}
-                      disabled={!current}
-                      className={
-                        "rounded-md px-1 py-2 text-xs " +
-                        (stickerKind === kind ? "bg-secondary font-bold" : "text-muted-foreground")
-                      }
-                      onClick={() => setStickerKind(kind)}
-                    >
-                      {stickerLabels[kind]}
-                      {currentLayout[kind]?.value.trim() ? " •" : ""}
-                    </button>
-                  ))}
+                  {stickerKinds.map((kind) => {
+                    const Icon = stickerIcons[kind];
+                    return (
+                      <button
+                        type="button"
+                        key={kind}
+                        aria-pressed={kind === stickerKind}
+                        disabled={!current}
+                        className={
+                          "flex items-center justify-center gap-1 rounded-md px-1 py-2 text-xs " +
+                          (stickerKind === kind
+                            ? "bg-fuchsia-500/15 font-bold text-fuchsia-200"
+                            : "text-muted-foreground")
+                        }
+                        onClick={() => setStickerKind(kind)}
+                      >
+                        <Icon className="size-3.5" /> {stickerLabels[kind]}
+                        {currentLayout[kind]?.value.trim() ? " •" : ""}
+                      </button>
+                    );
+                  })}
                 </div>
+                <p className="text-xs text-muted-foreground">{stickerHelp[stickerKind]}</p>
                 <label className="block text-sm">
                   {stickerKind === "link"
-                    ? "URL do link (clicável no Instagram)"
+                    ? "Endereço do link (URL)"
                     : stickerKind === "mention"
                       ? "Perfil para mencionar"
                       : stickerKind === "hashtag"
@@ -847,7 +927,7 @@ export function InstagramStories({
                 </label>
                 {stickerKind === "link" && (
                   <label className="block text-sm">
-                    Texto da figurinha (opcional)
+                    Texto que aparece na figurinha (opcional)
                     <input
                       disabled={!current}
                       className="field mt-1"
@@ -862,6 +942,9 @@ export function InstagramStories({
                           });
                       }}
                     />
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      Exemplo: a pessoa vê “Saiba mais” e, ao tocar, vai para a URL acima.
+                    </span>
                   </label>
                 )}
                 <div className="flex flex-wrap gap-2">
@@ -901,12 +984,15 @@ export function InstagramStories({
                       );
                     }}
                   >
-                    Aplicar a todos
+                    Repetir em todos os Stories
                   </button>
                 </div>
               </div>
               <div>
-                <h3 className="mb-2 text-sm font-semibold">Público do Story</h3>
+                <h3 className="text-sm font-semibold">Quem vai ver este Story?</h3>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Use a mesma opção ao publicar pelo Instagram.
+                </p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {(["story", "close_friends"] as const).map((choice) => (
                     <button
@@ -915,6 +1001,7 @@ export function InstagramStories({
                       disabled={!current}
                       className={
                         button +
+                        " flex-col items-start gap-1 text-left " +
                         (choice === currentAudience
                           ? " border-primary bg-primary/10 text-primary"
                           : "")
@@ -924,14 +1011,28 @@ export function InstagramStories({
                         if (current) setAudiences((all) => ({ ...all, [current.id]: choice }));
                       }}
                     >
-                      {choice === "story" ? "Seu Story" : "Amigos Próximos"}
+                      <span className="font-semibold">
+                        {choice === "story" ? "Seu Story" : "Amigos Próximos"}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {choice === "story"
+                          ? "Público habitual da conta"
+                          : "Apenas sua lista verde"}
+                      </span>
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <label className="block text-sm">
-                  Primeiro dia
+              <div className="space-y-3 rounded-xl border border-border p-4">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <CalendarDays className="size-4 text-primary" /> 3. Dias, horários e ordem
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Um Story por horário. A sequência continua nos dias seguintes até completar o
+                  lote.
+                </p>
+                <label className="block max-w-xs text-sm font-semibold">
+                  Em que dia começar?
                   <input
                     className="field mt-1"
                     type="date"
@@ -942,79 +1043,74 @@ export function InstagramStories({
                     }}
                   />
                 </label>
-                <label className="block text-sm">
-                  Horários por dia
-                  <input
-                    className="field mt-1"
-                    placeholder="09:00, 18:00"
-                    value={times}
-                    onChange={(event) => {
-                      setTimes(event.target.value);
-                      setPlan([]);
-                    }}
-                  />
-                </label>
-                <label className="block text-sm">
-                  Ordem
-                  <select
-                    className="field mt-1"
-                    value={order}
-                    onChange={(event) => {
-                      setOrder(event.target.value);
-                      setPlan([]);
-                    }}
-                  >
-                    <option value="selection">Ordem escolhida</option>
-                    <option value="random">Aleatória</option>
-                  </select>
-                </label>
+                <DailyTimeSlots
+                  value={times}
+                  limit={storyBatchLimit}
+                  onChange={(value) => {
+                    setTimes(value);
+                    setPlan([]);
+                  }}
+                />
+                <fieldset>
+                  <legend className="mb-2 text-sm font-semibold">Em que ordem?</legend>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {[
+                      {
+                        id: "selection",
+                        label: "Na ordem da lista",
+                        help: "Segue a ordem das fotos e dos vídeos acima.",
+                      },
+                      {
+                        id: "random",
+                        label: "Embaralhar Stories",
+                        help: "Sorteia a ordem quando você abre a revisão.",
+                      },
+                    ].map((choice) => (
+                      <label
+                        key={choice.id}
+                        className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 ${order === choice.id ? "border-primary/50 bg-primary/10" : "border-border"}`}
+                      >
+                        <input
+                          type="radio"
+                          name="story-order"
+                          value={choice.id}
+                          className="mt-1"
+                          checked={order === choice.id}
+                          onChange={() => {
+                            setOrder(choice.id);
+                            setPlan([]);
+                          }}
+                        />
+                        <span className="text-sm font-semibold">
+                          {choice.label}
+                          <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                            {choice.help}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <p className="text-xs text-muted-foreground">Fuso dos lembretes: {timezone}.</p>
+                {planError && (
+                  <p role="alert" className="text-sm text-amber-300">
+                    {planError}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className={primary}
+                  onClick={generatePlan}
+                  disabled={!media.length}
+                >
+                  Revisar programação de Stories
+                </button>
               </div>
-              <button type="button" className={primary} onClick={generatePlan}>
-                Gerar prévia da agenda
-              </button>
-            </div>
-            <div className="self-start rounded-lg border border-border bg-card p-5 lg:order-1 lg:sticky lg:top-4">
-              <StoryPreview
-                source={current?.url}
-                mime={current?.mime}
-                stickers={currentLayout}
-                onSelect={setStickerKind}
-                onMove={(kind, next) => {
-                  const item = currentLayout[kind];
-                  if (current && item) setSticker(current.id, kind, { ...item, ...next });
-                }}
-              />
-              <p className="mt-3 text-center text-xs text-muted-foreground">
-                Arraste cada figurinha na prévia para definir a posição.
-              </p>
-              {current && (
-                <div className="mt-3 flex items-center justify-between gap-2 text-xs">
-                  <button
-                    type="button"
-                    className={button}
-                    disabled={previewIndex < 1}
-                    onClick={() => setSelectedId(previewSequence[previewIndex - 1].id)}
-                  >
-                    Anterior
-                  </button>
-                  <span>
-                    {previewIndex + 1} de {previewSequence.length}
-                  </span>
-                  <button
-                    type="button"
-                    className={button}
-                    disabled={previewIndex >= previewSequence.length - 1}
-                    onClick={() => setSelectedId(previewSequence[previewIndex + 1].id)}
-                  >
-                    Próximo
-                  </button>
-                </div>
-              )}
             </div>
           </div>
           {plan.length > 0 && (
             <div className="space-y-3 rounded-lg border border-border bg-card p-5">
-              <h3 className="font-semibold">Conferir sequência · @{account?.username}</h3>
+              <h3 className="font-semibold">4. Confira os lembretes de @{account?.username}</h3>
               <p className="text-xs text-muted-foreground">
                 {plan.length} Stories · Fuso: {timezone}. Ajuste as datas e horários antes de
                 salvar.

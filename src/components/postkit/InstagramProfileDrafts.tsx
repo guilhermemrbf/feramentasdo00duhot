@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { CalendarDays, Instagram, UserRoundPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type Account = { id: string; username: string };
@@ -301,10 +302,10 @@ export function InstagramProfileDrafts({
       <div className="rounded-lg border border-border bg-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-display text-lg font-semibold">Hot Profiles · Novos perfis</h2>
+            <h2 className="font-display text-lg font-semibold">Preparar um novo perfil</h2>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Prepare foto, bio, link e os primeiros Reels. Crie o perfil no Instagram, conecte a
-              conta profissional e revise os horários antes de agendar.
+              Reúna em uma ficha tudo que você precisa para criar a conta e planejar as primeiras
+              publicações.
             </p>
           </div>
           {canEdit && (
@@ -314,13 +315,36 @@ export function InstagramProfileDrafts({
               disabled={busy || !!form}
               onClick={() => openForm()}
             >
-              Nova ficha
+              Preparar novo perfil
             </button>
           )}
         </div>
-        <p className="mt-3 text-xs font-semibold text-primary">
-          A criar → A conectar → Pronto para agendar
-        </p>
+        <ol className="mt-4 grid gap-2 sm:grid-cols-3">
+          <li className="rounded-lg border border-sky-500/25 bg-sky-500/5 p-3">
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <UserRoundPlus className="size-4 text-sky-300" /> 1. Prepare os dados
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Guarde o nome, a foto, a bio e o link.
+            </p>
+          </li>
+          <li className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/5 p-3">
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <Instagram className="size-4 text-fuchsia-300" /> 2. Crie e conecte a conta
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Crie no Instagram e depois autorize a conta profissional aqui.
+            </p>
+          </li>
+          <li className="rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-3">
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <CalendarDays className="size-4 text-emerald-300" /> 3. Organize as publicações
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Programe os primeiros Reels ou monte a agenda de Stories.
+            </p>
+          </li>
+        </ol>
         <details className="mt-3 text-xs text-muted-foreground">
           <summary className="cursor-pointer">Ambientes anteriores do Hot Profiles</summary>
           <div className="mt-2 flex flex-wrap gap-3">
@@ -351,24 +375,26 @@ export function InstagramProfileDrafts({
         >
           <fieldset disabled={busy} className="space-y-4">
             <h3 className="font-semibold">
-              {form.editing ? "Editar ficha" : "Preparar um perfil"}
+              {form.editing ? "Editar os dados do perfil" : "Dados do novo perfil"}
             </h3>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-sm">
-                Nome do perfil
+                Nome que aparece no perfil
                 <input
                   required
                   maxLength={64}
+                  placeholder="Ex.: Ateliê da Marina"
                   className="field mt-1"
                   value={form.name}
                   onChange={(event) => patchForm({ name: event.target.value })}
                 />
               </label>
               <label className="block text-sm">
-                @ pretendido
+                Nome de usuário (@)
                 <input
                   required
                   maxLength={31}
+                  placeholder="@ateliedamarina"
                   disabled={form.linked}
                   className="field mt-1"
                   value={form.handle}
@@ -376,7 +402,7 @@ export function InstagramProfileDrafts({
                 />
               </label>
               <label className="block text-sm">
-                Foto JPG ou PNG
+                Foto de perfil (JPG ou PNG)
                 <input
                   type="file"
                   accept=".jpg,.jpeg,.png"
@@ -385,7 +411,7 @@ export function InstagramProfileDrafts({
                 />
               </label>
               <label className="block text-sm">
-                Link do produto
+                Link para colocar na bio
                 <input
                   type="url"
                   maxLength={2048}
@@ -397,13 +423,17 @@ export function InstagramProfileDrafts({
               </label>
             </div>
             <label className="block text-sm">
-              Bio
+              Bio do perfil
               <textarea
                 maxLength={150}
+                placeholder="Conte o que as pessoas vão encontrar no perfil."
                 className="field mt-1 min-h-20"
                 value={form.bio}
                 onChange={(event) => patchForm({ bio: event.target.value })}
               />
+              <span className="mt-1 block text-xs text-muted-foreground">
+                {form.bio.length}/150 caracteres
+              </span>
             </label>
             <div>
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -442,7 +472,7 @@ export function InstagramProfileDrafts({
               )}
             </div>
             <label className="block max-w-48 text-sm">
-              Reels por dia
+              Meta de Reels por dia
               <input
                 type="number"
                 required
@@ -453,9 +483,12 @@ export function InstagramProfileDrafts({
                 onChange={(event) => patchForm({ daily: Number(event.target.value) })}
               />
             </label>
+            <p className="text-xs text-muted-foreground">
+              Você escolhe os dias e horários depois que a conta estiver conectada.
+            </p>
             <div className="flex flex-wrap gap-2">
               <button type="submit" className={primary}>
-                {busy ? "Salvando…" : "Salvar ficha"}
+                {busy ? "Salvando…" : "Salvar dados do perfil"}
               </button>
               <button type="button" className={button} onClick={() => setForm(null)}>
                 Cancelar edição
@@ -519,8 +552,8 @@ export function InstagramProfileDrafts({
             const status = account
               ? "Pronto para agendar"
               : draft.account_created
-                ? "A conectar"
-                : "A criar";
+                ? "Falta conectar a conta"
+                : "Falta criar no Instagram";
             return (
               <article key={draft.id} className="space-y-3 rounded-md border border-border p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
@@ -528,7 +561,9 @@ export function InstagramProfileDrafts({
                     <h4 className="text-sm font-semibold">{draft.display_name}</h4>
                     <p className="text-xs text-muted-foreground">@{draft.handle}</p>
                   </div>
-                  <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${account ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}
+                  >
                     {status}
                   </span>
                 </div>
@@ -542,6 +577,15 @@ export function InstagramProfileDrafts({
                   {draft.starter_reels.length} Reels selecionados · até {draft.reels_per_day} por
                   dia
                 </p>
+                {canEdit && (
+                  <p className="rounded-md bg-secondary/40 px-3 py-2 text-xs text-muted-foreground">
+                    {account
+                      ? "A conta está vinculada. Escolha qual conteúdo quer preparar."
+                      : draft.account_created
+                        ? `Vincule a conta @${draft.handle} a esta ficha para usar os dados na programação.`
+                        : `Copie os dados, crie @${draft.handle} pelo Instagram e volte para marcar a conta como criada.`}
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-2">
                   {canEdit && (
                     <button
@@ -597,7 +641,7 @@ export function InstagramProfileDrafts({
                         disabled={busy}
                         onClick={() => void setStage(draft)}
                       >
-                        Já criei a conta
+                        Marcar conta como criada
                       </button>
                     </>
                   )}
@@ -627,14 +671,14 @@ export function InstagramProfileDrafts({
                           onReels(account.id, draft.reels_per_day, draft.starter_reels)
                         }
                       >
-                        Preparar Reels
+                        Programar Reels
                       </button>
                       <button
                         type="button"
                         className={button}
                         onClick={() => onStories(account.id, draft.product_url)}
                       >
-                        Preparar Stories
+                        Montar Stories
                       </button>
                     </>
                   )}

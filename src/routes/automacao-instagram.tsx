@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   AlertCircle,
+  ArrowRight,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -30,6 +31,7 @@ import { zonedDateTimeToIso } from "@/lib/scheduling";
 import { InstagramHistory } from "@/components/postkit/InstagramHistory";
 import { InstagramStories } from "@/components/postkit/InstagramStories";
 import { InstagramProfileDrafts } from "@/components/postkit/InstagramProfileDrafts";
+import { DailyTimeSlots } from "@/components/postkit/DailyTimeSlots";
 import { validatePostkitVideo } from "@/lib/postkit-media";
 
 export const Route = createFileRoute("/automacao-instagram")({
@@ -49,7 +51,16 @@ export const Route = createFileRoute("/automacao-instagram")({
   component: AutomacaoInstagram,
 });
 
-type Tab = "dashboard" | "perfis" | "contas" | "biblioteca" | "fila" | "stories" | "conteudo" | "config" | "historico";
+type Tab =
+  | "dashboard"
+  | "perfis"
+  | "contas"
+  | "biblioteca"
+  | "fila"
+  | "stories"
+  | "conteudo"
+  | "config"
+  | "historico";
 type VideoItem = {
   id: string;
   name: string;
@@ -74,28 +85,73 @@ type QueueItem = {
 const tabItems = [
   { id: "dashboard", label: "Visão geral", icon: ListVideo },
   { id: "perfis", label: "Novos perfis", icon: Plus },
-  { id: "contas", label: "Contas", icon: Users },
+  { id: "contas", label: "Contas conectadas", icon: Users },
   { id: "biblioteca", label: "Biblioteca", icon: Library },
-  { id: "fila", label: "Agendamento", icon: CalendarDays },
+  { id: "fila", label: "Agendar Reels", icon: CalendarDays },
   { id: "stories", label: "Stories", icon: Instagram },
   { id: "historico", label: "Histórico", icon: CheckCircle2 },
   { id: "conteudo", label: "Legendas e hashtags", icon: FileText },
   { id: "config", label: "Configurações", icon: Settings2 },
 ] as const;
 
+const quickActions = [
+  {
+    tab: "contas",
+    title: "Conectar uma conta",
+    text: "Autorize um Instagram profissional para escolher onde publicar.",
+    icon: Users,
+    tone: "bg-sky-500/10 text-sky-300",
+  },
+  {
+    tab: "fila",
+    title: "Programar Reels",
+    text: "Escolha os vídeos, os dias e os horários da publicação automática.",
+    icon: CalendarDays,
+    tone: "bg-primary/10 text-primary",
+  },
+  {
+    tab: "stories",
+    title: "Montar Stories",
+    text: "Posicione as figurinhas na prévia e receba um lembrete para publicar.",
+    icon: Instagram,
+    tone: "bg-fuchsia-500/10 text-fuchsia-300",
+  },
+  {
+    tab: "perfis",
+    title: "Preparar um perfil novo",
+    text: "Organize nome, foto, bio e primeiros vídeos antes de criar a conta.",
+    icon: Plus,
+    tone: "bg-emerald-500/10 text-emerald-300",
+  },
+] as const;
+
 function AutomacaoInstagram() {
   const { tab } = Route.useSearch();
   return (
     <WorkspaceGate>
-      {(workspace) => <InstagramWorkspacePage key={workspace.id} workspace={workspace} initialTab={tab} />}
+      {(workspace) => (
+        <InstagramWorkspacePage key={workspace.id} workspace={workspace} initialTab={tab} />
+      )}
     </WorkspaceGate>
   );
 }
 
-function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspace; initialTab?: Tab }) {
+function InstagramWorkspacePage({
+  workspace,
+  initialTab,
+}: {
+  workspace: Workspace;
+  initialTab?: Tab;
+}) {
   const [tab, setTab] = useState<Tab>(initialTab ?? "dashboard");
-  const [storyAccount, setStoryAccount] = useState<{ id: string; request: string; productUrl: string | null }>();
-  useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
+  const [storyAccount, setStoryAccount] = useState<{
+    id: string;
+    request: string;
+    productUrl: string | null;
+  }>();
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [caption, setCaption] = useState("");
@@ -207,7 +263,8 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
         facebook_pages_lookup: "a busca pelas Páginas do Facebook",
         facebook_pages_empty: "a Meta não retornou Páginas acessíveis para esta conta",
         facebook_page_token_missing: "o token de acesso das Páginas autorizadas",
-        instagram_not_linked_to_page: "a conta profissional não apareceu vinculada às Páginas autorizadas",
+        instagram_not_linked_to_page:
+          "a conta profissional não apareceu vinculada às Páginas autorizadas",
         facebook_instagram_profile_lookup: "a leitura dos dados da conta profissional do Instagram",
         no_linked_account: "a busca por Instagram profissional vinculado a uma Página",
         account_save: "o salvamento da conta do Instagram",
@@ -215,7 +272,9 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
         account_activation: "a ativação da conta no sistema",
         server_configuration_or_unexpected: "uma configuração do servidor ou erro inesperado",
       };
-      const detail = reason ? reasonLabels[reason] ?? "uma etapa não identificada" : "uma etapa não identificada";
+      const detail = reason
+        ? (reasonLabels[reason] ?? "uma etapa não identificada")
+        : "uma etapa não identificada";
       setNotice(`A conexão não foi concluída. Falha em: ${detail}. Tente conectar novamente.`);
     }
   }, []);
@@ -347,8 +406,8 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
       setTab("biblioteca");
       return;
     }
-    if (!timeSlots.length) {
-      setNotice("Informe pelo menos um horário válido, por exemplo: 09:00, 13:00.");
+    if (!timeSlots.length || times.split(",").some((slot) => !slot.trim())) {
+      setNotice("Preencha todos os horários ou remova os campos que ficaram vazios.");
       return;
     }
     const count = Math.max(1, Math.min(100, Number(quantity) || 1));
@@ -527,7 +586,9 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
           : "Não foi possível confirmar a ativação do processamento.",
       );
     } catch {
-      setNotice("Não foi possível ativar o processamento. Confira se você é administradora do workspace.");
+      setNotice(
+        "Não foi possível ativar o processamento. Confira se você é administradora do workspace.",
+      );
     } finally {
       setActivatingWorker(false);
     }
@@ -543,23 +604,14 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
     <>
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <PageIntro
-          eyebrow="PostKit · Automação"
-          title="Automatic Post · Instagram"
-          description="Conecte contas profissionais, envie vídeos para a biblioteca privada e organize sua programação do Instagram."
+          eyebrow="PostKit · Instagram"
+          title="Automação Instagram"
+          description="Prepare perfis, agende Reels e monte Stories com prévia e lembretes, tudo no mesmo lugar."
         />
 
-        <div className="mt-5 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs leading-5">
-          <AlertCircle className="size-4 shrink-0 text-amber-500" />
-          <span>
-            <strong>Organize e acompanhe:</strong> escolha os vídeos e as contas, revise a
-            programação e acompanhe as confirmações no Histórico. O serviço de publicação precisa
-            estar ativado no servidor para executar os horários salvos.
-          </span>
-        </div>
-
         {notice && (
-          <div className="mt-4 flex items-start justify-between gap-3 rounded-md border border-border bg-secondary/50 px-4 py-3 text-xs">
-            <span>{notice}</span>
+          <div className="mt-4 flex items-start justify-between gap-3 rounded-md border border-border bg-secondary/50 px-4 py-3 text-sm">
+            <span role="status">{notice}</span>
             <button
               aria-label="Fechar aviso"
               onClick={() => setNotice("")}
@@ -572,7 +624,7 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
 
         <nav
           aria-label="Seções da automação Instagram"
-          className="mt-6 flex gap-2 overflow-x-auto border-b border-border pb-px"
+          className="mt-6 flex flex-wrap gap-1 rounded-xl border border-border bg-card p-1.5"
         >
           {tabItems.map((item) => {
             const Icon = item.icon;
@@ -582,10 +634,10 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
                 onClick={() => setTab(item.id)}
                 aria-current={tab === item.id ? "page" : undefined}
                 className={
-                  "inline-flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-xs font-semibold transition-colors " +
+                  "inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors " +
                   (tab === item.id
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground")
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground")
                 }
               >
                 <Icon className="size-4" />
@@ -597,6 +649,29 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
 
         {tab === "dashboard" && (
           <section className="mt-6 space-y-6">
+            <Panel title="O que você quer fazer?">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {quickActions.map(({ tab: target, title, text, icon: Icon, tone }) => (
+                  <button
+                    key={target}
+                    type="button"
+                    className="group rounded-xl border border-border bg-background/40 p-4 text-left hover:border-primary/50 hover:bg-secondary/40"
+                    onClick={() => setTab(target)}
+                  >
+                    <span className={`inline-flex rounded-lg p-2 ${tone}`}>
+                      <Icon className="size-5" />
+                    </span>
+                    <span className="mt-3 flex items-center justify-between gap-2 text-sm font-semibold">
+                      {title}
+                      <ArrowRight className="size-4 shrink-0 text-muted-foreground group-hover:text-primary" />
+                    </span>
+                    <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                      {text}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </Panel>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Metric
                 label="Contas conectadas"
@@ -678,7 +753,9 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
         <div hidden={tab !== "perfis"}>
           <InstagramProfileDrafts
             workspaceId={workspace.id}
-            accounts={connectedAccounts.filter((account) => account.connection_status === "connected")}
+            accounts={connectedAccounts.filter(
+              (account) => account.connection_status === "connected",
+            )}
             videos={videos}
             onConnect={() => setTab("contas")}
             onLibrary={() => setTab("biblioteca")}
@@ -697,7 +774,9 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
               setDailyLimit(daily);
               setQuantity(available.length || daily);
               setRepeatVideos(false);
-              setNotice("Conta e preferências da ficha carregadas. Gere uma prévia antes de agendar.");
+              setNotice(
+                "Conta e preferências da ficha carregadas. Gere uma prévia antes de agendar.",
+              );
               setTab("fila");
             }}
             onStories={(accountId, productUrl) => {
@@ -711,7 +790,9 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
           <InstagramStories
             workspaceId={workspace.id}
             timezone={workspace.timezone}
-            accounts={connectedAccounts.filter((account) => account.connection_status === "connected")}
+            accounts={connectedAccounts.filter(
+              (account) => account.connection_status === "connected",
+            )}
             profileAccount={storyAccount}
           />
         </div>
@@ -726,64 +807,74 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
 
         {tab === "contas" && (
           <section className="mt-6">
-            <Panel title="Contas do Instagram">
+            <Panel title="Suas contas do Instagram">
               {connectedAccounts.length ? (
                 <div className="space-y-2">
-                  {connectedAccounts.map((account) => (
-                    <div
-                      key={account.id}
-                      className="flex items-center justify-between rounded-md border border-border px-4 py-3 text-sm"
-                    >
-                      <span>@{account.username}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {account.account_type ?? "Conta profissional"} · {account.connection_status}
-                      </span>
-                    </div>
-                  ))}
+                  {connectedAccounts.map((account) => {
+                    const ready = account.connection_status === "connected";
+                    return (
+                      <div
+                        key={account.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-4 py-3"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <Instagram className="size-5 shrink-0 text-fuchsia-300" />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold">@{account.username}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {ready
+                                ? "Disponível para selecionar no agendamento"
+                                : "Autorize a conta novamente abaixo"}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${ready ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}
+                        >
+                          {ready ? "Conectada" : "Precisa de atenção"}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <Empty
                   icon={Instagram}
                   title="Nenhuma conta conectada"
-                  text="Conecte uma conta profissional pelo fluxo oficial da Meta. Não informe sua senha do Instagram aqui."
+                  text="Escolha abaixo como autorizar sua primeira conta profissional."
                 />
               )}
-              <div className="mt-4 rounded-md border border-border bg-secondary/40 p-4">
-                <p className="text-sm font-semibold">O que será necessário</p>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-muted-foreground">
-                  <li>
-                    Aplicativo Meta com as permissões de publicação aprovadas
-                    (pages_show_list, pages_read_engagement, instagram_basic,
-                    instagram_content_publish, business_management).
-                  </li>
-                  <li>Domínio HTTPS e callback OAuth registrados no aplicativo Meta.</li>
-                  <li>
-                    Para conectar pelo Facebook: conta profissional do Instagram vinculada a uma
-                    Página do Facebook.
-                  </li>
-                </ul>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  onClick={() => void connectInstagram("facebook_login")}
-                  disabled={connecting}
-                  className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
-                >
-                  <Plus className="size-3" />{" "}
-                  {connecting ? "Abrindo autorização…" : "Conectar com Facebook"}
-                </button>
-                <button
-                  onClick={() => void connectInstagram("instagram_login")}
-                  disabled={connecting}
-                  className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary/40 px-4 py-2 text-xs font-semibold disabled:opacity-50"
-                >
-                  <Instagram className="size-3" /> Conectar com Instagram
-                </button>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Recomendado: conectar com Facebook, para contas profissionais vinculadas a uma
-                Página do Facebook.
+              <h3 className="mt-5 text-sm font-semibold">Adicionar uma conta profissional</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Autorize na página da Meta. Ao voltar, confira se o @ aparece como conectado acima.
               </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="space-y-3 rounded-lg border border-sky-500/25 bg-sky-500/5 p-4">
+                  <p className="text-sm text-muted-foreground">
+                    Use se o Instagram já está vinculado a uma Página do Facebook.
+                  </p>
+                  <button
+                    onClick={() => void connectInstagram("facebook_login")}
+                    disabled={connecting}
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                  >
+                    <Plus className="size-3" />{" "}
+                    {connecting ? "Abrindo autorização…" : "Conectar com Facebook"}
+                  </button>
+                </div>
+                <div className="space-y-3 rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/5 p-4">
+                  <p className="text-sm text-muted-foreground">
+                    Use para autorizar diretamente com sua conta profissional do Instagram.
+                  </p>
+                  <button
+                    onClick={() => void connectInstagram("instagram_login")}
+                    disabled={connecting}
+                    className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary/40 px-4 py-2 text-xs font-semibold disabled:opacity-50"
+                  >
+                    <Instagram className="size-3" /> Conectar com Instagram
+                  </button>
+                </div>
+              </div>
             </Panel>
           </section>
         )}
@@ -879,9 +970,9 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
 
         {tab === "fila" && (
           <section className="mt-6 space-y-4">
-            <Panel title="Montar prévia de agendamento">
+            <Panel title="Programar publicações de Reels">
               <fieldset className="mb-5 rounded-md border border-border p-3">
-                <legend className="px-1 text-xs font-semibold">Publicar nas contas</legend>
+                <legend className="px-1 text-sm font-semibold">1. Escolha onde publicar</legend>
                 {connectedAccounts
                   .filter((account) => account.connection_status === "connected")
                   .map((account) => (
@@ -911,13 +1002,36 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
                 {!connectedAccounts.some(
                   (account) => account.connection_status === "connected",
                 ) && (
-                  <p className="text-xs text-muted-foreground">
-                    Conecte sua primeira conta na seção Contas.
-                  </p>
+                  <button
+                    type="button"
+                    className="py-1 text-sm font-semibold text-primary underline"
+                    onClick={() => setTab("contas")}
+                  >
+                    Conectar minha primeira conta
+                  </button>
                 )}
               </fieldset>
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
+                <div>
+                  <h3 className="text-sm font-semibold">2. Escolha os vídeos</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {selectedVideoIds.length} vídeos selecionados para este lote
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-secondary"
+                  onClick={() => setTab("biblioteca")}
+                >
+                  {selectedVideoIds.length ? "Alterar seleção" : "Escolher na biblioteca"}
+                </button>
+              </div>
+              <h3 className="mb-1 text-sm font-semibold">3. Defina os dias e horários</h3>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Horário local do espaço de trabalho ({workspace.timezone}).
+              </p>
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Publicações por conta">
+                <Field label="Total de Reels por conta">
                   <input
                     type="number"
                     min={1}
@@ -927,7 +1041,7 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
                     className="field"
                   />
                 </Field>
-                <Field label="Data inicial">
+                <Field label="Em que dia começar?">
                   <input
                     type="date"
                     value={startDate}
@@ -935,15 +1049,10 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
                     className="field"
                   />
                 </Field>
-                <Field label="Horários separados por vírgula">
-                  <input
-                    value={times}
-                    onChange={(event) => setTimes(event.target.value)}
-                    className="field"
-                    placeholder="09:00, 13:00, 18:00"
-                  />
-                </Field>
-                <Field label="Limite por dia nesta prévia">
+                <div className="md:col-span-2">
+                  <DailyTimeSlots value={times} onChange={setTimes} limit={10} />
+                </div>
+                <Field label="Máximo de Reels por dia em cada conta">
                   <input
                     type="number"
                     min={1}
@@ -962,11 +1071,11 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
                     className="field"
                   />
                 </Field>
-                <div className="rounded-md border border-border bg-secondary/30 p-3 text-xs leading-5 text-muted-foreground">
-                  Fuso: {workspace.timezone}. A prévia verifica o intervalo mínimo entre os horários
-                  deste lote. Confira também os agendamentos anteriores no Histórico.
-                </div>
               </div>
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                Se o máximo diário for menor que a quantidade de horários, a prévia usa os primeiros
+                horários de cada dia. Confira também as publicações que já estão no Histórico.
+              </p>
               <label className="mt-4 flex items-center gap-2 text-xs">
                 <input
                   type="checkbox"
@@ -977,7 +1086,7 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
               </label>
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-4">
                 <div>
-                  <p className="text-sm font-semibold">Gerar prévia local</p>
+                  <p className="text-sm font-semibold">4. Revise antes de salvar</p>
                   <p className="text-xs text-muted-foreground">
                     Usa os arquivos selecionados e não envia nada ao Instagram.
                   </p>
@@ -986,7 +1095,7 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
                   onClick={generatePreview}
                   className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
                 >
-                  <Sparkles className="size-3" /> Gerar prévia
+                  <Sparkles className="size-3" /> Revisar agendamento
                 </button>
               </div>
             </Panel>
@@ -1155,13 +1264,7 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
                     className="field"
                   />
                 </Field>
-                <Field label="Horários padrão">
-                  <input
-                    value={times}
-                    onChange={(event) => setTimes(event.target.value)}
-                    className="field"
-                  />
-                </Field>
+                <DailyTimeSlots value={times} onChange={setTimes} limit={10} />
               </div>
               <button
                 onClick={() =>
@@ -1192,8 +1295,8 @@ function InstagramWorkspacePage({ workspace, initialTab }: { workspace: Workspac
                     </p>
                     <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
                       O servidor verifica a fila a cada minuto usando credencial gerada e guardada
-                      no Vault do Supabase. Só publica itens que já foram agendados pela equipe.
-                      O horário real pode variar; acompanhe o resultado no Histórico.
+                      no Vault do Supabase. Só publica itens que já foram agendados pela equipe. O
+                      horário real pode variar; acompanhe o resultado no Histórico.
                     </p>
                   </div>
                 </div>
