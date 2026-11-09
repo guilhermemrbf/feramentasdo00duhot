@@ -28,6 +28,7 @@ import {
 } from "@/lib/api/instagram-worker.functions";
 import { zonedDateTimeToIso } from "@/lib/scheduling";
 import { InstagramHistory } from "@/components/postkit/InstagramHistory";
+import { InstagramStories } from "@/components/postkit/InstagramStories";
 import { validatePostkitVideo } from "@/lib/postkit-media";
 
 export const Route = createFileRoute("/automacao-instagram")({
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/automacao-instagram")({
   component: AutomacaoInstagram,
 });
 
-type Tab = "dashboard" | "contas" | "biblioteca" | "fila" | "conteudo" | "config" | "historico";
+type Tab = "dashboard" | "contas" | "biblioteca" | "fila" | "stories" | "conteudo" | "config" | "historico";
 type VideoItem = {
   id: string;
   name: string;
@@ -71,6 +72,7 @@ const tabItems = [
   { id: "contas", label: "Contas", icon: Users },
   { id: "biblioteca", label: "Biblioteca", icon: Library },
   { id: "fila", label: "Agendamento", icon: CalendarDays },
+  { id: "stories", label: "Stories", icon: Instagram },
   { id: "historico", label: "Histórico", icon: CheckCircle2 },
   { id: "conteudo", label: "Legendas e hashtags", icon: FileText },
   { id: "config", label: "Configurações", icon: Settings2 },
@@ -664,6 +666,14 @@ function InstagramWorkspacePage({ workspace }: { workspace: Workspace }) {
             </div>
           </section>
         )}
+
+        <div hidden={tab !== "stories"}>
+          <InstagramStories
+            workspaceId={workspace.id}
+            timezone={workspace.timezone}
+            accounts={connectedAccounts.filter((account) => account.connection_status === "connected")}
+          />
+        </div>
 
         {tab === "historico" && (
           <InstagramHistory
