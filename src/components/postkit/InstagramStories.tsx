@@ -2,11 +2,26 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent } from "rea
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { zonedDateTimeToIso } from "@/lib/scheduling";
+import {
+  buildStorySchedule,
+  clampSticker,
+  readStoryStickers,
+  stickerKinds,
+  stickerLabels,
+  stickerPositions,
+  stickerText,
+  storyBatchLimit,
+  validateStoryStickers,
+  type Position,
+  type StickerKind,
+  type StoryAudience,
+  type StorySticker,
+  type StoryStickers,
+} from "@/lib/instagram-story-layout";
 
 type Account = { id: string; username: string };
 type MediaType = "image/jpeg" | "image/png" | "video/mp4" | "video/quicktime" | "video/webm";
 type Media = { id: string; file: File; url: string; mime: MediaType };
-type Position = { x: number; y: number };
 type Planned = { media: Media; date: string; time: string };
 type State = "pending" | "done" | "cancelled";
 type Reminder = {
@@ -16,8 +31,10 @@ type Reminder = {
   storage_path: string;
   filename: string;
   mime_type: MediaType;
-  link_url: string;
-  link_title: string;
+  link_url: string | null;
+  link_title: string | null;
+  stickers: StoryStickers | null;
+  audience: StoryAudience;
   sticker_x: number;
   sticker_y: number;
   scheduled_at: string;
@@ -54,15 +71,6 @@ const button =
 const primary =
   "rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50";
 const mediaBucket = "postkit-media";
-const defaultPosition: Position = { x: 50, y: 75 };
-
-function dateAtOffset(date: string, days: number) {
-  const utc = new Date(date + "T12:00:00Z");
-  if (!Number.isFinite(utc.getTime())) throw new Error("Escolha uma data válida.");
-  utc.setUTCDate(utc.getUTCDate() + days);
-  return utc.toISOString().slice(0, 10);
-}
-
 function localDate(zone: string) {
   const pieces = new Intl.DateTimeFormat("en-CA", {
     timeZone: zone,
@@ -157,88 +165,126 @@ function exportCalendar(rows: Reminder[], accounts: Account[]) {
 function StoryPreview({
   source,
   mime,
-  title,
-  position,
+  stickers,
   onMove,
+  onSelect,
 }: {
   source?: string;
   mime?: string;
-  title: string;
-  position: Position;
-  onMove?: (next: Position) => void;
+  stickers: StoryStickers;
+  onMove?: (kind: StickerKind, next: Position) => void;
+  onSelect?: (kind: StickerKind) => void;
 }) {
   const frame = useRef<HTMLDivElement>(null);
-  const move = (event: PointerEvent<HTMLButtonElement>) => {
+  const drag = useRef<{ kind: StickerKind; x: number; y: number } | null>(null);
+  function move(event: PointerEvent<HTMLButtonElement>, kind: StickerKind) {
     const bounds = frame.current?.getBoundingClientRect();
-    if (!bounds || !onMove) return;
-    const x = Math.round(((event.clientX - bounds.left) * 100) / bounds.width);
-    const y = Math.round(((event.clientY - bounds.top) * 100) / bounds.height);
-    onMove({ x: Math.min(85, Math.max(15, x)), y: Math.min(90, Math.max(10, y)) });
-  };
-  const style = {
-    left: position.x + "%",
-    top: position.y + "%",
-    maxWidth: Math.min(45, 2 * Math.min(position.x, 100 - position.x)) + "%",
-  };
-  const sticker =
-    "absolute max-w-[45%] -translate-x-1/2 -translate-y-1/2 truncate rounded-full bg-white px-3 py-2 text-xs font-semibold text-black shadow";
+    const offset = drag.current;
+    if (!bounds || !offset || offset.kind !== kind) return;
+    onMove?.(
+      kind,
+      clampSticker({
+        x: ((event.clientX - bounds.left - offset.x) * 100) / bounds.width,
+        y: ((event.clientY - bounds.top - offset.y) * 100) / bounds.height,
+      }),
+    );
+  }
   return (
-    <div
-      ref={frame}
-      className="relative mx-auto flex aspect-[9/16] w-full max-w-[250px] items-center justify-center overflow-hidden rounded-2xl bg-black"
-    >
-      {source &&
-        (mime?.startsWith("video/") ? (
-          <video
-            key={source}
-            src={source}
-            controls
-            muted
-            playsInline
-            preload="metadata"
-            className="size-full object-contain"
-          />
-        ) : (
-          <img
-            src={source}
-            alt="Mídia selecionada para Story"
-            className="size-full object-contain"
-          />
-        ))}
-      {!source && (
-        <span className="px-4 text-center text-sm text-white/70">
-          Selecione uma mídia para ver a prévia.
-        </span>
-      )}
-      {title &&
-        (onMove && source ? (
-          <button
-            type="button"
-            style={style}
-            className={sticker + " touch-none cursor-grab"}
-            aria-label="Posição do adesivo. Use as setas para mover."
-            onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)}
-            onPointerMove={(event) => {
-              if (event.currentTarget.hasPointerCapture(event.pointerId)) move(event);
-            }}
-            onKeyDown={(event) => {
-              const dx = event.key === "ArrowLeft" ? -2 : event.key === "ArrowRight" ? 2 : 0;
-              const dy = event.key === "ArrowUp" ? -2 : event.key === "ArrowDown" ? 2 : 0;
-              if (!dx && !dy) return;
-              event.preventDefault();
-              onMove({
-                x: Math.min(85, Math.max(15, position.x + dx)),
-                y: Math.min(90, Math.max(10, position.y + dy)),
-              });
-            }}
-          >
-            🔗 {title}
-          </button>
-        ) : (
-          <span className={sticker} style={style}>
-            🔗 {title}
+    <div className="mx-auto max-w-[330px] rounded-[2rem] border-[5px] border-white/15 bg-black p-1">
+      <div
+        ref={frame}
+        className="relative flex aspect-[9/16] w-full items-center justify-center overflow-hidden rounded-[1.6rem] bg-[#111114]"
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-3 z-10 h-2.5 w-14 -translate-x-1/2 rounded-full bg-white/25"
+        />
+        {source &&
+          (mime?.startsWith("video/") ? (
+            <video
+              key={source}
+              src={source}
+              controls
+              muted
+              playsInline
+              preload="metadata"
+              className="size-full object-contain"
+            />
+          ) : (
+            <img
+              src={source}
+              alt="Mídia selecionada para Story"
+              className="size-full object-contain"
+            />
+          ))}
+        {!source && (
+          <span className="px-4 text-center text-sm text-white/70">
+            Arraste ou selecione uma foto ou vídeo.
           </span>
-        ))}
+        )}
+        {source &&
+          stickerKinds.map((kind) => {
+            const item = stickers[kind];
+            if (!item?.value.trim()) return null;
+            const style = {
+              left: item.x + "%",
+              top: item.y + "%",
+              maxWidth:
+                Math.min(kind === "text" ? 72 : 54, 2 * Math.min(item.x, 100 - item.x)) + "%",
+            };
+            const badge =
+              "absolute -translate-x-1/2 -translate-y-1/2 break-words rounded-lg px-2.5 py-1.5 text-center text-xs font-bold shadow " +
+              (kind === "text"
+                ? "whitespace-pre-wrap bg-black/75 text-white"
+                : kind === "link"
+                  ? "bg-white text-sky-800"
+                  : kind === "mention"
+                    ? "bg-white text-fuchsia-800"
+                    : "bg-white text-violet-800");
+            const label = (kind === "link" ? "🔗 " : "") + stickerText(kind, item);
+            if (!onMove)
+              return (
+                <span key={kind} className={badge} style={style}>
+                  {label}
+                </span>
+              );
+            return (
+              <button
+                key={kind}
+                type="button"
+                className={badge + " touch-none cursor-grab"}
+                style={style}
+                aria-label={stickerLabels[kind] + ". Use as setas para mover."}
+                onFocus={() => onSelect?.(kind)}
+                onPointerDown={(event) => {
+                  const bounds = event.currentTarget.getBoundingClientRect();
+                  drag.current = {
+                    kind,
+                    x: event.clientX - bounds.left - bounds.width / 2,
+                    y: event.clientY - bounds.top - bounds.height / 2,
+                  };
+                  onSelect?.(kind);
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerMove={(event) => {
+                  if (event.currentTarget.hasPointerCapture(event.pointerId)) move(event, kind);
+                }}
+                onLostPointerCapture={() => {
+                  drag.current = null;
+                }}
+                onKeyDown={(event) => {
+                  const dx = event.key === "ArrowLeft" ? -2 : event.key === "ArrowRight" ? 2 : 0;
+                  const dy = event.key === "ArrowUp" ? -2 : event.key === "ArrowDown" ? 2 : 0;
+                  if (!dx && !dy) return;
+                  event.preventDefault();
+                  onMove(kind, clampSticker({ x: item.x + dx, y: item.y + dy }));
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+      </div>
     </div>
   );
 }
@@ -272,11 +318,13 @@ export function InstagramStories({
   }, [workspaceId]);
   const [media, setMedia] = useState<Media[]>([]);
   const [selectedId, setSelectedId] = useState("");
-  const [link, setLink] = useState("");
-  const [title, setTitle] = useState("Ver oferta");
-  const [positions, setPositions] = useState<Record<string, Position>>({});
+  const [layouts, setLayouts] = useState<Record<string, StoryStickers>>({});
+  const [audiences, setAudiences] = useState<Record<string, StoryAudience>>({});
+  const [stickerKind, setStickerKind] = useState<StickerKind>("link");
+  const [uploadProgress, setUploadProgress] = useState("");
+  const uploaded = useRef(new Set<string>());
   const [date, setDate] = useState(() => localDate(timezone));
-  const [times, setTimes] = useState("18:00");
+  const [times, setTimes] = useState("09:00, 18:00");
   const [order, setOrder] = useState("selection");
   const [plan, setPlan] = useState<Planned[]>([]);
   const [saved, setSaved] = useState<Reminder[]>([]);
@@ -292,7 +340,30 @@ export function InstagramStories({
     (row) => row.state === "pending" && Date.parse(row.scheduled_at) <= now,
   );
   const current = media.find((item) => item.id === selectedId) ?? media[0];
-  const position = (current && positions[current.id]) || defaultPosition;
+  const currentLayout = current ? (layouts[current.id] ?? {}) : {};
+  const currentAudience = current ? (audiences[current.id] ?? "story") : "story";
+  const currentSticker = currentLayout[stickerKind] ?? {
+    ...stickerPositions[stickerKind],
+    value: "",
+  };
+  const previewSequence = plan.length ? plan.map((entry) => entry.media) : media;
+  const previewIndex = previewSequence.findIndex((entry) => entry.id === current?.id);
+  const savedStickers = opened ? readStoryStickers(opened.row.stickers, opened.row) : {};
+
+  function setSticker(id: string, kind: StickerKind, item?: StorySticker) {
+    setLayouts((all) => ({ ...all, [id]: { ...all[id], [kind]: item } }));
+  }
+
+  function copySticker(kind: StickerKind) {
+    if (!opened) return;
+    const item = savedStickers[kind];
+    if (!item) return;
+    void navigator.clipboard
+      .writeText(item.value)
+      .then(() => setNotice(stickerLabels[kind] + " copiado."))
+      .catch(() => setNotice("Selecione e copie o conteúdo exibido."));
+  }
+
   const formatTime = (value: string) =>
     new Intl.DateTimeFormat("pt-BR", {
       dateStyle: "short",
@@ -363,7 +434,7 @@ export function InstagramStories({
         !mime ||
         !file.size ||
         file.size > 50 * 1024 * 1024 ||
-        media.length + additions.length >= 30
+        media.length + additions.length >= storyBatchLimit
       ) {
         skipped += 1;
         continue;
@@ -376,7 +447,7 @@ export function InstagramStories({
     setPlan([]);
     setNotice(
       skipped
-        ? "Alguns arquivos foram ignorados. Use JPG, PNG, MP4, MOV ou WebM de até 50 MB, com até 30 itens por lote."
+        ? "Alguns arquivos foram ignorados. Use JPG, PNG, MP4, MOV ou WebM de até 50 MB, com até 45 itens por lote."
         : "",
     );
   }
@@ -402,24 +473,24 @@ export function InstagramStories({
   function generatePlan() {
     try {
       if (!account || !media.length) throw new Error("Escolha a conta e pelo menos uma mídia.");
-      const slots = [...new Set(times.split(",").map((time) => time.trim()))].sort();
-      if (slots.some((time) => !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)))
-        throw new Error("Informe horários no formato 09:00, 18:00.");
-      const sequence = [...media];
-      if (order === "random") {
-        for (let i = sequence.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [sequence[i], sequence[j]] = [sequence[j], sequence[i]];
-        }
-      }
-      setPlan(
-        sequence.map((item, index) => ({
-          media: item,
-          date: dateAtOffset(date, Math.floor(index / slots.length)),
-          time: slots[index % slots.length],
-        })),
+      const today = localDate(timezone);
+      if (date < today) throw new Error("Escolha hoje ou uma data futura.");
+      const currentTime = new Intl.DateTimeFormat("en-GB", {
+        timeZone: timezone,
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).format(new Date());
+      const nextPlan = buildStorySchedule(
+        media,
+        date,
+        times,
+        order === "random",
+        Math.random,
+        date === today ? currentTime : undefined,
       );
-      setSelectedId(sequence[0].id);
+      setPlan(nextPlan);
+      setSelectedId(nextPlan[0].media.id);
       setNotice("");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Não foi possível montar a sequência.");
@@ -431,21 +502,17 @@ export function InstagramStories({
     setBusy(true);
     setNotice("");
     try {
-      let productUrl: URL;
-      try {
-        productUrl = new URL(link.trim());
-      } catch {
-        throw new Error("Informe um link HTTPS completo.");
-      }
-      if (
-        productUrl.protocol !== "https:" ||
-        productUrl.username ||
-        productUrl.password ||
-        productUrl.href.length > 2048 ||
-        !title.trim()
-      )
-        throw new Error("Informe um link HTTPS válido e um título para o adesivo.");
       const rows: ReminderInsert[] = plan.map(({ media: item, date, time }) => {
+        let stickers: StoryStickers;
+        try {
+          stickers = validateStoryStickers(layouts[item.id] ?? {});
+        } catch (error) {
+          throw new Error(
+            item.file.name +
+              ": " +
+              (error instanceof Error ? error.message : "figurinha inválida."),
+          );
+        }
         const filename = item.file.name.replace(/[^A-Za-z0-9_.-]/g, "_").slice(-120) || "story";
         return {
           id: item.id,
@@ -454,10 +521,12 @@ export function InstagramStories({
           storage_path: [workspaceId, item.id, filename].join("/"),
           filename,
           mime_type: item.mime,
-          link_url: productUrl.href,
-          link_title: title.trim(),
-          sticker_x: (positions[item.id] ?? defaultPosition).x,
-          sticker_y: (positions[item.id] ?? defaultPosition).y,
+          stickers,
+          audience: audiences[item.id] ?? "story",
+          link_url: stickers.link?.value ?? null,
+          link_title: stickers.link ? stickerText("link", stickers.link) : null,
+          sticker_x: stickers.link?.x ?? stickerPositions.link.x,
+          sticker_y: stickers.link?.y ?? stickerPositions.link.y,
           scheduled_at: zonedDateTimeToIso(date, time, timezone),
         };
       });
@@ -480,7 +549,9 @@ export function InstagramStories({
       if (existingError) throw new Error("A agenda está indisponível. Tente de novo.");
       const existingIds = new Set((existing ?? []).map((row) => row.id));
       const unsaved = rows.filter((row) => !existingIds.has(row.id));
-      for (const row of unsaved) {
+      for (const [index, row] of unsaved.entries()) {
+        setUploadProgress("Mídia " + (index + 1) + " de " + unsaved.length);
+        if (uploaded.current.has(row.storage_path)) continue;
         const item = plan.find((entry) => entry.media.id === row.id)?.media;
         if (!item) throw new Error("Selecione novamente a mídia.");
         const { error } = await storyClient.storage
@@ -488,6 +559,7 @@ export function InstagramStories({
           .upload(row.storage_path, item.file, { contentType: item.mime, upsert: true });
         if (error)
           throw new Error("Falha ao salvar " + row.filename + ". Você pode tentar de novo.");
+        uploaded.current.add(row.storage_path);
       }
       if (unsaved.length) {
         const { error } = await storyClient
@@ -501,7 +573,9 @@ export function InstagramStories({
         urls.current.delete(item.url);
       }
       setMedia([]);
-      setPositions({});
+      setLayouts({});
+      setAudiences({});
+      uploaded.current.clear();
       setPlan([]);
       setSelectedId("");
       await refresh();
@@ -511,6 +585,7 @@ export function InstagramStories({
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Não foi possível salvar a agenda.");
     } finally {
+      setUploadProgress("");
       setBusy(false);
     }
   }
@@ -601,8 +676,8 @@ export function InstagramStories({
 
       {canEdit && (
         <fieldset disabled={busy || !account || !!loadError} className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-            <div className="space-y-4 rounded-lg border border-border bg-card p-5">
+          <div className="grid gap-4 lg:grid-cols-[minmax(280px,0.85fr)_minmax(0,1fr)]">
+            <div className="space-y-4 rounded-lg border border-border bg-card p-5 lg:order-2">
               <label className="block text-sm">
                 Conta
                 <select
@@ -641,7 +716,7 @@ export function InstagramStories({
                   Arraste os arquivos aqui ou use o seletor.
                 </span>
               </label>
-              <div className="space-y-2">
+              <div className="max-h-56 space-y-2 overflow-auto">
                 {media.map((item, i) => (
                   <div
                     key={item.id}
@@ -679,26 +754,153 @@ export function InstagramStories({
                   </div>
                 ))}
               </div>
-              <label className="block text-sm">
-                Link da campanha para todos os Stories
-                <input
-                  type="url"
-                  className="field mt-1"
-                  maxLength={2048}
-                  placeholder="https://…"
-                  value={link}
-                  onChange={(event) => setLink(event.target.value)}
-                />
-              </label>
-              <label className="block text-sm">
-                Título do adesivo
-                <input
-                  className="field mt-1"
-                  value={title}
-                  maxLength={60}
-                  onChange={(event) => setTitle(event.target.value)}
-                />
-              </label>
+              <div className="space-y-3 rounded-xl border border-border p-4">
+                <h3 className="text-sm font-semibold">Figurinhas interativas</h3>
+                <div
+                  className="grid grid-cols-4 gap-1 rounded-lg bg-background p-1"
+                  aria-label="Tipo de figurinha"
+                >
+                  {stickerKinds.map((kind) => (
+                    <button
+                      type="button"
+                      key={kind}
+                      aria-pressed={kind === stickerKind}
+                      disabled={!current}
+                      className={
+                        "rounded-md px-1 py-2 text-xs " +
+                        (stickerKind === kind ? "bg-secondary font-bold" : "text-muted-foreground")
+                      }
+                      onClick={() => setStickerKind(kind)}
+                    >
+                      {stickerLabels[kind]}
+                      {currentLayout[kind]?.value.trim() ? " •" : ""}
+                    </button>
+                  ))}
+                </div>
+                <label className="block text-sm">
+                  {stickerKind === "link"
+                    ? "URL do link (clicável no Instagram)"
+                    : stickerKind === "mention"
+                      ? "Perfil para mencionar"
+                      : stickerKind === "hashtag"
+                        ? "Hashtag do Story"
+                        : "Texto do Story"}
+                  <input
+                    type={stickerKind === "link" ? "url" : "text"}
+                    disabled={!current}
+                    className="field mt-1"
+                    maxLength={
+                      stickerKind === "link"
+                        ? 2048
+                        : stickerKind === "mention"
+                          ? 31
+                          : stickerKind === "hashtag"
+                            ? 101
+                            : 220
+                    }
+                    placeholder={
+                      stickerKind === "link"
+                        ? "https://exemplo.com.br"
+                        : stickerKind === "mention"
+                          ? "@perfil"
+                          : stickerKind === "hashtag"
+                            ? "#oferta"
+                            : "Escreva aqui"
+                    }
+                    value={currentSticker.value}
+                    onChange={(event) => {
+                      if (current)
+                        setSticker(current.id, stickerKind, {
+                          ...currentSticker,
+                          value: event.target.value,
+                        });
+                    }}
+                  />
+                </label>
+                {stickerKind === "link" && (
+                  <label className="block text-sm">
+                    Texto da figurinha (opcional)
+                    <input
+                      disabled={!current}
+                      className="field mt-1"
+                      maxLength={60}
+                      placeholder="Ex.: Saiba mais, Compre aqui"
+                      value={currentSticker.title ?? ""}
+                      onChange={(event) => {
+                        if (current)
+                          setSticker(current.id, "link", {
+                            ...currentSticker,
+                            title: event.target.value,
+                          });
+                      }}
+                    />
+                  </label>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={button}
+                    disabled={!current || !currentLayout[stickerKind]}
+                    onClick={() => {
+                      if (current) setSticker(current.id, stickerKind);
+                    }}
+                  >
+                    Remover figurinha
+                  </button>
+                  <button
+                    type="button"
+                    className={button}
+                    disabled={!currentSticker.value.trim() || media.length < 2}
+                    onClick={() => {
+                      setLayouts((previous) => {
+                        const updated = { ...previous };
+                        for (const item of media) {
+                          if (item.id === current?.id) continue;
+                          const existing = updated[item.id]?.[stickerKind];
+                          updated[item.id] = {
+                            ...updated[item.id],
+                            [stickerKind]: {
+                              ...currentSticker,
+                              x: existing?.x ?? currentSticker.x,
+                              y: existing?.y ?? currentSticker.y,
+                            },
+                          };
+                        }
+                        return updated;
+                      });
+                      setNotice(
+                        stickerLabels[stickerKind] + " aplicado a todos os Stories do lote.",
+                      );
+                    }}
+                  >
+                    Aplicar a todos
+                  </button>
+                </div>
+              </div>
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">Público do Story</h3>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(["story", "close_friends"] as const).map((choice) => (
+                    <button
+                      key={choice}
+                      type="button"
+                      disabled={!current}
+                      className={
+                        button +
+                        (choice === currentAudience
+                          ? " border-primary bg-primary/10 text-primary"
+                          : "")
+                      }
+                      aria-pressed={choice === currentAudience}
+                      onClick={() => {
+                        if (current) setAudiences((all) => ({ ...all, [current.id]: choice }));
+                      }}
+                    >
+                      {choice === "story" ? "Seu Story" : "Amigos Próximos"}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <label className="block text-sm">
                   Primeiro dia
@@ -743,27 +945,51 @@ export function InstagramStories({
                 Gerar prévia da agenda
               </button>
             </div>
-            <div className="rounded-lg border border-border bg-card p-5">
+            <div className="self-start rounded-lg border border-border bg-card p-5 lg:order-1 lg:sticky lg:top-4">
               <StoryPreview
                 source={current?.url}
                 mime={current?.mime}
-                title={title}
-                position={position}
-                onMove={(next) => {
-                  if (current) setPositions((all) => ({ ...all, [current.id]: next }));
+                stickers={currentLayout}
+                onSelect={setStickerKind}
+                onMove={(kind, next) => {
+                  const item = currentLayout[kind];
+                  if (current && item) setSticker(current.id, kind, { ...item, ...next });
                 }}
               />
               <p className="mt-3 text-center text-xs text-muted-foreground">
-                Arraste o adesivo para escolher onde ele deve ficar. A posição serve de referência
-                na hora de publicar.
+                Arraste cada figurinha na prévia para definir a posição.
               </p>
+              {current && (
+                <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+                  <button
+                    type="button"
+                    className={button}
+                    disabled={previewIndex < 1}
+                    onClick={() => setSelectedId(previewSequence[previewIndex - 1].id)}
+                  >
+                    Anterior
+                  </button>
+                  <span>
+                    {previewIndex + 1} de {previewSequence.length}
+                  </span>
+                  <button
+                    type="button"
+                    className={button}
+                    disabled={previewIndex >= previewSequence.length - 1}
+                    onClick={() => setSelectedId(previewSequence[previewIndex + 1].id)}
+                  >
+                    Próximo
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           {plan.length > 0 && (
             <div className="space-y-3 rounded-lg border border-border bg-card p-5">
               <h3 className="font-semibold">Conferir sequência · @{account?.username}</h3>
               <p className="text-xs text-muted-foreground">
-                Fuso: {timezone}. Ajuste as datas e horários antes de salvar.
+                {plan.length} Stories · Fuso: {timezone}. Ajuste as datas e horários antes de
+                salvar.
               </p>
               {plan.map((item, i) => (
                 <div
@@ -806,7 +1032,7 @@ export function InstagramStories({
                 </div>
               ))}
               <button type="button" className={primary} onClick={() => void savePlan()}>
-                {busy ? "Salvando…" : "Salvar lembretes"}
+                {busy ? uploadProgress || "Salvando…" : "Salvar " + plan.length + " lembretes"}
               </button>
             </div>
           )}
@@ -869,12 +1095,7 @@ export function InstagramStories({
 
       {opened && (
         <div className="grid gap-4 rounded-lg border border-border bg-card p-5 sm:grid-cols-[250px_minmax(0,1fr)]">
-          <StoryPreview
-            source={opened.url}
-            mime={opened.row.mime_type}
-            title={opened.row.link_title}
-            position={{ x: opened.row.sticker_x, y: opened.row.sticker_y }}
-          />
+          <StoryPreview source={opened.url} mime={opened.row.mime_type} stickers={savedStickers} />
           <div className="space-y-3">
             <h3 className="font-semibold">Publicação no Instagram</h3>
             <p className="text-sm font-medium">
@@ -882,23 +1103,33 @@ export function InstagramStories({
                 "Conta desconectada"}
             </p>
             <p className="text-sm text-muted-foreground">
-              Entre na conta indicada, adicione esta mídia e coloque o link no adesivo na posição da
+              Adicione a mídia no Instagram, copie as figurinhas e posicione cada uma como na
               prévia.
             </p>
-            <p className="break-all text-sm">{opened.row.link_url}</p>
+            <p className="text-sm">
+              Público: {opened.row.audience === "close_friends" ? "Amigos Próximos" : "Seu Story"}
+            </p>
+            {stickerKinds.map((kind) => {
+              const item = savedStickers[kind];
+              if (!item) return null;
+              return (
+                <div key={kind} className="rounded-md border border-border p-2 text-sm">
+                  <p className="font-medium">{stickerLabels[kind]}</p>
+                  <p className="break-all">{item.value}</p>
+                  {kind === "link" && item.title && (
+                    <p className="text-xs text-muted-foreground">Título: {item.title}</p>
+                  )}
+                  <button
+                    type="button"
+                    className={button + " mt-1"}
+                    onClick={() => copySticker(kind)}
+                  >
+                    Copiar {stickerLabels[kind].toLowerCase()}
+                  </button>
+                </div>
+              );
+            })}
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className={button}
-                onClick={() =>
-                  void navigator.clipboard
-                    .writeText(opened.row.link_url)
-                    .then(() => setNotice("Link copiado."))
-                    .catch(() => setNotice("Selecione e copie o link acima."))
-                }
-              >
-                Copiar link
-              </button>
               <button
                 type="button"
                 className={button}
