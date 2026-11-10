@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   AlertCircle,
+  ArrowLeft,
   ArrowRight,
   CalendarDays,
   CheckCircle2,
@@ -196,14 +197,19 @@ function InstagramWorkspacePage({
   workspace: Workspace;
   initialTab?: Tab;
 }) {
-  const [tab, setTab] = useState<Tab>(initialTab ?? "dashboard");
+  const [tab, setActiveTab] = useState<Tab>(initialTab ?? "dashboard");
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const setTab = (next: Tab) => {
+    if (next === "biblioteca") setLibraryOpen(false);
+    setActiveTab(next);
+  };
   const [storyAccount, setStoryAccount] = useState<{
     id: string;
     request: string;
     productUrl: string | null;
   }>();
   useEffect(() => {
-    if (initialTab) setTab(initialTab);
+    if (initialTab) setActiveTab(initialTab);
   }, [initialTab]);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -335,11 +341,11 @@ function InstagramWorkspacePage({
   useEffect(() => {
     const result = new URLSearchParams(window.location.search).get("instagram");
     if (result === "connected") {
-      setTab("contas");
+      setActiveTab("contas");
       setNotice("Conexão concluída. Confira o @ em Suas contas.");
     }
     if (result === "connection_failed") {
-      setTab("contas");
+      setActiveTab("contas");
       const reason = new URLSearchParams(window.location.search).get("instagram_reason");
       const reasonLabels: Record<string, string> = {
         meta_denied: "a Meta não concluiu a autorização",
@@ -501,6 +507,19 @@ function InstagramWorkspacePage({
     (account) => account.connection_status === "connected",
   );
   const reelAccount = readyAccounts.find((account) => account.id === selectedAccountId);
+  const libraryAccount = libraryOpen
+    ? connectedAccounts.find((account) => account.id === selectedAccountId)
+    : undefined;
+  const libraryBusy = uploading || linkingVideos || savingQueue;
+  const videosByAccount = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const video of videos) {
+      if (video.reelAccountId) {
+        counts.set(video.reelAccountId, (counts.get(video.reelAccountId) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [videos]);
   const accountVideos = useMemo(
     () => videos.filter((video) => video.reelAccountId === selectedAccountId),
     [selectedAccountId, videos],
@@ -582,7 +601,7 @@ function InstagramWorkspacePage({
   };
 
   const chooseReelAccount = (id: string) => {
-    if (id === selectedAccountId || uploading || linkingVideos || savingQueue) return;
+    if (id === selectedAccountId || libraryBusy) return;
     setSelectedAccountId(id);
     setSourceFolder("");
     setSelectedVideoIds(null);
@@ -593,6 +612,13 @@ function InstagramWorkspacePage({
     setQueue([]);
     setQueueSaved(false);
     setPreviewError("");
+  };
+
+  const openAccountLibrary = (id: string) => {
+    if (libraryBusy) return;
+    chooseReelAccount(id);
+    setLibraryOpen(true);
+    setActiveTab("biblioteca");
   };
 
   const selectFolder = (id: string) => {
@@ -1000,10 +1026,7 @@ function InstagramWorkspacePage({
             accounts={readyAccounts}
             videos={videos}
             onConnect={() => setTab("contas")}
-            onLibrary={(accountId) => {
-              chooseReelAccount(accountId);
-              setTab("biblioteca");
-            }}
+            onLibrary={openAccountLibrary}
             onReels={(accountId, daily, videoIds) => {
               if (uploading || linkingVideos || savingQueue) {
                 setNotice("Aguarde a operação em andamento antes de abrir outro agendamento.");
@@ -1157,19 +1180,15 @@ function InstagramWorkspacePage({
                           </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          {ready && (
-                            <button
-                              type="button"
-                              disabled={uploading || linkingVideos || savingQueue}
-                              className="rounded-md border border-border px-3 py-1 text-xs font-semibold disabled:opacity-50"
-                              onClick={() => {
-                                chooseReelAccount(account.id);
-                                setTab("biblioteca");
-                              }}
-                            >
-                              Ver vídeos
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            disabled={libraryBusy}
+                            aria-label={`Abrir biblioteca de @${account.username}`}
+                            className="rounded-md border border-border px-3 py-1 text-xs font-semibold disabled:opacity-50"
+                            onClick={() => openAccountLibrary(account.id)}
+                          >
+                            Abrir biblioteca
+                          </button>
                           <span
                             className={`rounded-full px-3 py-1 text-xs font-semibold ${ready ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}
                           >
@@ -1202,126 +1221,178 @@ function InstagramWorkspacePage({
 
         {tab === "biblioteca" && (
           <section className="mt-6 space-y-4">
-            <Panel title="Biblioteca por conta">
-              <div className="mb-4 max-w-sm">
-                <ReelAccountSelect
-                  accounts={readyAccounts}
-                  value={selectedAccountId}
-                  onChange={chooseReelAccount}
-                  disabled={uploading || linkingVideos || savingQueue}
-                />
-              </div>
-              {!reelAccount ? (
+            {!libraryAccount ? (
+              <Panel title="Bibliotecas das contas">
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Abra a biblioteca da conta que vai receber os vídeos.
+                </p>
+                {connectedAccounts.length > 0 ? (
+                  <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {connectedAccounts.map((account) => {
+                      const count = videosByAccount.get(account.id) ?? 0;
+                      return (
+                        <li key={account.id} className="min-w-0">
+                          <button
+                            type="button"
+                            disabled={libraryBusy}
+                            onClick={() => openAccountLibrary(account.id)}
+                            className="flex h-full w-full items-center gap-3 rounded-xl border border-border bg-background/60 p-3 text-left hover:border-primary/50 hover:bg-primary/5 disabled:opacity-50"
+                          >
+                            <span className="rounded-lg bg-fuchsia-400/10 p-2.5 text-fuchsia-300">
+                              <Library className="size-5" aria-hidden />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block break-all text-sm font-semibold">
+                                @{account.username}
+                              </span>
+                              <span className="block text-xs text-muted-foreground">
+                                {videosLoaded
+                                  ? count === 1
+                                    ? "1 vídeo"
+                                    : `${count} vídeos`
+                                  : "Biblioteca de Reels"}
+                                {account.connection_status !== "connected" &&
+                                  " · Reconexão pendente"}
+                              </span>
+                            </span>
+                            <ArrowRight className="size-4 shrink-0 text-primary" aria-hidden />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : accountsLoaded ? (
+                  <button
+                    type="button"
+                    className="text-sm font-semibold text-primary"
+                    onClick={() => setTab("contas")}
+                  >
+                    Conectar conta do Instagram
+                  </button>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Carregando suas contas…</p>
+                )}
+              </Panel>
+            ) : (
+              <>
                 <button
                   type="button"
-                  className="text-sm font-semibold text-primary"
-                  onClick={() => setTab("contas")}
+                  onClick={() => setLibraryOpen(false)}
+                  className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold text-primary hover:bg-primary/10"
                 >
-                  Ir para Contas do Instagram
+                  <ArrowLeft className="size-4" aria-hidden /> Todas as bibliotecas
                 </button>
-              ) : (
-                <>
-                  <p className="mb-3 text-sm text-muted-foreground">
-                    Os vídeos que você enviar aqui ficam na biblioteca de{" "}
-                    <strong>@{reelAccount.username}</strong>.
-                  </p>
-                  <div className="mb-4 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => folderInput.current?.click()}
-                      disabled={uploading || !videosLoaded}
-                      className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-                    >
-                      Importar pasta de vídeos
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => fileInput.current?.click()}
-                      disabled={uploading || !videosLoaded}
-                      className="rounded-md border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50"
-                    >
-                      Adicionar vídeos avulsos
-                    </button>
-                  </div>
-                  <input
-                    ref={fileInput}
-                    type="file"
-                    accept="video/mp4,video/quicktime,.mp4,.mov"
-                    disabled={uploading}
-                    multiple
-                    className="hidden"
-                    onChange={(event) => addFiles(event)}
-                  />
-                  <input
-                    ref={(input) => {
-                      folderInput.current = input;
-                      input?.setAttribute("webkitdirectory", "");
-                    }}
-                    type="file"
-                    multiple
-                    disabled={uploading || !videosLoaded}
-                    className="hidden"
-                    onChange={(event) => addFiles(event, true)}
-                  />
-                  <button
-                    onClick={() => fileInput.current?.click()}
-                    disabled={uploading || !videosLoaded}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      if (!videosLoaded) return;
-                      void uploadFiles(Array.from(event.dataTransfer.files)).catch(() =>
-                        setNotice(
-                          "O envio foi interrompido. Confira sua conexão e atualize a biblioteca antes de reenviar.",
-                        ),
-                      );
-                    }}
-                    className="w-full rounded-lg border border-dashed border-border bg-secondary/20 px-6 py-10 text-center transition-colors hover:border-primary/60"
-                  >
-                    <Upload className="mx-auto size-7 text-primary" />
-                    <p className="mt-3 text-sm font-semibold" role="status">
-                      {uploading ? uploadProgress : "Selecione ou arraste seus vídeos"}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      MP4 ou MOV, até 500 MB por vídeo. Os arquivos ficam na sua biblioteca privada.
-                    </p>
-                  </button>
-                  {legacySources.size > 0 && (
-                    <details className="mt-4 rounded-lg border border-amber-400/25 bg-amber-400/5 p-3">
-                      <summary className="cursor-pointer text-sm font-semibold text-amber-200">
-                        Vincular pastas e vídeos antigos
-                      </summary>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Arquivos antigos precisam de uma conta antes de entrar na programação.
-                        Confira a pasta e o destino. O vínculo fica fixo após salvar.
+                <Panel title={`Biblioteca de @${libraryAccount.username}`}>
+                  {reelAccount ? (
+                    <>
+                      <p className="mb-3 text-sm text-muted-foreground">
+                        Os vídeos que você enviar aqui ficam na biblioteca de{" "}
+                        <strong>@{reelAccount.username}</strong>.
                       </p>
-                      <div className="mt-3 max-w-sm">
-                        <Field label="Pasta ou vídeo sem conta">
-                          <select
-                            className="field"
-                            value={legacySourceId}
-                            disabled={linkingVideos}
-                            onChange={(event) => setLegacySourceId(event.target.value)}
-                          >
-                            <option value="">Escolher pasta ou vídeo</option>
-                            {[...legacySources].map(([id, source]) => (
-                              <option key={id} value={id}>
-                                {source.name}
-                                {source.batch ? ` (${source.count} vídeos)` : ""}
-                              </option>
-                            ))}
-                          </select>
-                        </Field>
+                      <div className="mb-4 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => folderInput.current?.click()}
+                          disabled={uploading || !videosLoaded}
+                          className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                        >
+                          Importar pasta de vídeos
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => fileInput.current?.click()}
+                          disabled={uploading || !videosLoaded}
+                          className="rounded-md border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                        >
+                          Adicionar vídeos avulsos
+                        </button>
                       </div>
+                      <input
+                        ref={fileInput}
+                        type="file"
+                        accept="video/mp4,video/quicktime,.mp4,.mov"
+                        disabled={uploading}
+                        multiple
+                        className="hidden"
+                        onChange={(event) => addFiles(event)}
+                      />
+                      <input
+                        ref={(input) => {
+                          folderInput.current = input;
+                          input?.setAttribute("webkitdirectory", "");
+                        }}
+                        type="file"
+                        multiple
+                        disabled={uploading || !videosLoaded}
+                        className="hidden"
+                        onChange={(event) => addFiles(event, true)}
+                      />
                       <button
-                        type="button"
-                        disabled={!legacySourceId || linkingVideos}
-                        className="mt-2 rounded-md border border-amber-400/30 px-3 py-2 text-sm font-semibold text-amber-100 disabled:opacity-50"
-                        onClick={() => void linkLegacyVideos()}
+                        onClick={() => fileInput.current?.click()}
+                        disabled={uploading || !videosLoaded}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          if (!videosLoaded) return;
+                          void uploadFiles(Array.from(event.dataTransfer.files)).catch(() =>
+                            setNotice(
+                              "O envio foi interrompido. Confira sua conexão e atualize a biblioteca antes de reenviar.",
+                            ),
+                          );
+                        }}
+                        className="w-full rounded-lg border border-dashed border-border bg-secondary/20 px-6 py-10 text-center transition-colors hover:border-primary/60"
                       >
-                        {linkingVideos ? "Vinculando…" : `Vincular a @${reelAccount.username}`}
+                        <Upload className="mx-auto size-7 text-primary" />
+                        <p className="mt-3 text-sm font-semibold" role="status">
+                          {uploading ? uploadProgress : "Selecione ou arraste seus vídeos"}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          MP4 ou MOV, até 500 MB por vídeo. Os arquivos ficam na sua biblioteca
+                          privada.
+                        </p>
                       </button>
-                    </details>
+                      {legacySources.size > 0 && (
+                        <details className="mt-4 rounded-lg border border-amber-400/25 bg-amber-400/5 p-3">
+                          <summary className="cursor-pointer text-sm font-semibold text-amber-200">
+                            Vincular pastas e vídeos antigos
+                          </summary>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Arquivos antigos precisam de uma conta antes de entrar na programação.
+                            Confira a pasta e o destino. O vínculo fica fixo após salvar.
+                          </p>
+                          <div className="mt-3 max-w-sm">
+                            <Field label="Pasta ou vídeo sem conta">
+                              <select
+                                className="field"
+                                value={legacySourceId}
+                                disabled={linkingVideos}
+                                onChange={(event) => setLegacySourceId(event.target.value)}
+                              >
+                                <option value="">Escolher pasta ou vídeo</option>
+                                {[...legacySources].map(([id, source]) => (
+                                  <option key={id} value={id}>
+                                    {source.name}
+                                    {source.batch ? ` (${source.count} vídeos)` : ""}
+                                  </option>
+                                ))}
+                              </select>
+                            </Field>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!legacySourceId || linkingVideos}
+                            className="mt-2 rounded-md border border-amber-400/30 px-3 py-2 text-sm font-semibold text-amber-100 disabled:opacity-50"
+                            onClick={() => void linkLegacyVideos()}
+                          >
+                            {linkingVideos ? "Vinculando…" : `Vincular a @${reelAccount.username}`}
+                          </button>
+                        </details>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Você pode consultar estes vídeos. Reconecte a conta para importar ou agendar.
+                    </p>
                   )}
                   {folders.length > 0 && (
                     <div className="mt-4 max-w-sm">
@@ -1342,9 +1413,13 @@ function InstagramWorkspacePage({
                     </div>
                   )}
                   <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                      {reelVideos.length} de {libraryVideos.length} selecionados
-                    </span>
+                    {reelAccount ? (
+                      <span>
+                        {reelVideos.length} de {libraryVideos.length} selecionados
+                      </span>
+                    ) : (
+                      <span>{libraryVideos.length} nesta biblioteca</span>
+                    )}
                     <span>
                       {formattedSize(libraryVideos.reduce((total, video) => total + video.size, 0))}{" "}
                       no total
@@ -1366,29 +1441,33 @@ function InstagramWorkspacePage({
                               {formattedSize(video.size)} · {video.type || "tipo não identificado"}
                             </p>
                           </div>
-                          <input
-                            type="checkbox"
-                            aria-label={`Usar ${video.name}`}
-                            checked={selectedIds?.has(video.id) ?? true}
-                            onChange={(event) =>
-                              setSelectedVideoIds(
-                                event.target.checked
-                                  ? [...reelVideos.map((item) => item.id), video.id]
-                                  : reelVideos
-                                      .filter((item) => item.id !== video.id)
-                                      .map((item) => item.id),
-                              )
-                            }
-                          />
+                          {reelAccount && (
+                            <input
+                              type="checkbox"
+                              aria-label={`Usar ${video.name}`}
+                              checked={selectedIds?.has(video.id) ?? true}
+                              onChange={(event) =>
+                                setSelectedVideoIds(
+                                  event.target.checked
+                                    ? [...reelVideos.map((item) => item.id), video.id]
+                                    : reelVideos
+                                        .filter((item) => item.id !== video.id)
+                                        .map((item) => item.id),
+                                )
+                              }
+                            />
+                          )}
                         </label>
                       ))}
                     </div>
                   ) : (
                     <p className="mt-4 text-center text-xs text-muted-foreground">
-                      Esta conta ainda não tem vídeos nesta pasta.
+                      {videosLoaded
+                        ? "Ainda não há vídeos nesta biblioteca."
+                        : "Carregando os vídeos desta conta…"}
                     </p>
                   )}
-                  {!!libraryVideos.length && (
+                  {reelAccount && !!libraryVideos.length && (
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-secondary/30 p-3">
                       <p className="text-sm text-muted-foreground">
                         Marque os vídeos que você quer usar na próxima programação.
@@ -1406,9 +1485,9 @@ function InstagramWorkspacePage({
                       </button>
                     </div>
                   )}
-                </>
-              )}
-            </Panel>
+                </Panel>
+              </>
+            )}
           </section>
         )}
 
@@ -1454,7 +1533,7 @@ function InstagramWorkspacePage({
                   <div className="max-w-sm">
                     <ReelAccountSelect
                       accounts={readyAccounts}
-                      value={selectedAccountId}
+                      value={reelAccount?.id ?? ""}
                       onChange={chooseReelAccount}
                       disabled={uploading || linkingVideos || savingQueue}
                     />
@@ -1520,7 +1599,10 @@ function InstagramWorkspacePage({
                 <button
                   type="button"
                   className="rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-secondary"
-                  onClick={() => setTab("biblioteca")}
+                  disabled={libraryBusy}
+                  onClick={() =>
+                    reelAccount ? openAccountLibrary(reelAccount.id) : setTab("biblioteca")
+                  }
                 >
                   {reelMode === "single"
                     ? "Abrir biblioteca"
