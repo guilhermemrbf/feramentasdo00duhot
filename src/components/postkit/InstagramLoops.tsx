@@ -19,6 +19,7 @@ const pauseLabels: Record<string, string> = {
   manual: "Pausado pela equipe.",
   account: "Reconecte a conta antes de retomar.",
   post: "O último Reel falhou ou precisa ser conferido no Instagram. Confira o histórico.",
+  media_account: "O próximo vídeo precisa estar vinculado a esta conta na Biblioteca.",
 };
 
 export function InstagramLoops({
@@ -32,7 +33,7 @@ export function InstagramLoops({
   workspaceId: string;
   timezone: string;
   accounts: Array<{ id: string; username: string }>;
-  videos: Array<{ id: string; name: string }>;
+  videos: Array<{ id: string; name: string; reelAccountId: string | null }>;
   onAccounts: () => void;
   onLibrary: () => void;
 }) {
@@ -45,7 +46,7 @@ export function InstagramLoops({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState("");
   const [name, setName] = useState("");
-  const [accountIds, setAccountIds] = useState<string[]>([]);
+  const [accountId, setAccountId] = useState("");
   const [assetIds, setAssetIds] = useState<string[]>([]);
   const [caption, setCaption] = useState("");
   const [intervalMinutes, setIntervalMinutes] = useState(1440);
@@ -53,6 +54,10 @@ export function InstagramLoops({
   const [time, setTime] = useState("09:00");
   const activeAccounts = new Set(
     rows?.filter((row) => row.state === "active").map((row) => row.account_id),
+  );
+  const accountVideos = videos.filter((video) => video.reelAccountId === accountId);
+  const hasLinkedVideos = videos.some((video) =>
+    accounts.some((account) => account.id === video.reelAccountId),
   );
   const dateFormat = new Intl.DateTimeFormat("pt-BR", {
     timeZone: timezone,
@@ -110,8 +115,8 @@ export function InstagramLoops({
     if (busy || !canEdit) return;
     setFormError("");
     setMessage("");
-    if (!accountIds.length || !assetIds.length) {
-      setFormError("Marque pelo menos uma conta e um vídeo.");
+    if (!accountId || !assetIds.length) {
+      setFormError("Escolha uma conta e pelo menos um vídeo dela.");
       return;
     }
     let start: string;
@@ -124,10 +129,10 @@ export function InstagramLoops({
     }
     setBusy("new");
     try {
-      const { data, error } = await client.rpc("create_instagram_reel_loops", {
+      const { error } = await client.rpc("create_instagram_reel_loops", {
         p_workspace_id: workspaceId,
         p_name: name.trim(),
-        p_account_ids: accountIds,
+        p_account_ids: [accountId],
         p_asset_ids: assetIds,
         p_caption: caption.trim(),
         p_interval_minutes: intervalMinutes,
@@ -137,20 +142,16 @@ export function InstagramLoops({
         setFormError(
           error.code === "23505"
             ? "Uma das contas já tem um loop ativo. Escolha outra conta ou pause o loop atual."
-            : "Não foi possível salvar. Confira as contas, os vídeos e a data e tente de novo.",
+            : "Não foi possível salvar. Confira a conta, os vídeos dela e a data.",
         );
         return;
       }
       setName("");
-      setAccountIds([]);
+      setAccountId("");
       setAssetIds([]);
       setCaption("");
       setEditing(false);
-      setMessage(
-        data === 1
-          ? "Loop salvo. A primeira publicação seguirá o horário escolhido."
-          : "Loops salvos. Você pode acompanhar cada conta abaixo.",
-      );
+      setMessage("Loop salvo. A primeira publicação seguirá o horário escolhido.");
       setRefreshKey((value) => value + 1);
     } catch {
       setFormError("Não foi possível confirmar. Confira a lista de loops antes de tentar de novo.");
@@ -205,7 +206,7 @@ export function InstagramLoops({
             acabar.
           </p>
         </div>
-        {canEdit && rows && !editing && accounts.length > 0 && videos.length > 0 && (
+        {canEdit && rows && !editing && accounts.length > 0 && hasLinkedVideos && (
           <button
             type="button"
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
@@ -223,7 +224,7 @@ export function InstagramLoops({
             Conectar conta <ArrowRight className="size-4" />
           </button>
         )}
-        {!!accounts.length && !videos.length && (
+        {!!accounts.length && !hasLinkedVideos && (
           <button
             type="button"
             onClick={onLibrary}
@@ -265,38 +266,25 @@ export function InstagramLoops({
                 onChange={(event) => setName(event.target.value)}
               />
             </label>
-            <fieldset className="rounded-lg border border-border p-3">
-              <legend className="px-1 text-sm font-semibold">1. Em quais contas?</legend>
-              <p className="mb-2 text-xs text-muted-foreground">
-                Cada conta tem sua própria sequência. É possível manter um loop ativo por conta.
-              </p>
-              <div className="max-h-40 space-y-1 overflow-y-auto">
+            <label className="block rounded-lg border border-border p-3 text-sm">
+              1. Conta do Instagram
+              <select
+                className="field mt-1"
+                value={accountId}
+                onChange={(event) => {
+                  setAccountId(event.target.value);
+                  setAssetIds([]);
+                }}
+              >
+                <option value="">Escolher conta</option>
                 {accounts.map((item) => (
-                  <label
-                    key={item.id}
-                    className="flex gap-2 rounded-md p-1.5 text-sm hover:bg-secondary/30"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={accountIds.includes(item.id)}
-                      disabled={
-                        activeAccounts.has(item.id) ||
-                        (!accountIds.includes(item.id) && accountIds.length >= 20)
-                      }
-                      onChange={(event) =>
-                        setAccountIds((ids) =>
-                          event.target.checked
-                            ? [...ids, item.id]
-                            : ids.filter((id) => id !== item.id),
-                        )
-                      }
-                    />
+                  <option key={item.id} value={item.id} disabled={activeAccounts.has(item.id)}>
                     @{item.username}
                     {activeAccounts.has(item.id) ? " · Já tem loop ativo" : ""}
-                  </label>
+                  </option>
                 ))}
-              </div>
-            </fieldset>
+              </select>
+            </label>
             <fieldset className="rounded-lg border border-border p-3">
               <legend className="px-1 text-sm font-semibold">2. Quais vídeos?</legend>
               <p className="mb-2 text-xs text-muted-foreground">
@@ -304,7 +292,7 @@ export function InstagramLoops({
                 daquela conta.
               </p>
               <div className="max-h-52 space-y-1 overflow-y-auto">
-                {videos.map((item) => {
+                {accountVideos.map((item) => {
                   const index = assetIds.indexOf(item.id);
                   return (
                     <label
@@ -331,6 +319,15 @@ export function InstagramLoops({
                   );
                 })}
               </div>
+              {accountId && !accountVideos.length && (
+                <button
+                  type="button"
+                  className="text-sm font-semibold text-primary"
+                  onClick={onLibrary}
+                >
+                  Adicione vídeos para esta conta na Biblioteca
+                </button>
+              )}
             </fieldset>
             <label className="block text-sm">
               Legenda e hashtags dos Reels (opcional)
@@ -400,9 +397,7 @@ export function InstagramLoops({
               >
                 Voltar
               </button>
-              <p className="text-xs text-muted-foreground">
-                {assetIds.length} vídeos escolhidos · {accountIds.length} contas
-              </p>
+              <p className="text-xs text-muted-foreground">{assetIds.length} vídeos escolhidos</p>
             </div>
           </fieldset>
         </form>

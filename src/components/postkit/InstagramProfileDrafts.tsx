@@ -4,7 +4,7 @@ import { CalendarDays, Instagram, UserRoundPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type Account = { id: string; username: string };
-type Video = { id: string; name: string };
+type Video = { id: string; name: string; reelAccountId: string | null };
 type ProfileDraft = {
   id: string;
   workspace_id: string;
@@ -38,7 +38,7 @@ type DraftDatabase = {
 type DraftForm = {
   id: string;
   editing: boolean;
-  linked: boolean;
+  accountId: string | null;
   name: string;
   handle: string;
   bio: string;
@@ -81,7 +81,7 @@ export function InstagramProfileDrafts({
   accounts: Account[];
   videos: Video[];
   onConnect: () => void;
-  onLibrary: () => void;
+  onLibrary: (accountId: string) => void;
   onReels: (accountId: string, daily: number, videoIds: string[]) => void;
   onStories: (accountId: string, productUrl: string | null) => void;
 }) {
@@ -147,7 +147,7 @@ export function InstagramProfileDrafts({
     setForm({
       id: draft?.id ?? crypto.randomUUID(),
       editing: !!draft,
-      linked: !!draft?.instagram_account_id,
+      accountId: draft?.instagram_account_id ?? null,
       name: draft?.display_name ?? "",
       handle: draft?.handle ?? "",
       bio: draft?.bio ?? "",
@@ -297,6 +297,13 @@ export function InstagramProfileDrafts({
       .catch(() => setNotice("Selecione o conteúdo na ficha para copiar."));
   }
 
+  const draftAccountId = form?.accountId;
+  const accountVideos = draftAccountId
+    ? videos.filter((video) => video.reelAccountId === draftAccountId)
+    : [];
+  const starterReels =
+    form?.reels.filter((id) => accountVideos.some((video) => video.id === id)) ?? [];
+
   return (
     <section className="mt-6 space-y-5" aria-label="Novos perfis do Instagram">
       <div className="rounded-lg border border-border bg-card p-5">
@@ -395,7 +402,7 @@ export function InstagramProfileDrafts({
                   required
                   maxLength={31}
                   placeholder="@ateliedamarina"
-                  disabled={form.linked}
+                  disabled={!!form.accountId}
                   className="field mt-1"
                   value={form.handle}
                   onChange={(event) => patchForm({ handle: event.target.value })}
@@ -437,26 +444,34 @@ export function InstagramProfileDrafts({
             </label>
             <div>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h4 className="text-sm font-semibold">Primeiros Reels · {form.reels.length}/30</h4>
-                <button type="button" className={button} onClick={onLibrary}>
-                  Abrir biblioteca de vídeos
-                </button>
+                <h4 className="text-sm font-semibold">
+                  Primeiros Reels · {starterReels.length}/30
+                </h4>
+                {draftAccountId && (
+                  <button
+                    type="button"
+                    className={button}
+                    onClick={() => onLibrary(draftAccountId)}
+                  >
+                    Abrir biblioteca da conta
+                  </button>
+                )}
               </div>
-              {videos.length ? (
+              {accountVideos.length ? (
                 <div className="mt-2 max-h-44 space-y-1 overflow-auto rounded-md border border-border p-2">
-                  {videos.map((video) => {
-                    const selected = form.reels.includes(video.id);
+                  {accountVideos.map((video) => {
+                    const selected = starterReels.includes(video.id);
                     return (
                       <label key={video.id} className="flex items-center gap-2 p-1 text-sm">
                         <input
                           type="checkbox"
                           checked={selected}
-                          disabled={!selected && form.reels.length >= 30}
+                          disabled={!selected && starterReels.length >= 30}
                           onChange={() =>
                             patchForm({
                               reels: selected
-                                ? form.reels.filter((id) => id !== video.id)
-                                : [...form.reels, video.id],
+                                ? starterReels.filter((id) => id !== video.id)
+                                : [...starterReels, video.id],
                             })
                           }
                         />
@@ -467,7 +482,9 @@ export function InstagramProfileDrafts({
                 </div>
               ) : (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Envie vídeos na biblioteca para selecioná-los aqui.
+                  {form.accountId
+                    ? "Adicione vídeos à biblioteca desta conta para escolhê-los aqui."
+                    : "Conecte o Instagram à ficha para escolher os vídeos da conta."}
                 </p>
               )}
             </div>

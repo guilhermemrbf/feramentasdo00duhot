@@ -99,6 +99,7 @@ type VideoItem = {
   importBatch: string | null;
   importFolder: string | null;
   importPosition: number | null;
+  reelAccountId: string | null;
 };
 type QueueItem = {
   id: string;
@@ -233,8 +234,9 @@ function InstagramWorkspacePage({
   const [connecting, setConnecting] = useState<"instagram_login" | "facebook_login" | null>(null);
   const [workerActive, setWorkerActive] = useState<boolean | null>(null);
   const [activatingWorker, setActivatingWorker] = useState(false);
-  const [extraAccountIds, setExtraAccountIds] = useState<string[]>([]);
-  const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
+  const [selectedVideoIds, setSelectedVideoIds] = useState<string[] | null>(null);
+  const [legacySourceId, setLegacySourceId] = useState("");
+  const [linkingVideos, setLinkingVideos] = useState(false);
   const [repeatVideos, setRepeatVideos] = useState(false);
   const [uploading, setUploading] = useState(false);
   const uploadLock = useRef(false);
@@ -278,7 +280,7 @@ function InstagramWorkspacePage({
         const { data, error } = await postkit
           .from("media_assets")
           .select(
-            "id,original_filename,size_bytes,mime_type,storage_path,status,import_batch_id,import_folder,import_position",
+            "id,original_filename,size_bytes,mime_type,storage_path,status,import_batch_id,import_folder,import_position,reel_account_id",
           )
           .eq("workspace_id", workspace.id)
           .is("archived_at", null)
@@ -299,12 +301,12 @@ function InstagramWorkspacePage({
             importBatch: asset.import_batch_id,
             importFolder: asset.import_folder,
             importPosition: asset.import_position,
+            reelAccountId: asset.reel_account_id,
           });
         }
         if (data.length < size) break;
       }
       if (active) {
-        setSelectedVideoIds(entries.map((entry) => entry.id));
         setVideos(entries);
         setVideosLoaded(true);
       }
@@ -390,7 +392,8 @@ function InstagramWorkspacePage({
       : `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
 
   const uploadFiles = async (files: File[], folder = false) => {
-    if (uploadLock.current || !files.length) return;
+    if (uploadLock.current || !files.length || !reelAccount) return;
+    const accountId = reelAccount.id;
     const batch = folder ? crypto.randomUUID() : null;
     const folderName = folder
       ? (files[0].webkitRelativePath.split("/")[0] || "Pasta importada").slice(0, 255)
@@ -402,7 +405,7 @@ function InstagramWorkspacePage({
     }
     uploadLock.current = true;
     setUploading(true);
-    setNotice("Enviando vídeos para sua biblioteca privada…");
+    setNotice(`Enviando vídeos para @${reelAccount.username}…`);
     const uploaded: VideoItem[] = [];
     const errors: string[] = [];
     try {
@@ -441,6 +444,7 @@ function InstagramWorkspacePage({
           import_batch_id: batch,
           import_folder: folderName,
           import_position: folder ? index : null,
+          reel_account_id: accountId,
         });
         if (assetError) {
           await supabase.storage.from("postkit-media").remove([storagePath]);
@@ -457,6 +461,7 @@ function InstagramWorkspacePage({
           importBatch: batch,
           importFolder: folderName,
           importPosition: folder ? index : null,
+          reelAccountId: accountId,
         });
       }
     } finally {
@@ -464,18 +469,10 @@ function InstagramWorkspacePage({
       setUploading(false);
       setUploadProgress("");
       setVideos((current) => [...uploaded, ...current]);
-      if (batch && uploaded.length) {
-        setSourceFolder(batch);
-        setBatchOrder("selection");
-        setSelectedVideoIds(uploaded.map((file) => file.id));
-        setQuantity(null);
-      } else if (uploaded.length) {
-        setSourceFolder("");
-        setSelectedVideoIds((current) => [...uploaded.map((file) => file.id), ...current]);
-      }
+      if (uploaded.length) selectFolder(batch ?? "");
     }
     setNotice(
-      `${uploaded.length} vídeo(s) salvo(s). ${errors.slice(0, 3).join(" ")}${errors.length > 3 ? ` E mais ${errors.length - 3} arquivo(s) com erro.` : ""}`,
+      `${uploaded.length} vídeo(s) salvo(s) para @${reelAccount.username}. ${errors.slice(0, 3).join(" ")}${errors.length > 3 ? ` E mais ${errors.length - 3} arquivo(s) com erro.` : ""}`,
     );
   };
 
@@ -503,38 +500,113 @@ function InstagramWorkspacePage({
   const readyAccounts = connectedAccounts.filter(
     (account) => account.connection_status === "connected",
   );
-  const reelAccounts = readyAccounts.filter(
-    (account) => account.id === selectedAccountId || extraAccountIds.includes(account.id),
+  const reelAccount = readyAccounts.find((account) => account.id === selectedAccountId);
+  const accountVideos = useMemo(
+    () => videos.filter((video) => video.reelAccountId === selectedAccountId),
+    [selectedAccountId, videos],
   );
-  const reelVideos = useMemo(() => {
-    const ids = new Set(selectedVideoIds);
-    return videos.filter((video) => ids.has(video.id));
-  }, [selectedVideoIds, videos]);
   const folders = useMemo(
     () =>
       Array.from(
         new Map(
-          videos.flatMap((video) =>
+          accountVideos.flatMap((video) =>
             video.importBatch && video.importFolder
               ? [[video.importBatch, video.importFolder] as const]
               : [],
           ),
         ),
       ),
-    [videos],
+    [accountVideos],
   );
   const libraryVideos = sourceFolder
-    ? videos.filter((video) => video.importBatch === sourceFolder)
-    : videos;
+    ? accountVideos.filter((video) => video.importBatch === sourceFolder)
+    : accountVideos;
+  const selectedIds = selectedVideoIds && new Set(selectedVideoIds);
+  const reelVideos = selectedIds
+    ? libraryVideos.filter((video) => selectedIds.has(video.id))
+    : libraryVideos;
+
+  const legacySources = useMemo(() => {
+    const sources = new Map<string, { name: string; batch: boolean; count: number }>();
+    for (const video of videos) {
+      if (video.reelAccountId) continue;
+      const id = video.importBatch ?? video.id;
+      const source = sources.get(id);
+      if (source) source.count++;
+      else
+        sources.set(id, {
+          name: video.importFolder ?? video.name,
+          batch: !!video.importBatch,
+          count: 1,
+        });
+    }
+    return sources;
+  }, [videos]);
+
+  const linkLegacyVideos = async () => {
+    const source = legacySources.get(legacySourceId);
+    if (!reelAccount || !source || linkingVideos) return;
+    setLinkingVideos(true);
+    try {
+      const { count, error } = await postkit
+        .from("media_assets")
+        .update({ reel_account_id: reelAccount.id }, { count: "exact" })
+        .eq("workspace_id", workspace.id)
+        .eq(source.batch ? "import_batch_id" : "id", legacySourceId)
+        .is("reel_account_id", null)
+        .is("archived_at", null)
+        .in("mime_type", ["video/mp4", "video/quicktime"])
+        .in("status", ["uploaded", "ready"]);
+      if (error || count !== source.count) {
+        setNotice(
+          error?.message.includes("reel_media_used_by_another_account")
+            ? "Um vídeo deste grupo já foi publicado ou agendado para outra conta. Confira o histórico antes de vincular."
+            : "Não foi possível vincular. Atualize a página e confira se os vídeos ainda estão sem conta.",
+        );
+        return;
+      }
+      setVideos((current) =>
+        current.map((video) =>
+          !video.reelAccountId && (source.batch ? video.importBatch : video.id) === legacySourceId
+            ? { ...video, reelAccountId: reelAccount.id }
+            : video,
+        ),
+      );
+      setLegacySourceId("");
+      setNotice(`Vínculo concluído para @${reelAccount.username}.`);
+    } catch {
+      setNotice("Não foi possível confirmar o vínculo. Atualize a Biblioteca para conferir.");
+    } finally {
+      setLinkingVideos(false);
+    }
+  };
+
+  const chooseReelAccount = (id: string) => {
+    if (id === selectedAccountId || uploading || linkingVideos || savingQueue) return;
+    setSelectedAccountId(id);
+    setSourceFolder("");
+    setSelectedVideoIds(null);
+    setSingleVideoId("");
+    setBatchOrder("selection");
+    setLegacySourceId("");
+    setQuantity(null);
+    setQueue([]);
+    setQueueSaved(false);
+    setPreviewError("");
+  };
 
   const selectFolder = (id: string) => {
-    const chosen = id ? videos.filter((video) => video.importBatch === id) : videos;
     setSourceFolder(id);
-    setSelectedVideoIds(chosen.map((video) => video.id));
+    setSelectedVideoIds(null);
+    setSingleVideoId("");
+    setBatchOrder("selection");
     setQuantity(null);
   };
   const scheduleVideos =
-    reelMode === "batch" ? reelVideos : videos.filter((video) => video.id === singleVideoId);
+    reelMode === "batch" ? reelVideos : libraryVideos.filter((video) => video.id === singleVideoId);
+  const commonBatch = scheduleVideos[0]?.importBatch;
+  const useFolderOrder =
+    !!commonBatch && scheduleVideos.every((video) => video.importBatch === commonBatch);
   const reelsPerAccount =
     reelMode === "single"
       ? 1
@@ -560,7 +632,7 @@ function InstagramWorkspacePage({
       .formatToParts(agendaNow)
       .find((part) => part.type === "timeZoneName")?.value ?? workspace.timezone;
   const currentSettings = JSON.stringify([
-    reelAccounts.map((account) => account.id),
+    reelAccount?.id,
     scheduleVideos.map((video) => video.id),
     reelMode,
     singleTime,
@@ -582,12 +654,12 @@ function InstagramWorkspacePage({
 
   const generatePreview = () => {
     setPreviewError("");
-    if (!reelAccounts.length) {
-      setPreviewError("Marque pelo menos uma conta no primeiro passo.");
+    if (!reelAccount) {
+      setPreviewError("Escolha uma conta do Instagram.");
       return;
     }
     if (!scheduleVideos.length) {
-      setPreviewError("Escolha pelo menos um vídeo no segundo passo.");
+      setPreviewError("Escolha pelo menos um vídeo vinculado a esta conta.");
       return;
     }
     if (
@@ -613,16 +685,12 @@ function InstagramWorkspacePage({
       setPreviewError("Escolha mais vídeos ou reduza o total por conta em Mais opções.");
       return;
     }
-    if (reelsPerAccount * reelAccounts.length > maxReelsPerBatch) {
-      setPreviewError("Agende até 1.000 Reels por vez, somando todas as contas selecionadas.");
-      return;
-    }
     if (!startDate) {
       setPreviewError("Escolha o primeiro dia da programação.");
       return;
     }
     try {
-      const ordered = orderReelVideos(scheduleVideos, batchOrder, !!sourceFolder);
+      const ordered = orderReelVideos(scheduleVideos, batchOrder, useFolderOrder);
       const next = buildReelSchedule(
         ordered,
         reelsPerAccount,
@@ -649,18 +717,16 @@ function InstagramWorkspacePage({
         return;
       }
       setQueue(
-        reelAccounts.flatMap((account) =>
-          next.map(({ video, ...slot }) => ({
-            ...slot,
-            id: crypto.randomUUID(),
-            assetId: video.id,
-            video: video.name,
-            accountId: account.id,
-            accountName: account.username,
-            caption,
-            hashtags,
-          })),
-        ),
+        next.map(({ video, ...slot }) => ({
+          ...slot,
+          id: crypto.randomUUID(),
+          assetId: video.id,
+          video: video.name,
+          accountId: reelAccount.id,
+          accountName: reelAccount.username,
+          caption,
+          hashtags,
+        })),
       );
       setQueueSaved(false);
       setReviewPage(0);
@@ -752,7 +818,9 @@ function InstagramWorkspacePage({
       );
       if (error) {
         setNotice(
-          "Não foi possível salvar. Confira conta, vídeos, permissões e migrations do Supabase.",
+          error.message.includes("reel_media_account_mismatch")
+            ? "Um vídeo não está vinculado a esta conta. Atualize a Biblioteca e gere uma nova prévia."
+            : "Não foi possível salvar o agendamento. Confira a conta e os vídeos e tente novamente.",
         );
         return;
       }
@@ -932,30 +1000,43 @@ function InstagramWorkspacePage({
             accounts={readyAccounts}
             videos={videos}
             onConnect={() => setTab("contas")}
-            onLibrary={() => setTab("biblioteca")}
+            onLibrary={(accountId) => {
+              chooseReelAccount(accountId);
+              setTab("biblioteca");
+            }}
             onReels={(accountId, daily, videoIds) => {
+              if (uploading || linkingVideos || savingQueue) {
+                setNotice("Aguarde a operação em andamento antes de abrir outro agendamento.");
+                return;
+              }
               if (queue.length && !queueSaved) {
                 setNotice("Revise ou salve a prévia de Reels já aberta antes de carregar a ficha.");
                 setTab("fila");
                 return;
               }
-              const available = videoIds.filter((id) => videos.some((video) => video.id === id));
+              const owned = new Set(
+                videos
+                  .filter((video) => video.reelAccountId === accountId)
+                  .map((video) => video.id),
+              );
+              const available = videoIds.filter((id) => owned.has(id));
               setQueue([]);
               setQueueSaved(false);
               setReelMode("batch");
+              chooseReelAccount(accountId);
               setSourceFolder("");
-              setSelectedAccountId(accountId);
-              setExtraAccountIds([]);
-              setSelectedVideoIds(available);
+              setSelectedVideoIds(videoIds.length ? available : null);
               setTimes(
                 timeSlots.length >= daily
                   ? timeSlots.slice(0, daily).join(", ")
                   : dailyReelTimes(daily),
               );
-              setQuantity(available.length || daily);
+              setQuantity(null);
               setRepeatVideos(false);
               setNotice(
-                "Conta e preferências da ficha carregadas. Gere uma prévia antes de agendar.",
+                available.length < videoIds.length
+                  ? "A ficha contém vídeos sem vínculo com esta conta. Confira a Biblioteca."
+                  : "Conta e preferências da ficha carregadas. Gere uma prévia antes de agendar.",
               );
               setTab("fila");
             }}
@@ -994,11 +1075,7 @@ function InstagramWorkspacePage({
               workspaceId={workspace.id}
               timezone={workspace.timezone}
               accounts={readyAccounts}
-              videos={videos.filter(
-                (video) =>
-                  ["uploaded", "ready"].includes(video.status) &&
-                  ["video/mp4", "video/quicktime"].includes(video.type),
-              )}
+              videos={videos}
               onAccounts={() => setTab("contas")}
               onLibrary={() => setTab("biblioteca")}
             />
@@ -1079,11 +1156,26 @@ function InstagramWorkspacePage({
                             </p>
                           </div>
                         </div>
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${ready ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}
-                        >
-                          {ready ? "Conectada" : "Precisa de atenção"}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {ready && (
+                            <button
+                              type="button"
+                              disabled={uploading || linkingVideos || savingQueue}
+                              className="rounded-md border border-border px-3 py-1 text-xs font-semibold disabled:opacity-50"
+                              onClick={() => {
+                                chooseReelAccount(account.id);
+                                setTab("biblioteca");
+                              }}
+                            >
+                              Ver vídeos
+                            </button>
+                          )}
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${ready ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}
+                          >
+                            {ready ? "Conectada" : "Precisa de atenção"}
+                          </span>
+                        </div>
                       </div>
                     );
                   })}
@@ -1110,151 +1202,211 @@ function InstagramWorkspacePage({
 
         {tab === "biblioteca" && (
           <section className="mt-6 space-y-4">
-            <Panel
-              title="Vídeos para Reels"
-              action={
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => folderInput.current?.click()}
+            <Panel title="Biblioteca por conta">
+              <div className="mb-4 max-w-sm">
+                <ReelAccountSelect
+                  accounts={readyAccounts}
+                  value={selectedAccountId}
+                  onChange={chooseReelAccount}
+                  disabled={uploading || linkingVideos || savingQueue}
+                />
+              </div>
+              {!reelAccount ? (
+                <button
+                  type="button"
+                  className="text-sm font-semibold text-primary"
+                  onClick={() => setTab("contas")}
+                >
+                  Ir para Contas do Instagram
+                </button>
+              ) : (
+                <>
+                  <p className="mb-3 text-sm text-muted-foreground">
+                    Os vídeos que você enviar aqui ficam na biblioteca de{" "}
+                    <strong>@{reelAccount.username}</strong>.
+                  </p>
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => folderInput.current?.click()}
+                      disabled={uploading || !videosLoaded}
+                      className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                    >
+                      Importar pasta de vídeos
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInput.current?.click()}
+                      disabled={uploading || !videosLoaded}
+                      className="rounded-md border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                    >
+                      Adicionar vídeos avulsos
+                    </button>
+                  </div>
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    accept="video/mp4,video/quicktime,.mp4,.mov"
+                    disabled={uploading}
+                    multiple
+                    className="hidden"
+                    onChange={(event) => addFiles(event)}
+                  />
+                  <input
+                    ref={(input) => {
+                      folderInput.current = input;
+                      input?.setAttribute("webkitdirectory", "");
+                    }}
+                    type="file"
+                    multiple
                     disabled={uploading || !videosLoaded}
-                    className="rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
-                  >
-                    Importar pasta de vídeos
-                  </button>
+                    className="hidden"
+                    onChange={(event) => addFiles(event, true)}
+                  />
                   <button
-                    type="button"
                     onClick={() => fileInput.current?.click()}
                     disabled={uploading || !videosLoaded}
-                    className="rounded-md border border-border px-3 py-2 text-xs font-semibold disabled:opacity-50"
-                  >
-                    Selecionar vídeos
-                  </button>
-                </div>
-              }
-            >
-              <input
-                ref={fileInput}
-                type="file"
-                accept="video/mp4,video/quicktime,.mp4,.mov"
-                disabled={uploading}
-                multiple
-                className="hidden"
-                onChange={(event) => addFiles(event)}
-              />
-              <input
-                ref={(input) => {
-                  folderInput.current = input;
-                  input?.setAttribute("webkitdirectory", "");
-                }}
-                type="file"
-                multiple
-                disabled={uploading || !videosLoaded}
-                className="hidden"
-                onChange={(event) => addFiles(event, true)}
-              />
-              <button
-                onClick={() => fileInput.current?.click()}
-                disabled={uploading || !videosLoaded}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  if (!videosLoaded) return;
-                  void uploadFiles(Array.from(event.dataTransfer.files)).catch(() =>
-                    setNotice(
-                      "O envio foi interrompido. Confira sua conexão e atualize a biblioteca antes de reenviar.",
-                    ),
-                  );
-                }}
-                className="w-full rounded-lg border border-dashed border-border bg-secondary/20 px-6 py-10 text-center transition-colors hover:border-primary/60"
-              >
-                <Upload className="mx-auto size-7 text-primary" />
-                <p className="mt-3 text-sm font-semibold" role="status">
-                  {uploading ? uploadProgress : "Selecione ou arraste seus vídeos"}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  MP4 ou MOV, até 500 MB por vídeo. Os arquivos ficam na sua biblioteca privada.
-                </p>
-              </button>
-              {folders.length > 0 && (
-                <div className="mt-4 max-w-sm">
-                  <Field label="Pasta de origem do lote">
-                    <select
-                      className="field"
-                      value={sourceFolder}
-                      onChange={(event) => selectFolder(event.target.value)}
-                    >
-                      <option value="">Toda a biblioteca</option>
-                      {folders.map(([id, name]) => (
-                        <option value={id} key={id}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                </div>
-              )}
-              <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                <span>
-                  {reelVideos.length} de {videoCount} para agendar
-                </span>
-                <span>
-                  {formattedSize(videos.reduce((total, video) => total + video.size, 0))} no total
-                </span>
-              </div>
-              {libraryVideos.length ? (
-                <div className="mt-2 divide-y divide-border">
-                  {libraryVideos.map((video) => (
-                    <label
-                      key={video.id}
-                      className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-3 hover:bg-secondary/40"
-                    >
-                      <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary">
-                        <Video className="size-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{video.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formattedSize(video.size)} · {video.type || "tipo não identificado"}
-                        </p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        aria-label={`Usar ${video.name}`}
-                        checked={selectedVideoIds.includes(video.id)}
-                        onChange={(event) =>
-                          setSelectedVideoIds((current) =>
-                            event.target.checked
-                              ? [...current, video.id]
-                              : current.filter((id) => id !== video.id),
-                          )
-                        }
-                      />
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-4 text-center text-xs text-muted-foreground">
-                  Seus vídeos aparecem aqui depois do envio.
-                </p>
-              )}
-              {!!videoCount && (
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-secondary/30 p-3">
-                  <p className="text-sm text-muted-foreground">
-                    Marque os vídeos que você quer usar na próxima programação.
-                  </p>
-                  <button
-                    type="button"
-                    disabled={!reelVideos.length}
-                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-                    onClick={() => {
-                      if (sourceFolder) setReelMode("batch");
-                      setTab("fila");
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (!videosLoaded) return;
+                      void uploadFiles(Array.from(event.dataTransfer.files)).catch(() =>
+                        setNotice(
+                          "O envio foi interrompido. Confira sua conexão e atualize a biblioteca antes de reenviar.",
+                        ),
+                      );
                     }}
+                    className="w-full rounded-lg border border-dashed border-border bg-secondary/20 px-6 py-10 text-center transition-colors hover:border-primary/60"
                   >
-                    Ir para os dias e horários <ArrowRight className="size-4" />
+                    <Upload className="mx-auto size-7 text-primary" />
+                    <p className="mt-3 text-sm font-semibold" role="status">
+                      {uploading ? uploadProgress : "Selecione ou arraste seus vídeos"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      MP4 ou MOV, até 500 MB por vídeo. Os arquivos ficam na sua biblioteca privada.
+                    </p>
                   </button>
-                </div>
+                  {legacySources.size > 0 && (
+                    <details className="mt-4 rounded-lg border border-amber-400/25 bg-amber-400/5 p-3">
+                      <summary className="cursor-pointer text-sm font-semibold text-amber-200">
+                        Vincular pastas e vídeos antigos
+                      </summary>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Arquivos antigos precisam de uma conta antes de entrar na programação.
+                        Confira a pasta e o destino. O vínculo fica fixo após salvar.
+                      </p>
+                      <div className="mt-3 max-w-sm">
+                        <Field label="Pasta ou vídeo sem conta">
+                          <select
+                            className="field"
+                            value={legacySourceId}
+                            disabled={linkingVideos}
+                            onChange={(event) => setLegacySourceId(event.target.value)}
+                          >
+                            <option value="">Escolher pasta ou vídeo</option>
+                            {[...legacySources].map(([id, source]) => (
+                              <option key={id} value={id}>
+                                {source.name}
+                                {source.batch ? ` (${source.count} vídeos)` : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={!legacySourceId || linkingVideos}
+                        className="mt-2 rounded-md border border-amber-400/30 px-3 py-2 text-sm font-semibold text-amber-100 disabled:opacity-50"
+                        onClick={() => void linkLegacyVideos()}
+                      >
+                        {linkingVideos ? "Vinculando…" : `Vincular a @${reelAccount.username}`}
+                      </button>
+                    </details>
+                  )}
+                  {folders.length > 0 && (
+                    <div className="mt-4 max-w-sm">
+                      <Field label="Pasta para agendar">
+                        <select
+                          className="field"
+                          value={sourceFolder}
+                          onChange={(event) => selectFolder(event.target.value)}
+                        >
+                          <option value="">Todos os vídeos desta conta</option>
+                          {folders.map(([id, name]) => (
+                            <option value={id} key={id}>
+                              {name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
+                  )}
+                  <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      {reelVideos.length} de {libraryVideos.length} selecionados
+                    </span>
+                    <span>
+                      {formattedSize(libraryVideos.reduce((total, video) => total + video.size, 0))}{" "}
+                      no total
+                    </span>
+                  </div>
+                  {libraryVideos.length ? (
+                    <div className="mt-2 divide-y divide-border">
+                      {libraryVideos.map((video) => (
+                        <label
+                          key={video.id}
+                          className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-3 hover:bg-secondary/40"
+                        >
+                          <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary">
+                            <Video className="size-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{video.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formattedSize(video.size)} · {video.type || "tipo não identificado"}
+                            </p>
+                          </div>
+                          <input
+                            type="checkbox"
+                            aria-label={`Usar ${video.name}`}
+                            checked={selectedIds?.has(video.id) ?? true}
+                            onChange={(event) =>
+                              setSelectedVideoIds(
+                                event.target.checked
+                                  ? [...reelVideos.map((item) => item.id), video.id]
+                                  : reelVideos
+                                      .filter((item) => item.id !== video.id)
+                                      .map((item) => item.id),
+                              )
+                            }
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-center text-xs text-muted-foreground">
+                      Esta conta ainda não tem vídeos nesta pasta.
+                    </p>
+                  )}
+                  {!!libraryVideos.length && (
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-secondary/30 p-3">
+                      <p className="text-sm text-muted-foreground">
+                        Marque os vídeos que você quer usar na próxima programação.
+                      </p>
+                      <button
+                        type="button"
+                        disabled={!reelVideos.length}
+                        className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                        onClick={() => {
+                          if (sourceFolder) setReelMode("batch");
+                          setTab("fila");
+                        }}
+                      >
+                        Ir para os dias e horários <ArrowRight className="size-4" />
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </Panel>
           </section>
@@ -1264,8 +1416,8 @@ function InstagramWorkspacePage({
           <section className="mt-6 space-y-4">
             <Panel title="Agendar Reels">
               <p className="mb-5 max-w-2xl text-sm text-muted-foreground">
-                Escolha as contas e os vídeos, prepare o texto e monte os horários. Confira tudo na
-                prévia antes de colocar os Reels na fila.
+                Escolha a conta e os vídeos dela, prepare o texto e monte os horários. Confira tudo
+                na prévia antes de colocar os Reels na fila.
               </p>
               <div
                 role="group"
@@ -1296,39 +1448,18 @@ function InstagramWorkspacePage({
               </div>
               <fieldset className="mb-5 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-4">
                 <legend className="px-1 text-sm font-semibold text-cyan-200">
-                  1. Contas do Instagram
+                  1. Em qual conta você vai publicar?
                 </legend>
                 {!!readyAccounts.length && (
-                  <p className="mb-2 text-xs text-muted-foreground">
-                    Se marcar mais de uma conta, cada uma recebe a mesma programação.
-                  </p>
+                  <div className="max-w-sm">
+                    <ReelAccountSelect
+                      accounts={readyAccounts}
+                      value={selectedAccountId}
+                      onChange={chooseReelAccount}
+                      disabled={uploading || linkingVideos || savingQueue}
+                    />
+                  </div>
                 )}
-                <div className="flex flex-wrap gap-2">
-                  {readyAccounts.map((account) => (
-                    <label
-                      key={account.id}
-                      className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm has-checked:border-primary/50 has-checked:bg-primary/10"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={
-                          account.id === selectedAccountId || extraAccountIds.includes(account.id)
-                        }
-                        onChange={(event) => {
-                          if (event.target.checked)
-                            setExtraAccountIds((current) => [...current, account.id]);
-                          else {
-                            if (account.id === selectedAccountId) setSelectedAccountId("");
-                            setExtraAccountIds((current) =>
-                              current.filter((id) => id !== account.id),
-                            );
-                          }
-                        }}
-                      />{" "}
-                      @{account.username}
-                    </label>
-                  ))}
-                </div>
                 {!readyAccounts.length && (
                   <button
                     type="button"
@@ -1344,7 +1475,7 @@ function InstagramWorkspacePage({
                   <h3 className="text-sm font-semibold text-violet-200">
                     {reelMode === "single" ? "2. Qual vídeo?" : "2. Quais vídeos?"}
                   </h3>
-                  {reelMode === "single" && videos.length > 0 ? (
+                  {reelMode === "single" && libraryVideos.length > 0 ? (
                     <select
                       aria-label="Escolha o vídeo do Reel"
                       className="field mt-2"
@@ -1352,7 +1483,7 @@ function InstagramWorkspacePage({
                       onChange={(event) => setSingleVideoId(event.target.value)}
                     >
                       <option value="">Selecione na biblioteca</option>
-                      {videos.map((video) => (
+                      {libraryVideos.map((video) => (
                         <option key={video.id} value={video.id}>
                           {video.name}
                         </option>
@@ -1364,8 +1495,26 @@ function InstagramWorkspacePage({
                         ? "1 vídeo escolhido"
                         : scheduleVideos.length
                           ? `${scheduleVideos.length} vídeos escolhidos`
-                          : "Escolha os vídeos na Biblioteca."}
+                          : "Abra a Biblioteca para escolher os vídeos desta conta."}
                     </p>
+                  )}
+                  {folders.length > 0 && (
+                    <div className="mt-2">
+                      <Field label="Pasta desta conta">
+                        <select
+                          className="field"
+                          value={sourceFolder}
+                          onChange={(event) => selectFolder(event.target.value)}
+                        >
+                          <option value="">Todos os vídeos desta conta</option>
+                          {folders.map(([id, name]) => (
+                            <option key={id} value={id}>
+                              {name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
                   )}
                 </div>
                 <button
@@ -1375,9 +1524,9 @@ function InstagramWorkspacePage({
                 >
                   {reelMode === "single"
                     ? "Abrir biblioteca"
-                    : reelVideos.length
-                      ? "Trocar os vídeos"
-                      : "Escolher vídeos"}
+                    : accountVideos.length
+                      ? "Escolher vídeos na Biblioteca"
+                      : "Adicionar vídeos na Biblioteca"}
                 </button>
               </div>
               <section className="mb-5 space-y-3 rounded-xl border border-fuchsia-400/25 bg-fuchsia-400/5 p-3 sm:p-4">
@@ -1529,7 +1678,7 @@ function InstagramWorkspacePage({
                           onChange={(event) => setBatchOrder(event.target.value as ReelOrder)}
                         >
                           <option value="selection">
-                            {sourceFolder ? "Ordem da pasta importada" : "Ordem da biblioteca"}
+                            {useFolderOrder ? "Ordem da pasta importada" : "Ordem da biblioteca"}
                           </option>
                           <option value="numeric">Ordem numérica pelo nome (1, 2, 10…)</option>
                           <option value="random">Ordem aleatória na prévia</option>
@@ -1552,9 +1701,9 @@ function InstagramWorkspacePage({
                 <div>
                   <p className="text-sm font-semibold">5. Confira a programação</p>
                   <p className="text-xs text-muted-foreground">
-                    {reelAccounts.length && slotsPerDay
-                      ? `${reelsPerAccount} por conta · Até ${Math.min(slotsPerDay, reelsPerAccount)} por dia · ${daysInBatch} ${daysInBatch === 1 ? "dia" : "dias"} de programação.`
-                      : "Escolha as contas, os vídeos e os horários para ver a prévia."}
+                    {reelAccount && scheduleVideos.length && slotsPerDay
+                      ? `@${reelAccount.username} · ${reelsPerAccount} ${reelsPerAccount === 1 ? "Reel" : "Reels"} · ${daysInBatch} ${daysInBatch === 1 ? "dia" : "dias"} de programação.`
+                      : "Escolha a conta, os vídeos e os horários para ver a prévia."}
                   </p>
                 </div>
                 <button
@@ -1873,6 +2022,36 @@ function Panel({
       </div>
       <div className="pt-4">{children}</div>
     </div>
+  );
+}
+
+function ReelAccountSelect({
+  accounts,
+  value,
+  onChange,
+  disabled,
+}: {
+  accounts: { id: string; username: string }[];
+  value: string;
+  onChange: (id: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <Field label="Conta do Instagram">
+      <select
+        className="field"
+        value={value}
+        disabled={disabled || !accounts.length}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="">Escolher conta</option>
+        {accounts.map((account) => (
+          <option key={account.id} value={account.id}>
+            @{account.username}
+          </option>
+        ))}
+      </select>
+    </Field>
   );
 }
 

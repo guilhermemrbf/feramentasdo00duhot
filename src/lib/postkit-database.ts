@@ -56,6 +56,7 @@ export type PostkitDatabase = Omit<Database, "public"> & {
           import_batch_id: string | null;
           import_folder: string | null;
           import_position: number | null;
+          reel_account_id: string | null;
         }
       >;
     };
