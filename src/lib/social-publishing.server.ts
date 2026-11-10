@@ -12,7 +12,7 @@ class InstagramRequestError extends Error {
   }
 }
 
-function getMetaGraphBaseUrl(mode: InstagramAuthMode = "instagram_login"): string {
+export function getMetaGraphBaseUrl(mode: InstagramAuthMode = "instagram_login"): string {
   const version = process.env["META_GRAPH_API_VERSION"];
   if (!version || !/^v\d+\.\d+$/.test(version)) {
     throw new Error("Set META_GRAPH_API_VERSION to a supported Meta Graph API version.");

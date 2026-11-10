@@ -254,7 +254,7 @@ export function getInstagramOAuthConfig() {
   };
 }
 
-export function instagramAuthorizationUrl(state: string): string {
+export function instagramAuthorizationUrl(state: string, analytics = false): string {
   const { appId, callbackUrl } = getInstagramOAuthConfig();
   const url = new URL("https://www.instagram.com/oauth/authorize");
   url.search = new URLSearchParams({
@@ -263,6 +263,7 @@ export function instagramAuthorizationUrl(state: string): string {
     response_type: "code",
     scope: [
       ...INSTAGRAM_LOGIN_SCOPES,
+      ...(analytics ? ["instagram_business_manage_insights"] : []),
       ...(process.env.META_ENABLE_REEL_COMMENT_SCOPE === "1"
         ? ["instagram_business_manage_comments"]
         : []),
@@ -272,7 +273,7 @@ export function instagramAuthorizationUrl(state: string): string {
   return url.href;
 }
 
-export function facebookAuthorizationUrl(state: string): string {
+export function facebookAuthorizationUrl(state: string, analytics = false): string {
   const { appId, callbackUrl, graphApiVersion } = getInstagramOAuthConfig();
   const url = new URL(`https://www.facebook.com/${graphApiVersion}/dialog/oauth`);
   url.search = new URLSearchParams({
@@ -281,9 +282,11 @@ export function facebookAuthorizationUrl(state: string): string {
     response_type: "code",
     scope: [
       ...FACEBOOK_LOGIN_SCOPES,
+      ...(analytics ? ["instagram_manage_insights"] : []),
       ...(process.env.META_ENABLE_REEL_COMMENT_SCOPE === "1" ? ["instagram_manage_comments"] : []),
     ].join(","),
     state,
   }).toString();
+  if (analytics) url.searchParams.set("auth_type", "rerequest");
   return url.href;
 }

@@ -9,6 +9,7 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
     z.object({
       workspaceId: z.string().uuid(),
       mode: z.enum(["instagram_login", "facebook_login"]).default("instagram_login"),
+      analytics: z.boolean().optional(),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -34,7 +35,7 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
     return {
       authorizationUrl:
         data.mode === "facebook_login"
-          ? facebookAuthorizationUrl(state)
-          : instagramAuthorizationUrl(state),
+          ? facebookAuthorizationUrl(state, data.analytics)
+          : instagramAuthorizationUrl(state, data.analytics),
     };
   });

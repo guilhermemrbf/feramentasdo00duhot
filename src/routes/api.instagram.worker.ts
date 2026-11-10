@@ -20,6 +20,10 @@ export const Route = createFileRoute("/api/instagram/worker")({
         if (unauthorized) return unauthorized;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const client = supabaseAdmin as unknown as SupabaseClient<PostkitDatabase>;
+        if (new URL(request.url).searchParams.get("job") === "analytics") {
+          const { runInstagramAnalytics } = await import("@/lib/instagram-analytics.server");
+          return runInstagramAnalytics(client);
+        }
         const comment = await client.rpc("claim_instagram_first_comment").then(
           ({ data }) => data?.[0],
           () => undefined,

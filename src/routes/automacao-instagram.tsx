@@ -4,6 +4,7 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -40,6 +41,7 @@ import {
 import { calendarDateInZone } from "@/lib/scheduling";
 import { InstagramHistory } from "@/components/postkit/InstagramHistory";
 import { InstagramDashboard } from "@/components/postkit/InstagramDashboard";
+import { InstagramAnalytics } from "@/components/postkit/InstagramAnalytics";
 import { InstagramLoops } from "@/components/postkit/InstagramLoops";
 import { InstagramStories } from "@/components/postkit/InstagramStories";
 import { InstagramProfileDrafts } from "@/components/postkit/InstagramProfileDrafts";
@@ -79,6 +81,7 @@ export const Route = createFileRoute("/automacao-instagram")({
 });
 
 type Tab =
+  | "analytics"
   | "dashboard"
   | "perfis"
   | "contas"
@@ -116,7 +119,13 @@ type QueueItem = {
 };
 
 const tabGroups = [
-  { label: "Geral", items: [{ id: "dashboard", label: "Dashboard", icon: LayoutDashboard }] },
+  {
+    label: "Geral",
+    items: [
+      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { id: "analytics", label: "Analytics", icon: BarChart3 },
+    ],
+  },
   {
     label: "Publicar",
     items: [
@@ -375,12 +384,15 @@ function InstagramWorkspacePage({
     }
   }, []);
 
-  const connectInstagram = async (mode: "instagram_login" | "facebook_login") => {
+  const connectInstagram = async (
+    mode: "instagram_login" | "facebook_login",
+    analytics = false,
+  ) => {
     setConnecting(mode);
     setNotice("");
     try {
       const { authorizationUrl } = await startInstagramOAuth({
-        data: { workspaceId: workspace.id, mode },
+        data: { workspaceId: workspace.id, mode, analytics },
       });
       window.location.assign(authorizationUrl);
     } catch {
@@ -978,6 +990,16 @@ function InstagramWorkspacePage({
               <X className="size-4" />
             </button>
           </div>
+        )}
+
+        {tab === "analytics" && (
+          <InstagramAnalytics
+            workspaceId={workspace.id}
+            timezone={workspace.timezone}
+            connecting={!!connecting}
+            onAuthorize={(mode) => void connectInstagram(mode, true)}
+            onConnect={() => setTab("contas")}
+          />
         )}
 
         {tab === "dashboard" && (

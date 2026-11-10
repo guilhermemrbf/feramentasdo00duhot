@@ -1,4 +1,4 @@
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
 import type { PublishPhase } from "./instagram-publish-step";
 
 export type LeasedInstagramPost = Database["public"]["Tables"]["posts"]["Row"] & {
@@ -61,6 +61,21 @@ export type PostkitDatabase = Omit<Database, "public"> & {
       >;
     };
     Functions: Database["public"]["Functions"] & {
+      claim_instagram_analytics: { Args: Record<string, never>; Returns: Json };
+      finish_instagram_analytics: {
+        Args: { p_account: string; p_lease: string; p_result: Json };
+        Returns: boolean;
+      };
+      get_instagram_analytics: {
+        Args: {
+          p_workspace: string;
+          p_account: string | null;
+          p_start: string | null;
+          p_end: string | null;
+          p_page: number;
+        };
+        Returns: Json;
+      };
       ensure_postkit_workspace: {
         Args: Record<string, never>;
         Returns: Database["public"]["Tables"]["workspaces"]["Row"][];
