@@ -16,11 +16,15 @@ export const Route = createFileRoute("/api/instagram/worker")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const unauthorized = await authenticateInstagramWorkerRequest(request);
+        const analytics = new URL(request.url).searchParams.get("job") === "analytics";
+        const unauthorized = await authenticateInstagramWorkerRequest(
+          request,
+          analytics ? "Analytics" : "Bearer",
+        );
         if (unauthorized) return unauthorized;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const client = supabaseAdmin as unknown as SupabaseClient<PostkitDatabase>;
-        if (new URL(request.url).searchParams.get("job") === "analytics") {
+        if (analytics) {
           const { runInstagramAnalytics } = await import("@/lib/instagram-analytics.server");
           return runInstagramAnalytics(client);
         }

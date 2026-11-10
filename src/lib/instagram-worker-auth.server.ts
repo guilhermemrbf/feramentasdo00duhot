@@ -3,8 +3,9 @@ import type { PostkitDatabase } from "@/lib/postkit-database";
 
 export async function authenticateInstagramWorkerRequest(
   request: Request,
+  scheme: "Bearer" | "Analytics" = "Bearer",
 ): Promise<Response | null> {
-  const token = /^Bearer ([A-Za-z0-9_-]{43,})$/.exec(
+  const token = new RegExp(`^${scheme} ([A-Za-z0-9_-]{43,})$`).exec(
     request.headers.get("authorization") ?? "",
   )?.[1];
   if (!token) return new Response("Unauthorized", { status: 401 });
