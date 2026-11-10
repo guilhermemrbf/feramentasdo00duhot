@@ -5,6 +5,24 @@ export type LeasedInstagramPost = Database["public"]["Tables"]["posts"]["Row"] &
   publish_phase: PublishPhase;
   meta_container_id: string | null;
   worker_lease_id: string | null;
+  cover_asset_id: string | null;
+};
+
+type Tables = Database["public"]["Tables"];
+type TableWithDetails<T, D> = {
+  [K in keyof T]: K extends "Row"
+    ? T[K] & D
+    : K extends "Insert" | "Update"
+      ? T[K] & Partial<D>
+      : T[K];
+};
+type CommentStatus = "sending" | "published" | "failed" | "needs_review";
+type FirstCommentJob = {
+  id: string;
+  workspace_id: string;
+  instagram_account_id: string;
+  meta_media_id: string;
+  first_comment: string;
 };
 
 export type InstagramReelLoop = {
@@ -21,8 +39,26 @@ export type InstagramReelLoop = {
 };
 
 /** Additive migration contract; generated Supabase types remain untouched. */
-export type PostkitDatabase = Database & {
-  public: Database["public"] & {
+export type PostkitDatabase = Omit<Database, "public"> & {
+  public: Omit<Database["public"], "Tables"> & {
+    Tables: Omit<Tables, "posts" | "media_assets"> & {
+      posts: TableWithDetails<
+        Tables["posts"],
+        {
+          cover_asset_id: string | null;
+          first_comment: string | null;
+          first_comment_status: CommentStatus | null;
+        }
+      >;
+      media_assets: TableWithDetails<
+        Tables["media_assets"],
+        {
+          import_batch_id: string | null;
+          import_folder: string | null;
+          import_position: number | null;
+        }
+      >;
+    };
     Functions: Database["public"]["Functions"] & {
       ensure_postkit_workspace: {
         Args: Record<string, never>;
@@ -59,6 +95,11 @@ export type PostkitDatabase = Database & {
         Returns: boolean;
       };
       enqueue_due_instagram_reel_loops: { Args: Record<string, never>; Returns: number };
+      claim_instagram_first_comment: { Args: Record<string, never>; Returns: FirstCommentJob[] };
+      finish_instagram_first_comment: {
+        Args: { p_id: string; p_result: Exclude<CommentStatus, "sending"> };
+        Returns: boolean;
+      };
       checkpoint_instagram_publish: {
         Args: {
           p_post_id: string;

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   AlertCircle,
   ArrowRight,
@@ -36,7 +37,7 @@ import {
   enableInstagramWorker,
   getInstagramWorkerStatus,
 } from "@/lib/api/instagram-worker.functions";
-import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
+import { calendarDateInZone } from "@/lib/scheduling";
 import { InstagramHistory } from "@/components/postkit/InstagramHistory";
 import { InstagramDashboard } from "@/components/postkit/InstagramDashboard";
 import { InstagramLoops } from "@/components/postkit/InstagramLoops";
@@ -44,6 +45,18 @@ import { InstagramStories } from "@/components/postkit/InstagramStories";
 import { InstagramProfileDrafts } from "@/components/postkit/InstagramProfileDrafts";
 import { DailyTimeSlots, ScheduleDate } from "@/components/postkit/DailyTimeSlots";
 import { validatePostkitVideo } from "@/lib/postkit-media";
+import type { PostkitDatabase } from "@/lib/postkit-database";
+import {
+  buildReelSchedule,
+  captionWithHashtags,
+  dailyReelTimes,
+  maxDailyReels,
+  maxReelsPerBatch,
+  orderReelVideos,
+  type ReelOrder,
+} from "@/lib/postkit-reel-batch";
+
+const postkit = supabase as unknown as SupabaseClient<PostkitDatabase>;
 
 export const Route = createFileRoute("/automacao-instagram")({
   validateSearch: (search: Record<string, unknown>): { tab?: "perfis" } => ({
@@ -81,6 +94,9 @@ type VideoItem = {
   type: string;
   storagePath: string;
   status: string;
+  importBatch: string | null;
+  importFolder: string | null;
+  importPosition: number | null;
 };
 type QueueItem = {
   id: string;
@@ -193,7 +209,12 @@ function InstagramWorkspacePage({
   const [reelMode, setReelMode] = useState<"single" | "batch">("batch");
   const [singleVideoId, setSingleVideoId] = useState("");
   const [singleTime, setSingleTime] = useState("18:00");
-  const [batchOrder, setBatchOrder] = useState("selection");
+  const [batchOrder, setBatchOrder] = useState<ReelOrder>("selection");
+  const [sourceFolder, setSourceFolder] = useState("");
+  const [cover, setCover] = useState<File>();
+  const [coverPreview, setCoverPreview] = useState("");
+  const [firstComment, setFirstComment] = useState("");
+  const [reviewPage, setReviewPage] = useState(0);
   const [quantity, setQuantity] = useState(3);
   const [startDate, setStartDate] = useState(() => calendarDateInZone(workspace.timezone));
   const [times, setTimes] = useState("09:00, 13:00, 18:00");
@@ -221,6 +242,7 @@ function InstagramWorkspacePage({
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [videosLoaded, setVideosLoaded] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -247,35 +269,65 @@ function InstagramWorkspacePage({
   }, [workspace.id]);
 
   useEffect(() => {
-    void supabase
-      .from("media_assets")
-      .select("id,original_filename,size_bytes,mime_type,storage_path,status")
-      .eq("workspace_id", workspace.id)
-      .is("archived_at", null)
-      .in("mime_type", ["video/mp4", "video/quicktime"])
-      .in("status", ["uploaded", "ready"])
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (error)
-          setNotice(
-            "Não foi possível carregar seus vídeos. Atualize a página para tentar novamente.",
-          );
-        else {
-          setVideosLoaded(true);
-          setSelectedVideoIds((data ?? []).map((asset) => asset.id));
-          setVideos(
-            (data ?? []).map((asset) => ({
-              id: asset.id,
-              name: asset.original_filename,
-              size: Number(asset.size_bytes),
-              type: asset.mime_type,
-              storagePath: asset.storage_path,
-              status: asset.status,
-            })),
-          );
+    let active = true;
+    async function load() {
+      const entries: VideoItem[] = [];
+      const size = 500;
+      for (let start = 0; active; start += size) {
+        const { data, error } = await postkit
+          .from("media_assets")
+          .select(
+            "id,original_filename,size_bytes,mime_type,storage_path,status,import_batch_id,import_folder,import_position",
+          )
+          .eq("workspace_id", workspace.id)
+          .is("archived_at", null)
+          .in("mime_type", ["video/mp4", "video/quicktime"])
+          .in("status", ["uploaded", "ready"])
+          .order("created_at", { ascending: false })
+          .order("id")
+          .range(start, start + size - 1);
+        if (error || !data) throw error ?? new Error("Library unavailable");
+        for (const asset of data) {
+          entries.push({
+            id: asset.id,
+            name: asset.original_filename,
+            size: Number(asset.size_bytes),
+            type: asset.mime_type,
+            storagePath: asset.storage_path,
+            status: asset.status,
+            importBatch: asset.import_batch_id,
+            importFolder: asset.import_folder,
+            importPosition: asset.import_position,
+          });
         }
-      });
+        if (data.length < size) break;
+      }
+      if (active) {
+        setSelectedVideoIds(entries.map((entry) => entry.id));
+        setVideos(entries);
+        setVideosLoaded(true);
+      }
+    }
+    void load().catch(() => {
+      if (active)
+        setNotice(
+          "Não foi possível carregar seus vídeos. Atualize a página para tentar novamente.",
+        );
+    });
+    return () => {
+      active = false;
+    };
   }, [workspace.id]);
+
+  useEffect(() => {
+    if (!cover) {
+      setCoverPreview("");
+      return;
+    }
+    const url = URL.createObjectURL(cover);
+    setCoverPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [cover]);
 
   useEffect(() => {
     const result = new URLSearchParams(window.location.search).get("instagram");
@@ -336,16 +388,25 @@ function InstagramWorkspacePage({
       ? `${Math.max(1, Math.round(bytes / 1024))} KB`
       : `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
 
-  const uploadFiles = async (files: File[]) => {
+  const uploadFiles = async (files: File[], folder = false) => {
     if (uploadLock.current || !files.length) return;
+    const batch = folder ? crypto.randomUUID() : null;
+    const folderName = folder
+      ? (files[0].webkitRelativePath.split("/")[0] || "Pasta importada").slice(0, 255)
+      : null;
+    const candidates = folder ? files.filter((file) => /\.(mp4|mov)$/i.test(file.name)) : files;
+    if (!candidates.length) {
+      setNotice("Esta pasta não contém vídeos MP4 ou MOV.");
+      return;
+    }
     uploadLock.current = true;
     setUploading(true);
     setNotice("Enviando vídeos para sua biblioteca privada…");
     const uploaded: VideoItem[] = [];
     const errors: string[] = [];
     try {
-      for (const [index, file] of files.entries()) {
-        setUploadProgress(`Arquivo ${index + 1} de ${files.length}: ${file.name}`);
+      for (const [index, file] of candidates.entries()) {
+        setUploadProgress(`Arquivo ${index + 1} de ${candidates.length}: ${file.name}`);
         let mimeType: string;
         try {
           mimeType = await validatePostkitVideo(file);
@@ -368,7 +429,7 @@ function InstagramWorkspacePage({
           errors.push(`${file.name}: falha no envio.`);
           continue;
         }
-        const { error: assetError } = await supabase.from("media_assets").insert({
+        const { error: assetError } = await postkit.from("media_assets").insert({
           id,
           workspace_id: workspace.id,
           original_filename: file.name,
@@ -376,6 +437,9 @@ function InstagramWorkspacePage({
           mime_type: mimeType,
           size_bytes: file.size,
           status: "uploaded",
+          import_batch_id: batch,
+          import_folder: folderName,
+          import_position: folder ? index : null,
         });
         if (assetError) {
           await supabase.storage.from("postkit-media").remove([storagePath]);
@@ -389,6 +453,9 @@ function InstagramWorkspacePage({
           type: mimeType,
           storagePath,
           status: "uploaded",
+          importBatch: batch,
+          importFolder: folderName,
+          importPosition: folder ? index : null,
         });
       }
     } finally {
@@ -396,17 +463,25 @@ function InstagramWorkspacePage({
       setUploading(false);
       setUploadProgress("");
       setVideos((current) => [...uploaded, ...current]);
-      setSelectedVideoIds((current) => [...uploaded.map((file) => file.id), ...current]);
+      if (batch && uploaded.length) {
+        setSourceFolder(batch);
+        setBatchOrder("selection");
+        setSelectedVideoIds(uploaded.map((file) => file.id));
+        setQuantity(Math.min(uploaded.length, maxReelsPerBatch));
+      } else if (uploaded.length) {
+        setSourceFolder("");
+        setSelectedVideoIds((current) => [...uploaded.map((file) => file.id), ...current]);
+      }
     }
     setNotice(
       `${uploaded.length} vídeo(s) salvo(s). ${errors.slice(0, 3).join(" ")}${errors.length > 3 ? ` E mais ${errors.length - 3} arquivo(s) com erro.` : ""}`,
     );
   };
 
-  const addFiles = (event: ChangeEvent<HTMLInputElement>) => {
+  const addFiles = (event: ChangeEvent<HTMLInputElement>, folder = false) => {
     const files = Array.from(event.target.files ?? []);
     event.target.value = "";
-    void uploadFiles(files).catch(() =>
+    void uploadFiles(files, folder).catch(() =>
       setNotice(
         "O envio foi interrompido. Confira sua conexão e atualize a biblioteca antes de reenviar.",
       ),
@@ -434,11 +509,34 @@ function InstagramWorkspacePage({
     const ids = new Set(selectedVideoIds);
     return videos.filter((video) => ids.has(video.id));
   }, [selectedVideoIds, videos]);
+  const folders = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          videos.flatMap((video) =>
+            video.importBatch && video.importFolder
+              ? [[video.importBatch, video.importFolder] as const]
+              : [],
+          ),
+        ),
+      ),
+    [videos],
+  );
+  const libraryVideos = sourceFolder
+    ? videos.filter((video) => video.importBatch === sourceFolder)
+    : videos;
+
+  const selectFolder = (id: string) => {
+    const chosen = id ? videos.filter((video) => video.importBatch === id) : videos;
+    setSourceFolder(id);
+    setSelectedVideoIds(chosen.map((video) => video.id));
+    if (id) setQuantity(Math.min(chosen.length, maxReelsPerBatch));
+  };
   const scheduleVideos =
     reelMode === "batch" ? reelVideos : videos.filter((video) => video.id === singleVideoId);
   const reelsPerAccount =
-    reelMode === "single" ? 1 : Math.max(1, Math.min(100, Number(quantity) || 1));
-  const allowedPerDay = Math.max(1, Math.min(10, Number(dailyLimit) || 1));
+    reelMode === "single" ? 1 : Math.max(1, Math.min(maxReelsPerBatch, Math.floor(quantity) || 1));
+  const allowedPerDay = Math.max(1, Math.min(maxDailyReels, Math.floor(dailyLimit) || 1));
   const scheduleTimes = reelMode === "single" ? [singleTime].filter(Boolean) : timeSlots;
   const slotsPerDay = Math.min(allowedPerDay, scheduleTimes.length);
   const currentSettings = JSON.stringify([
@@ -455,8 +553,13 @@ function InstagramWorkspacePage({
     repeatVideos,
     caption,
     hashtags,
+    firstComment,
+    cover ? [cover.name, cover.size, cover.lastModified, coverPreview] : null,
+    sourceFolder,
   ]);
   const previewOutdated = !queueSaved && previewSettings !== currentSettings;
+  const reviewPageSize = 40;
+  const reviewPages = Math.ceil(queue.length / reviewPageSize);
 
   const generatePreview = () => {
     setPreviewError("");
@@ -479,8 +582,8 @@ function InstagramWorkspacePage({
       setPreviewError("Escolha mais vídeos ou reduza o total de Reels por conta.");
       return;
     }
-    if (reelsPerAccount * reelAccounts.length > 500) {
-      setPreviewError("Agende até 500 Reels por vez, somando todas as contas selecionadas.");
+    if (reelsPerAccount * reelAccounts.length > maxReelsPerBatch) {
+      setPreviewError("Agende até 1.000 Reels por vez, somando todas as contas selecionadas.");
       return;
     }
     if (!startDate) {
@@ -488,37 +591,14 @@ function InstagramWorkspacePage({
       return;
     }
     try {
-      const ordered = [...scheduleVideos];
-      if (reelMode === "batch" && batchOrder === "random") {
-        for (let index = ordered.length - 1; index > 0; index--) {
-          const other = Math.floor(Math.random() * (index + 1));
-          [ordered[index], ordered[other]] = [ordered[other], ordered[index]];
-        }
-      }
-      const [startYear, startMonth, startDay] = startDate.split("-").map(Number);
-      const base = new Date(Date.UTC(startYear, startMonth - 1, startDay));
-      const next: QueueItem[] = Array.from({ length: reelsPerAccount }, (_, index) => {
-        const date = new Date(base);
-        date.setUTCDate(base.getUTCDate() + Math.floor(index / slotsPerDay));
-        const dateValue = date.toISOString().slice(0, 10);
-        const time = scheduleTimes[index % slotsPerDay];
-        const scheduledAt = zonedDateTimeToIso(dateValue, time, workspace.timezone);
-        return {
-          id: crypto.randomUUID(),
-          assetId: ordered[index % ordered.length].id,
-          video: ordered[index % ordered.length].name,
-          accountId: reelAccounts[0].id,
-          accountName: reelAccounts[0].username,
-          scheduledAt,
-          date: new Intl.DateTimeFormat("pt-BR", {
-            timeZone: workspace.timezone,
-            dateStyle: "short",
-          }).format(new Date(scheduledAt)),
-          time,
-          caption,
-          hashtags,
-        };
-      });
+      const ordered = orderReelVideos(scheduleVideos, batchOrder, !!sourceFolder);
+      const next = buildReelSchedule(
+        ordered,
+        reelsPerAccount,
+        startDate,
+        scheduleTimes.slice(0, slotsPerDay),
+        workspace.timezone,
+      );
       const minimumIntervalMs = Math.max(1, Number(intervalMinutes) || 1) * 60 * 1000;
       if (
         next.some(
@@ -539,15 +619,20 @@ function InstagramWorkspacePage({
       }
       setQueue(
         reelAccounts.flatMap((account) =>
-          next.map((post) => ({
-            ...post,
+          next.map(({ video, ...slot }) => ({
+            ...slot,
             id: crypto.randomUUID(),
+            assetId: video.id,
+            video: video.name,
             accountId: account.id,
             accountName: account.username,
+            caption,
+            hashtags,
           })),
         ),
       );
       setQueueSaved(false);
+      setReviewPage(0);
       setPreviewSettings(currentSettings);
       setNotice("");
       requestAnimationFrame(() => reviewHeading.current?.focus());
@@ -583,14 +668,7 @@ function InstagramWorkspacePage({
       setNotice("Conecte e selecione uma conta profissional antes de salvar o agendamento.");
       return;
     }
-    if (
-      queue.some(
-        (post) =>
-          post.caption.trim().length +
-            (post.hashtags.trim() ? post.hashtags.trim().length + 2 : 0) >
-          2200,
-      )
-    ) {
+    if (queue.some((post) => captionWithHashtags(post.caption, post.hashtags).length > 2200)) {
       setNotice(
         "A legenda combinada com as hashtags excede o limite de 2.200 caracteres do Instagram.",
       );
@@ -598,18 +676,46 @@ function InstagramWorkspacePage({
     }
     setSavingQueue(true);
     try {
-      const { error } = await supabase.from("posts").upsert(
+      const coverId = cover ? queue[0].id : null;
+      if (cover && coverId) {
+        const signature = new Uint8Array(await cover.slice(0, 3).arrayBuffer());
+        if (signature[0] !== 255 || signature[1] !== 216 || signature[2] !== 255) {
+          setNotice("A capa precisa ser uma imagem JPEG válida.");
+          return;
+        }
+        const path = `${workspace.id}/${coverId}/reel-cover.jpg`;
+        const uploaded = await supabase.storage
+          .from("postkit-media")
+          .upload(path, cover, { contentType: "image/jpeg", upsert: true });
+        if (uploaded.error) throw uploaded.error;
+        const stored = await postkit.from("media_assets").upsert(
+          {
+            id: coverId,
+            workspace_id: workspace.id,
+            original_filename: cover.name,
+            storage_path: path,
+            mime_type: "image/jpeg",
+            size_bytes: cover.size,
+            status: "uploaded",
+          },
+          { onConflict: "id", ignoreDuplicates: true },
+        );
+        if (stored.error) throw stored.error;
+      }
+      const { error } = await postkit.from("posts").upsert(
         queue.map((post) => ({
           idempotency_key: post.id,
           workspace_id: workspace.id,
           instagram_account_id: post.accountId,
           media_asset_id: post.assetId,
           content_type: "reel",
-          caption: [post.caption.trim(), post.hashtags.trim()].filter(Boolean).join("\n\n"),
+          caption: captionWithHashtags(post.caption, post.hashtags),
           hashtags: post.hashtags.trim().split(/\s+/).filter(Boolean),
           scheduled_at: post.scheduledAt,
           timezone: workspace.timezone,
           status: "scheduled",
+          cover_asset_id: coverId,
+          first_comment: firstComment.trim() || null,
         })),
         { onConflict: "idempotency_key", ignoreDuplicates: true },
       );
@@ -806,6 +912,7 @@ function InstagramWorkspacePage({
               setQueue([]);
               setQueueSaved(false);
               setReelMode("batch");
+              setSourceFolder("");
               setSelectedAccountId(accountId);
               setExtraAccountIds([]);
               setSelectedVideoIds(available);
@@ -971,12 +1078,24 @@ function InstagramWorkspacePage({
             <Panel
               title="Vídeos para Reels"
               action={
-                <button
-                  onClick={() => fileInput.current?.click()}
-                  className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"
-                >
-                  <Upload className="size-3" /> Selecionar vídeos
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => folderInput.current?.click()}
+                    disabled={uploading || !videosLoaded}
+                    className="rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                  >
+                    Importar pasta de vídeos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInput.current?.click()}
+                    disabled={uploading || !videosLoaded}
+                    className="rounded-md border border-border px-3 py-2 text-xs font-semibold disabled:opacity-50"
+                  >
+                    Selecionar vídeos
+                  </button>
+                </div>
               }
             >
               <input
@@ -986,14 +1105,26 @@ function InstagramWorkspacePage({
                 disabled={uploading}
                 multiple
                 className="hidden"
-                onChange={addFiles}
+                onChange={(event) => addFiles(event)}
+              />
+              <input
+                ref={(input) => {
+                  folderInput.current = input;
+                  input?.setAttribute("webkitdirectory", "");
+                }}
+                type="file"
+                multiple
+                disabled={uploading || !videosLoaded}
+                className="hidden"
+                onChange={(event) => addFiles(event, true)}
               />
               <button
                 onClick={() => fileInput.current?.click()}
-                disabled={uploading}
+                disabled={uploading || !videosLoaded}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
                   event.preventDefault();
+                  if (!videosLoaded) return;
                   void uploadFiles(Array.from(event.dataTransfer.files)).catch(() =>
                     setNotice(
                       "O envio foi interrompido. Confira sua conexão e atualize a biblioteca antes de reenviar.",
@@ -1010,6 +1141,24 @@ function InstagramWorkspacePage({
                   MP4 ou MOV, até 500 MB por vídeo. Os arquivos ficam na sua biblioteca privada.
                 </p>
               </button>
+              {folders.length > 0 && (
+                <div className="mt-4 max-w-sm">
+                  <Field label="Pasta de origem do lote">
+                    <select
+                      className="field"
+                      value={sourceFolder}
+                      onChange={(event) => selectFolder(event.target.value)}
+                    >
+                      <option value="">Toda a biblioteca</option>
+                      {folders.map(([id, name]) => (
+                        <option value={id} key={id}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+              )}
               <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
                 <span>
                   {reelVideos.length} de {videoCount} para agendar
@@ -1018,9 +1167,9 @@ function InstagramWorkspacePage({
                   {formattedSize(videos.reduce((total, video) => total + video.size, 0))} no total
                 </span>
               </div>
-              {videos.length ? (
+              {libraryVideos.length ? (
                 <div className="mt-2 divide-y divide-border">
-                  {videos.map((video) => (
+                  {libraryVideos.map((video) => (
                     <label
                       key={video.id}
                       className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-3 hover:bg-secondary/40"
@@ -1063,7 +1212,10 @@ function InstagramWorkspacePage({
                     type="button"
                     disabled={!reelVideos.length}
                     className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-                    onClick={() => setTab("fila")}
+                    onClick={() => {
+                      if (sourceFolder) setReelMode("batch");
+                      setTab("fila");
+                    }}
                   >
                     Ir para os dias e horários <ArrowRight className="size-4" />
                   </button>
@@ -1191,12 +1343,14 @@ function InstagramWorkspacePage({
                       : "Escolher vídeos"}
                 </button>
               </div>
-              <details className="mb-5 rounded-lg border border-border p-3">
-                <summary className="cursor-pointer text-sm font-semibold">
-                  Legenda e hashtags (opcional)
-                </summary>
+              <section className="mb-5 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <h3 className="text-sm font-semibold">3. Detalhes do Reel</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  A descrição, as hashtags, a capa e o primeiro comentário valem para todos os Reels
+                  deste agendamento.
+                </p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Field label="Legenda padrão">
+                  <Field label="Descrição do Reel (legenda)">
                     <textarea
                       className="field min-h-20"
                       value={caption}
@@ -1204,21 +1358,71 @@ function InstagramWorkspacePage({
                       onChange={(event) => setCaption(event.target.value)}
                     />
                   </Field>
-                  <Field label="Hashtags ao final da legenda">
+                  <Field label="Hashtags na legenda">
                     <textarea
                       className="field min-h-20"
                       value={hashtags}
+                      placeholder="#reels #instagram"
                       maxLength={2200}
                       onChange={(event) => setHashtags(event.target.value)}
                     />
                   </Field>
+                  <div className="space-y-2">
+                    <Field label="Foto de capa (JPEG, até 8 MB)">
+                      <input
+                        className="field"
+                        type="file"
+                        accept=".jpg,.jpeg,image/jpeg"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = "";
+                          if (!file) return;
+                          if (!/\.jpe?g$/i.test(file.name) || file.size > 8_000_000 || !file.size) {
+                            setNotice("Escolha uma imagem JPEG de até 8 MB para a capa.");
+                            return;
+                          }
+                          setCover(file);
+                        }}
+                      />
+                    </Field>
+                    {coverPreview && (
+                      <div className="flex items-center gap-3">
+                        <img
+                          className="h-24 w-14 rounded-md border border-border object-cover"
+                          src={coverPreview}
+                          alt="Prévia da capa do Reel"
+                        />
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-primary"
+                          onClick={() => setCover(undefined)}
+                        >
+                          Remover capa
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <Field label="Primeiro comentário (opcional)">
+                      <textarea
+                        className="field min-h-20"
+                        value={firstComment}
+                        maxLength={2200}
+                        placeholder="Texto ou hashtags para o primeiro comentário"
+                        onChange={(event) => setFirstComment(event.target.value)}
+                      />
+                    </Field>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Sai após a confirmação do Reel. A conta precisa autorizar comentários na Meta.
+                    </p>
+                  </div>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Esse texto vale para o lote inteiro. Você pode mudar a legenda de um vídeo na
                   prévia.
                 </p>
-              </details>
-              <h3 className="mb-1 text-sm font-semibold">3. Quando publicar?</h3>
+              </section>
+              <h3 className="mb-1 text-sm font-semibold">4. Quando publicar?</h3>
               <p className="mb-3 text-xs text-muted-foreground">
                 {reelMode === "batch" &&
                   "Os horários se repetem a cada dia até publicar o total escolhido. "}
@@ -1245,23 +1449,48 @@ function InstagramWorkspacePage({
                       <input
                         type="number"
                         min={1}
-                        max={100}
+                        max={maxReelsPerBatch}
                         value={quantity}
                         onChange={(event) => setQuantity(Number(event.target.value))}
                         className="field"
                       />
                     </Field>
                     <div className="md:col-span-2">
-                      <DailyTimeSlots value={times} onChange={setTimes} limit={10} />
+                      <div
+                        className="mb-3 flex flex-wrap items-center gap-2"
+                        role="group"
+                        aria-label="Ritmo rápido por conta"
+                      >
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          Preencher horários
+                        </span>
+                        {[4, 5, 6].map((count) => (
+                          <button
+                            key={count}
+                            type="button"
+                            className="rounded-full border border-border px-3 py-1 text-sm hover:bg-secondary"
+                            onClick={() => {
+                              setDailyLimit(count);
+                              setTimes(dailyReelTimes(count));
+                            }}
+                          >
+                            {count} por dia
+                          </button>
+                        ))}
+                      </div>
+                      <DailyTimeSlots value={times} onChange={setTimes} limit={maxDailyReels} />
                     </div>
                     <Field label="Em que ordem?">
                       <select
                         className="field"
                         value={batchOrder}
-                        onChange={(event) => setBatchOrder(event.target.value)}
+                        onChange={(event) => setBatchOrder(event.target.value as ReelOrder)}
                       >
-                        <option value="selection">Na ordem da biblioteca</option>
-                        <option value="random">Embaralhar na prévia</option>
+                        <option value="selection">
+                          {sourceFolder ? "Ordem da pasta importada" : "Ordem da biblioteca"}
+                        </option>
+                        <option value="numeric">Ordem numérica pelo nome (1, 2, 10…)</option>
+                        <option value="random">Ordem aleatória na prévia</option>
                       </select>
                     </Field>
                   </>
@@ -1277,7 +1506,7 @@ function InstagramWorkspacePage({
                       <input
                         type="number"
                         min={1}
-                        max={10}
+                        max={maxDailyReels}
                         value={dailyLimit}
                         onChange={(event) => setDailyLimit(Number(event.target.value))}
                         className="field"
@@ -1309,7 +1538,7 @@ function InstagramWorkspacePage({
               )}
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-4">
                 <div>
-                  <p className="text-sm font-semibold">4. Confira a programação</p>
+                  <p className="text-sm font-semibold">5. Confira a programação</p>
                   <p className="text-xs text-muted-foreground">
                     {reelAccounts.length && slotsPerDay
                       ? `${reelsPerAccount} por conta × ${reelAccounts.length} ${reelAccounts.length === 1 ? "conta" : "contas"} · Até ${Math.min(slotsPerDay, reelsPerAccount)} por dia em cada conta.`
@@ -1360,60 +1589,107 @@ function InstagramWorkspacePage({
                       novos dados.
                     </p>
                   )}
-                  <div className="mt-4 max-h-[560px] overflow-auto">
-                    {queue.map((post, index) => (
-                      <div
-                        key={post.id}
-                        className="flex items-center gap-3 border-b border-border py-3 last:border-0"
-                      >
-                        <span className="w-10 text-xs font-semibold text-muted-foreground">
-                          #{index + 1}
-                        </span>
-                        <Video className="size-4 shrink-0 text-primary" />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
-                            {post.video} · @{post.accountName}
+                  {previewSettings === currentSettings && (coverPreview || firstComment.trim()) && (
+                    <div className="mt-3 flex flex-wrap items-start gap-3 rounded-lg border border-border p-3">
+                      {coverPreview && (
+                        <img
+                          className="h-20 w-12 rounded object-cover"
+                          src={coverPreview}
+                          alt="Capa compartilhada do agendamento"
+                        />
+                      )}
+                      <div className="min-w-0 text-sm">
+                        {coverPreview && (
+                          <p className="font-medium">Capa aplicada a todos os Reels</p>
+                        )}
+                        {firstComment.trim() && (
+                          <p className="break-words text-muted-foreground">
+                            Primeiro comentário: {firstComment.trim()}
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            {post.date} · {post.time} ({workspace.timezone})
-                          </p>
-                          <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
-                            {post.caption || "Sem legenda"}
-                          </p>
-                          {!queueSaved && !previewOutdated && (
-                            <details className="mt-2 text-xs">
-                              <summary className="cursor-pointer font-semibold text-primary">
-                                Editar só esta legenda
-                              </summary>
-                              <label className="mt-2 block">
-                                Legenda deste Reel
-                                <textarea
-                                  className="field mt-1 min-h-16"
-                                  value={post.caption}
-                                  maxLength={2200}
-                                  disabled={savingQueue}
-                                  onChange={(event) => {
-                                    const value = event.target.value;
-                                    setQueue((current) =>
-                                      current.map((item) =>
-                                        item.id === post.id ? { ...item, caption: value } : item,
-                                      ),
-                                    );
-                                  }}
-                                />
-                              </label>
-                              <p className="mt-1 text-muted-foreground">
-                                As hashtags do agendamento continuam ao final.
-                              </p>
-                            </details>
-                          )}
-                        </div>
-                        <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold">
-                          {queueSaved ? "Agendado" : "Prévia"}
-                        </span>
+                        )}
                       </div>
-                    ))}
+                    </div>
+                  )}
+                  <div className="mt-4 max-h-[560px] overflow-auto">
+                    {queue
+                      .slice(reviewPage * reviewPageSize, (reviewPage + 1) * reviewPageSize)
+                      .map((post, index) => (
+                        <div
+                          key={post.id}
+                          className="flex items-center gap-3 border-b border-border py-3 last:border-0"
+                        >
+                          <span className="w-10 text-xs font-semibold text-muted-foreground">
+                            #{reviewPage * reviewPageSize + index + 1}
+                          </span>
+                          <Video className="size-4 shrink-0 text-primary" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">
+                              {post.video} · @{post.accountName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {post.date} · {post.time} ({workspace.timezone})
+                            </p>
+                            <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
+                              {captionWithHashtags(post.caption, post.hashtags) ||
+                                "Sem descrição ou hashtags"}
+                            </p>
+                            {!queueSaved && !previewOutdated && (
+                              <details className="mt-2 text-xs">
+                                <summary className="cursor-pointer font-semibold text-primary">
+                                  Editar só esta legenda
+                                </summary>
+                                <label className="mt-2 block">
+                                  Legenda deste Reel
+                                  <textarea
+                                    className="field mt-1 min-h-16"
+                                    value={post.caption}
+                                    maxLength={2200}
+                                    disabled={savingQueue}
+                                    onChange={(event) => {
+                                      const value = event.target.value;
+                                      setQueue((current) =>
+                                        current.map((item) =>
+                                          item.id === post.id ? { ...item, caption: value } : item,
+                                        ),
+                                      );
+                                    }}
+                                  />
+                                </label>
+                                <p className="mt-1 text-muted-foreground">
+                                  As hashtags do agendamento continuam ao final.
+                                </p>
+                              </details>
+                            )}
+                          </div>
+                          <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold">
+                            {queueSaved ? "Agendado" : "Prévia"}
+                          </span>
+                        </div>
+                      ))}
                   </div>
+                  {reviewPages > 1 && (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+                      <button
+                        type="button"
+                        className="rounded border border-border px-3 py-1.5 disabled:opacity-50"
+                        disabled={reviewPage === 0}
+                        onClick={() => setReviewPage((page) => page - 1)}
+                      >
+                        Anterior
+                      </button>
+                      <span aria-live="polite">
+                        Página {reviewPage + 1} de {reviewPages}
+                      </span>
+                      <button
+                        type="button"
+                        className="rounded border border-border px-3 py-1.5 disabled:opacity-50"
+                        disabled={reviewPage + 1 >= reviewPages}
+                        onClick={() => setReviewPage((page) => page + 1)}
+                      >
+                        Próxima
+                      </button>
+                    </div>
+                  )}
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-secondary/30 p-4">
                     <p className="max-w-xl text-xs leading-5 text-muted-foreground">
                       Confira contas, vídeos e horários. Salvar autoriza a programação deste lote; o
@@ -1519,7 +1795,7 @@ function InstagramWorkspacePage({
                   <input
                     type="number"
                     min={1}
-                    max={10}
+                    max={maxDailyReels}
                     value={dailyLimit}
                     onChange={(event) => setDailyLimit(Number(event.target.value))}
                     className="field"
@@ -1534,7 +1810,7 @@ function InstagramWorkspacePage({
                     className="field"
                   />
                 </Field>
-                <DailyTimeSlots value={times} onChange={setTimes} limit={10} />
+                <DailyTimeSlots value={times} onChange={setTimes} limit={maxDailyReels} />
               </div>
               <button
                 onClick={() =>

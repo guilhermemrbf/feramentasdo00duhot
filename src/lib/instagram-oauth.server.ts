@@ -261,7 +261,12 @@ export function instagramAuthorizationUrl(state: string): string {
     client_id: appId,
     redirect_uri: callbackUrl,
     response_type: "code",
-    scope: INSTAGRAM_LOGIN_SCOPES.join(","),
+    scope: [
+      ...INSTAGRAM_LOGIN_SCOPES,
+      ...(process.env.META_ENABLE_REEL_COMMENT_SCOPE === "1"
+        ? ["instagram_business_manage_comments"]
+        : []),
+    ].join(","),
     state,
   }).toString();
   return url.href;
@@ -274,7 +279,10 @@ export function facebookAuthorizationUrl(state: string): string {
     client_id: appId,
     redirect_uri: callbackUrl,
     response_type: "code",
-    scope: FACEBOOK_LOGIN_SCOPES.join(","),
+    scope: [
+      ...FACEBOOK_LOGIN_SCOPES,
+      ...(process.env.META_ENABLE_REEL_COMMENT_SCOPE === "1" ? ["instagram_manage_comments"] : []),
+    ].join(","),
     state,
   }).toString();
   return url.href;

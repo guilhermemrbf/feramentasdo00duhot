@@ -6,6 +6,7 @@ import { getInstagramAccountAccessToken } from "@/lib/instagram-oauth.server";
 import { runInstagramPublishStep } from "@/lib/instagram-publish-step";
 import type { PostkitDatabase } from "@/lib/postkit-database";
 import {
+  createInstagramFirstComment,
   createInstagramReelContainer,
   getInstagramContainerStatus,
   publishInstagramContainer,
@@ -19,6 +20,27 @@ export const Route = createFileRoute("/api/instagram/worker")({
         if (unauthorized) return unauthorized;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const client = supabaseAdmin as unknown as SupabaseClient<PostkitDatabase>;
+        const comment = await client.rpc("claim_instagram_first_comment").then(
+          ({ data }) => data?.[0],
+          () => undefined,
+        );
+        if (comment) {
+          const account = await authorizedAccount(supabaseAdmin, comment).catch(() => null);
+          const result = account
+            ? await createInstagramFirstComment({
+                ...account,
+                mediaId: comment.meta_media_id,
+                message: comment.first_comment,
+              })
+            : "failed";
+          const checkpoint = await client.rpc("finish_instagram_first_comment", {
+            p_id: comment.id,
+            p_result: result,
+          });
+          if (checkpoint.error || checkpoint.data !== true)
+            return Response.json({ error: "Comment checkpoint not confirmed." }, { status: 503 });
+          return Response.json({ claimed: 1, comment: result });
+        }
         // A loop failure must not block processing already-scheduled posts.
         await client.rpc("enqueue_due_instagram_reel_loops").then(
           ({ error }) => {
@@ -67,9 +89,13 @@ export const Route = createFileRoute("/api/instagram/worker")({
                 .createSignedUrl(media.storage_path, 3600);
               if (signed.error || !signed.data?.signedUrl) throw new Error("Media unavailable");
               const account = await authorizedAccount(supabaseAdmin, post);
+              const coverUrl = post.cover_asset_id
+                ? await signReelCover(supabaseAdmin, post.workspace_id, post.cover_asset_id)
+                : undefined;
               return createInstagramReelContainer({
                 ...account,
                 publicVideoUrl: signed.data.signedUrl,
+                publicCoverUrl: coverUrl,
                 caption: post.caption,
               });
             },
@@ -100,6 +126,29 @@ export const Route = createFileRoute("/api/instagram/worker")({
     },
   },
 });
+
+async function signReelCover(
+  client: SupabaseClient<Database>,
+  workspaceId: string,
+  coverId: string,
+) {
+  const { data, error } = await client
+    .from("media_assets")
+    .select("storage_path")
+    .eq("id", coverId)
+    .eq("workspace_id", workspaceId)
+    .eq("mime_type", "image/jpeg")
+    .in("status", ["uploaded", "ready"])
+    .is("archived_at", null)
+    .maybeSingle();
+  if (error || !data || !data.storage_path.startsWith(`${workspaceId}/`))
+    throw new Error("Reel cover unavailable");
+  const signed = await client.storage
+    .from("postkit-media")
+    .createSignedUrl(data.storage_path, 3600);
+  if (signed.error || !signed.data?.signedUrl) throw new Error("Reel cover unavailable");
+  return signed.data.signedUrl;
+}
 
 async function authorizedAccount(
   client: SupabaseClient<Database>,

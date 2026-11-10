@@ -14,6 +14,12 @@ const labels = {
   paused: "Pausado",
 } as const;
 type Status = keyof typeof labels;
+const commentLabels: Record<string, string> = {
+  sending: "Enviando primeiro comentário",
+  published: "Primeiro comentário publicado",
+  failed: "Primeiro comentário não enviado. Confira a autorização de comentários na Meta.",
+  needs_review: "Confirmação do comentário pendente. Confira o Reel no Instagram.",
+};
 type HistoryRow = {
   id: string;
   status: string;
@@ -22,6 +28,8 @@ type HistoryRow = {
   published_at: string | null;
   meta_media_id: string | null;
   last_error_message: string | null;
+  first_comment: string | null;
+  first_comment_status: string | null;
   instagram_accounts: { username: string } | null;
   media_assets: { original_filename: string } | null;
 };
@@ -52,10 +60,11 @@ export function InstagramHistory({
   useEffect(() => {
     let active = true;
     const load = async () => {
-      let query = supabase
+      const client = supabase as unknown as SupabaseClient<PostkitDatabase>;
+      let query = client
         .from("posts")
         .select(
-          "id,status,caption,scheduled_at,published_at,meta_media_id,last_error_message,instagram_accounts(username),media_assets(original_filename)",
+          "id,status,caption,scheduled_at,published_at,meta_media_id,last_error_message,first_comment,first_comment_status,instagram_accounts(username),media_assets!posts_media_asset_id_workspace_id_fkey(original_filename)",
         )
         .eq("workspace_id", workspaceId);
       if (account) query = query.eq("instagram_account_id", account);
@@ -215,6 +224,18 @@ export function InstagramHistory({
                 {row.last_error_message && (
                   <p className="mt-2 text-xs text-amber-500">{row.last_error_message}</p>
                 )}
+                {row.first_comment &&
+                  (row.status === "published" ||
+                    row.status === "scheduled" ||
+                    row.status === "processing") && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {row.first_comment_status
+                        ? commentLabels[row.first_comment_status]
+                        : row.status === "published"
+                          ? "Primeiro comentário na fila"
+                          : "Primeiro comentário preparado para após a publicação"}
+                    </p>
+                  )}
                 {row.status === "published" && row.meta_media_id && (
                   <p className="mt-2 text-xs text-muted-foreground">
                     Confirmação Instagram: {row.meta_media_id}

@@ -76,9 +76,12 @@ export function InstagramDashboard({
       const posts = () => supabase.from("posts");
       const [upcoming, published, allPublished, attention] = await Promise.all([
         posts()
-          .select("id,scheduled_at,instagram_accounts(username),media_assets(original_filename)", {
-            count: "exact",
-          })
+          .select(
+            "id,scheduled_at,instagram_accounts(username),media_assets!posts_media_asset_id_workspace_id_fkey(original_filename)",
+            {
+              count: "exact",
+            },
+          )
           .eq("workspace_id", workspaceId)
           .in("status", ["scheduled", "processing"])
           .order("scheduled_at", { ascending: true, nullsFirst: false })

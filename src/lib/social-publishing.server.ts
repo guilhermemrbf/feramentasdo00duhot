@@ -3,6 +3,15 @@
 
 export type InstagramAuthMode = "instagram_login" | "facebook_login";
 
+class InstagramRequestError extends Error {
+  readonly status: number;
+
+  constructor(status: number, code?: number) {
+    super(`Instagram API request failed${code ? ` (${code})` : ""}: ${status}`);
+    this.status = status;
+  }
+}
+
 function getMetaGraphBaseUrl(mode: InstagramAuthMode = "instagram_login"): string {
   const version = process.env["META_GRAPH_API_VERSION"];
   if (!version || !/^v\d+\.\d+$/.test(version)) {
@@ -30,7 +39,7 @@ async function instagramRequest<T>(url: URL, token: string, body?: URLSearchPara
     | null;
   if (!response.ok || result === null || result.error) {
     const code = result && "error" in result ? result.error?.code : undefined;
-    throw new Error(`Instagram API request failed${code ? ` (${code})` : ""}: ${response.status}`);
+    throw new InstagramRequestError(response.status, code);
   }
   return result;
 }
@@ -39,6 +48,7 @@ export type InstagramReelRequest = {
   accessToken: string;
   instagramUserId: string;
   publicVideoUrl: string;
+  publicCoverUrl?: string;
   caption: string;
   shareToFeed?: boolean;
   authMode?: InstagramAuthMode;
@@ -68,6 +78,11 @@ export async function createInstagramReelContainer(input: InstagramReelRequest):
     caption: input.caption,
     share_to_feed: String(input.shareToFeed ?? true),
   });
+  if (input.publicCoverUrl) {
+    const cover = new URL(input.publicCoverUrl);
+    if (cover.protocol !== "https:") throw new Error("Instagram cover must use HTTPS.");
+    createBody.set("cover_url", cover.href);
+  }
   const container = await instagramRequest<{ id: string }>(
     createUrl,
     input.accessToken,
@@ -75,6 +90,29 @@ export async function createInstagramReelContainer(input: InstagramReelRequest):
   );
   if (!container.id) throw new Error("Instagram did not return a Reel container ID.");
   return container.id;
+}
+
+export async function createInstagramFirstComment(input: {
+  accessToken: string;
+  mediaId: string;
+  message: string;
+  authMode: InstagramAuthMode;
+}): Promise<"published" | "failed" | "needs_review"> {
+  try {
+    const url = new URL(
+      `${getMetaGraphBaseUrl(input.authMode)}/${encodeURIComponent(input.mediaId)}/comments`,
+    );
+    const result = await instagramRequest<{ id?: string }>(
+      url,
+      input.accessToken,
+      new URLSearchParams({ message: input.message }),
+    );
+    return result.id ? "published" : "needs_review";
+  } catch (error) {
+    return error instanceof InstagramRequestError && error.status >= 400 && error.status < 500
+      ? "failed"
+      : "needs_review";
+  }
 }
 
 export async function getInstagramContainerStatus(
