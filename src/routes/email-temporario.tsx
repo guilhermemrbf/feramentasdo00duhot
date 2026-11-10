@@ -36,8 +36,8 @@ function TemporaryEmail() {
               Correio Temporário
             </h1>
             <p className="mt-4 max-w-lg text-sm leading-7 text-muted-foreground sm:text-base">
-              Receba mensagens em um endereço descartável, com caixa de entrada ao vivo e
-              exclusão automática.
+              Receba mensagens em um endereço descartável, com caixa de entrada ao vivo e exclusão
+              automática.
             </p>
             {target ? (
               <a
@@ -48,7 +48,8 @@ function TemporaryEmail() {
               </a>
             ) : (
               <p className="mt-5 rounded-lg border border-border bg-background/60 p-3 text-sm">
-                A caixa de entrada estará disponível quando o serviço de recebimento estiver conectado.
+                A caixa de entrada estará disponível quando o serviço de recebimento estiver
+                conectado.
               </p>
             )}
           </div>

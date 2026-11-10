@@ -1,3 +1,16 @@
 services:
-  postgres:
-    ports: ["127.0.0.1:55432:5432"]
+  verify:
+    image: 00duhot-temp-mail-app:local
+    pull_policy: never
+    profiles: [qa]
+    networks: [edge, data, mx]
+    environment:
+      DATABASE_URL: postgresql://tempmail:${POSTGRES_PASSWORD:?execute scripts/init-env.mjs}@postgres:5432/tempmail
+      TEST_BASE_URL: http://web
+      TEST_APP_ORIGIN: ${APP_URL:?configure APP_URL}
+      TEST_SMTP_HOST: postfix
+      TEST_SMTP_PORT: "25"
+      TEST_MAIL_DOMAIN: ${DEFAULT_MAIL_DOMAIN:-mail.test}
+      TEST_ADMIN_EMAIL:
+      TEST_ADMIN_PASSWORD:
+    command: ["pnpm", "run", "test:integration"]

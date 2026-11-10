@@ -38,14 +38,10 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: node scripts/init-env.mjs
       - run: docker compose up --build --wait --wait-timeout 180
-      - name: Executar integração SMTP e navegador
-        run: |
-          set -a
-          source .env
-          set +a
-          export DATABASE_URL="postgresql://tempmail:${POSTGRES_PASSWORD}@127.0.0.1:55432/tempmail"
-          pnpm run test:integration
-          pnpm run test:e2e
+      - name: Testar API, Postfix, fila e banco na rede interna
+        run: docker compose run --rm --no-deps verify
+      - name: Validar o fluxo no Chromium
+        run: pnpm run test:e2e
       - if: failure()
         run: docker compose logs --tail 60
       - if: always()

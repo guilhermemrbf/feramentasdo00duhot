@@ -94,18 +94,14 @@ Em terminais separados, com o mesmo ambiente, execute `pnpm start:api`, `pnpm st
 
 ### Integração e navegador
 
-Use um ambiente descartável separado dos dados operacionais. O Compose de testes publica uma porta de banco exclusivamente no loopback. A integração manipula a expiração diretamente no banco de teste. Prepare um administrador de teste pelo seed, exporte os mesmos valores em `TEST_ADMIN_EMAIL` e `TEST_ADMIN_PASSWORD`, e execute:
+Use um ambiente descartável separado dos dados operacionais. O Compose de testes executa as verificações em um container na rede privada. A integração manipula a expiração diretamente no banco de teste. Prepare um administrador de teste pelo seed, exporte os mesmos valores em `TEST_ADMIN_EMAIL` e `TEST_ADMIN_PASSWORD`, e execute:
 
 ```sh
 export COMPOSE_FILE=compose.yaml:compose.override.yaml:compose.test.yaml
 node scripts/init-env.mjs
 docker compose up --build --wait
-set -a
-. ./.env
-set +a
-export DATABASE_URL="postgresql://tempmail:${POSTGRES_PASSWORD}@127.0.0.1:55432/tempmail"
+docker compose run --rm --no-deps verify
 pnpm exec playwright install chromium
-pnpm run test:integration
 pnpm run test:e2e
 ```
 

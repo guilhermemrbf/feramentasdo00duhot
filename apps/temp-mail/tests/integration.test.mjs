@@ -5,8 +5,9 @@ import { db, randomLocalPart } from "../src/core.mjs";
 import { eventually, mailFixture, sendMail } from "./fixtures.mjs";
 
 const origin = process.env.TEST_BASE_URL ?? "http://localhost:8080";
+const appOrigin = process.env.TEST_APP_ORIGIN ?? origin;
 const domain = process.env.TEST_MAIL_DOMAIN ?? "mail.test";
-const input = (path, { method = "GET", cookie, body, customOrigin = origin, signal } = {}) => fetch(origin + "/api" + path, {
+const input = (path, { method = "GET", cookie, body, customOrigin = appOrigin, signal } = {}) => fetch(origin + "/api" + path, {
   method, signal, headers: {
     ...(cookie ? { cookie } : {}),
     ...(method === "GET" ? {} : { origin: customOrigin, "x-mail-action": "1" }),
