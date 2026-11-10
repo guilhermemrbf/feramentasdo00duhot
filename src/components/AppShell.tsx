@@ -18,9 +18,17 @@ import {
   Star,
   X,
 } from "lucide-react";
-import { TOOL_CATALOG, findTool, searchTools, type Tool } from "@/lib/tool-catalog";
+import {
+  CATEGORIES,
+  TOOL_CATALOG,
+  findTool,
+  normalizeSearch,
+  searchTools,
+  type Tool,
+} from "@/lib/tool-catalog";
 import { recordTool, useToolPreferences } from "@/lib/tool-preferences";
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export const TOOL_ICONS = {
   telegram: Send,
@@ -41,7 +49,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
         alt=""
         width={44}
         height={44}
-        className="size-11 shrink-0 rounded-lg object-contain"
+        className="brand-mark size-11 shrink-0 rounded-lg object-contain"
       />
       <span>
         <strong className="block text-[17px] font-semibold tracking-tight">00duHot</strong>
@@ -58,19 +66,23 @@ export function Brand({ compact = false }: { compact?: boolean }) {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const current = findTool(pathname);
+  const currentId = current?.id;
   const [mobile, setMobile] = useState(false),
     [query, setQuery] = useState("");
   const dialog = useRef<HTMLDialogElement>(null),
     searchInput = useRef<HTMLInputElement>(null);
   const { favorites } = useToolPreferences();
   useEffect(() => {
-    if (current) recordTool(current.id);
+    if (currentId) recordTool(currentId);
     setMobile(false);
-  }, [current?.id, pathname]);
+  }, [currentId, pathname]);
   const openSearch = () => {
     setQuery("");
-    dialog.current?.showModal();
-    searchInput.current?.focus();
+    setMobile(false);
+    requestAnimationFrame(() => {
+      if (!dialog.current?.open) dialog.current?.showModal();
+      searchInput.current?.focus();
+    });
   };
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -90,10 +102,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Link
         key={tool.id}
         to={tool.path}
+        onClick={() => setMobile(false)}
         aria-current={active ? "page" : undefined}
         className={cn("tool-nav-link", active && "is-active")}
       >
-        <Icon className="size-[17px] shrink-0" />
+        <Icon
+          className="tool-tone size-[17px] shrink-0"
+          data-tone={normalizeSearch(tool.category)}
+          aria-hidden
+        />
         <span className="min-w-0 flex-1 truncate">{tool.name}</span>
         {favorites.includes(tool.id) && (
           <Star className="size-3 shrink-0 fill-current opacity-60" />
@@ -101,82 +118,109 @@ export function AppShell({ children }: { children: ReactNode }) {
       </Link>
     );
   };
+  const sidebar = (
+    <>
+      <Link
+        to="/"
+        onClick={() => setMobile(false)}
+        aria-label="00duHot, início"
+        className="border-b border-border px-5 py-5"
+      >
+        <Brand />
+      </Link>
+      <div className="flex-1 overflow-y-auto px-3 py-5">
+        <button
+          onClick={openSearch}
+          className="mb-5 flex min-h-11 w-full items-center gap-2 rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-muted-foreground hover:border-primary hover:text-foreground"
+        >
+          <Search className="size-4" />
+          Buscar ferramenta<kbd className="ml-auto text-[10px]">Ctrl K</kbd>
+        </button>
+        <nav aria-label="Navegação principal">
+          <Link
+            to="/"
+            onClick={() => setMobile(false)}
+            aria-current={pathname === "/" ? "page" : undefined}
+            className={cn("tool-nav-link mb-5", pathname === "/" && "is-active")}
+          >
+            <Home className="size-[17px]" />
+            Visão geral
+          </Link>
+          {CATEGORIES.filter((category) =>
+            TOOL_CATALOG.some((tool) => tool.category === category),
+          ).map((category) => (
+            <div key={category} className="mb-5">
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                {category}
+              </p>
+              {TOOL_CATALOG.filter((tool) => tool.category === category).map(nav)}
+            </div>
+          ))}
+        </nav>
+      </div>
+      <div className="border-t border-border px-5 py-4 text-xs leading-5 text-muted-foreground">
+        <span className="block font-medium text-foreground">Seu centro de operação</span>Conteúdo,
+        preparação e automação.
+      </div>
+    </>
+  );
+
   return (
     <div className="app-workspace min-h-screen bg-background text-foreground">
       <a href="#workspace-main" className="skip-link">
         Pular para o conteúdo
       </a>
-      {mobile && (
-        <button
-          aria-label="Fechar menu"
-          className="fixed inset-0 z-40 bg-black/65 lg:hidden"
-          onClick={() => setMobile(false)}
-        />
-      )}
-      <aside className={cn("workspace-sidebar", mobile ? "flex" : "hidden lg:flex")}>
-        <Link to="/" aria-label="00duHot, início" className="border-b border-border px-5 py-5">
-          <Brand />
-        </Link>
-        <div className="flex-1 overflow-y-auto px-3 py-5">
-          <button
-            onClick={openSearch}
-            className="mb-6 flex w-full items-center gap-2 rounded-md border border-border bg-background px-3 py-2.5 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <Search className="size-4" />
-            Buscar ferramenta<kbd className="ml-auto text-[10px]">Ctrl K</kbd>
-          </button>
-          <nav aria-label="Navegação principal">
-            <Link
-              to="/"
-              aria-current={pathname === "/" ? "page" : undefined}
-              className={cn("tool-nav-link mb-5", pathname === "/" && "is-active")}
-            >
-              <Home className="size-[17px]" />
-              Visão geral
-            </Link>
-            {["Conteúdo", "Preparação", "Automação", "Planejamento", "Ambientes"].map(
-              (category) => (
-                <div key={category} className="mb-5">
-                  <p className="mb-2 px-3 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
-                    {category}
-                  </p>
-                  {TOOL_CATALOG.filter((tool) => tool.category === category).map(nav)}
-                </div>
-              ),
-            )}
-          </nav>
-        </div>
-        <div className="border-t border-border px-5 py-4 text-xs leading-5 text-muted-foreground">
-          <span className="block font-medium text-foreground">Seu centro de operação</span>Conteúdo,
-          preparação e automação.
-        </div>
-      </aside>
+      <aside className="workspace-sidebar hidden lg:flex">{sidebar}</aside>
       <div className="lg:pl-[244px]">
         <header className="workspace-topbar">
           <div className="flex min-w-0 items-center gap-3">
-            <button
-              aria-label="Abrir menu"
-              aria-expanded={mobile}
-              onClick={() => setMobile(!mobile)}
-              className="rounded-md p-2 hover:bg-accent lg:hidden"
-            >
-              <Menu className="size-5" />
-            </button>
+            <Sheet open={mobile} onOpenChange={setMobile}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Abrir menu de ferramentas"
+                  className="grid size-11 shrink-0 place-items-center rounded-lg border border-border hover:border-primary hover:bg-accent lg:hidden"
+                >
+                  <Menu className="size-5" aria-hidden />
+                </button>
+              </SheetTrigger>
+              <SheetContent
+                side="left"
+                aria-describedby={undefined}
+                className="workspace-sidebar mobile-sidebar flex w-[min(320px,86vw)] gap-0 p-0"
+                onCloseAutoFocus={(event) => {
+                  if (dialog.current?.open) event.preventDefault();
+                }}
+              >
+                <SheetTitle className="sr-only">Menu de ferramentas</SheetTitle>
+                {sidebar}
+              </SheetContent>
+            </Sheet>
+            <Link to="/" aria-label="00duHot, início" className="shrink-0 sm:hidden">
+              <img
+                src="/brand/mark.png"
+                alt=""
+                width={32}
+                height={32}
+                className="brand-mark size-8 rounded-md object-contain"
+              />
+            </Link>
             <Link
               to="/"
               className="hidden text-xs text-muted-foreground hover:text-foreground sm:block"
             >
-              Workspace
+              Início
             </Link>
             <span className="hidden text-muted-foreground/40 sm:block">/</span>
-            <span className="truncate text-xs font-medium">{current?.name || "Visão geral"}</span>
+            <span className="truncate text-sm font-semibold">{current?.name || "Visão geral"}</span>
           </div>
           <button
             onClick={openSearch}
             aria-label="Buscar ferramenta"
-            className="rounded-md border border-border p-2 text-muted-foreground hover:text-foreground"
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-input bg-background px-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground"
           >
-            <Search className="size-4" />
+            <Search className="size-4" aria-hidden />
+            <span className="hidden sm:inline">Buscar</span>
           </button>
         </header>
         <div id="workspace-main" tabIndex={-1}>
@@ -205,7 +249,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             <h2 id="tool-search-title" className="font-semibold">
               Encontrar ferramenta
             </h2>
-            <button aria-label="Fechar busca" onClick={() => dialog.current?.close()}>
+            <button
+              type="button"
+              aria-label="Fechar busca"
+              className="grid size-10 place-items-center rounded-lg border border-border hover:bg-accent"
+              onClick={() => dialog.current?.close()}
+            >
               <X className="size-4" />
             </button>
           </div>
@@ -231,7 +280,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                 onClick={() => dialog.current?.close()}
                 className="flex items-start gap-3 rounded-md p-3 hover:bg-accent"
               >
-                <Icon className="mt-0.5 size-4 text-primary" />
+                <Icon
+                  className="tool-tone mt-0.5 size-4"
+                  data-tone={normalizeSearch(tool.category)}
+                  aria-hidden
+                />
                 <span className="flex-1">
                   <span className="block text-sm font-medium">{tool.name}</span>
                   <span className="mt-1 block text-xs leading-5 text-muted-foreground">

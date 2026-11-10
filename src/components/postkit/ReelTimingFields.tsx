@@ -1,6 +1,12 @@
 import type { ReactNode } from "react";
 import { dailyReelTimes, maxDailyReels } from "@/lib/postkit-reel-batch";
 import { DailyTimeSlots } from "./DailyTimeSlots";
+import { WorkspaceSelect } from "@/components/ui/workspace-select";
+
+const dailyCounts = Array.from({ length: maxDailyReels }, (_, index) => ({
+  value: String(index + 1),
+  label: index === 0 ? "1 Reel por dia" : `${index + 1} Reels por dia`,
+}));
 
 export function ReelTimingFields({
   value,
@@ -33,17 +39,13 @@ export function ReelTimingFields({
       <div className="space-y-1.5">
         <label className="block w-full max-w-60 text-sm font-semibold text-sky-200">
           Quantos Reels por dia?
-          <select
-            className="field mt-1"
-            value={entries.length}
-            onChange={(event) => onChange(dailyReelTimes(Number(event.target.value)))}
-          >
-            {Array.from({ length: maxDailyReels }, (_, index) => index + 1).map((count) => (
-              <option key={count} value={count}>
-                {count === 1 ? "1 Reel por dia" : `${count} Reels por dia`}
-              </option>
-            ))}
-          </select>
+          <WorkspaceSelect
+            label="Quantos Reels por dia?"
+            className="mt-1"
+            value={String(entries.length)}
+            options={dailyCounts}
+            onValueChange={(value) => onChange(dailyReelTimes(Number(value)))}
+          />
         </label>
         <p className="text-xs text-muted-foreground">
           Ao mudar a quantidade por conta, sugerimos novos horários. Você pode editar cada um.

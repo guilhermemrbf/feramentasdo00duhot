@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ArrowUpRight, Crown, Instagram, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { PostkitDatabase } from "@/lib/postkit-database";
+import { WorkspaceSelect } from "@/components/ui/workspace-select";
 
 const db = supabase as unknown as SupabaseClient<PostkitDatabase>;
 const format = new Intl.NumberFormat("pt-BR");
@@ -148,21 +149,19 @@ export function InstagramTopPosts({
         </div>
         <label className="block w-full max-w-xs text-sm font-semibold">
           Conta do Instagram
-          <select
-            className="field mt-1"
+          <WorkspaceSelect
+            label="Conta do Instagram"
+            className="mt-1"
             value={account}
-            onChange={(event) => {
+            options={[
+              { value: "", label: "Todas as contas conectadas" },
+              ...accounts.map((item) => ({ value: item.id, label: `@${item.username}` })),
+            ]}
+            onValueChange={(value) => {
               setError(false);
-              setAccount(event.target.value);
+              setAccount(value);
             }}
-          >
-            <option value="">Todas as contas conectadas</option>
-            {accounts.map((item) => (
-              <option key={item.id} value={item.id}>
-                @{item.username}
-              </option>
-            ))}
-          </select>
+          />
         </label>
       </div>
       {error && (
@@ -181,8 +180,12 @@ export function InstagramTopPosts({
         </p>
       )}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {cards.map(([label, value, detail]) => (
-          <div key={label} className={`${panel} p-4`}>
+        {cards.map(([label, value, detail], index) => (
+          <div
+            key={label}
+            className={`metric-card ${panel} p-4`}
+            data-tone={["info", "coral", "violet", "success"][index]}
+          >
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {label}
             </p>

@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ArrowUpRight, BarChart3, Eye, RefreshCw, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { PostkitDatabase } from "@/lib/postkit-database";
+import { WorkspaceDate } from "@/components/ui/workspace-date";
+import { WorkspaceSelect } from "@/components/ui/workspace-select";
 import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
 
 const db = supabase as unknown as SupabaseClient<PostkitDatabase>;
@@ -97,8 +99,7 @@ function totalKnown(values: Array<number | null>) {
 }
 
 const surface = "rounded-xl border border-border bg-card";
-const pill =
-  "rounded-full border border-border px-3 py-1.5 text-sm hover:bg-secondary aria-pressed:border-sky-400/50 aria-pressed:bg-sky-700 aria-pressed:text-white";
+const pill = "filter-chip";
 const tableCell = "px-3 py-2.5";
 const statusLabel = (profile: Profile) => {
   if (profile.issue === "permission") return "Autorize o acesso às métricas";
@@ -112,13 +113,15 @@ function Metric({
   label,
   value,
   detail,
+  tone,
 }: {
   label: string;
   value: number | null | undefined;
   detail?: string;
+  tone?: "info" | "violet" | "success" | "coral";
 }) {
   return (
-    <div className="rounded-lg border border-border bg-background/35 p-4">
+    <div className="metric-card rounded-xl border border-border p-4" data-tone={tone}>
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-2 text-2xl font-semibold tabular-nums">{showNumber(value)}</p>
       {detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}
@@ -150,6 +153,7 @@ export function InstagramAnalytics({
   const [report, setReport] = useState<{ key: string; data: Report }>();
   const [error, setError] = useState("");
   const { from, to } = rangeDays(range, timezone, customStart, customEnd);
+  const today = calendarDateInZone(timezone);
   const invalid = range === "custom" && (!from || !to || from > to);
   const key = JSON.stringify([account, from, to, page]);
   const data = report?.key === key ? report.data : undefined;
@@ -220,22 +224,20 @@ export function InstagramAnalytics({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <label className="block w-full max-w-xs text-sm font-semibold">
             Conta do Instagram
-            <select
-              className="field mt-1"
+            <WorkspaceSelect
+              label="Conta do Instagram"
+              className="mt-1"
               value={account}
-              onChange={(event) => {
-                setAccount(event.target.value);
+              options={[
+                { value: "", label: "Todas as contas conectadas" },
+                ...accounts.map((item) => ({ value: item.id, label: `@${item.username}` })),
+              ]}
+              onValueChange={(value) => {
+                setAccount(value);
                 setPage(0);
                 setError("");
               }}
-            >
-              <option value="">Todas as contas conectadas</option>
-              {accounts.map((item) => (
-                <option key={item.id} value={item.id}>
-                  @{item.username}
-                </option>
-              ))}
-            </select>
+            />
           </label>
           <button
             type="button"
@@ -262,32 +264,35 @@ export function InstagramAnalytics({
           ))}
         </div>
         {range === "custom" && (
-          <div className="flex flex-wrap gap-3">
-            <label className="text-sm">
+          <div className="grid max-w-lg gap-3 sm:grid-cols-2">
+            <div className="text-sm">
               Data inicial
-              <input
-                className="field mt-1"
-                type="date"
+              <WorkspaceDate
+                label="Data inicial"
+                className="mt-1"
                 value={customStart}
-                onChange={(e) => {
-                  setCustomStart(e.target.value);
+                max={today}
+                onValueChange={(value) => {
+                  setCustomStart(value);
+                  if (value > customEnd) setCustomEnd(value);
                   setPage(0);
                 }}
               />
-            </label>
-            <label className="text-sm">
+            </div>
+            <div className="text-sm">
               Data final
-              <input
-                className="field mt-1"
-                type="date"
+              <WorkspaceDate
+                label="Data final"
+                className="mt-1"
                 value={customEnd}
                 min={customStart}
-                onChange={(e) => {
-                  setCustomEnd(e.target.value);
+                max={today}
+                onValueChange={(value) => {
+                  setCustomEnd(value);
                   setPage(0);
                 }}
               />
-            </label>
+            </div>
           </div>
         )}
         <p className="text-xs text-muted-foreground">
@@ -340,11 +345,13 @@ export function InstagramAnalytics({
           <Metric label="Publicações encontradas" value={posts} />
           <Metric
             label="Visualizações das publicações"
+            tone="info"
             value={views}
             detail={measured ? `${measured} de ${posts} com medição` : "Sem medição ainda"}
           />
           <Metric
             label="Média de views por publicação"
+            tone="violet"
             value={views !== null && measured ? views / measured : null}
             detail="Entre publicações com medição"
           />
@@ -393,20 +400,23 @@ export function InstagramAnalytics({
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
           label="Views de Reels das contas"
+          tone="info"
           value={totalKnown(profiles.map((p) => p.reel_views))}
           detail="Todo o histórico coletado"
         />
         <Metric
           label="Total de seguidores"
+          tone="success"
           value={totalKnown(profiles.map((p) => p.followers))}
           detail="Última leitura disponível"
         />
         <Metric
           label="Total seguindo"
+          tone="violet"
           value={totalKnown(profiles.map((p) => p.following))}
           detail="Última leitura disponível"
         />
-        <Metric label="Contas selecionadas" value={data ? profiles.length : null} />
+        <Metric label="Contas selecionadas" value={data ? profiles.length : null} tone="coral" />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">

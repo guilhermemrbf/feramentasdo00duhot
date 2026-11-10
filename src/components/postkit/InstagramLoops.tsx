@@ -3,7 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ArrowRight, Pause, Play, Repeat2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { InstagramReelLoop, PostkitDatabase } from "@/lib/postkit-database";
-import { zonedDateTimeToIso } from "@/lib/scheduling";
+import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
+import { WorkspaceDate } from "@/components/ui/workspace-date";
+import { WorkspaceSelect } from "@/components/ui/workspace-select";
 
 const client = supabase as unknown as SupabaseClient<PostkitDatabase>;
 const frequencies = [
@@ -268,22 +270,24 @@ export function InstagramLoops({
             </label>
             <label className="block rounded-lg border border-border p-3 text-sm">
               1. Conta do Instagram
-              <select
-                className="field mt-1"
+              <WorkspaceSelect
+                label="Conta do Instagram"
+                className="mt-1"
                 value={accountId}
-                onChange={(event) => {
-                  setAccountId(event.target.value);
+                disabled={!!busy}
+                options={[
+                  { value: "", label: "Escolher conta" },
+                  ...accounts.map((item) => ({
+                    value: item.id,
+                    label: `@${item.username}${activeAccounts.has(item.id) ? " · Já tem loop ativo" : ""}`,
+                    disabled: activeAccounts.has(item.id),
+                  })),
+                ]}
+                onValueChange={(value) => {
+                  setAccountId(value);
                   setAssetIds([]);
                 }}
-              >
-                <option value="">Escolher conta</option>
-                {accounts.map((item) => (
-                  <option key={item.id} value={item.id} disabled={activeAccounts.has(item.id)}>
-                    @{item.username}
-                    {activeAccounts.has(item.id) ? " · Já tem loop ativo" : ""}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
             <fieldset className="rounded-lg border border-border p-3">
               <legend className="px-1 text-sm font-semibold">2. Quais vídeos?</legend>
@@ -341,16 +345,16 @@ export function InstagramLoops({
             <fieldset className="rounded-lg border border-border p-3">
               <legend className="px-1 text-sm font-semibold">3. Quando publicar?</legend>
               <div className="grid gap-3 sm:grid-cols-3">
-                <label className="block text-sm">
+                <div className="text-sm">
                   Primeiro dia
-                  <input
-                    className="field mt-1"
-                    type="date"
-                    required
+                  <WorkspaceDate
+                    label="Primeiro dia"
+                    className="mt-1"
+                    min={calendarDateInZone(timezone)}
                     value={date}
-                    onChange={(event) => setDate(event.target.value)}
+                    onValueChange={setDate}
                   />
-                </label>
+                </div>
                 <label className="block text-sm">
                   Primeiro horário
                   <input
@@ -363,17 +367,16 @@ export function InstagramLoops({
                 </label>
                 <label className="block text-sm">
                   Frequência
-                  <select
-                    className="field mt-1"
-                    value={intervalMinutes}
-                    onChange={(event) => setIntervalMinutes(Number(event.target.value))}
-                  >
-                    {frequencies.map(({ value, label }) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
+                  <WorkspaceSelect
+                    label="Frequência"
+                    className="mt-1"
+                    value={String(intervalMinutes)}
+                    options={frequencies.map(({ value, label }) => ({
+                      value: String(value),
+                      label,
+                    }))}
+                    onValueChange={(value) => setIntervalMinutes(Number(value))}
+                  />
                 </label>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">Fuso da agenda: {timezone}.</p>

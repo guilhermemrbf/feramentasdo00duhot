@@ -4,6 +4,7 @@ import { Loader2, LogOut, Users } from "lucide-react";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
+import { WorkspaceSelect } from "@/components/ui/workspace-select";
 import type { PostkitDatabase } from "@/lib/postkit-database";
 import {
   createPostkitInvitation,
@@ -15,7 +16,10 @@ export type Workspace = { id: string; name: string; timezone: string; owner_id: 
 const STORAGE_KEY = "postkit.workspace";
 const PENDING_INVITE_KEY = "postkit.pending-invite";
 const client = () => supabase as unknown as SupabaseClient<PostkitDatabase>;
-let opening: { userId: string; promise: Promise<{ list: Workspace[]; selected: string; userId: string }> } | null = null;
+let opening: {
+  userId: string;
+  promise: Promise<{ list: Workspace[]; selected: string; userId: string }>;
+} | null = null;
 
 function invitationToken() {
   try {
@@ -70,11 +74,7 @@ function openWorkspace(session: Session) {
   return promise;
 }
 
-function GoogleAccessCard({
-  error,
-}: {
-  error: string;
-}) {
+function GoogleAccessCard({ error }: { error: string }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const signIn = async () => {
@@ -200,7 +200,9 @@ export function WorkspaceGate({ children }: { children: (ws: Workspace) => React
         <div className="mx-auto my-16 max-w-md rounded-lg border border-border bg-card p-6 text-center">
           {error ? (
             <>
-              <p role="alert" className="text-sm">{error}</p>
+              <p role="alert" className="text-sm">
+                {error}
+              </p>
               <button
                 className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
                 onClick={() => setRetry((value) => value + 1)}
@@ -228,25 +230,23 @@ export function WorkspaceGate({ children }: { children: (ws: Workspace) => React
       <div className="mx-auto max-w-7xl px-5 pt-5">
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-xs">
           <span className="text-muted-foreground">Sua operação</span>
-          <select
-            aria-label="Operação atual"
+          <WorkspaceSelect
+            label="Operação atual"
             value={current.id}
-            className="rounded-md border border-border bg-background p-2"
-            onChange={(event) => {
-              setCurrentId(event.target.value);
+            className="w-auto min-w-36"
+            options={(list ?? []).map((workspace) => ({
+              value: workspace.id,
+              label: workspace.name,
+            }))}
+            onValueChange={(value) => {
+              setCurrentId(value);
               try {
-                localStorage.setItem(STORAGE_KEY, event.target.value);
+                localStorage.setItem(STORAGE_KEY, value);
               } catch {
                 /* optional */
               }
             }}
-          >
-            {list?.map((workspace) => (
-              <option key={workspace.id} value={workspace.id}>
-                {workspace.name}
-              </option>
-            ))}
-          </select>
+          />
           <button
             aria-label="Sair da conta Google"
             title="Sair"

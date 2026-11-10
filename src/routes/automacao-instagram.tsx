@@ -44,6 +44,7 @@ import { InstagramHistory } from "@/components/postkit/InstagramHistory";
 import { InstagramDashboard } from "@/components/postkit/InstagramDashboard";
 import { InstagramAnalytics } from "@/components/postkit/InstagramAnalytics";
 import { InstagramTopPosts } from "@/components/postkit/InstagramTopPosts";
+import { WorkspaceSelect } from "@/components/ui/workspace-select";
 import { InstagramLoops } from "@/components/postkit/InstagramLoops";
 import { InstagramStories } from "@/components/postkit/InstagramStories";
 import { InstagramProfileDrafts } from "@/components/postkit/InstagramProfileDrafts";
@@ -925,31 +926,31 @@ function InstagramWorkspacePage({
     setQueueSaved(false);
     setNotice("Prévia limpa. Nenhuma publicação real foi afetada.");
   };
+  const folderOptions = [
+    { value: "", label: "Todos os vídeos desta conta" },
+    ...folders.map(([value, label]) => ({ value, label })),
+  ];
 
   return (
-    <div className="mx-auto grid w-full max-w-[1600px] gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start lg:gap-6">
-      <aside className="lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:rounded-xl lg:border lg:border-border lg:bg-card lg:p-3">
-        <div className="mb-3 flex items-center gap-2 lg:px-2">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
+    <div className="mx-auto grid w-full max-w-[1600px] gap-5 px-4 py-5 sm:px-6 xl:grid-cols-[200px_minmax(0,1fr)] xl:items-start xl:gap-6">
+      <aside className="rounded-xl border border-border bg-card p-3 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)] xl:overflow-y-auto">
+        <div className="mb-3 flex items-center gap-2 xl:px-2">
+          <span className="flex size-9 items-center justify-center rounded-lg border border-brand-red/25 bg-brand-red/10 text-brand-red">
             <Instagram className="size-4" />
           </span>
           <span className="font-display text-sm font-semibold">Automação Instagram</span>
         </div>
-        <label className="block text-xs font-medium text-muted-foreground lg:hidden">
+        <div className="block text-xs font-medium text-muted-foreground xl:hidden">
           Seção do painel
-          <select
-            className="field mt-1"
+          <WorkspaceSelect
+            label="Seção do painel"
+            className="mt-1"
             value={tab}
-            onChange={(event) => setTab(event.target.value as Tab)}
-          >
-            {tabItems.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <nav aria-label="Seções da automação Instagram" className="hidden space-y-4 lg:block">
+            options={tabItems.map((item) => ({ value: item.id, label: item.label }))}
+            onValueChange={(value) => setTab(value as Tab)}
+          />
+        </div>
+        <nav aria-label="Seções da automação Instagram" className="hidden space-y-4 xl:block">
           {tabGroups.map((group) => (
             <div key={group.label}>
               <p className="mb-1.5 px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -961,7 +962,7 @@ function InstagramWorkspacePage({
                   type="button"
                   onClick={() => setTab(id)}
                   aria-current={tab === id ? "page" : undefined}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground aria-[current=page]:bg-primary/15 aria-[current=page]:text-primary"
+                  className={`tool-nav-link w-full text-left ${tab === id ? "is-active" : ""}`}
                 >
                   <Icon className="size-4 shrink-0" /> {label}
                 </button>
@@ -970,11 +971,14 @@ function InstagramWorkspacePage({
           ))}
         </nav>
       </aside>
-      <main className="min-w-0 rounded-2xl bg-[image:linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-size-[32px_32px]">
-        <header className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 sm:px-5">
-          <h1 className="font-display text-xl font-semibold">
-            {tabItems.find((item) => item.id === tab)?.label}
-          </h1>
+      <main className="min-w-0">
+        <header className="tool-section-heading flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border px-4 py-4 sm:px-5">
+          <div>
+            <p className="mb-1 text-xs font-semibold text-brand-red">Automação Instagram</p>
+            <h1 className="font-display text-2xl font-semibold">
+              {tabItems.find((item) => item.id === tab)?.label}
+            </h1>
+          </div>
           {tab === "dashboard" && (
             <button
               type="button"
@@ -1402,20 +1406,21 @@ function InstagramWorkspacePage({
                           </p>
                           <div className="mt-3 max-w-sm">
                             <Field label="Pasta ou vídeo sem conta">
-                              <select
-                                className="field"
+                              <WorkspaceSelect
+                                label="Pasta ou vídeo sem conta"
                                 value={legacySourceId}
                                 disabled={linkingVideos}
-                                onChange={(event) => setLegacySourceId(event.target.value)}
-                              >
-                                <option value="">Escolher pasta ou vídeo</option>
-                                {[...legacySources].map(([id, source]) => (
-                                  <option key={id} value={id}>
-                                    {source.name}
-                                    {source.batch ? ` (${source.count} vídeos)` : ""}
-                                  </option>
-                                ))}
-                              </select>
+                                onValueChange={setLegacySourceId}
+                                options={[
+                                  { value: "", label: "Escolher pasta ou vídeo" },
+                                  ...[...legacySources].map(([value, source]) => ({
+                                    value,
+                                    label:
+                                      source.name +
+                                      (source.batch ? ` (${source.count} vídeos)` : ""),
+                                  })),
+                                ]}
+                              />
                             </Field>
                           </div>
                           <button
@@ -1437,18 +1442,12 @@ function InstagramWorkspacePage({
                   {folders.length > 0 && (
                     <div className="mt-4 max-w-sm">
                       <Field label="Pasta para agendar">
-                        <select
-                          className="field"
+                        <WorkspaceSelect
+                          label="Pasta para agendar"
                           value={sourceFolder}
-                          onChange={(event) => selectFolder(event.target.value)}
-                        >
-                          <option value="">Todos os vídeos desta conta</option>
-                          {folders.map(([id, name]) => (
-                            <option value={id} key={id}>
-                              {name}
-                            </option>
-                          ))}
-                        </select>
+                          options={folderOptions}
+                          onValueChange={selectFolder}
+                        />
                       </Field>
                     </div>
                   )}
@@ -1595,19 +1594,16 @@ function InstagramWorkspacePage({
                     {reelMode === "single" ? "2. Qual vídeo?" : "2. Quais vídeos?"}
                   </h3>
                   {reelMode === "single" && libraryVideos.length > 0 ? (
-                    <select
-                      aria-label="Escolha o vídeo do Reel"
-                      className="field mt-2"
+                    <WorkspaceSelect
+                      label="Escolha o vídeo do Reel"
+                      className="mt-2"
                       value={singleVideoId}
-                      onChange={(event) => setSingleVideoId(event.target.value)}
-                    >
-                      <option value="">Selecione na biblioteca</option>
-                      {libraryVideos.map((video) => (
-                        <option key={video.id} value={video.id}>
-                          {video.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={[
+                        { value: "", label: "Selecione na biblioteca" },
+                        ...libraryVideos.map((video) => ({ value: video.id, label: video.name })),
+                      ]}
+                      onValueChange={setSingleVideoId}
+                    />
                   ) : (
                     <p className="mt-1 text-xs text-muted-foreground">
                       {scheduleVideos.length === 1
@@ -1620,18 +1616,12 @@ function InstagramWorkspacePage({
                   {folders.length > 0 && (
                     <div className="mt-2">
                       <Field label="Pasta desta conta">
-                        <select
-                          className="field"
+                        <WorkspaceSelect
+                          label="Pasta desta conta"
                           value={sourceFolder}
-                          onChange={(event) => selectFolder(event.target.value)}
-                        >
-                          <option value="">Todos os vídeos desta conta</option>
-                          {folders.map(([id, name]) => (
-                            <option key={id} value={id}>
-                              {name}
-                            </option>
-                          ))}
-                        </select>
+                          options={folderOptions}
+                          onValueChange={selectFolder}
+                        />
                       </Field>
                     </div>
                   )}
@@ -1794,17 +1784,21 @@ function InstagramWorkspacePage({
                         />
                       </Field>
                       <Field label="Ordem dos vídeos">
-                        <select
-                          className="field"
+                        <WorkspaceSelect
+                          label="Ordem dos vídeos"
                           value={batchOrder}
-                          onChange={(event) => setBatchOrder(event.target.value as ReelOrder)}
-                        >
-                          <option value="selection">
-                            {useFolderOrder ? "Ordem da pasta importada" : "Ordem da biblioteca"}
-                          </option>
-                          <option value="numeric">Ordem numérica pelo nome (1, 2, 10…)</option>
-                          <option value="random">Ordem aleatória na prévia</option>
-                        </select>
+                          onValueChange={(value) => setBatchOrder(value as ReelOrder)}
+                          options={[
+                            {
+                              value: "selection",
+                              label: useFolderOrder
+                                ? "Ordem da pasta importada"
+                                : "Ordem da biblioteca",
+                            },
+                            { value: "numeric", label: "Ordem numérica pelo nome (1, 2, 10…)" },
+                            { value: "random", label: "Ordem aleatória na prévia" },
+                          ]}
+                        />
                       </Field>
                       <label className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm">
                         <input
@@ -2160,19 +2154,16 @@ function ReelAccountSelect({
 }) {
   return (
     <Field label="Conta do Instagram">
-      <select
-        className="field"
+      <WorkspaceSelect
+        label="Conta do Instagram"
         value={value}
         disabled={disabled || !accounts.length}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        <option value="">Escolher conta</option>
-        {accounts.map((account) => (
-          <option key={account.id} value={account.id}>
-            @{account.username}
-          </option>
-        ))}
-      </select>
+        options={[
+          { value: "", label: "Escolher conta" },
+          ...accounts.map((account) => ({ value: account.id, label: `@${account.username}` })),
+        ]}
+        onValueChange={onChange}
+      />
     </Field>
   );
 }

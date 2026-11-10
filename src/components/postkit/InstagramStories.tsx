@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { WorkspaceDate } from "@/components/ui/workspace-date";
+import { WorkspaceSelect } from "@/components/ui/workspace-select";
 import { supabase } from "@/integrations/supabase/client";
 import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
 import {
@@ -748,21 +750,18 @@ export function InstagramStories({
               </h3>
               <label className="block text-sm">
                 Em qual conta você vai publicar?
-                <select
-                  className="field mt-1"
+                <WorkspaceSelect
+                  label="Em qual conta você vai publicar?"
+                  className="mt-1"
                   value={account?.id ?? ""}
-                  onChange={(event) => {
-                    setAccountId(event.target.value);
+                  placeholder="Selecione uma conta conectada"
+                  options={accounts.map((item) => ({ value: item.id, label: `@${item.username}` }))}
+                  disabled={!accounts.length}
+                  onValueChange={(value) => {
+                    setAccountId(value);
                     setPlan([]);
                   }}
-                >
-                  {!account && <option value="">Selecione uma conta conectada</option>}
-                  {accounts.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      @{item.username}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
               <label
                 className="block cursor-pointer rounded-xl border border-dashed border-sky-500/40 bg-sky-500/5 p-4 text-center hover:bg-sky-500/10"
@@ -1177,16 +1176,12 @@ export function InstagramStories({
                   >
                     {i + 1}. {item.media.file.name}
                   </button>
-                  <input
-                    aria-label={"Data do Story " + (i + 1)}
-                    className="field"
-                    type="date"
+                  <WorkspaceDate
+                    label={"Data do Story " + (i + 1)}
                     value={item.date}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       setPlan((rows) =>
-                        rows.map((row, n) =>
-                          n === i ? { ...row, date: event.target.value } : row,
-                        ),
+                        rows.map((row, n) => (n === i ? { ...row, date: value } : row)),
                       )
                     }
                   />

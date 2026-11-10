@@ -250,7 +250,7 @@ export function InstagramDashboard({
                   setPeriod(item);
                 }
               }}
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:border-primary/60 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:font-semibold aria-pressed:text-primary-foreground"
+              className="filter-chip"
             >
               {item.label}
             </button>

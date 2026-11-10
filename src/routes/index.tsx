@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowRight, ArrowUpRight, Clock3, Search, Star, X } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpRight, Clock3, Search, Star, X } from "lucide-react";
 import { AppShell, Brand, TOOL_ICONS } from "@/components/AppShell";
-import { CATEGORIES, TOOL_CATALOG, searchTools } from "@/lib/tool-catalog";
+import { CATEGORIES, TOOL_CATALOG, normalizeSearch, searchTools } from "@/lib/tool-catalog";
 import { useToolPreferences } from "@/lib/tool-preferences";
 import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
@@ -18,6 +18,13 @@ export const Route = createFileRoute("/")({
   }),
   component: Home,
 });
+
+const shortcutIds = ["social", "preview", "telegram"] as const;
+const shortcuts = shortcutIds.flatMap((id) => TOOL_CATALOG.filter((tool) => tool.id === id));
+const catalogCategories = CATEGORIES.filter(
+  (category) => category === "Todas" || TOOL_CATALOG.some((tool) => tool.category === category),
+);
+
 function Home() {
   const [query, setQuery] = useState(""),
     [category, setCategory] = useState("Todas"),
@@ -31,55 +38,60 @@ function Home() {
       <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
         <section className="home-intro">
           <div>
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">
-              Seu centro de operação
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-red/30 bg-brand-red/10 px-3 py-1 text-xs font-semibold text-brand-red">
+              <span className="size-1.5 rounded-full bg-brand-red" aria-hidden />
+              Workspace 00duHot
             </p>
-            <h1 className="max-w-2xl font-display text-3xl font-semibold leading-tight tracking-tight sm:text-[42px]">
-              Menos ferramentas soltas.
-              <br />
-              Mais controle da operação.
+            <h1 className="max-w-xl font-display text-3xl font-bold leading-tight tracking-tight sm:text-[46px]">
+              Sua operação digital <span className="text-primary">em um só lugar</span>
             </h1>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground">
-              Prepare seus materiais, organize seus fluxos e acompanhe suas automações. Escolha
-              abaixo o que precisa fazer agora.
+            <p className="mt-4 max-w-lg text-sm leading-7 text-muted-foreground sm:text-base">
+              Prepare conteúdo, organize seus fluxos e acompanhe o que está agendado. Comece pela
+              ferramenta que você precisa agora.
             </p>
+            <a
+              href="#tools-title"
+              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:bg-[#f5ce90]"
+            >
+              Explorar ferramentas <ArrowDown className="size-4" aria-hidden />
+            </a>
           </div>
-          <div className="hidden rounded-xl border border-border bg-[#080808] p-5 sm:block">
+          <div className="home-mark hidden shrink-0 p-2 sm:block">
             <img
               src="/brand/mark.png"
               alt="Mascote 00duHot: rato de óculos com corrente dourada"
               width={176}
               height={176}
-              className="size-40 object-contain"
+              className="size-32 rounded-2xl object-contain xl:size-44"
             />
           </div>
         </section>
-        <section aria-label="Atalhos por objetivo" className="mb-10 grid gap-3 md:grid-cols-3">
-          {[
-            {
-              to: "/gerar-preview" as const,
-              title: "Preparar conteúdo",
-              text: "Prévias, marca e arquivos prontos.",
-            },
-            {
-              to: "/funil" as const,
-              title: "Organizar a estratégia",
-              text: "Etapas e caminhos do seu funil.",
-            },
-            {
-              to: "/telegram-sync" as const,
-              title: "Atualizar links do canal",
-              text: "Prévia e troca de links dos seus posts.",
-            },
-          ].map((item) => (
-            <Link key={item.to} to={item.to} className="workspace-shortcut">
-              <span>
-                <strong className="block text-sm font-medium">{item.title}</strong>
-                <span className="mt-1 block text-xs text-muted-foreground">{item.text}</span>
-              </span>
-              <ArrowUpRight className="size-4 text-muted-foreground" />
-            </Link>
-          ))}
+        <section aria-labelledby="quick-tools-title" className="mb-9">
+          <h2 id="quick-tools-title" className="mb-3 text-sm font-semibold">
+            Acesso rápido
+          </h2>
+          <div className="grid gap-3 xl:grid-cols-3">
+            {shortcuts.map((tool) => {
+              const Icon = TOOL_ICONS[tool.id];
+              return (
+                <Link key={tool.id} to={tool.path} className="workspace-shortcut">
+                  <span
+                    className="tool-tone tool-icon grid size-10 shrink-0 place-items-center rounded-lg"
+                    data-tone={normalizeSearch(tool.category)}
+                  >
+                    <Icon className="size-5" aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <strong className="block text-sm font-semibold">{tool.name}</strong>
+                    <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                      {tool.summary}
+                    </span>
+                  </span>
+                  <ArrowUpRight className="size-4 shrink-0 text-primary" aria-hidden />
+                </Link>
+              );
+            })}
+          </div>
         </section>
         {recent.length > 0 && (
           <section className="mb-9">
@@ -111,7 +123,11 @@ function Home() {
               <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                 Workspace
               </p>
-              <h2 id="tools-title" className="mt-2 text-xl font-semibold">
+              <h2
+                id="tools-title"
+                tabIndex={-1}
+                className="mt-2 scroll-mt-4 text-2xl font-semibold"
+              >
                 Suas ferramentas
               </h2>
             </div>
@@ -131,23 +147,22 @@ function Home() {
             </div>
           </div>
           <div className="mb-5 flex flex-wrap items-center gap-2">
-            {CATEGORIES.map((value) => (
+            {catalogCategories.map((value) => (
               <button
                 key={value}
                 aria-pressed={category === value}
                 onClick={() => setCategory(value)}
-                className={cn("catalog-filter", category === value && "is-active")}
+                type="button"
+                className="filter-chip"
               >
                 {value}
               </button>
             ))}
             <button
+              type="button"
               onClick={() => setOnlyFavorites(!onlyFavorites)}
               aria-pressed={onlyFavorites}
-              className={cn(
-                "catalog-filter ml-auto inline-flex items-center gap-2",
-                onlyFavorites && "is-active",
-              )}
+              className="filter-chip sm:ml-auto"
             >
               <Star className={cn("size-3.5", onlyFavorites && "fill-current")} />
               Favoritas ({favorites.length})
@@ -163,30 +178,36 @@ function Home() {
               return (
                 <article key={tool.id} className="tool-card">
                   <div className="mb-6 flex items-center justify-between">
-                    <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-background text-primary">
+                    <span
+                      className="tool-tone tool-icon flex size-11 items-center justify-center rounded-lg"
+                      data-tone={normalizeSearch(tool.category)}
+                    >
                       <Icon className="size-[18px]" />
                     </span>
                     <button
+                      type="button"
                       onClick={() => toggle(tool.id)}
                       aria-pressed={favorite}
                       aria-label={`${favorite ? "Remover" : "Adicionar"} ${tool.name} ${favorite ? "dos" : "aos"} favoritos`}
-                      className="rounded-md p-2 text-muted-foreground hover:text-primary"
+                      className="grid size-10 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:border-primary hover:text-primary aria-pressed:border-primary/70 aria-pressed:bg-primary/10"
                     >
                       <Star className={cn("size-4", favorite && "fill-primary text-primary")} />
                     </button>
                   </div>
-                  <p className="mb-2 text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  <p
+                    className="tool-tone mb-2 text-xs font-medium"
+                    data-tone={normalizeSearch(tool.category)}
+                  >
                     {tool.category}
                   </p>
                   <h3 className="text-[17px] font-semibold tracking-tight">{tool.name}</h3>
-                  <p className="mt-3 min-h-12 text-xs leading-6 text-muted-foreground">
-                    {tool.summary}
-                  </p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{tool.summary}</p>
                   <div className="mt-6 flex items-center justify-between gap-2 border-t border-border pt-4">
-                    <span className="text-[10px] text-muted-foreground">{tool.mode}</span>
+                    <span className="text-xs text-muted-foreground">{tool.mode}</span>
                     <Link
                       to={tool.path}
-                      className="inline-flex items-center gap-2 text-xs font-semibold text-primary"
+                      className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-2 text-xs font-semibold text-primary hover:border-primary hover:bg-primary/15"
+                      aria-label={`Abrir ${tool.name}`}
                     >
                       Abrir ferramenta
                       <ArrowRight className="size-3.5" />

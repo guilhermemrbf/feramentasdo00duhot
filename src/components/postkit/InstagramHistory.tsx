@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { PostkitDatabase } from "@/lib/postkit-database";
+import { WorkspaceSelect } from "@/components/ui/workspace-select";
 
 const labels = {
   scheduled: "Agendado",
@@ -140,38 +141,32 @@ export function InstagramHistory({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <select
-            aria-label="Filtrar por conta"
+          <WorkspaceSelect
+            label="Filtrar por conta"
             value={account}
-            onChange={(event) => {
+            options={[
+              { value: "", label: "Todas as contas" },
+              ...accounts.map((item) => ({ value: item.id, label: `@${item.username}` })),
+            ]}
+            onValueChange={(value) => {
               setLoading(true);
-              setAccount(event.target.value);
+              setAccount(value);
             }}
-            className="rounded-md border border-border bg-background p-2 text-sm"
-          >
-            <option value="">Todas as contas</option>
-            {accounts.map((item) => (
-              <option value={item.id} key={item.id}>
-                @{item.username}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Filtrar histórico"
+            className="w-full sm:w-52"
+          />
+          <WorkspaceSelect
+            label="Filtrar histórico"
             value={filter}
-            onChange={(event) => {
+            options={[
+              { value: "all", label: "Todos os estados" },
+              ...filters.map((value) => ({ value, label: labels[value] })),
+            ]}
+            onValueChange={(value) => {
               setLoading(true);
-              setFilter(event.target.value as "all" | Status);
+              setFilter(value as "all" | Status);
             }}
-            className="rounded-md border border-border bg-background p-2 text-sm"
-          >
-            <option value="all">Todos os estados</option>
-            {filters.map((value) => (
-              <option key={value} value={value}>
-                {labels[value]}
-              </option>
-            ))}
-          </select>
+            className="w-full sm:w-56"
+          />
           <button
             onClick={() => setRefresh((value) => value + 1)}
             className="rounded-md border border-border px-3 text-xs"

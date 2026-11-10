@@ -1,5 +1,6 @@
 import { Plus, X } from "lucide-react";
 import { calendarDateInZone } from "@/lib/scheduling";
+import { WorkspaceDate } from "@/components/ui/workspace-date";
 
 export function ScheduleDate({
   value,
@@ -15,16 +16,16 @@ export function ScheduleDate({
   const tomorrow = calendarDateInZone(timezone, 1, now);
   return (
     <div className="space-y-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3">
-      <label className="block text-sm font-semibold">
+      <div className="text-sm font-semibold">
         Quando começa?
-        <input
-          className="field mt-1"
-          type="date"
+        <WorkspaceDate
+          label="Quando começa"
+          className="mt-1"
           min={today}
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onValueChange={onChange}
         />
-      </label>
+      </div>
       <div className="flex gap-2">
         {[
           ["Hoje", today],
@@ -35,7 +36,7 @@ export function ScheduleDate({
             type="button"
             aria-pressed={value === date}
             onClick={() => onChange(date)}
-            className="rounded-md border border-emerald-400/20 px-3 py-1.5 text-sm hover:bg-emerald-400/10 aria-pressed:border-emerald-400/50 aria-pressed:bg-emerald-400/15 aria-pressed:text-emerald-100"
+            className="filter-chip"
           >
             {label}
           </button>
