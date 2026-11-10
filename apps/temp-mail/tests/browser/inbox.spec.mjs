@@ -14,7 +14,7 @@ test("copiar, receber SMTP ao vivo, abrir HTML protegido e apagar a caixa", asyn
   await expect(page.getByText("Ao vivo", { exact: true })).toBeVisible();
   const requests = [];
   page.on("request", (request) => { if (request.url().includes("tracker.invalid")) requests.push(request.url()); });
-  expect(await sendMail(address, mailFixture(address, "E2E Correio Temporário"))).toBe(250);
+  expect(await sendMail(address, mailFixture(address, "E2E Correio Temporário"), { port: 1026 })).toBe(250);
   const received = page.getByRole("button", { name: /E2E Correio Temporário/u });
   await expect(received).toBeVisible({ timeout: 20000 });
   await received.click();

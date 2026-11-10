@@ -69,7 +69,8 @@ export function Inbox() {
         }
         if (!cancelled) {
           resetView(current);
-          if (current) setDomain(current.address.split("@")[1]);
+          const currentDomain = current?.address.split("@")[1];
+          if (currentDomain && available.some((item) => item.domain === currentDomain)) setDomain(currentDomain);
         }
       } catch (e) {
         if (!cancelled) setError(messageFor(e));
