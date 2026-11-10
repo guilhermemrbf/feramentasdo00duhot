@@ -49,27 +49,53 @@ export function DailyTimeSlots({
   value,
   onChange,
   limit,
+  reelLabels = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   limit: number;
+  reelLabels?: boolean;
 }) {
   const slots = value.split(",").map((slot) => slot.trim());
 
   return (
-    <fieldset className="min-w-0">
-      <legend className="text-sm font-semibold">Horários de cada dia</legend>
-      <div className="mt-2 grid gap-2 min-[440px]:grid-cols-2 xl:grid-cols-3">
+    <fieldset
+      className="min-w-0"
+      onBlur={
+        reelLabels
+          ? (event) => {
+              if (event.currentTarget.contains(event.relatedTarget) || slots.includes("")) return;
+              const ordered = [...slots].sort();
+              if (ordered.some((slot, index) => slot !== slots[index]))
+                onChange(ordered.join(", "));
+            }
+          : undefined
+      }
+    >
+      <legend className="text-sm font-semibold">
+        {reelLabels ? "Reels de cada dia" : "Horários de cada dia"}
+      </legend>
+      <ol
+        className={
+          reelLabels ? "mt-2 space-y-2" : "mt-2 grid gap-2 min-[440px]:grid-cols-2 xl:grid-cols-3"
+        }
+      >
         {slots.map((slot, index) => (
-          <div
+          <li
             key={index}
-            className="flex items-end gap-2 rounded-lg border border-border bg-card p-2.5"
+            className={`flex gap-3 rounded-lg border border-border bg-card p-2.5 ${reelLabels ? "items-center" : "items-end"}`}
           >
+            {reelLabels && (
+              <span className="shrink-0 rounded-lg bg-sky-400/15 px-2.5 py-1.5 text-sm font-semibold text-sky-200">
+                Reel {index + 1}
+              </span>
+            )}
             <label className="min-w-0 flex-1 text-xs font-semibold text-muted-foreground">
-              Horário {index + 1}
+              {reelLabels ? "Horário de publicação" : `Horário ${index + 1}`}
               <input
                 type="time"
                 value={slot}
+                aria-label={reelLabels ? `Horário de publicação do Reel ${index + 1}` : undefined}
                 className="field mt-1 min-w-0 text-base tabular-nums"
                 onChange={(event) =>
                   onChange(
@@ -81,23 +107,23 @@ export function DailyTimeSlots({
             {slots.length > 1 && (
               <button
                 type="button"
-                aria-label={`Remover horário ${index + 1}`}
+                aria-label={`Remover ${reelLabels ? "Reel" : "horário"} ${index + 1}`}
                 className="mb-0.5 shrink-0 rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
                 onClick={() => onChange(slots.filter((_, i) => i !== index).join(","))}
               >
                 <X className="size-4" />
               </button>
             )}
-          </div>
+          </li>
         ))}
-      </div>
+      </ol>
       {slots.length < limit && !slots.includes("") && (
         <button
           type="button"
           className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-semibold hover:bg-secondary"
           onClick={() => onChange(value + ",")}
         >
-          <Plus className="size-3.5" /> Adicionar horário
+          <Plus className="size-3.5" /> {reelLabels ? "Adicionar Reel" : "Adicionar horário"}
         </button>
       )}
     </fieldset>

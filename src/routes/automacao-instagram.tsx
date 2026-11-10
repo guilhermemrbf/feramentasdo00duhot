@@ -51,6 +51,7 @@ import {
   buildReelSchedule,
   captionWithHashtags,
   dailyReelTimes,
+  maxDailyReels,
   maxReelsPerBatch,
   orderReelVideos,
   reelHashtags,
@@ -596,6 +597,10 @@ function InstagramWorkspacePage({
     }
     if (reelMode === "batch" && timeSlots.length !== times.split(",").length) {
       setPreviewError("Use horários diferentes para cada Reel.");
+      return;
+    }
+    if (scheduleTimes.length > maxDailyReels) {
+      setPreviewError(`Escolha até ${maxDailyReels} Reels por dia em cada conta.`);
       return;
     }
     if (captionWithHashtags(caption, hashtags).length > 2200) {
@@ -1462,10 +1467,14 @@ function InstagramWorkspacePage({
                     onChange={setStartDate}
                   />
                   {reelMode === "single" ? (
-                    <div className="rounded-xl border border-sky-400/20 bg-sky-400/5 p-3">
-                      <Field label="A que horas?">
+                    <div className="flex items-center gap-3 rounded-xl border border-sky-400/20 bg-sky-400/5 p-3">
+                      <span className="shrink-0 rounded-lg bg-sky-400/15 px-2.5 py-1.5 text-sm font-semibold text-sky-200">
+                        Reel 1
+                      </span>
+                      <Field label="Horário de publicação">
                         <input
                           type="time"
+                          aria-label="Horário de publicação do Reel 1"
                           className="field text-base"
                           value={singleTime}
                           onChange={(event) => setSingleTime(event.target.value)}

@@ -1,7 +1,7 @@
 import { zonedDateTimeToIso } from "./scheduling.ts";
 
 export const maxReelsPerBatch = 1000;
-export const maxDailyReels = 24;
+export const maxDailyReels = 10;
 export type ReelOrder = "selection" | "numeric" | "random";
 
 export function orderReelVideos<T extends { name: string; importPosition: number | null }>(

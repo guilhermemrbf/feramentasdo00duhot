@@ -32,43 +32,53 @@ export function ReelTimingFields({
         <div>
           <h4 className="flex items-center gap-2 text-sm font-semibold">
             <Clock3 className="size-4 text-sky-300" aria-hidden />
-            Escolha quantas vezes por dia
+            Quantos Reels por dia?
           </h4>
           <p className="mt-1 text-sm text-muted-foreground">
-            Escolha um ritmo sugerido ou edite os horários. Cada horário vale um Reel por conta.
+            Escolha de 1 a {maxDailyReels} Reels por conta. Defina um horário para cada Reel abaixo.
           </p>
         </div>
         <span
           className="rounded-full bg-sky-400/15 px-3 py-1 text-xs font-semibold text-sky-200"
           aria-live="polite"
         >
-          {slots.length === 1 ? "1 Reel por dia" : `${slots.length} Reels por dia`}
+          {slots.length === entries.length
+            ? slots.length === 1
+              ? "1 Reel por dia"
+              : `${slots.length} Reels por dia`
+            : `${slots.length} de ${entries.length} horários prontos`}
         </span>
       </div>
 
-      <div
-        className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6"
-        role="group"
-        aria-label="Ritmos sugeridos"
-      >
-        {[1, 2, 3, 4, 5, 6].map((count) => {
-          const suggested = dailyReelTimes(count);
-          const selected = slots.join(", ") === suggested && !hasEmpty && !hasDuplicate;
-          return (
-            <button
-              key={count}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => onChange(suggested)}
-              className="rounded-lg border border-sky-400/20 bg-card px-2 py-2.5 text-sm font-semibold hover:bg-sky-400/10 aria-pressed:border-sky-400/60 aria-pressed:bg-sky-400/20 aria-pressed:text-sky-100"
-            >
-              {count} por dia
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="block w-full max-w-48 text-xs font-semibold text-muted-foreground">
+          Reels por dia
+          <select
+            className="field mt-1"
+            value={entries.length}
+            onChange={(event) => {
+              const count = Number(event.target.value);
+              const next = Array.from({ length: count }, (_, index) => entries[index] ?? "");
+              onChange(next.join(", "));
+            }}
+          >
+            {Array.from({ length: maxDailyReels }, (_, index) => index + 1).map((count) => (
+              <option key={count} value={count}>
+                {count}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          className="rounded-lg border border-sky-400/25 bg-card px-3 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-400/15"
+          onClick={() => onChange(dailyReelTimes(entries.length))}
+        >
+          Preencher horários sugeridos
+        </button>
       </div>
 
-      <DailyTimeSlots value={value} onChange={onChange} limit={maxDailyReels} />
+      <DailyTimeSlots value={value} onChange={onChange} limit={maxDailyReels} reelLabels />
       {slots.length > 0 && (
         <p className="text-xs text-muted-foreground">
           Ordem em cada dia{" "}
