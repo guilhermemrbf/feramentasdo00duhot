@@ -11,7 +11,11 @@ test("administra domínio e a caixa passa a usar o domínio disponível após de
   await page.goto("/admin");
   await page.getByLabel("E-mail", { exact: true }).fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Entrar" }).click();
+  const [session] = await Promise.all([
+    page.waitForResponse((response) => response.request().method() === "POST" && response.url().endsWith("/api/admin/login")),
+    page.getByRole("button", { name: "Entrar" }).click(),
+  ]);
+  expect(session.status(), await session.text()).toBe(200);
   await expect(page.getByRole("heading", { name: "Serviços e validade" })).toBeVisible();
   await page.getByLabel("Domínio", { exact: true }).fill(suffix);
   await page.getByRole("button", { name: "Cadastrar" }).click();

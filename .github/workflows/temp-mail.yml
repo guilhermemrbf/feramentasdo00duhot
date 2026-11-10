@@ -37,11 +37,13 @@ jobs:
       - run: pnpm run build && pnpm exec tsc --noEmit && pnpm test
       - run: pnpm exec playwright install --with-deps chromium
       - run: node scripts/init-env.mjs
-      - run: docker compose up --build --wait --wait-timeout 180
-      - name: Testar API, Postfix, fila e banco na rede interna
-        run: docker compose run --rm --no-deps verify
+      - id: stack
+        run: docker compose up --build --wait --wait-timeout 180
       - name: Validar o fluxo no Chromium
         run: pnpm run test:e2e
+      - name: Testar API, Postfix, fila e banco na rede interna
+        if: ${{ !cancelled() && steps.stack.outcome == 'success' }}
+        run: docker compose run --rm --no-deps verify
       - if: failure()
         run: docker compose logs --tail 60
       - if: always()
