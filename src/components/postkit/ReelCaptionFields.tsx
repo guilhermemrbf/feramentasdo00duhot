@@ -39,7 +39,7 @@ export function ReelCaptionFields({
               <Hash className="size-4 text-fuchsia-300" aria-hidden /> Hashtags (opcional)
             </span>
             <span className="mt-1 block text-xs text-muted-foreground">
-              Separe por espaço, vírgula ou quebra de linha. Elas aparecem no fim da legenda.
+              Ex.: #moda #lookdodia. Elas entram no fim da legenda.
             </span>
             <textarea
               className="field mt-2 min-h-24"
@@ -63,19 +63,21 @@ export function ReelCaptionFields({
           )}
         </div>
       </div>
-      <div className="rounded-xl border border-border bg-background/70 p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-semibold">Como aparece no Instagram</p>
-          <p
-            className={`text-xs tabular-nums ${publishedText.length > 2200 ? "text-amber-200" : "text-muted-foreground"}`}
-          >
-            {publishedText.length.toLocaleString("pt-BR")} de 2.200 caracteres
+      {publishedText && (
+        <div className="rounded-xl border border-border bg-background/70 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold">Como aparece no Instagram</p>
+            <p
+              className={`text-xs tabular-nums ${publishedText.length > 2200 ? "text-amber-200" : "text-muted-foreground"}`}
+            >
+              {publishedText.length.toLocaleString("pt-BR")} de 2.200 caracteres
+            </p>
+          </div>
+          <p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">
+            {publishedText}
           </p>
         </div>
-        <p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">
-          {publishedText || "Preencha os campos acima para ver a legenda e as hashtags juntas."}
-        </p>
-      </div>
+      )}
     </>
   );
 }

@@ -217,8 +217,8 @@ function InstagramWorkspacePage({
   const [coverPreview, setCoverPreview] = useState("");
   const [firstComment, setFirstComment] = useState("");
   const [reviewPage, setReviewPage] = useState(0);
-  const [quantity, setQuantity] = useState(3);
-  const [startDate, setStartDate] = useState(() => calendarDateInZone(workspace.timezone));
+  const [quantity, setQuantity] = useState<number | null>(null);
+  const [startDate, setStartDate] = useState(() => calendarDateInZone(workspace.timezone, 1));
   const [times, setTimes] = useState("09:00, 13:00, 18:00");
   const [intervalMinutes, setIntervalMinutes] = useState(120);
   const [notice, setNotice] = useState("");
@@ -468,7 +468,7 @@ function InstagramWorkspacePage({
         setSourceFolder(batch);
         setBatchOrder("selection");
         setSelectedVideoIds(uploaded.map((file) => file.id));
-        setQuantity(Math.min(uploaded.length, maxReelsPerBatch));
+        setQuantity(null);
       } else if (uploaded.length) {
         setSourceFolder("");
         setSelectedVideoIds((current) => [...uploaded.map((file) => file.id), ...current]);
@@ -531,12 +531,14 @@ function InstagramWorkspacePage({
     const chosen = id ? videos.filter((video) => video.importBatch === id) : videos;
     setSourceFolder(id);
     setSelectedVideoIds(chosen.map((video) => video.id));
-    if (id) setQuantity(Math.min(chosen.length, maxReelsPerBatch));
+    setQuantity(null);
   };
   const scheduleVideos =
     reelMode === "batch" ? reelVideos : videos.filter((video) => video.id === singleVideoId);
   const reelsPerAccount =
-    reelMode === "single" ? 1 : Math.max(1, Math.min(maxReelsPerBatch, Math.floor(quantity) || 1));
+    reelMode === "single"
+      ? 1
+      : Math.max(1, Math.min(maxReelsPerBatch, Math.floor(quantity ?? reelVideos.length)));
   const scheduleTimes = reelMode === "single" ? [singleTime].filter(Boolean) : timeSlots;
   const slotsPerDay = scheduleTimes.length;
   const daysInBatch = slotsPerDay ? Math.ceil(reelsPerAccount / slotsPerDay) : 0;
@@ -608,7 +610,7 @@ function InstagramWorkspacePage({
       return;
     }
     if (!repeatVideos && reelsPerAccount > scheduleVideos.length) {
-      setPreviewError("Escolha mais vídeos ou reduza o total de Reels por conta.");
+      setPreviewError("Escolha mais vídeos ou reduza o total por conta em Mais opções.");
       return;
     }
     if (reelsPerAccount * reelAccounts.length > maxReelsPerBatch) {
@@ -637,9 +639,7 @@ function InstagramWorkspacePage({
               minimumIntervalMs,
         )
       ) {
-        setPreviewError(
-          "Separe mais os horários ou abra Intervalo mínimo entre Reels para ajustar.",
-        );
+        setPreviewError("Separe os horários ou ajuste o intervalo em Mais opções.");
         return;
       }
       if (next.some((post) => new Date(post.scheduledAt).getTime() <= Date.now())) {
@@ -1384,8 +1384,7 @@ function InstagramWorkspacePage({
                 <div>
                   <h3 className="text-sm font-semibold text-fuchsia-200">3. Conteúdo dos Reels</h3>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    O que você preencher aqui vale para todos os Reels deste agendamento. Na prévia,
-                    você pode ajustar a legenda de cada vídeo.
+                    Se preencher, o texto vale para todos os Reels. Ajuste cada um na prévia.
                   </p>
                 </div>
                 <ReelCaptionFields
@@ -1394,57 +1393,67 @@ function InstagramWorkspacePage({
                   onCaptionChange={setCaption}
                   onHashtagsChange={setHashtags}
                 />
-                <div className="grid gap-3 lg:grid-cols-2">
-                  <div className="space-y-2 rounded-xl border border-border bg-card p-3">
-                    <Field label="Foto de capa (opcional · JPEG, até 8 MB)">
-                      <input
-                        className="field"
-                        type="file"
-                        accept=".jpg,.jpeg,image/jpeg"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          event.target.value = "";
-                          if (!file) return;
-                          if (!/\.jpe?g$/i.test(file.name) || file.size > 8_000_000 || !file.size) {
-                            setNotice("Escolha uma imagem JPEG de até 8 MB para a capa.");
-                            return;
-                          }
-                          setCover(file);
-                        }}
-                      />
-                    </Field>
-                    {coverPreview && (
-                      <div className="flex items-center gap-3">
-                        <img
-                          className="h-24 w-14 rounded-md border border-border object-cover"
-                          src={coverPreview}
-                          alt="Prévia da capa do Reel"
+                <details className="rounded-lg border border-fuchsia-400/20 p-3">
+                  <summary className="cursor-pointer text-sm font-semibold">
+                    Capa e primeiro comentário (opcionais)
+                  </summary>
+                  <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                    <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+                      <Field label="Foto de capa (opcional · JPEG, até 8 MB)">
+                        <input
+                          className="field"
+                          type="file"
+                          accept=".jpg,.jpeg,image/jpeg"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            event.target.value = "";
+                            if (!file) return;
+                            if (
+                              !/\.jpe?g$/i.test(file.name) ||
+                              file.size > 8_000_000 ||
+                              !file.size
+                            ) {
+                              setNotice("Escolha uma imagem JPEG de até 8 MB para a capa.");
+                              return;
+                            }
+                            setCover(file);
+                          }}
                         />
-                        <button
-                          type="button"
-                          className="text-xs font-semibold text-primary"
-                          onClick={() => setCover(undefined)}
-                        >
-                          Remover capa
-                        </button>
-                      </div>
-                    )}
+                      </Field>
+                      {coverPreview && (
+                        <div className="flex items-center gap-3">
+                          <img
+                            className="h-24 w-14 rounded-md border border-border object-cover"
+                            src={coverPreview}
+                            alt="Prévia da capa do Reel"
+                          />
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-primary"
+                            onClick={() => setCover(undefined)}
+                          >
+                            Remover capa
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="rounded-xl border border-border bg-card p-3">
+                      <Field label="Primeiro comentário (opcional)">
+                        <textarea
+                          className="field min-h-20"
+                          value={firstComment}
+                          maxLength={2200}
+                          placeholder="Texto ou hashtags para o primeiro comentário"
+                          onChange={(event) => setFirstComment(event.target.value)}
+                        />
+                      </Field>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Sai após a confirmação do Reel. A conta precisa autorizar comentários na
+                        Meta.
+                      </p>
+                    </div>
                   </div>
-                  <div className="rounded-xl border border-border bg-card p-3">
-                    <Field label="Primeiro comentário (opcional)">
-                      <textarea
-                        className="field min-h-20"
-                        value={firstComment}
-                        maxLength={2200}
-                        placeholder="Texto ou hashtags para o primeiro comentário"
-                        onChange={(event) => setFirstComment(event.target.value)}
-                      />
-                    </Field>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Sai após a confirmação do Reel. A conta precisa autorizar comentários na Meta.
-                    </p>
-                  </div>
-                </div>
+                </details>
               </section>
               <section className="space-y-4 rounded-xl border border-sky-400/25 bg-card p-3 sm:p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
@@ -1452,7 +1461,7 @@ function InstagramWorkspacePage({
                     <h3 className="text-sm font-semibold text-sky-200">4. Dias e horários</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
                       {reelMode === "batch"
-                        ? "A programação repete os mesmos horários a cada dia até terminar o lote."
+                        ? "Os horários se repetem até acabarem os vídeos."
                         : "Escolha a data e o horário em que o Reel deve sair."}
                     </p>
                   </div>
@@ -1460,7 +1469,7 @@ function InstagramWorkspacePage({
                     {timezoneLabel}
                   </span>
                 </div>
-                <div className="grid gap-3 lg:grid-cols-2">
+                <div className={reelMode === "single" ? "grid gap-3 lg:grid-cols-2" : undefined}>
                   <ScheduleDate
                     value={startDate}
                     timezone={workspace.timezone}
@@ -1481,34 +1490,7 @@ function InstagramWorkspacePage({
                         />
                       </Field>
                     </div>
-                  ) : (
-                    <div className="rounded-xl border border-violet-400/20 bg-violet-400/5 p-3">
-                      <Field label="Total de Reels por conta">
-                        <input
-                          type="number"
-                          min={1}
-                          max={maxReelsPerBatch}
-                          value={quantity}
-                          onChange={(event) => setQuantity(Number(event.target.value))}
-                          className="field"
-                        />
-                      </Field>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        É o total do lote, distribuído pelos dias.
-                      </p>
-                      {!!reelVideos.length && (
-                        <button
-                          type="button"
-                          className="mt-2 text-xs font-semibold text-violet-200 underline decoration-violet-400/50 underline-offset-4"
-                          onClick={() => setQuantity(Math.min(reelVideos.length, maxReelsPerBatch))}
-                        >
-                          Usar{" "}
-                          {Math.min(reelVideos.length, maxReelsPerBatch).toLocaleString("pt-BR")}{" "}
-                          {reelVideos.length === 1 ? "vídeo selecionado" : "vídeos selecionados"}
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  ) : null}
                 </div>
                 {pastTimeToday && (
                   <p className="rounded-lg bg-amber-400/10 p-3 text-sm text-amber-200">
@@ -1517,15 +1499,29 @@ function InstagramWorkspacePage({
                   </p>
                 )}
                 {reelMode === "batch" && (
-                  <>
-                    <ReelTimingFields
-                      value={times}
-                      slots={timeSlots}
-                      onChange={setTimes}
-                      intervalMinutes={intervalMinutes}
-                      onIntervalChange={setIntervalMinutes}
-                    />
+                  <ReelTimingFields
+                    value={times}
+                    slots={timeSlots}
+                    onChange={setTimes}
+                    intervalMinutes={intervalMinutes}
+                    onIntervalChange={setIntervalMinutes}
+                  >
                     <div className="grid items-start gap-3 lg:grid-cols-2">
+                      <Field label="Total de Reels por conta (opcional)">
+                        <input
+                          type="number"
+                          min={1}
+                          max={maxReelsPerBatch}
+                          value={quantity ?? ""}
+                          placeholder="Usar os vídeos selecionados"
+                          onChange={(event) =>
+                            setQuantity(
+                              event.target.value === "" ? null : Number(event.target.value),
+                            )
+                          }
+                          className="field"
+                        />
+                      </Field>
                       <Field label="Ordem dos vídeos">
                         <select
                           className="field"
@@ -1549,7 +1545,7 @@ function InstagramWorkspacePage({
                         Repetir vídeos se a seleção for menor que o total do lote.
                       </label>
                     </div>
-                  </>
+                  </ReelTimingFields>
                 )}
               </section>
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-4">

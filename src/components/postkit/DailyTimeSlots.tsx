@@ -72,9 +72,7 @@ export function DailyTimeSlots({
           : undefined
       }
     >
-      <legend className="text-sm font-semibold">
-        {reelLabels ? "Reels de cada dia" : "Horários de cada dia"}
-      </legend>
+      <legend className="text-sm font-semibold">Horários de cada dia</legend>
       <ol
         className={
           reelLabels ? "mt-2 space-y-2" : "mt-2 grid gap-2 min-[440px]:grid-cols-2 xl:grid-cols-3"
@@ -91,12 +89,12 @@ export function DailyTimeSlots({
               </span>
             )}
             <label className="min-w-0 flex-1 text-xs font-semibold text-muted-foreground">
-              {reelLabels ? "Horário de publicação" : `Horário ${index + 1}`}
+              {!reelLabels && `Horário ${index + 1}`}
               <input
                 type="time"
                 value={slot}
                 aria-label={reelLabels ? `Horário de publicação do Reel ${index + 1}` : undefined}
-                className="field mt-1 min-w-0 text-base tabular-nums"
+                className={`field min-w-0 text-base tabular-nums${reelLabels ? "" : " mt-1"}`}
                 onChange={(event) =>
                   onChange(
                     slots.map((item, i) => (i === index ? event.target.value : item)).join(","),
@@ -104,10 +102,10 @@ export function DailyTimeSlots({
                 }
               />
             </label>
-            {slots.length > 1 && (
+            {!reelLabels && slots.length > 1 && (
               <button
                 type="button"
-                aria-label={`Remover ${reelLabels ? "Reel" : "horário"} ${index + 1}`}
+                aria-label={`Remover horário ${index + 1}`}
                 className="mb-0.5 shrink-0 rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
                 onClick={() => onChange(slots.filter((_, i) => i !== index).join(","))}
               >
@@ -117,13 +115,13 @@ export function DailyTimeSlots({
           </li>
         ))}
       </ol>
-      {slots.length < limit && !slots.includes("") && (
+      {!reelLabels && slots.length < limit && !slots.includes("") && (
         <button
           type="button"
           className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-semibold hover:bg-secondary"
           onClick={() => onChange(value + ",")}
         >
-          <Plus className="size-3.5" /> {reelLabels ? "Adicionar Reel" : "Adicionar horário"}
+          <Plus className="size-3.5" /> Adicionar horário
         </button>
       )}
     </fieldset>
