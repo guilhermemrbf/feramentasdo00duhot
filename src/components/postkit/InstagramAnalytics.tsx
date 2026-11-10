@@ -441,7 +441,7 @@ export function InstagramAnalytics({
                   <p>{showNumber(profile.reel_views)} views de Reels no histórico</p>
                   {(profile.issue === "permission" ||
                     profile.issue === "reconnect" ||
-                    (profile.last_catalog_at && profile.reels > 0 && !profile.measured)) && (
+                    (!profile.measured && (profile.issue || profile.reels > 0))) && (
                     <button
                       type="button"
                       disabled={connecting}

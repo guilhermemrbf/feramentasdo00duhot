@@ -30,6 +30,7 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
       workspaceId: data.workspaceId,
       userId: context.userId,
       mode: data.mode,
+      analytics: data.analytics,
     });
     setCookie(instagramOAuthCookieName(), state, instagramOAuthCookieOptions());
     return {

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getInstagramAccountAccessToken } from "./instagram-oauth.server";
+import { decryptInstagramToken, getInstagramAccountAccessToken } from "./instagram-oauth.server";
 import type { PostkitDatabase } from "./postkit-database";
 import { getMetaGraphBaseUrl, type InstagramAuthMode } from "./social-publishing.server";
 
@@ -9,6 +9,8 @@ type Media = {
   kind: "reel" | "post" | "story";
   published_at: string;
   permalink: string | null;
+  likes: number | null;
+  comments: number | null;
 };
 type Job = {
   account_id: string;
@@ -21,6 +23,7 @@ type Job = {
 };
 type Result = {
   issue?: Issue;
+  graph?: { status: number; code?: number };
   discovered?: boolean;
   restart?: boolean;
   after?: string;
@@ -88,20 +91,29 @@ function instagramPermalink(value: string | undefined) {
 
 async function readPage(base: string, token: string, job: Job, result: Result) {
   const account = encodeURIComponent(job.instagram_user_id);
+  const baseFields = "id,media_product_type,timestamp,permalink";
   const query: Record<string, string> = {
-    fields: "id,media_product_type,timestamp,permalink",
+    fields: job.edge === "media" ? baseFields + ",like_count,comments_count" : baseFields,
     limit: "50",
   };
   if (job.after) query.after = job.after;
-  const page = await readGraph<{
-    data?: Array<{
-      id: string;
-      media_product_type?: string;
-      timestamp?: string;
-      permalink?: string;
-    }>;
-    paging?: { next?: string; cursors?: { after?: string } };
-  }>(base, `${account}/${job.edge}`, query, token);
+  const read = (params: Record<string, string>) =>
+    readGraph<{
+      data?: Array<{
+        id: string;
+        media_product_type?: string;
+        timestamp?: string;
+        permalink?: string;
+        like_count?: number;
+        comments_count?: number;
+      }>;
+      paging?: { next?: string; cursors?: { after?: string } };
+    }>(base, `${account}/${job.edge}`, params, token);
+  const page = await read(query).catch((error) => {
+    if (job.edge === "media" && error instanceof GraphError && error.code === 100)
+      return read({ ...query, fields: baseFields });
+    throw error;
+  });
   if (!Array.isArray(page.data)) throw new Error("Instagram media response is missing its list.");
   const items = new Map<string, Media>();
   for (const item of page.data) {
@@ -120,6 +132,8 @@ async function readPage(base: string, token: string, job: Job, result: Result) {
       kind,
       published_at: item.timestamp,
       permalink: instagramPermalink(item.permalink),
+      likes: metricCount(item.like_count) ?? null,
+      comments: metricCount(item.comments_count) ?? null,
     });
   }
   const next = page.paging?.next ? page.paging.cursors?.after : undefined;
@@ -138,6 +152,9 @@ async function collect(job: Job, token: string) {
     try {
       await readPage(base, token, job, result);
     } catch (error) {
+      if (error instanceof GraphError) {
+        result.graph = { status: error.status, code: error.code };
+      }
       if (
         job.edge === "stories" &&
         error instanceof GraphError &&
@@ -205,8 +222,18 @@ export async function runInstagramAnalytics(client: SupabaseClient<PostkitDataba
 
   let result: Result;
   try {
-    const token = await getInstagramAccountAccessToken(job.account_id);
-    result = await collect(job, token);
+    const authorization = await analyticsAuthorization(client, job);
+    if (!authorization) result = { issue: "reconnect" };
+    else {
+      result = await collect(job, authorization.token);
+      if (
+        !authorization.insightsGranted &&
+        (result.issue ||
+          (result.measurements?.length && result.measurements.every((m) => m.views === null)))
+      ) {
+        result.issue = "permission";
+      }
+    }
   } catch {
     result = { issue: "reconnect" };
   }
@@ -221,5 +248,31 @@ export async function runInstagramAnalytics(client: SupabaseClient<PostkitDataba
     claimed: 1,
     discovered: result.catalog?.length ?? 0,
     measured: result.measurements?.filter((m) => m.views !== null).length ?? 0,
+    issue: result.issue,
+    graph: result.graph,
   });
+}
+
+async function analyticsAuthorization(client: SupabaseClient<PostkitDatabase>, job: Job) {
+  if (job.auth_mode !== "facebook_login") {
+    return { token: await getInstagramAccountAccessToken(job.account_id), insightsGranted: true };
+  }
+  const { data, error } = await client
+    .from("instagram_tokens")
+    .select("analytics_access_token_ciphertext,analytics_token_expires_at")
+    .eq("account_id", job.account_id)
+    .maybeSingle();
+  if (error) throw error;
+  if (data?.analytics_access_token_ciphertext) {
+    if (
+      !data.analytics_token_expires_at ||
+      Date.parse(data.analytics_token_expires_at) <= Date.now()
+    )
+      return null;
+    return {
+      token: await decryptInstagramToken(data.analytics_access_token_ciphertext),
+      insightsGranted: true,
+    };
+  }
+  return { token: await getInstagramAccountAccessToken(job.account_id), insightsGranted: false };
 }

@@ -70,6 +70,7 @@ export async function createInstagramOAuthState(input: {
   workspaceId: string;
   userId: string;
   mode: InstagramAuthMode;
+  analytics?: boolean;
 }): Promise<string> {
   const nonce = globalThis.crypto.getRandomValues(new Uint8Array(32));
   const payload = base64Url(
@@ -86,6 +87,7 @@ export async function verifyInstagramOAuthState(state: string): Promise<{
   workspaceId: string;
   userId: string;
   mode: InstagramAuthMode;
+  analytics?: true;
 }> {
   const [payload, signature, extra] = state.split(".");
   if (!payload || !signature || extra) throw new Error("Invalid OAuth state.");
@@ -104,6 +106,7 @@ export async function verifyInstagramOAuthState(state: string): Promise<{
     workspaceId?: string;
     userId?: string;
     mode?: string;
+    analytics?: boolean;
     nonce?: string;
     expiresAt?: number;
   };
@@ -118,7 +121,12 @@ export async function verifyInstagramOAuthState(state: string): Promise<{
   }
   const mode: InstagramAuthMode =
     parsed.mode === "facebook_login" ? "facebook_login" : "instagram_login";
-  return { workspaceId: parsed.workspaceId, userId: parsed.userId, mode };
+  return {
+    workspaceId: parsed.workspaceId,
+    userId: parsed.userId,
+    mode,
+    ...(parsed.analytics === true ? { analytics: true as const } : {}),
+  };
 }
 
 export async function encryptInstagramToken(token: string): Promise<string> {

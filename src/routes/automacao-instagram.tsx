@@ -17,6 +17,7 @@ import {
   Plus,
   Settings2,
   Sparkles,
+  Trophy,
   Upload,
   Users,
   Video,
@@ -42,6 +43,7 @@ import { calendarDateInZone } from "@/lib/scheduling";
 import { InstagramHistory } from "@/components/postkit/InstagramHistory";
 import { InstagramDashboard } from "@/components/postkit/InstagramDashboard";
 import { InstagramAnalytics } from "@/components/postkit/InstagramAnalytics";
+import { InstagramTopPosts } from "@/components/postkit/InstagramTopPosts";
 import { InstagramLoops } from "@/components/postkit/InstagramLoops";
 import { InstagramStories } from "@/components/postkit/InstagramStories";
 import { InstagramProfileDrafts } from "@/components/postkit/InstagramProfileDrafts";
@@ -82,6 +84,7 @@ export const Route = createFileRoute("/automacao-instagram")({
 
 type Tab =
   | "analytics"
+  | "top-posts"
   | "dashboard"
   | "perfis"
   | "contas"
@@ -124,6 +127,7 @@ const tabGroups = [
     items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
       { id: "analytics", label: "Analytics", icon: BarChart3 },
+      { id: "top-posts", label: "Top posts", icon: Trophy },
     ],
   },
   {
@@ -352,6 +356,12 @@ function InstagramWorkspacePage({
     if (result === "connected") {
       setActiveTab("contas");
       setNotice("Conexão concluída. Confira o @ em Suas contas.");
+    }
+    if (result === "insights_not_granted") {
+      setActiveTab("analytics");
+      setNotice(
+        "A Meta ainda não concedeu acesso às métricas. Confira a permissão na próxima autorização.",
+      );
     }
     if (result === "connection_failed") {
       setActiveTab("contas");
@@ -999,6 +1009,14 @@ function InstagramWorkspacePage({
             connecting={!!connecting}
             onAuthorize={(mode) => void connectInstagram(mode, true)}
             onConnect={() => setTab("contas")}
+          />
+        )}
+
+        {tab === "top-posts" && (
+          <InstagramTopPosts
+            workspaceId={workspace.id}
+            timezone={workspace.timezone}
+            onAnalytics={() => setTab("analytics")}
           />
         )}
 

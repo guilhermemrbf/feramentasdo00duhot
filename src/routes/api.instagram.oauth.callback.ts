@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { deleteCookie, getCookie } from "@tanstack/react-start/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { linkedFacebookInstagramPages } from "@/lib/facebook-instagram-pages";
+import type { PostkitDatabase } from "@/lib/postkit-database";
 
 type InstagramTokenResponse = {
   access_token?: string;
@@ -39,7 +41,8 @@ function oauthFailureReason(error: unknown): string {
     "Facebook Instagram profile lookup failed.": "facebook_instagram_profile_lookup",
     "Facebook returned no accessible Pages.": "facebook_pages_empty",
     "Facebook Pages did not include Page access tokens.": "facebook_page_token_missing",
-    "No professional Instagram account was found on the authorized Pages.": "instagram_not_linked_to_page",
+    "No professional Instagram account was found on the authorized Pages.":
+      "instagram_not_linked_to_page",
     "Professional Instagram profile data is incomplete.": "facebook_instagram_profile_lookup",
     "Instagram account could not be saved.": "account_save",
     "Instagram token could not be stored.": "token_save",
@@ -74,11 +77,16 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
           return redirectToApp(config.appBaseUrl, "connection_failed", "state_validation");
         }
         if (!code) {
-          return redirectToApp(config.appBaseUrl, "connection_failed", "authorization_code_missing");
+          return redirectToApp(
+            config.appBaseUrl,
+            "connection_failed",
+            "authorization_code_missing",
+          );
         }
 
         try {
-          const { workspaceId, userId, mode } = await verifyInstagramOAuthState(returnedState);
+          const { workspaceId, userId, mode, analytics } =
+            await verifyInstagramOAuthState(returnedState);
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const [{ data: workspace }, { data: membership }] = await Promise.all([
             supabaseAdmin.from("workspaces").select("owner_id").eq("id", workspaceId).maybeSingle(),
@@ -97,7 +105,7 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
             throw new Error("Workspace access was revoked during Instagram authorization.");
           }
           if (mode === "facebook_login") {
-            return await connectViaFacebookLogin({ code, config, workspaceId, userId });
+            return await connectViaFacebookLogin({ code, config, workspaceId, userId, analytics });
           }
           const tokenResponse = await fetch("https://api.instagram.com/oauth/access_token", {
             method: "POST",
@@ -197,17 +205,16 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
  * linked to those Pages. */
 async function connectViaFacebookLogin(input: {
   code: string;
-  config: ReturnType<
-    typeof import("@/lib/instagram-oauth.server").getInstagramOAuthConfig
-  >;
+  config: ReturnType<typeof import("@/lib/instagram-oauth.server").getInstagramOAuthConfig>;
   workspaceId: string;
   userId: string;
+  analytics?: boolean;
 }) {
-  const { code, config, workspaceId, userId } = input;
-  const { encryptInstagramToken, FACEBOOK_LOGIN_SCOPES } = await import(
-    "@/lib/instagram-oauth.server"
-  );
+  const { code, config, workspaceId, userId, analytics } = input;
+  const { encryptInstagramToken, FACEBOOK_LOGIN_SCOPES } =
+    await import("@/lib/instagram-oauth.server");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const postkit = supabaseAdmin as unknown as SupabaseClient<PostkitDatabase>;
 
   const shortTokenUrl = new URL(`${config.facebookGraphBaseUrl}/oauth/access_token`);
   shortTokenUrl.search = new URLSearchParams({
@@ -232,10 +239,31 @@ async function connectViaFacebookLogin(input: {
   if (!longTokenResponse.ok) throw new Error("Facebook long-lived token exchange failed.");
   const longToken = (await longTokenResponse.json()) as InstagramTokenResponse;
   if (!longToken.access_token) throw new Error("Facebook did not return a long-lived token.");
+  const analyticsToken = analytics
+    ? await fetch(`${config.facebookGraphBaseUrl}/me/permissions`, {
+        headers: { Authorization: `Bearer ${longToken.access_token}` },
+        signal: AbortSignal.timeout(7_000),
+      })
+        .then(async (response) => {
+          if (!response.ok) return undefined;
+          const permissions = (await response.json()) as {
+            data?: Array<{ permission: string; status: string }>;
+          };
+          return permissions.data?.some(
+            (permission) =>
+              permission.permission === "instagram_manage_insights" &&
+              permission.status === "granted",
+          )
+            ? encryptInstagramToken(longToken.access_token!)
+            : undefined;
+        })
+        .catch(() => undefined)
+    : undefined;
 
   const pagesUrl = new URL(`${config.facebookGraphBaseUrl}/me/accounts`);
   pagesUrl.search = new URLSearchParams({
-    fields: "id,name,access_token,instagram_business_account{id,username,name},connected_instagram_account{id,username,name}",
+    fields:
+      "id,name,access_token,instagram_business_account{id,username,name},connected_instagram_account{id,username,name}",
   }).toString();
   const pagesResponse = await fetch(pagesUrl, {
     headers: { Authorization: "Bearer " + longToken.access_token },
@@ -260,17 +288,13 @@ async function connectViaFacebookLogin(input: {
     throw new Error("Professional Instagram profile data is incomplete.");
   }
 
-  const expiry = new Date(
-    Date.now() + (longToken.expires_in ?? 5_184_000) * 1000,
-  ).toISOString();
+  const expiry = new Date(Date.now() + (longToken.expires_in ?? 5_184_000) * 1000).toISOString();
   for (const entry of professionalAccounts) {
     const ig = entry.ig!;
     let username = ig.username;
     let displayName = ig.name ?? entry.pageName;
     if (!username) {
-      const profileUrl = new URL(
-        `${config.facebookGraphBaseUrl}/${encodeURIComponent(ig.id)}`,
-      );
+      const profileUrl = new URL(`${config.facebookGraphBaseUrl}/${encodeURIComponent(ig.id)}`);
       profileUrl.search = new URLSearchParams({ fields: "id,username,name" }).toString();
       const profileResponse = await fetch(profileUrl, {
         headers: { Authorization: "Bearer " + entry.pageAccessToken },
@@ -294,7 +318,9 @@ async function connectViaFacebookLogin(input: {
           account_type: entry.isBusinessAccount ? "BUSINESS" : null,
           connection_status: "pending",
           auth_mode: "facebook_login",
-          scopes: [...FACEBOOK_LOGIN_SCOPES],
+          scopes: analyticsToken
+            ? [...FACEBOOK_LOGIN_SCOPES, "instagram_manage_insights"]
+            : [...FACEBOOK_LOGIN_SCOPES],
           token_expires_at: expiry,
           last_verified_at: new Date().toISOString(),
           connected_by: userId,
@@ -307,13 +333,19 @@ async function connectViaFacebookLogin(input: {
       .single();
     if (accountError || !account) throw new Error("Instagram account could not be saved.");
 
-    const { error: tokenError } = await supabaseAdmin.from("instagram_tokens").upsert({
+    const { error: tokenError } = await postkit.from("instagram_tokens").upsert({
       account_id: account.id,
       access_token_ciphertext: await encryptInstagramToken(entry.pageAccessToken!),
       refresh_token_ciphertext: null,
       encryption_key_version: "v1",
       token_expires_at: expiry,
       updated_at: new Date().toISOString(),
+      ...(analyticsToken
+        ? {
+            analytics_access_token_ciphertext: analyticsToken,
+            analytics_token_expires_at: expiry,
+          }
+        : {}),
     });
     if (tokenError) throw new Error("Instagram token could not be stored.");
 
@@ -324,5 +356,8 @@ async function connectViaFacebookLogin(input: {
     if (activateError) throw new Error("Instagram account could not be activated.");
   }
 
-  return redirectToApp(config.appBaseUrl, "connected");
+  return redirectToApp(
+    config.appBaseUrl,
+    analytics && !analyticsToken ? "insights_not_granted" : "connected",
+  );
 }
