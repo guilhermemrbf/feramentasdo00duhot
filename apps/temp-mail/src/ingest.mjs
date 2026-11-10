@@ -98,7 +98,6 @@ export function buildSmtp(config, client = db) {
   });
   // Postfix opens one connection and can reuse it for subsequent lookups.
   const map = createServer((socket) => {
-    socket.setEncoding("utf8");
     socket.setTimeout(20_000, () => socket.end());
     let input = Buffer.alloc(0);
     socket.on("error", () => {});

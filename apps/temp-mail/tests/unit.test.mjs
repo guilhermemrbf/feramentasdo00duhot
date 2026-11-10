@@ -1,8 +1,9 @@
 import test from "node:test";
+import { createConnection } from "node:net";
 import assert from "node:assert/strict";
 import { readConfig, normalizeDomain } from "../src/config.mjs";
 import { activeMailbox, digest, expiresAt, normalizeRecipient, passwordHash, randomLocalPart, token, validToken, verifyPassword } from "../src/core.mjs";
-import { decodeMapRequest, mapAnswer, storeIncoming } from "../src/ingest.mjs";
+import { buildSmtp, decodeMapRequest, mapAnswer, storeIncoming } from "../src/ingest.mjs";
 import { parseMail, sanitizeMessageHtml } from "../src/mime.mjs";
 import { mailFixture } from "./fixtures.mjs";
 
@@ -78,4 +79,27 @@ test("ingestão rejeita mensagens grandes e destinatário desconhecido antes de 
   const client = { mailbox: { findFirst: async () => null } };
   await assert.rejects(storeIncoming(client, { MAX_MESSAGE_SIZE: 1024 }, to, "", Buffer.alloc(1025)), { responseCode: 552 });
   await assert.rejects(storeIncoming(client, { MAX_MESSAGE_SIZE: 1024 }, to, "", Buffer.alloc(10)), { responseCode: 550 });
+});
+
+test("socketmap lê e responde pelo socket TCP com o comprimento em bytes", async () => {
+  const { map } = buildSmtp({ MAX_MESSAGE_SIZE: 1024 }, { domain: { count: async () => 1 } });
+  try {
+    await new Promise((resolve) => map.listen(0, "127.0.0.1", resolve));
+    const port = map.address().port;
+    const result = await new Promise((resolve, reject) => {
+      const socket = createConnection({ host: "127.0.0.1", port }, () => {
+        const payload = "domains mês.example";
+        socket.write(Buffer.byteLength(payload) + ":" + payload + ",");
+      });
+      socket.setTimeout(2000, () => socket.destroy(new Error("Socketmap timeout")));
+      socket.once("error", reject);
+      socket.once("data", (data) => {
+        socket.destroy();
+        resolve(data.toString());
+      });
+    });
+    assert.equal(result, "4:OK 1,");
+  } finally {
+    await new Promise((resolve) => map.close(resolve));
+  }
 });

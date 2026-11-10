@@ -129,6 +129,7 @@ export function Inbox() {
     connection.addEventListener("changed", sync);
     connection.addEventListener("closed", () => {
       connection.close();
+      if (generation.current !== version) return;
       resetView(null);
       setNotice("A caixa foi encerrada. Você pode gerar outro endereço.");
     });
