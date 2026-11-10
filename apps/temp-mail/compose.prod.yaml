@@ -1,0 +1,23 @@
+services:
+  migrate:
+    environment: { NODE_ENV: production }
+  api:
+    environment: { NODE_ENV: production }
+  worker:
+    environment: { NODE_ENV: production }
+  ingest:
+    environment: { NODE_ENV: production }
+  web:
+    ports: ["80:80", "443:443"]
+    environment:
+      WEB_HOST: ${WEB_HOST:?configure WEB_HOST}
+    volumes:
+      - ./infrastructure/nginx/prod.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${TLS_WEB_DIR:?configure TLS_WEB_DIR}:/run/tls:ro
+  postfix:
+    ports: ["25:25"]
+    environment:
+      SMTP_HOST: ${SMTP_HOST:?configure SMTP_HOST}
+      SMTP_TLS: "1"
+    volumes:
+      - ${TLS_SMTP_DIR:?configure TLS_SMTP_DIR}:/run/smtp-tls:ro

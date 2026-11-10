@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Domain {
+  id        String    @id @default(uuid()) @db.Uuid
+  domain    String    @unique
+  status    String    @default("active")
+  isDefault Boolean   @default(false) @map("is_default")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  mailboxes Mailbox[]
+
+  @@map("domains")
+}
+
+model Mailbox {
+  id              String           @id @default(uuid()) @db.Uuid
+  address         String?          @unique
+  localPart       String?          @map("local_part")
+  domainId        String           @map("domain_id") @db.Uuid
+  accessTokenHash String?          @unique @map("access_token_hash")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  expiresAt       DateTime         @map("expires_at")
+  status          String           @default("active")
+  lastActivityAt  DateTime         @default(now()) @map("last_activity_at")
+  domain          Domain           @relation(fields: [domainId], references: [id], onDelete: Restrict)
+  messages        Message[]
+  intake          Intake[]
+  receipts        MessageReceipt[]
+
+  @@index([status, expiresAt])
+  @@index([createdAt])
+  @@index([domainId])
+  @@map("mailboxes")
+}
+
+model Message {
+  id         String    @id @default(uuid()) @db.Uuid
+  mailboxId  String    @map("mailbox_id") @db.Uuid
+  dedupeKey  String    @map("dedupe_key")
+  messageId  String?   @map("message_id")
+  sender     String
+  recipient  String
+  subject    String
+  textBody   String    @map("text_body")
+  htmlBody   String    @map("html_body")
+  sentAt     DateTime? @map("sent_at")
+  receivedAt DateTime  @map("received_at")
+  sizeBytes  Int       @map("size_bytes")
+  isRead     Boolean   @default(false) @map("is_read")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  mailbox    Mailbox   @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+
+  @@unique([mailboxId, dedupeKey])
+  @@index([mailboxId, receivedAt, id])
+  @@map("messages")
+}
+
+// Permanent receipt of a retry key lasts only as long as its mailbox.
+// Raw bytes are erased as soon as processing completes.
+model Intake {
+  id           String   @id @default(uuid()) @db.Uuid
+  mailboxId    String   @map("mailbox_id") @db.Uuid
+  fingerprint  String
+  raw          Bytes?
+  sizeBytes    Int      @map("size_bytes")
+  envelopeFrom String   @map("envelope_from")
+  status       String   @default("pending")
+  receivedAt   DateTime @default(now()) @map("received_at")
+  mailbox      Mailbox  @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+
+  @@unique([mailboxId, fingerprint])
+  @@index([status, receivedAt])
+  @@map("intake")
+}
+
+// Survives individual message deletion without retaining its content.
+model MessageReceipt {
+  mailboxId String @map("mailbox_id") @db.Uuid
+  dedupeKey String @map("dedupe_key")
+
+  mailbox Mailbox @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+
+  @@id([mailboxId, dedupeKey])
+  @@map("message_receipts")
+}
+
+model AdminUser {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         String   @default("owner")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_users")
+}
+
+model SystemLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  event     String
+  severity  String
+  source    String
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("system_logs")
+}
+
+model Settings {
+  id       Int @id @default(1)
+  ttlHours Int @map("ttl_hours")
+
+  @@map("settings")
+}
+
+model Counter {
+  name  String @id
+  value BigInt @default(0)
+
+  @@map("counters")
+}

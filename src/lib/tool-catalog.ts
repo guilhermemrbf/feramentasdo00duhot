@@ -1,5 +1,21 @@
 export const TOOL_CATALOG = [
   {
+    id: "tempMail",
+    path: "/email-temporario",
+    name: "Correio Temporário",
+    category: "Ambientes",
+    mode: "Caixa de entrada",
+    summary: "Receba mensagens em um endereço de e-mail descartável.",
+    input: "Um endereço temporário gerado para seu navegador.",
+    output: "Mensagens em uma caixa privada com atualização ao vivo e expiração.",
+    steps: [
+      "Abra a ferramenta e copie seu endereço temporário.",
+      "Aguarde as mensagens na caixa de entrada.",
+      "Exclua a caixa quando terminar ou deixe que expire.",
+    ],
+    requirement: "O serviço de recebimento precisa estar conectado.",
+  },
+  {
     id: "telegram",
     path: "/telegram-sync",
     name: "Telegram Sync",

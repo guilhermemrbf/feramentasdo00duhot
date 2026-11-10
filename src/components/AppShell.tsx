@@ -8,6 +8,7 @@ import {
   Home,
   Image,
   Layers3,
+  Mail,
   Menu,
   MonitorSmartphone,
   PanelTop,
@@ -40,6 +41,7 @@ export const TOOL_ICONS = {
   social: Layers3,
   funnels: GitBranch,
   profiles: MonitorSmartphone,
+  tempMail: Mail,
 };
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (

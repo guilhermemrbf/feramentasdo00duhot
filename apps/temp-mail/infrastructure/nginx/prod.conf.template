@@ -1,0 +1,14 @@
+server {
+    listen 80;
+    server_name ${WEB_HOST};
+    return 308 https://${WEB_HOST}$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name ${WEB_HOST};
+    ssl_certificate /run/tls/fullchain.pem;
+    ssl_certificate_key /run/tls/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    include /etc/nginx/site.inc;
+}

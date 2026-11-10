@@ -1,0 +1,52 @@
+name: Correio Temporário
+on:
+  push:
+    paths:
+      - "apps/temp-mail/**"
+      - ".github/workflows/temp-mail.yml"
+  pull_request:
+    paths:
+      - "apps/temp-mail/**"
+      - ".github/workflows/temp-mail.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smtp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/temp-mail
+    env:
+      ADMIN_EMAIL: operator@example.test
+      ADMIN_PASSWORD: only-for-disposable-ci-mailbox
+      TEST_ADMIN_EMAIL: operator@example.test
+      TEST_ADMIN_PASSWORD: only-for-disposable-ci-mailbox
+      CREATE_PER_HOUR: "50"
+      COMPOSE_FILE: compose.yaml:compose.override.yaml:compose.test.yaml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --global pnpm@11.25.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build && pnpm exec tsc --noEmit && pnpm test
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: node scripts/init-env.mjs
+      - run: docker compose up --build --wait --wait-timeout 180
+      - name: Executar integração SMTP e navegador
+        run: |
+          set -a
+          source .env
+          set +a
+          export DATABASE_URL="postgresql://tempmail:${POSTGRES_PASSWORD}@127.0.0.1:55432/tempmail"
+          pnpm run test:integration
+          pnpm run test:e2e
+      - if: failure()
+        run: docker compose logs --tail 60
+      - if: always()
+        run: docker compose down --volumes

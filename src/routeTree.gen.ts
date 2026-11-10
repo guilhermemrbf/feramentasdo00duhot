@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AutomacaoInstagramRouteImport } from './routes/automacao-instagram'
 import { Route as AutomacaoTiktokRouteImport } from './routes/automacao-tiktok'
 import { Route as CriarPaginaRouteImport } from './routes/criar-pagina'
+import { Route as EmailTemporarioRouteImport } from './routes/email-temporario'
 import { Route as FunilRouteImport } from './routes/funil'
 import { Route as GerarPreviewRouteImport } from './routes/gerar-preview'
 import { Route as HotProfilesRouteImport } from './routes/hot-profiles'
@@ -41,6 +42,11 @@ const AutomacaoTiktokRoute = AutomacaoTiktokRouteImport.update({
 const CriarPaginaRoute = CriarPaginaRouteImport.update({
   id: '/criar-pagina',
   path: '/criar-pagina',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmailTemporarioRoute = EmailTemporarioRouteImport.update({
+  id: '/email-temporario',
+  path: '/email-temporario',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FunilRoute = FunilRouteImport.update({
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/criar-pagina': typeof CriarPaginaRoute
+  '/email-temporario': typeof EmailTemporarioRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/criar-pagina': typeof CriarPaginaRoute
+  '/email-temporario': typeof EmailTemporarioRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/criar-pagina': typeof CriarPaginaRoute
+  '/email-temporario': typeof EmailTemporarioRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/automacao-instagram'
     | '/automacao-tiktok'
     | '/criar-pagina'
+    | '/email-temporario'
     | '/funil'
     | '/gerar-preview'
     | '/hot-profiles'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/automacao-instagram'
     | '/automacao-tiktok'
     | '/criar-pagina'
+    | '/email-temporario'
     | '/funil'
     | '/gerar-preview'
     | '/hot-profiles'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/automacao-instagram'
     | '/automacao-tiktok'
     | '/criar-pagina'
+    | '/email-temporario'
     | '/funil'
     | '/gerar-preview'
     | '/hot-profiles'
@@ -189,6 +201,7 @@ export interface RootRouteChildren {
   AutomacaoInstagramRoute: typeof AutomacaoInstagramRoute
   AutomacaoTiktokRoute: typeof AutomacaoTiktokRoute
   CriarPaginaRoute: typeof CriarPaginaRoute
+  EmailTemporarioRoute: typeof EmailTemporarioRoute
   FunilRoute: typeof FunilRoute
   GerarPreviewRoute: typeof GerarPreviewRoute
   HotProfilesRoute: typeof HotProfilesRoute
@@ -228,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/criar-pagina'
       fullPath: '/criar-pagina'
       preLoaderRoute: typeof CriarPaginaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/email-temporario': {
+      id: '/email-temporario'
+      path: '/email-temporario'
+      fullPath: '/email-temporario'
+      preLoaderRoute: typeof EmailTemporarioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/funil': {
@@ -301,6 +321,7 @@ const rootRouteChildren: RootRouteChildren = {
   AutomacaoInstagramRoute: AutomacaoInstagramRoute,
   AutomacaoTiktokRoute: AutomacaoTiktokRoute,
   CriarPaginaRoute: CriarPaginaRoute,
+  EmailTemporarioRoute: EmailTemporarioRoute,
   FunilRoute: FunilRoute,
   GerarPreviewRoute: GerarPreviewRoute,
   HotProfilesRoute: HotProfilesRoute,
@@ -314,13 +335,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

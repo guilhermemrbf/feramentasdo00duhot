@@ -1,0 +1,13 @@
+packages:
+  - "."
+allowBuilds:
+  "@prisma/client": true
+  "@prisma/engines": true
+  prisma: true
+  esbuild: true
+  msgpackr-extract: false
+minimumReleaseAgeExclude:
+  - bullmq@6.7.3
+  - mailparser@3.14.3
+  - nodemailer@10.5.0
+  - smtp-server@3.21.4

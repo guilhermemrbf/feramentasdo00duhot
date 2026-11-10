@@ -1,0 +1,126 @@
+name: temp-mail
+x-app: &app
+  image: 00duhot-temp-mail-app:local
+  build:
+    context: .
+    target: app
+  init: true
+  environment: &environment
+    NODE_ENV: ${MAIL_ENV:-development}
+    DATABASE_URL: postgresql://tempmail:${POSTGRES_PASSWORD:?execute scripts/init-env.mjs}@postgres:5432/tempmail
+    REDIS_URL: redis://redis:6379
+    APP_URL: ${APP_URL:?configure APP_URL}
+    MAILBOX_TOKEN_SECRET: ${MAILBOX_TOKEN_SECRET:?execute scripts/init-env.mjs}
+    MAILBOX_TTL_HOURS: ${MAILBOX_TTL_HOURS:-24}
+    MAX_MESSAGE_SIZE: ${MAX_MESSAGE_SIZE:-2097152}
+    MAX_MAILBOX_MESSAGES: ${MAX_MAILBOX_MESSAGES:-100}
+    MAX_MAILBOX_BYTES: ${MAX_MAILBOX_BYTES:-20971520}
+    CREATE_PER_HOUR: ${CREATE_PER_HOUR:-8}
+    API_BIND: 0.0.0.0
+    SMTP_BIND: 0.0.0.0
+    TRUST_PROXY: "1"
+    ABUSE_CONTACT:
+  networks: [data]
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: tempmail
+      POSTGRES_USER: tempmail
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?execute scripts/init-env.mjs}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tempmail -d tempmail"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes: [redis-data:/data]
+    networks: [data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  migrate:
+    <<: *app
+    depends_on:
+      postgres: { condition: service_healthy }
+    command: ["sh", "-c", "pnpm db:migrate && pnpm db:seed"]
+    environment:
+      <<: *environment
+      DEFAULT_MAIL_DOMAIN:
+      ADMIN_EMAIL:
+      ADMIN_PASSWORD:
+  api:
+    <<: *app
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    networks: [edge, data]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 5s
+      timeout: 4s
+      retries: 15
+    restart: unless-stopped
+  worker:
+    <<: *app
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    command: ["node", "src/worker.mjs"]
+    restart: unless-stopped
+  ingest:
+    <<: *app
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    command: ["node", "src/ingest.mjs"]
+    networks: [data, smtp]
+    healthcheck:
+      test: ["CMD", "node", "-e", "const s=require('net').connect(2525,'127.0.0.1',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 4s
+      retries: 15
+    restart: unless-stopped
+  postfix:
+    build: ./infrastructure/postfix
+    environment:
+      SMTP_HOST: ${SMTP_HOST:-mx.mail.test}
+      MAX_MESSAGE_SIZE: ${MAX_MESSAGE_SIZE:-2097152}
+    depends_on:
+      ingest: { condition: service_healthy }
+    networks: [smtp, mx]
+    volumes: [postfix-spool:/var/spool/postfix]
+    healthcheck:
+      test: ["CMD-SHELL", "postfix status"]
+      interval: 8s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  web:
+    build:
+      context: .
+      target: web
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [edge]
+    restart: unless-stopped
+
+networks:
+  data: { internal: true }
+  smtp: { internal: true }
+  edge: {}
+  mx: {}
+
+volumes:
+  postgres-data:
+  redis-data:
+  postfix-spool:
