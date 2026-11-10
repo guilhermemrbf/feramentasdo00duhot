@@ -39,13 +39,14 @@ export async function storeIncoming(client, config, to, from, raw) {
 }
 
 export function decodeMapRequest(value) {
-  const match = /^(\d{1,4}):/u.exec(value);
-  if (!match) return value.length > 5 ? false : null;
+  const input = Buffer.isBuffer(value) ? value : Buffer.from(value);
+  const match = /^(\d{1,4}):/u.exec(input.subarray(0, 5).toString("ascii"));
+  if (!match) return input.length > 5 ? false : null;
   const end = match[0].length + Number(match[1]);
   if (end > 1024) return false;
-  if (value.length <= end) return null;
-  if (value[end] !== "," || value.length !== end + 1) return false;
-  return value.slice(match[0].length, end);
+  if (input.length <= end) return null;
+  if (input[end] !== 44 || input.length !== end + 1) return false;
+  return input.subarray(match[0].length, end).toString("utf8");
 }
 export async function mapAnswer(client, request) {
   const separator = request.indexOf(" ");
@@ -99,14 +100,15 @@ export function buildSmtp(config, client = db) {
   const map = createServer((socket) => {
     socket.setEncoding("utf8");
     socket.setTimeout(20_000, () => socket.end());
-    let input = "";
+    let input = Buffer.alloc(0);
     socket.on("error", () => {});
     socket.on("data", (chunk) => {
-      input += chunk;
+      if (input.length + chunk.length > 1025) return socket.destroy();
+      input = Buffer.concat([input, chunk]);
       const decoded = decodeMapRequest(input);
       if (decoded === false) return socket.end("18:PERM Invalid query,");
       if (decoded === null) return;
-      input = "";
+      input = Buffer.alloc(0);
       socket.pause();
       mapAnswer(client, decoded).catch(() => "TEMP Lookup unavailable").then((response) => {
         if (socket.destroyed) return;

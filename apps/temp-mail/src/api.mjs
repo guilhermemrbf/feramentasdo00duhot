@@ -105,6 +105,9 @@ export async function buildApi(config, client = db, redis = redisClient(config))
       schema: {
         summary, tags: [path.split("/")[1]],
         ...(security ? { security: [{ [security]: [] }] } : {}),
+        ...(path.includes("/:id") ? {
+          params: { type: "object", required: ["id"], properties: { id: { type: "string", format: "uuid" } } },
+        } : {}),
         ...(requestBody ? { body: requestBody } : {}),
       },
       handler,

@@ -19,7 +19,8 @@ postconf -e "myhostname=${SMTP_HOST:-mx.mail.test}" \
   'smtpd_client_recipient_rate_limit=180' 'smtpd_client_event_limit_exceptions=' \
   'bounce_queue_lifetime=0' 'maximal_queue_lifetime=1d' \
   "message_size_limit=$size" 'maillog_file=/dev/stdout'
-postconf -F smtp/inet/chroot=n smtp/unix/chroot=n
+# These processes resolve internal Docker service names.
+postconf -F smtp/inet/chroot=n smtp/unix/chroot=n rewrite/unix/chroot=n
 if [ "${SMTP_TLS:-0}" = 1 ]; then
   test -r /run/smtp-tls/fullchain.pem && test -r /run/smtp-tls/privkey.pem
   postconf -e 'smtpd_tls_security_level=may' 'smtpd_tls_cert_file=/run/smtp-tls/fullchain.pem' \
