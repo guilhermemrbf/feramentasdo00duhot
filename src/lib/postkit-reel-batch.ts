@@ -26,13 +26,22 @@ export function orderReelVideos<T extends { name: string; importPosition: number
 }
 
 export function captionWithHashtags(description: string, hashtags: string) {
-  return [description.trim(), hashtags.trim()].filter(Boolean).join("\n\n");
+  return [description.trim(), reelHashtags(hashtags).join(" ")].filter(Boolean).join("\n\n");
+}
+
+export function reelHashtags(value: string) {
+  return value
+    .split(/[\s,#]+/)
+    .filter(Boolean)
+    .map((word) => `#${word}`);
 }
 
 export function dailyReelTimes(count: number) {
-  const minutes = Math.floor(840 / (count - 1));
+  if (count === 1) return "18:00";
+  const start = Math.max(0, Math.min(480, 1320 - 120 * (count - 1)));
+  const minutes = Math.floor((1320 - start) / (count - 1));
   return Array.from({ length: count }, (_, index) => {
-    const time = 480 + minutes * index;
+    const time = start + minutes * index;
     return `${String(Math.floor(time / 60)).padStart(2, "0")}:${String(time % 60).padStart(2, "0")}`;
   }).join(", ");
 }

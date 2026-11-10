@@ -14,9 +14,9 @@ export function ScheduleDate({
   const today = calendarDateInZone(timezone, 0, now);
   const tomorrow = calendarDateInZone(timezone, 1, now);
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3">
       <label className="block text-sm font-semibold">
-        Primeiro dia de publicação
+        Quando começa?
         <input
           className="field mt-1"
           type="date"
@@ -35,7 +35,7 @@ export function ScheduleDate({
             type="button"
             aria-pressed={value === date}
             onClick={() => onChange(date)}
-            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-secondary aria-pressed:border-primary/50 aria-pressed:bg-primary/10 aria-pressed:text-primary"
+            className="rounded-md border border-emerald-400/20 px-3 py-1.5 text-sm hover:bg-emerald-400/10 aria-pressed:border-emerald-400/50 aria-pressed:bg-emerald-400/15 aria-pressed:text-emerald-100"
           >
             {label}
           </button>
@@ -59,18 +59,18 @@ export function DailyTimeSlots({
   return (
     <fieldset className="min-w-0">
       <legend className="text-sm font-semibold">Horários de cada dia</legend>
-      <p className="mb-2 text-xs text-muted-foreground">
-        Adicione um horário para cada publicação que deseja fazer no mesmo dia.
-      </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="mt-2 grid gap-2 min-[440px]:grid-cols-2 xl:grid-cols-3">
         {slots.map((slot, index) => (
-          <div key={index} className="flex items-end gap-1 rounded-md border border-border p-2">
-            <label className="text-xs text-muted-foreground">
+          <div
+            key={index}
+            className="flex items-end gap-2 rounded-lg border border-border bg-card p-2.5"
+          >
+            <label className="min-w-0 flex-1 text-xs font-semibold text-muted-foreground">
               Horário {index + 1}
               <input
                 type="time"
                 value={slot}
-                className="field mt-1"
+                className="field mt-1 min-w-0 text-base tabular-nums"
                 onChange={(event) =>
                   onChange(
                     slots.map((item, i) => (i === index ? event.target.value : item)).join(","),
@@ -82,7 +82,7 @@ export function DailyTimeSlots({
               <button
                 type="button"
                 aria-label={`Remover horário ${index + 1}`}
-                className="mb-0.5 rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="mb-0.5 shrink-0 rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
                 onClick={() => onChange(slots.filter((_, i) => i !== index).join(","))}
               >
                 <X className="size-4" />

@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Clock3,
   FileText,
-  Hash,
   Instagram,
   Library,
   LayoutDashboard,
@@ -43,16 +42,18 @@ import { InstagramDashboard } from "@/components/postkit/InstagramDashboard";
 import { InstagramLoops } from "@/components/postkit/InstagramLoops";
 import { InstagramStories } from "@/components/postkit/InstagramStories";
 import { InstagramProfileDrafts } from "@/components/postkit/InstagramProfileDrafts";
-import { DailyTimeSlots, ScheduleDate } from "@/components/postkit/DailyTimeSlots";
+import { ScheduleDate } from "@/components/postkit/DailyTimeSlots";
+import { ReelTimingFields } from "@/components/postkit/ReelTimingFields";
+import { ReelCaptionFields } from "@/components/postkit/ReelCaptionFields";
 import { validatePostkitVideo } from "@/lib/postkit-media";
 import type { PostkitDatabase } from "@/lib/postkit-database";
 import {
   buildReelSchedule,
   captionWithHashtags,
   dailyReelTimes,
-  maxDailyReels,
   maxReelsPerBatch,
   orderReelVideos,
+  reelHashtags,
   type ReelOrder,
 } from "@/lib/postkit-reel-batch";
 
@@ -205,7 +206,7 @@ function InstagramWorkspacePage({
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [caption, setCaption] = useState("");
-  const [hashtags, setHashtags] = useState("#reels #instagram");
+  const [hashtags, setHashtags] = useState("");
   const [reelMode, setReelMode] = useState<"single" | "batch">("batch");
   const [singleVideoId, setSingleVideoId] = useState("");
   const [singleTime, setSingleTime] = useState("18:00");
@@ -218,7 +219,6 @@ function InstagramWorkspacePage({
   const [quantity, setQuantity] = useState(3);
   const [startDate, setStartDate] = useState(() => calendarDateInZone(workspace.timezone));
   const [times, setTimes] = useState("09:00, 13:00, 18:00");
-  const [dailyLimit, setDailyLimit] = useState(3);
   const [intervalMinutes, setIntervalMinutes] = useState(120);
   const [notice, setNotice] = useState("");
   const [connectedAccounts, setConnectedAccounts] = useState<
@@ -536,9 +536,26 @@ function InstagramWorkspacePage({
     reelMode === "batch" ? reelVideos : videos.filter((video) => video.id === singleVideoId);
   const reelsPerAccount =
     reelMode === "single" ? 1 : Math.max(1, Math.min(maxReelsPerBatch, Math.floor(quantity) || 1));
-  const allowedPerDay = Math.max(1, Math.min(maxDailyReels, Math.floor(dailyLimit) || 1));
   const scheduleTimes = reelMode === "single" ? [singleTime].filter(Boolean) : timeSlots;
-  const slotsPerDay = Math.min(allowedPerDay, scheduleTimes.length);
+  const slotsPerDay = scheduleTimes.length;
+  const daysInBatch = slotsPerDay ? Math.ceil(reelsPerAccount / slotsPerDay) : 0;
+  const agendaNow = new Date();
+  const agendaClock = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: workspace.timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  const pastTimeToday =
+    startDate === calendarDateInZone(workspace.timezone, 0, agendaNow)
+      ? scheduleTimes
+          .slice(0, reelsPerAccount)
+          .find((time) => time <= agendaClock.format(agendaNow))
+      : undefined;
+  const timezoneLabel =
+    new Intl.DateTimeFormat("pt-BR", { timeZone: workspace.timezone, timeZoneName: "long" })
+      .formatToParts(agendaNow)
+      .find((part) => part.type === "timeZoneName")?.value ?? workspace.timezone;
   const currentSettings = JSON.stringify([
     reelAccounts.map((account) => account.id),
     scheduleVideos.map((video) => video.id),
@@ -548,7 +565,6 @@ function InstagramWorkspacePage({
     startDate,
     times,
     quantity,
-    dailyLimit,
     intervalMinutes,
     repeatVideos,
     caption,
@@ -578,6 +594,14 @@ function InstagramWorkspacePage({
       setPreviewError("Preencha todos os horários ou remova os campos vazios.");
       return;
     }
+    if (reelMode === "batch" && timeSlots.length !== times.split(",").length) {
+      setPreviewError("Use horários diferentes para cada Reel.");
+      return;
+    }
+    if (captionWithHashtags(caption, hashtags).length > 2200) {
+      setPreviewError("Reduza a legenda ou as hashtags para caber nos 2.200 caracteres.");
+      return;
+    }
     if (!repeatVideos && reelsPerAccount > scheduleVideos.length) {
       setPreviewError("Escolha mais vídeos ou reduza o total de Reels por conta.");
       return;
@@ -596,7 +620,7 @@ function InstagramWorkspacePage({
         ordered,
         reelsPerAccount,
         startDate,
-        scheduleTimes.slice(0, slotsPerDay),
+        scheduleTimes,
         workspace.timezone,
       );
       const minimumIntervalMs = Math.max(1, Number(intervalMinutes) || 1) * 60 * 1000;
@@ -608,7 +632,9 @@ function InstagramWorkspacePage({
               minimumIntervalMs,
         )
       ) {
-        setPreviewError("Separe mais os horários ou ajuste o intervalo mínimo em Mais opções.");
+        setPreviewError(
+          "Separe mais os horários ou abra Intervalo mínimo entre Reels para ajustar.",
+        );
         return;
       }
       if (next.some((post) => new Date(post.scheduledAt).getTime() <= Date.now())) {
@@ -710,7 +736,7 @@ function InstagramWorkspacePage({
           media_asset_id: post.assetId,
           content_type: "reel",
           caption: captionWithHashtags(post.caption, post.hashtags),
-          hashtags: post.hashtags.trim().split(/\s+/).filter(Boolean),
+          hashtags: reelHashtags(post.hashtags),
           scheduled_at: post.scheduledAt,
           timezone: workspace.timezone,
           status: "scheduled",
@@ -916,7 +942,11 @@ function InstagramWorkspacePage({
               setSelectedAccountId(accountId);
               setExtraAccountIds([]);
               setSelectedVideoIds(available);
-              setDailyLimit(daily);
+              setTimes(
+                timeSlots.length >= daily
+                  ? timeSlots.slice(0, daily).join(", ")
+                  : dailyReelTimes(daily),
+              );
               setQuantity(available.length || daily);
               setRepeatVideos(false);
               setNotice(
@@ -1228,9 +1258,9 @@ function InstagramWorkspacePage({
         {tab === "fila" && (
           <section className="mt-6 space-y-4">
             <Panel title="Agendar Reels">
-              <p className="mb-5 text-sm text-muted-foreground">
-                Escolha o que vai ao ar e quando. Depois de confirmar, os Reels entram na
-                programação automática.
+              <p className="mb-5 max-w-2xl text-sm text-muted-foreground">
+                Escolha as contas e os vídeos, prepare o texto e monte os horários. Confira tudo na
+                prévia antes de colocar os Reels na fila.
               </p>
               <div
                 role="group"
@@ -1252,15 +1282,17 @@ function InstagramWorkspacePage({
                     type="button"
                     aria-pressed={reelMode === option.id}
                     onClick={() => setReelMode(option.id)}
-                    className="rounded-lg border border-border p-3 text-left hover:bg-secondary/40 aria-pressed:border-primary/50 aria-pressed:bg-primary/10"
+                    className="rounded-xl border border-border bg-card p-3 text-left hover:bg-secondary/40 aria-pressed:border-primary/60 aria-pressed:bg-primary/10"
                   >
                     <span className="block text-sm font-semibold">{option.title}</span>
                     <span className="mt-1 block text-xs text-muted-foreground">{option.help}</span>
                   </button>
                 ))}
               </div>
-              <fieldset className="mb-5 rounded-md border border-border p-3">
-                <legend className="px-1 text-sm font-semibold">1. Em quais contas?</legend>
+              <fieldset className="mb-5 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-4">
+                <legend className="px-1 text-sm font-semibold text-cyan-200">
+                  1. Contas do Instagram
+                </legend>
                 {!!readyAccounts.length && (
                   <p className="mb-2 text-xs text-muted-foreground">
                     Se marcar mais de uma conta, cada uma recebe a mesma programação.
@@ -1302,9 +1334,9 @@ function InstagramWorkspacePage({
                   </button>
                 )}
               </fieldset>
-              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-400/25 bg-violet-400/5 p-4">
                 <div>
-                  <h3 className="text-sm font-semibold">
+                  <h3 className="text-sm font-semibold text-violet-200">
                     {reelMode === "single" ? "2. Qual vídeo?" : "2. Quais vídeos?"}
                   </h3>
                   {reelMode === "single" && videos.length > 0 ? (
@@ -1343,32 +1375,23 @@ function InstagramWorkspacePage({
                       : "Escolher vídeos"}
                 </button>
               </div>
-              <section className="mb-5 rounded-xl border border-primary/20 bg-primary/5 p-4">
-                <h3 className="text-sm font-semibold">3. Detalhes do Reel</h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  A descrição, as hashtags, a capa e o primeiro comentário valem para todos os Reels
-                  deste agendamento.
-                </p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Field label="Descrição do Reel (legenda)">
-                    <textarea
-                      className="field min-h-20"
-                      value={caption}
-                      maxLength={2200}
-                      onChange={(event) => setCaption(event.target.value)}
-                    />
-                  </Field>
-                  <Field label="Hashtags na legenda">
-                    <textarea
-                      className="field min-h-20"
-                      value={hashtags}
-                      placeholder="#reels #instagram"
-                      maxLength={2200}
-                      onChange={(event) => setHashtags(event.target.value)}
-                    />
-                  </Field>
-                  <div className="space-y-2">
-                    <Field label="Foto de capa (JPEG, até 8 MB)">
+              <section className="mb-5 space-y-3 rounded-xl border border-fuchsia-400/25 bg-fuchsia-400/5 p-3 sm:p-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-fuchsia-200">3. Conteúdo dos Reels</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    O que você preencher aqui vale para todos os Reels deste agendamento. Na prévia,
+                    você pode ajustar a legenda de cada vídeo.
+                  </p>
+                </div>
+                <ReelCaptionFields
+                  caption={caption}
+                  hashtags={hashtags}
+                  onCaptionChange={setCaption}
+                  onHashtagsChange={setHashtags}
+                />
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+                    <Field label="Foto de capa (opcional · JPEG, até 8 MB)">
                       <input
                         className="field"
                         type="file"
@@ -1402,7 +1425,7 @@ function InstagramWorkspacePage({
                       </div>
                     )}
                   </div>
-                  <div>
+                  <div className="rounded-xl border border-border bg-card p-3">
                     <Field label="Primeiro comentário (opcional)">
                       <textarea
                         className="field min-h-20"
@@ -1417,131 +1440,115 @@ function InstagramWorkspacePage({
                     </p>
                   </div>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Esse texto vale para o lote inteiro. Você pode mudar a legenda de um vídeo na
-                  prévia.
-                </p>
               </section>
-              <h3 className="mb-1 text-sm font-semibold">4. Quando publicar?</h3>
-              <p className="mb-3 text-xs text-muted-foreground">
-                {reelMode === "batch" &&
-                  "Os horários se repetem a cada dia até publicar o total escolhido. "}
-                Fuso da agenda: {workspace.timezone}.
-              </p>
-              <div className="grid gap-4 md:grid-cols-2">
-                <ScheduleDate
-                  value={startDate}
-                  timezone={workspace.timezone}
-                  onChange={setStartDate}
-                />
-                {reelMode === "single" ? (
-                  <Field label="Horário de publicação">
-                    <input
-                      type="time"
-                      className="field"
-                      value={singleTime}
-                      onChange={(event) => setSingleTime(event.target.value)}
-                    />
-                  </Field>
-                ) : (
-                  <>
-                    <Field label="Quantos Reels por conta no total?">
-                      <input
-                        type="number"
-                        min={1}
-                        max={maxReelsPerBatch}
-                        value={quantity}
-                        onChange={(event) => setQuantity(Number(event.target.value))}
-                        className="field"
-                      />
-                    </Field>
-                    <div className="md:col-span-2">
-                      <div
-                        className="mb-3 flex flex-wrap items-center gap-2"
-                        role="group"
-                        aria-label="Ritmo rápido por conta"
-                      >
-                        <span className="text-xs font-semibold text-muted-foreground">
-                          Preencher horários
-                        </span>
-                        {[4, 5, 6].map((count) => (
-                          <button
-                            key={count}
-                            type="button"
-                            className="rounded-full border border-border px-3 py-1 text-sm hover:bg-secondary"
-                            onClick={() => {
-                              setDailyLimit(count);
-                              setTimes(dailyReelTimes(count));
-                            }}
-                          >
-                            {count} por dia
-                          </button>
-                        ))}
-                      </div>
-                      <DailyTimeSlots value={times} onChange={setTimes} limit={maxDailyReels} />
+              <section className="space-y-4 rounded-xl border border-sky-400/25 bg-card p-3 sm:p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-semibold text-sky-200">4. Dias e horários</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {reelMode === "batch"
+                        ? "A programação repete os mesmos horários a cada dia até terminar o lote."
+                        : "Escolha a data e o horário em que o Reel deve sair."}
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-sky-400/25 px-2.5 py-1 text-xs text-sky-200">
+                    {timezoneLabel}
+                  </span>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <ScheduleDate
+                    value={startDate}
+                    timezone={workspace.timezone}
+                    onChange={setStartDate}
+                  />
+                  {reelMode === "single" ? (
+                    <div className="rounded-xl border border-sky-400/20 bg-sky-400/5 p-3">
+                      <Field label="A que horas?">
+                        <input
+                          type="time"
+                          className="field text-base"
+                          value={singleTime}
+                          onChange={(event) => setSingleTime(event.target.value)}
+                        />
+                      </Field>
                     </div>
-                    <Field label="Em que ordem?">
-                      <select
-                        className="field"
-                        value={batchOrder}
-                        onChange={(event) => setBatchOrder(event.target.value as ReelOrder)}
-                      >
-                        <option value="selection">
-                          {sourceFolder ? "Ordem da pasta importada" : "Ordem da biblioteca"}
-                        </option>
-                        <option value="numeric">Ordem numérica pelo nome (1, 2, 10…)</option>
-                        <option value="random">Ordem aleatória na prévia</option>
-                      </select>
-                    </Field>
+                  ) : (
+                    <div className="rounded-xl border border-violet-400/20 bg-violet-400/5 p-3">
+                      <Field label="Total de Reels por conta">
+                        <input
+                          type="number"
+                          min={1}
+                          max={maxReelsPerBatch}
+                          value={quantity}
+                          onChange={(event) => setQuantity(Number(event.target.value))}
+                          className="field"
+                        />
+                      </Field>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        É o total do lote, distribuído pelos dias.
+                      </p>
+                      {!!reelVideos.length && (
+                        <button
+                          type="button"
+                          className="mt-2 text-xs font-semibold text-violet-200 underline decoration-violet-400/50 underline-offset-4"
+                          onClick={() => setQuantity(Math.min(reelVideos.length, maxReelsPerBatch))}
+                        >
+                          Usar{" "}
+                          {Math.min(reelVideos.length, maxReelsPerBatch).toLocaleString("pt-BR")}{" "}
+                          {reelVideos.length === 1 ? "vídeo selecionado" : "vídeos selecionados"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {pastTimeToday && (
+                  <p className="rounded-lg bg-amber-400/10 p-3 text-sm text-amber-200">
+                    O horário de {pastTimeToday} de hoje já passou. Escolha Amanhã ou edite o
+                    horário.
+                  </p>
+                )}
+                {reelMode === "batch" && (
+                  <>
+                    <ReelTimingFields
+                      value={times}
+                      slots={timeSlots}
+                      onChange={setTimes}
+                      intervalMinutes={intervalMinutes}
+                      onIntervalChange={setIntervalMinutes}
+                    />
+                    <div className="grid items-start gap-3 lg:grid-cols-2">
+                      <Field label="Ordem dos vídeos">
+                        <select
+                          className="field"
+                          value={batchOrder}
+                          onChange={(event) => setBatchOrder(event.target.value as ReelOrder)}
+                        >
+                          <option value="selection">
+                            {sourceFolder ? "Ordem da pasta importada" : "Ordem da biblioteca"}
+                          </option>
+                          <option value="numeric">Ordem numérica pelo nome (1, 2, 10…)</option>
+                          <option value="random">Ordem aleatória na prévia</option>
+                        </select>
+                      </Field>
+                      <label className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm">
+                        <input
+                          type="checkbox"
+                          className="mt-1"
+                          checked={repeatVideos}
+                          onChange={(event) => setRepeatVideos(event.target.checked)}
+                        />
+                        Repetir vídeos se a seleção for menor que o total do lote.
+                      </label>
+                    </div>
                   </>
                 )}
-              </div>
-              {reelMode === "batch" && (
-                <details className="mt-4 rounded-lg border border-border p-3">
-                  <summary className="cursor-pointer text-sm font-semibold">
-                    Mais opções de publicação
-                  </summary>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <Field label="Limite de Reels por dia em cada conta">
-                      <input
-                        type="number"
-                        min={1}
-                        max={maxDailyReels}
-                        value={dailyLimit}
-                        onChange={(event) => setDailyLimit(Number(event.target.value))}
-                        className="field"
-                      />
-                    </Field>
-                    <Field label="Tempo mínimo entre Reels (minutos)">
-                      <input
-                        type="number"
-                        min={1}
-                        value={intervalMinutes}
-                        onChange={(event) => setIntervalMinutes(Number(event.target.value))}
-                        className="field"
-                      />
-                    </Field>
-                  </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Se você adicionar mais horários que o limite por dia, serão usados os primeiros
-                    horários do dia.
-                  </p>
-                  <label className="mt-3 flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={repeatVideos}
-                      onChange={(event) => setRepeatVideos(event.target.checked)}
-                    />{" "}
-                    Repetir vídeos quando faltarem arquivos para completar a programação.
-                  </label>
-                </details>
-              )}
+              </section>
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-4">
                 <div>
                   <p className="text-sm font-semibold">5. Confira a programação</p>
                   <p className="text-xs text-muted-foreground">
                     {reelAccounts.length && slotsPerDay
-                      ? `${reelsPerAccount} por conta × ${reelAccounts.length} ${reelAccounts.length === 1 ? "conta" : "contas"} · Até ${Math.min(slotsPerDay, reelsPerAccount)} por dia em cada conta.`
+                      ? `${reelsPerAccount} por conta · Até ${Math.min(slotsPerDay, reelsPerAccount)} por dia · ${daysInBatch} ${daysInBatch === 1 ? "dia" : "dias"} de programação.`
                       : "Escolha as contas, os vídeos e os horários para ver a prévia."}
                   </p>
                 </div>
@@ -1734,96 +1741,66 @@ function InstagramWorkspacePage({
         {tab === "conteudo" && (
           <section className="mt-6">
             <Panel title="Legendas e hashtags">
-              <div className="grid gap-5 lg:grid-cols-2">
-                <Field label="Legenda padrão">
-                  <textarea
-                    value={caption}
-                    onChange={(event) => setCaption(event.target.value)}
-                    placeholder="Escreva uma legenda base para seus vídeos..."
-                    className="field min-h-40"
-                    maxLength={2200}
-                  />
-                </Field>
-                <div className="space-y-2">
-                  <Field label="Hashtags padrão">
-                    <textarea
-                      value={hashtags}
-                      onChange={(event) => setHashtags(event.target.value)}
-                      placeholder="#reels #conteudo"
-                      className="field min-h-40"
-                    />
-                  </Field>
-                  <p className="text-xs text-muted-foreground">
-                    {hashtags.trim() ? hashtags.trim().split(/\s+/).filter(Boolean).length : 0}{" "}
-                    itens separados por espaço. As variações automáticas serão adicionadas depois.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-5 rounded-lg border border-border p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Hash className="size-4 text-primary" /> Prévia do texto
-                </div>
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
-                  {caption || "Sua legenda aparecerá aqui."}
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Prepare o texto opcional do próximo agendamento. Você pode editar estes mesmos
+                  campos na tela Agendar Reels.
                 </p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-primary">
-                  {hashtags || "Suas hashtags aparecerão aqui."}
-                </p>
+                <ReelCaptionFields
+                  caption={caption}
+                  hashtags={hashtags}
+                  onCaptionChange={setCaption}
+                  onHashtagsChange={setHashtags}
+                />
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                  onClick={() => setTab("fila")}
+                >
+                  Ir para Agendar Reels <ArrowRight className="size-4" />
+                </button>
               </div>
-              <button
-                onClick={() =>
-                  setNotice(
-                    "Texto mantido somente nesta sessão. A persistência de legendas será adicionada no backend.",
-                  )
-                }
-                className="mt-4 rounded-md border border-border px-4 py-2 text-xs font-semibold"
-              >
-                Conferir estado local
-              </button>
             </Panel>
           </section>
         )}
 
         {tab === "config" && (
           <section className="mt-6 space-y-4">
-            <Panel title="Preferências de agendamento">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Fuso horário de referência">
-                  <input className="field" value={workspace.timezone} readOnly />
-                </Field>
-                <Field label="Limite diário padrão">
-                  <input
-                    type="number"
-                    min={1}
-                    max={maxDailyReels}
-                    value={dailyLimit}
-                    onChange={(event) => setDailyLimit(Number(event.target.value))}
-                    className="field"
-                  />
-                </Field>
-                <Field label="Intervalo mínimo padrão (minutos)">
-                  <input
-                    type="number"
-                    min={1}
-                    value={intervalMinutes}
-                    onChange={(event) => setIntervalMinutes(Number(event.target.value))}
-                    className="field"
-                  />
-                </Field>
-                <DailyTimeSlots value={times} onChange={setTimes} limit={maxDailyReels} />
+            <Panel title="Horários para agendar Reels">
+              <div className="space-y-4">
+                <p className="max-w-xl text-sm text-muted-foreground">
+                  Ajuste os horários do próximo lote aqui ou na tela Agendar Reels. As escolhas
+                  ficam disponíveis enquanto o painel estiver aberto.
+                </p>
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-400/25 bg-emerald-400/5 p-3">
+                  <Clock3 className="size-5 shrink-0 text-emerald-300" aria-hidden />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Fuso horário da operação</p>
+                    <p className="break-all text-sm font-semibold text-emerald-200">
+                      {timezoneLabel}
+                    </p>
+                  </div>
+                </div>
+                <ReelTimingFields
+                  value={times}
+                  slots={timeSlots}
+                  onChange={setTimes}
+                  intervalMinutes={intervalMinutes}
+                  onIntervalChange={setIntervalMinutes}
+                />
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                  onClick={() => {
+                    setReelMode("batch");
+                    setTab("fila");
+                  }}
+                >
+                  Usar horários em um lote <ArrowRight className="size-4" />
+                </button>
               </div>
-              <button
-                onClick={() =>
-                  setNotice(
-                    "Preferências aplicadas apenas à sessão atual. A gravação permanente será feita com o Supabase.",
-                  )
-                }
-                className="mt-5 rounded-md border border-border px-4 py-2 text-xs font-semibold"
-              >
-                Aplicar nesta sessão
-              </button>
             </Panel>
-            <Panel title="Status da integração">
+            <Panel title="Publicação automática">
               <div className="flex flex-wrap items-start justify-between gap-4 rounded-md border border-border bg-secondary/30 p-4">
                 <div className="flex min-w-0 items-start gap-3">
                   {workerActive ? (
@@ -1834,15 +1811,14 @@ function InstagramWorkspacePage({
                   <div>
                     <p className="text-sm font-semibold">
                       {workerActive === null
-                        ? "Verificando processamento"
+                        ? "Verificando o status"
                         : workerActive
-                          ? "Processamento automático ativo"
-                          : "Processamento automático pendente"}
+                          ? "Publicação automática ativa"
+                          : "Publicação automática desativada"}
                     </p>
                     <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
-                      O servidor verifica a fila a cada minuto usando credencial gerada e guardada
-                      no Vault do Supabase. Só publica itens que já foram agendados pela equipe. O
-                      horário real pode variar; acompanhe o resultado no Histórico.
+                      Os Reels entram na fila quando você confirma o agendamento. Acompanhe no
+                      Histórico quando cada publicação sair.
                     </p>
                   </div>
                 </div>

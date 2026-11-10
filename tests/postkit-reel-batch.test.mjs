@@ -50,6 +50,8 @@ test("folder order survives reversed library loading, and shuffling keeps every 
 test("hashtags are joined with the caption without counting an absent separator", () => {
   assert.equal(captionWithHashtags("   ", " #a "), "#a");
   assert.equal(captionWithHashtags(" Desc ", " #a #b "), "Desc\n\n#a #b");
+  assert.equal(captionWithHashtags("", "#moda, lookdodia\n#café"), "#moda #lookdodia #café");
+  assert.equal(captionWithHashtags("  ", ", # "), "");
 });
 
 test("the cover is sent during creation and the comment targets the published media", async (t) => {
