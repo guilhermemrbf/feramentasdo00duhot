@@ -186,51 +186,53 @@ export function InstagramDashboard({
 
   return (
     <div className="space-y-4">
-      <section
-        aria-labelledby="instagram-first-steps"
-        className="rounded-2xl border border-border bg-card p-4 sm:p-5"
-      >
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 id="instagram-first-steps" className="font-display text-lg font-semibold">
-              Primeiros passos
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Da primeira conexão à primeira publicação.
-            </p>
+      {accountCount === 0 && (
+        <section
+          aria-labelledby="instagram-first-steps"
+          className="rounded-2xl border border-border bg-card p-4 sm:p-5"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="instagram-first-steps" className="font-display text-lg font-semibold">
+                Primeiros passos
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Da primeira conexão à primeira publicação.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-medium">
+              <progress
+                value={completed}
+                max={steps.length}
+                aria-label="Progresso dos primeiros passos"
+                className="h-2 w-24 accent-primary sm:w-36"
+              />
+              {completed} de {steps.length}
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-xs font-medium">
-            <progress
-              value={completed}
-              max={steps.length}
-              aria-label="Progresso dos primeiros passos"
-              className="h-2 w-24 accent-primary sm:w-36"
-            />
-            {completed} de {steps.length}
-          </div>
-        </div>
-        <ol className="mt-3 divide-y divide-border">
-          {steps.map(({ title, done, action, run }, index) => (
-            <li key={title} className="flex flex-wrap items-center gap-3 py-3 last:pb-0">
-              <span
-                className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${done ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-border text-muted-foreground"}`}
-              >
-                {done ? <Check className="size-4" aria-label="Concluído" /> : index + 1}
-              </span>
-              <span className="min-w-40 flex-1 text-sm font-medium">{title}</span>
-              {!done && (
-                <button
-                  type="button"
-                  onClick={run}
-                  className="rounded-md px-2 py-1.5 text-sm font-semibold text-primary hover:bg-primary/10"
+          <ol className="mt-3 divide-y divide-border">
+            {steps.map(({ title, done, action, run }, index) => (
+              <li key={title} className="flex flex-wrap items-center gap-3 py-3 last:pb-0">
+                <span
+                  className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${done ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-border text-muted-foreground"}`}
                 >
-                  {action}
-                </button>
-              )}
-            </li>
-          ))}
-        </ol>
-      </section>
+                  {done ? <Check className="size-4" aria-label="Concluído" /> : index + 1}
+                </span>
+                <span className="min-w-40 flex-1 text-sm font-medium">{title}</span>
+                {!done && (
+                  <button
+                    type="button"
+                    onClick={run}
+                    className="rounded-md px-2 py-1.5 text-sm font-semibold text-primary hover:bg-primary/10"
+                  >
+                    {action}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       <section aria-label="Resumo da operação" className="space-y-3">
         <div
