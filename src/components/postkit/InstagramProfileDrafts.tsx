@@ -10,6 +10,7 @@ type ProfileDraft = {
   workspace_id: string;
   display_name: string;
   handle: string;
+  registration_email: string | null;
   bio: string;
   product_url: string | null;
   photo_path: string | null;
@@ -41,6 +42,7 @@ type DraftForm = {
   accountId: string | null;
   name: string;
   handle: string;
+  email: string;
   bio: string;
   link: string;
   photoPath: string | null;
@@ -150,6 +152,7 @@ export function InstagramProfileDrafts({
       accountId: draft?.instagram_account_id ?? null,
       name: draft?.display_name ?? "",
       handle: draft?.handle ?? "",
+      email: draft?.registration_email ?? "",
       bio: draft?.bio ?? "",
       link: draft?.product_url ?? "",
       photoPath: draft?.photo_path ?? null,
@@ -173,8 +176,14 @@ export function InstagramProfileDrafts({
     try {
       const name = form.name.trim();
       const handle = form.handle.trim().replace(/^@/, "").toLowerCase();
+      const email = form.email.trim();
       if (!name || !/^[a-z0-9._]{1,30}$/.test(handle))
         throw new Error("Informe o nome e um @ com até 30 letras, números, pontos ou sublinhados.");
+      if (
+        (!form.editing || email) &&
+        (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      )
+        throw new Error("Informe um e-mail de cadastro válido.");
       if (!Number.isInteger(form.daily) || form.daily < 1 || form.daily > 10)
         throw new Error("Escolha de 1 a 10 Reels por dia.");
       let link: string | null = null;
@@ -201,6 +210,7 @@ export function InstagramProfileDrafts({
       const values = {
         display_name: name,
         handle,
+        registration_email: email || null,
         bio: form.bio.trim(),
         product_url: link,
         photo_path: photoPath,
@@ -222,7 +232,11 @@ export function InstagramProfileDrafts({
             )
             .select("id");
       if (result.error?.code === "23505")
-        throw new Error("Já existe uma ficha para esse @ no espaço.");
+        throw new Error(
+          result.error.message.includes("instagram_profile_drafts_workspace_email")
+            ? "Este e-mail já está em outra ficha. Use um endereço diferente para cada conta."
+            : "Já existe uma ficha para esse @ no espaço.",
+        );
       if (result.error || (form.editing && !result.data?.length))
         throw new Error("Não foi possível salvar a ficha.");
       if (!form.editing && !result.data?.length) {
@@ -332,7 +346,7 @@ export function InstagramProfileDrafts({
               <UserRoundPlus className="size-4 text-sky-300" /> 1. Prepare os dados
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Guarde o nome, a foto, a bio e o link.
+              Escolha um e-mail diferente para cada conta e guarde o nome, a foto e a bio.
             </p>
           </li>
           <li className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/5 p-3">
@@ -340,7 +354,7 @@ export function InstagramProfileDrafts({
               <Instagram className="size-4 text-fuchsia-300" /> 2. Crie e conecte a conta
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Crie no Instagram e depois autorize a conta profissional aqui.
+              Faça o cadastro no Instagram, coloque a foto e a bio e conecte a conta profissional.
             </p>
           </li>
           <li className="rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-3">
@@ -348,7 +362,7 @@ export function InstagramProfileDrafts({
               <CalendarDays className="size-4 text-emerald-300" /> 3. Organize as publicações
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Programe os primeiros Reels ou monte a agenda de Stories.
+              Com a conta conectada, escolha quando programar Reels ou preparar Stories.
             </p>
           </li>
         </ol>
@@ -407,6 +421,23 @@ export function InstagramProfileDrafts({
                   value={form.handle}
                   onChange={(event) => patchForm({ handle: event.target.value })}
                 />
+              </label>
+              <label className="block text-sm sm:col-span-2">
+                E-mail para cadastrar a conta
+                <input
+                  type="email"
+                  required={!form.editing}
+                  maxLength={254}
+                  autoComplete="off"
+                  placeholder="perfil@seudominio.com"
+                  className="field mt-1"
+                  value={form.email}
+                  onChange={(event) => patchForm({ email: event.target.value })}
+                />
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  Use um endereço que você controla e pode acessar depois. O e-mail fica visível
+                  para a equipe neste espaço. Senha e códigos ficam no Instagram.
+                </span>
               </label>
               <label className="block text-sm">
                 Foto de perfil (JPG ou PNG)
@@ -568,9 +599,11 @@ export function InstagramProfileDrafts({
             const match = accounts.find((item) => item.username.toLowerCase() === draft.handle);
             const status = account
               ? "Pronto para agendar"
-              : draft.account_created
-                ? "Falta conectar a conta"
-                : "Falta criar no Instagram";
+              : match
+                ? "Falta vincular a ficha"
+                : draft.account_created
+                  ? "Falta conectar a conta"
+                  : "Falta criar no Instagram";
             return (
               <article key={draft.id} className="space-y-3 rounded-md border border-border p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
@@ -584,6 +617,11 @@ export function InstagramProfileDrafts({
                     {status}
                   </span>
                 </div>
+                {draft.registration_email && (
+                  <p className="break-all text-xs text-muted-foreground">
+                    E-mail de cadastro: {draft.registration_email}
+                  </p>
+                )}
                 {draft.bio && (
                   <p className="whitespace-pre-wrap break-words text-sm">{draft.bio}</p>
                 )}
@@ -598,9 +636,11 @@ export function InstagramProfileDrafts({
                   <p className="rounded-md bg-secondary/40 px-3 py-2 text-xs text-muted-foreground">
                     {account
                       ? "A conta está vinculada. Escolha qual conteúdo quer preparar."
-                      : draft.account_created
-                        ? `Vincule a conta @${draft.handle} a esta ficha para usar os dados na programação.`
-                        : `Copie os dados, crie @${draft.handle} pelo Instagram e volte para marcar a conta como criada.`}
+                      : match
+                        ? `Vincule @${match.username} a esta ficha para preparar as publicações.`
+                        : draft.account_created
+                          ? "Conecte a conta profissional em Contas e volte para vincular esta ficha."
+                          : `Use os dados da ficha para cadastrar @${draft.handle} no Instagram. Depois volte e marque a conta como criada.`}
                   </p>
                 )}
                 <div className="flex flex-wrap gap-2">
@@ -612,6 +652,15 @@ export function InstagramProfileDrafts({
                       onClick={() => openForm(draft)}
                     >
                       Editar ficha
+                    </button>
+                  )}
+                  {draft.registration_email && (
+                    <button
+                      type="button"
+                      className={button}
+                      onClick={() => copy(draft.registration_email!, "E-mail")}
+                    >
+                      Copiar e-mail
                     </button>
                   )}
                   {draft.bio && (
@@ -642,15 +691,15 @@ export function InstagramProfileDrafts({
                         Preparar foto para baixar
                       </button>
                     ))}
-                  {canEdit && !draft.account_created && (
+                  {canEdit && !draft.account_created && !match && (
                     <>
                       <a
                         className={button}
-                        href="https://www.instagram.com/"
+                        href="https://www.instagram.com/accounts/emailsignup/"
                         target="_blank"
                         rel="noreferrer"
                       >
-                        Abrir Instagram
+                        Abrir cadastro no Instagram
                       </a>
                       <button
                         type="button"
@@ -663,7 +712,7 @@ export function InstagramProfileDrafts({
                     </>
                   )}
                   {canEdit &&
-                    draft.account_created &&
+                    (draft.account_created || match) &&
                     !account &&
                     (match ? (
                       <button
