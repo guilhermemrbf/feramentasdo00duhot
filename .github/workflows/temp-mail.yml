@@ -48,3 +48,33 @@ jobs:
         run: docker compose logs --tail 60
       - if: always()
         run: docker compose down --volumes
+      - name: Preparar certificados e nomes locais do perfil de produção
+        id: prod-config
+        run: |
+          cert_dir="$RUNNER_TEMP/temp-mail-cert"
+          mkdir -p "$cert_dir"
+          openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 2 \
+            -subj "/CN=correio.example.com" \
+            -addext "subjectAltName=DNS:correio.example.com,DNS:mx.example.com" \
+            -keyout "$cert_dir/privkey.pem" -out "$cert_dir/fullchain.pem"
+          printf '%s\n' '127.0.0.1 correio.example.com mx.example.com' | sudo tee -a /etc/hosts > /dev/null
+          {
+            echo "APP_URL=https://correio.example.com"
+            echo "WEB_HOST=correio.example.com"
+            echo "SMTP_HOST=mx.example.com"
+            echo "DEFAULT_MAIL_DOMAIN=temporario.example.com"
+            echo "ABUSE_CONTACT=abuse@example.com"
+            echo "TLS_WEB_DIR=$cert_dir"
+            echo "TLS_SMTP_DIR=$cert_dir"
+            echo "NODE_EXTRA_CA_CERTS=$cert_dir/fullchain.pem"
+          } >> "$GITHUB_ENV"
+      - name: Subir o perfil de produção no runner
+        run: docker compose -p temp-mail-production-check -f compose.yaml -f compose.prod.yaml up --wait --wait-timeout 120
+      - name: Validar HTTPS, SMTP na porta 25 com STARTTLS e entrega ao vivo
+        run: pnpm smoke:production https://correio.example.com temporario.example.com --mx-host mx.example.com
+      - name: Ler logs do perfil de produção após falha
+        if: ${{ failure() && steps.prod-config.outcome == 'success' }}
+        run: docker compose -p temp-mail-production-check -f compose.yaml -f compose.prod.yaml logs --tail 60
+      - name: Remover o ambiente de produção descartável
+        if: ${{ always() && steps.prod-config.outcome == 'success' }}
+        run: docker compose -p temp-mail-production-check -f compose.yaml -f compose.prod.yaml down --volumes

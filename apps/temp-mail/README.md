@@ -121,6 +121,18 @@ docker compose -f compose.yaml -f compose.prod.yaml up --build --wait
 docker compose -f compose.yaml -f compose.prod.yaml ps
 ```
 
+### Validar o serviço a partir de outra rede
+
+Em uma máquina fora da rede do VPS que possa abrir conexões de saída na porta 25, instale as dependências do módulo com `pnpm install --frozen-lockfile` e execute:
+
+```sh
+pnpm smoke:production https://correio.seudominio.com temporario.seudominio.com
+```
+
+O teste consulta o MX publicado, cria uma caixa descartável via HTTPS, exige STARTTLS com certificado válido, envia um e-mail de teste, aguarda a atualização SSE, verifica o HTML sanitizado e exclui a caixa. No GitHub Actions, o mesmo teste usa certificados e hostnames locais do runner com `--mx-host`. Essa execução valida a configuração de produção, enquanto a execução externa valida o DNS público e a entrada no VPS.
+
+Use um subdomínio para os endereços temporários, como `temporario.seudominio.com`, e aponte o MX desse subdomínio para `mx.seudominio.com`. Isso permite manter os registros MX do domínio raiz. O endereço padrão `*.lovable.app` continua servindo o catálogo.
+
 ### DNS
 
 Substitua os exemplos pelo domínio e IP que controla.

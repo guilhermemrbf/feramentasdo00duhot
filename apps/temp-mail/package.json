@@ -14,7 +14,8 @@
     "db:seed": "node src/seed.mjs",
     "test": "node --test tests/unit.test.mjs",
     "test:integration": "node --test tests/integration.test.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "smoke:production": "node scripts/smoke-production.mjs"
   },
   "dependencies": {
     "@fastify/swagger": "^9.7.0",
@@ -23,6 +24,7 @@
     "fastify": "5.12.8",
     "ioredis": "^5.8.2",
     "mailparser": "3.14.3",
+    "nodemailer": "10.5.0",
     "prisma": "6.19.3",
     "sanitize-html": "2.18.1",
     "smtp-server": "3.21.4",
