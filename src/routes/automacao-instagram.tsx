@@ -368,6 +368,12 @@ function InstagramWorkspacePage({
     if (result === "connection_failed") {
       setActiveTab("contas");
       const reason = new URLSearchParams(window.location.search).get("instagram_reason");
+      if (reason === "unified_accounts_empty") {
+        setNotice(
+          "A Meta concluiu o login, mas não retornou nenhum perfil para o MauseHot. Confira se a conta profissional pertence ao portfólio escolhido e se ela foi compartilhada na autorização.",
+        );
+        return;
+      }
       const reasonLabels: Record<string, string> = {
         meta_denied: "a Meta não concluiu a autorização",
         state_validation: "a validação de segurança da autorização",
@@ -387,7 +393,6 @@ function InstagramWorkspacePage({
         unified_grant: "a validação do acesso concedido pelo Instagram",
         unified_permissions: "a confirmação das permissões de perfil e publicação",
         unified_account_lookup: "a busca das contas compartilhadas pela Meta",
-        unified_accounts_empty: "a seleção de contas. Escolha uma conta profissional no portfólio",
         no_linked_account: "a busca por Instagram profissional vinculado a uma Página",
         account_save: "o salvamento da conta do Instagram",
         token_save: "o armazenamento seguro da autorização",
