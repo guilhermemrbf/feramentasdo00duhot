@@ -25,7 +25,7 @@ import { AppShell, PageIntro } from "@/components/AppShell";
 export const Route = createFileRoute("/otimizar-criativos")({
   head: () => ({
     meta: [
-      { title: "Otimizar Criativos — 00duHot" },
+      { title: "Otimizar Criativos — MauseHot" },
       {
         name: "description",
         content:

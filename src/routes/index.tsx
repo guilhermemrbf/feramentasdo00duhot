@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "00duHot — seu centro de operação" },
+      { title: "MauseHot — seu centro de operação" },
       {
         name: "description",
         content:
@@ -40,7 +40,7 @@ function Home() {
           <div>
             <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-red/30 bg-brand-red/10 px-3 py-1 text-xs font-semibold text-brand-red">
               <span className="size-1.5 rounded-full bg-brand-red" aria-hidden />
-              Workspace 00duHot
+              Workspace MauseHot
             </p>
             <h1 className="max-w-xl font-display text-3xl font-bold leading-tight tracking-tight sm:text-[46px]">
               Sua operação digital <span className="text-primary">em um só lugar</span>
@@ -59,7 +59,7 @@ function Home() {
           <div className="home-mark hidden shrink-0 p-2 sm:block">
             <img
               src="/brand/mark.png"
-              alt="Mascote 00duHot: rato de óculos com corrente dourada"
+              alt="Mascote MauseHot: rato de óculos com corrente dourada"
               width={176}
               height={176}
               className="size-32 rounded-2xl object-contain xl:size-44"

@@ -99,7 +99,7 @@ function GoogleAccessCard({ error }: { error: string }) {
   return (
     <AppShell>
       <div className="mx-auto my-16 max-w-md rounded-lg border border-border bg-card p-6 text-center">
-        <h2 className="font-display text-lg font-semibold">Entrar no 00duHot</h2>
+        <h2 className="font-display text-lg font-semibold">Entrar no MauseHot</h2>
         <p className="mt-2 text-xs leading-5 text-muted-foreground">
           Use sua conta Google para abrir sua operação. Não há cadastro por e-mail e senha.
         </p>

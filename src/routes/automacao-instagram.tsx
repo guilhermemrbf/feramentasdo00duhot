@@ -72,7 +72,7 @@ export const Route = createFileRoute("/automacao-instagram")({
   }),
   head: () => ({
     meta: [
-      { title: "Automação Instagram — 00duHot" },
+      { title: "Automação Instagram — MauseHot" },
       {
         name: "description",
         content:

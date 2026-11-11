@@ -4,7 +4,7 @@ import { Download, Laptop, ShieldCheck, ArrowRight, Eye, Link2 } from "lucide-re
 import { AppShell, PageIntro } from "@/components/AppShell";
 
 export const Route = createFileRoute("/telegram-sync")({
-  head: () => ({ meta: [{ title: "Trocar links do meu canal — Telegram Sync · 00duHot" }] }),
+  head: () => ({ meta: [{ title: "Trocar links do meu canal — Telegram Sync · MauseHot" }] }),
   component: TelegramSync,
 });
 const { url: download, release } = downloads.telegramSync;

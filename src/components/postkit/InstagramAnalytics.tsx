@@ -470,7 +470,7 @@ export function InstagramAnalytics({
           )}
         </section>
         <section className={`${surface} p-4`}>
-          <h2 className="font-semibold">Status das publicações do 00duHot</h2>
+          <h2 className="font-semibold">Status das publicações do MauseHot</h2>
           {data && !data.statuses.length && (
             <p className="mt-3 text-sm text-muted-foreground">
               Nenhuma publicação do painel no período.

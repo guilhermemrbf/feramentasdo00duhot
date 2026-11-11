@@ -56,7 +56,7 @@ import {
 export const Route = createFileRoute("/funil")({
   head: () => ({
     meta: [
-      { title: "Funil — 00duHot" },
+      { title: "Funil — MauseHot" },
       { name: "description", content: "Desenhe, conecte e edite cada etapa do seu funil." },
     ],
   }),

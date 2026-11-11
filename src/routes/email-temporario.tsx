@@ -1,29 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowUpRight, Mail } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { TEMP_MAIL_URL } from "@/lib/tool-catalog";
 
 export const Route = createFileRoute("/email-temporario")({
-  head: () => ({ meta: [{ title: "Correio Temporário — 00duHot" }] }),
+  head: () => ({ meta: [{ title: "Correio Temporário — MauseHot" }] }),
   component: TemporaryEmail,
 });
 
-function publicMailUrl(value: string | undefined) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
-    if (url.username || url.password || url.href !== url.origin + "/") return null;
-    if (url.protocol === "https:" || (import.meta.env.DEV && local && url.protocol === "http:")) {
-      return url.href;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
 function TemporaryEmail() {
-  const target = publicMailUrl(import.meta.env.VITE_TEMP_MAIL_URL);
   return (
     <AppShell>
       <main className="mx-auto max-w-4xl px-5 py-10 sm:px-8">
@@ -39,9 +24,9 @@ function TemporaryEmail() {
               Receba mensagens em um endereço descartável, com caixa de entrada ao vivo e exclusão
               automática.
             </p>
-            {target ? (
+            {TEMP_MAIL_URL ? (
               <a
-                href={target}
+                href={TEMP_MAIL_URL}
                 className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"
               >
                 Abrir caixa de entrada <ArrowUpRight className="size-4" aria-hidden />

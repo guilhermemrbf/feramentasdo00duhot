@@ -407,7 +407,7 @@ export async function exportFunnelFile(
       pdf.setProperties({
         title: funnel.name,
         subject: funnel.description,
-        creator: "00duHot - Funil",
+        creator: "MauseHot - Funil",
       });
       pdf.addImage(image, "PNG", 0, 0, width, height, undefined, "FAST");
       downloadBlob(pdf.output("blob"), `${filename}.pdf`);

@@ -9,13 +9,13 @@ import { buildPrompt, FOLLOW_UP_PROMPT, type PageData } from "@/lib/prompt-templ
 export const Route = createFileRoute("/criar-pagina")({
   head: () => ({
     meta: [
-      { title: "Criar Tela Privacy — 00duHot" },
+      { title: "Criar Tela Privacy — MauseHot" },
       {
         name: "description",
         content:
           "Monte sua Tela Privacy com nome, imagens e descrição e gere o prompt completo para acelerar sua operação digital.",
       },
-      { property: "og:title", content: "Criar Tela Privacy — 00duHot" },
+      { property: "og:title", content: "Criar Tela Privacy — MauseHot" },
       {
         property: "og:description",
         content:

@@ -54,7 +54,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
         className="brand-mark size-11 shrink-0 rounded-lg object-contain"
       />
       <span>
-        <strong className="block text-[17px] font-semibold tracking-tight">00duHot</strong>
+        <strong className="block text-[17px] font-semibold tracking-tight">MauseHot</strong>
         {!compact && (
           <span className="mt-0.5 block text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
             Operação digital
@@ -125,7 +125,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Link
         to="/"
         onClick={() => setMobile(false)}
-        aria-label="00duHot, início"
+        aria-label="MauseHot, início"
         className="border-b border-border px-5 py-5"
       >
         <Brand />
@@ -198,7 +198,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {sidebar}
               </SheetContent>
             </Sheet>
-            <Link to="/" aria-label="00duHot, início" className="shrink-0 sm:hidden">
+            <Link to="/" aria-label="MauseHot, início" className="shrink-0 sm:hidden">
               <img
                 src="/brand/mark.png"
                 alt=""
@@ -234,7 +234,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </div>
         <footer className="workspace-footer">
-          <span>00duHot · Operação digital</span>
+          <span>MauseHot · Operação digital</span>
           <span>Suas ferramentas. Seu ritmo.</span>
         </footer>
       </div>

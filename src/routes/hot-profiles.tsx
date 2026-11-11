@@ -5,7 +5,7 @@ import { CloudWorkspace } from "@/components/hot-profiles/CloudWorkspace";
 export const Route = createFileRoute("/hot-profiles")({
   head: () => ({
     meta: [
-      { title: "Hot Profiles — 00duHot" },
+      { title: "Hot Profiles — MauseHot" },
       {
         name: "description",
         content: "Perfis, central de proxies e Android local, com nuvem opcional.",

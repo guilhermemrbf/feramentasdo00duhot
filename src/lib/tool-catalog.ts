@@ -1,4 +1,21 @@
-export const TOOL_CATALOG = [
+function publicMailUrl(value: string | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+    if (url.username || url.password || url.href !== url.origin + "/") return null;
+    if (url.protocol === "https:" || (import.meta.env.DEV && local && url.protocol === "http:")) {
+      return url.href;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export const TEMP_MAIL_URL = publicMailUrl(import.meta.env.VITE_TEMP_MAIL_URL);
+
+const ALL_TOOLS = [
   {
     id: "tempMail",
     path: "/email-temporario",
@@ -164,10 +181,13 @@ export const TOOL_CATALOG = [
       "Revise a programação de Reels e prepare os Stories.",
     ],
     requirement:
-      "Entre no 00duHot para salvar fichas. Para agendar, conecte uma conta profissional que você administra.",
+      "Entre no MauseHot para salvar fichas. Para agendar, conecte uma conta profissional que você administra.",
   },
 ] as const;
-export type Tool = (typeof TOOL_CATALOG)[number];
+export const TOOL_CATALOG = ALL_TOOLS.filter(
+  (tool) => tool.id !== "tempMail" || Boolean(TEMP_MAIL_URL),
+);
+export type Tool = (typeof ALL_TOOLS)[number];
 export type ToolPath = Tool["path"];
 export const CATEGORIES = [
   "Todas",
@@ -204,7 +224,7 @@ export function searchTools(query: string, category = "Todas") {
 export type ToolPreferences = { favorites: string[]; recent: string[] };
 export function cleanPreferences(input: unknown): ToolPreferences {
   const data = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
-  const ids = new Set<string>(TOOL_CATALOG.map((tool) => tool.id));
+  const ids = new Set<string>(ALL_TOOLS.map((tool) => tool.id));
   const clean = (value: unknown) =>
     Array.isArray(value)
       ? [

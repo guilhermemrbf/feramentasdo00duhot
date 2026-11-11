@@ -20,13 +20,13 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/image-links")({
   head: () => ({
     meta: [
-      { title: "Image Links — 00duHot" },
+      { title: "Image Links — MauseHot" },
       {
         name: "description",
         content:
           "Envie imagens e vídeos e receba links públicos diretos em URL, Markdown, HTML ou prompt de IA.",
       },
-      { property: "og:title", content: "Image Links — 00duHot" },
+      { property: "og:title", content: "Image Links — MauseHot" },
       {
         property: "og:description",
         content:

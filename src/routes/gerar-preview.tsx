@@ -24,7 +24,7 @@ import { AppShell, PageIntro } from "@/components/AppShell";
 export const Route = createFileRoute("/gerar-preview")({
   head: () => ({
     meta: [
-      { title: "Gerar Preview — 00duHot" },
+      { title: "Gerar Preview — MauseHot" },
       {
         name: "description",
         content:

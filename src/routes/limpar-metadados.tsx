@@ -27,13 +27,13 @@ import { BatchCleaner } from "@/components/metadata/BatchCleaner";
 export const Route = createFileRoute("/limpar-metadados")({
   head: () => ({
     meta: [
-      { title: "Limpar Metadados — 00duHot" },
+      { title: "Limpar Metadados — MauseHot" },
       {
         name: "description",
         content:
           "Sanitize fotos e vídeos localmente, removendo metadados incorporados no arquivo processado.",
       },
-      { property: "og:title", content: "Limpar Metadados — 00duHot" },
+      { property: "og:title", content: "Limpar Metadados — MauseHot" },
       {
         property: "og:description",
         content:
