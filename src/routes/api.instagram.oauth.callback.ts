@@ -3,6 +3,7 @@ import { deleteCookie, getCookie } from "@tanstack/react-start/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { linkedFacebookInstagramPages } from "@/lib/facebook-instagram-pages";
 import type { PostkitDatabase } from "@/lib/postkit-database";
+import { getMetaGraphBaseUrl } from "@/lib/social-publishing.server";
 
 type InstagramTokenResponse = {
   access_token?: string;
@@ -115,7 +116,10 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
           if (mode === "instagram_unified_login") {
             const { readInstagramUnifiedGrant } =
               await import("@/lib/instagram-unified-login.server");
-            const grant = await readInstagramUnifiedGrant(code, config);
+            const grant = await readInstagramUnifiedGrant(code, {
+              ...config,
+              facebookGraphBaseUrl: getMetaGraphBaseUrl("instagram_unified_login"),
+            });
             const postkit = supabaseAdmin as unknown as SupabaseClient<PostkitDatabase>;
             const { error } = await postkit.rpc("save_instagram_unified_accounts", {
               p_workspace_id: workspaceId,

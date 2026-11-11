@@ -15,6 +15,7 @@ class InstagramRequestError extends Error {
 }
 
 export function getMetaGraphBaseUrl(mode: InstagramAuthMode = "instagram_login"): string {
+  if (mode === "instagram_unified_login") return "https://graph.facebook.com/v27.0";
   const version = process.env["META_GRAPH_API_VERSION"];
   if (!version || !/^v\d+\.\d+$/.test(version)) {
     throw new Error("Set META_GRAPH_API_VERSION to a supported Meta Graph API version.");

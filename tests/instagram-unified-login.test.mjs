@@ -10,7 +10,7 @@ const config = {
   appId: "2201393490722211",
   appSecret: "test-only",
   callbackUrl: "https://example.com/api/instagram/oauth/callback",
-  facebookGraphBaseUrl: "https://graph.facebook.com/v25.0",
+  facebookGraphBaseUrl: "https://graph.facebook.com/v27.0",
 };
 const scopes = ["instagram_basic", "instagram_content_publish"];
 
@@ -66,12 +66,6 @@ test("Unified Login imports the assigned Instagram profiles across pages", async
     ["first", "second"],
   );
   assert.equal(grant.expiry, null);
-  const version = process.env.META_GRAPH_API_VERSION;
-  process.env.META_GRAPH_API_VERSION = "v25.0";
-  t.after(() => {
-    if (version === undefined) delete process.env.META_GRAPH_API_VERSION;
-    else process.env.META_GRAPH_API_VERSION = version;
-  });
   assert.equal(getMetaGraphBaseUrl("instagram_unified_login"), config.facebookGraphBaseUrl);
 });
 

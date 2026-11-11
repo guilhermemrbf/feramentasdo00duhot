@@ -29,7 +29,7 @@ export function instagramUnifiedAuthorizationUrl(
 }
 
 type GraphResponse<T> = T & { error?: object };
-type Profile = { id: string; username: string; name?: string };
+type Profile = { id: string; username: string };
 type ProfilePage = {
   data?: Profile[];
   paging?: { next?: string; cursors?: { after?: string } };
@@ -96,15 +96,17 @@ export async function readInstagramUnifiedGrant(
   const accounts = new Map<string, Profile>();
   const cursors = new Set<string>();
   const url = new URL(facebookGraphBaseUrl + "/me/assigned_instagram_accounts");
-  url.searchParams.set("fields", "id,username,name");
+  url.searchParams.set("fields", "id,username");
   url.searchParams.set("limit", "100");
   const accountsFailure = "Instagram Unified Login account lookup failed.";
   for (;;) {
     const { data, paging } = await readGraph<ProfilePage>(url, accountsFailure, token);
     if (!Array.isArray(data)) throw new Error(accountsFailure);
     for (const account of data) {
-      if (!account?.id || !account.username) throw new Error(accountsFailure);
-      accounts.set(account.id, account);
+      if (typeof account?.id !== "string" || !/^\d+$/.test(account.id) || !account.username) {
+        throw new Error(accountsFailure);
+      }
+      accounts.set(account.id, { id: account.id, username: account.username });
     }
     if (!paging?.next) break;
     const cursor = paging.cursors?.after;
