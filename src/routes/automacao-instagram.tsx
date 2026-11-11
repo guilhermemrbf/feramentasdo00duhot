@@ -68,8 +68,8 @@ import {
 const postkit = supabase as unknown as SupabaseClient<PostkitDatabase>;
 
 export const Route = createFileRoute("/automacao-instagram")({
-  validateSearch: (search: Record<string, unknown>): { tab?: "perfis" } => ({
-    tab: search.tab === "perfis" ? "perfis" : undefined,
+  validateSearch: (search: Record<string, unknown>): { tab?: "perfis" | "contas" } => ({
+    tab: search.tab === "perfis" || search.tab === "contas" ? search.tab : undefined,
   }),
   head: () => ({
     meta: [
@@ -166,8 +166,8 @@ const tabItems = tabGroups.flatMap(
 const quickActions = [
   {
     tab: "contas",
-    title: "Conectar nova conta",
-    text: "Adicione a conta do Instagram em que você quer publicar.",
+    title: "Gerenciar contas",
+    text: "Veja seus perfis do Instagram e adicione outros.",
     icon: Users,
     tone: "bg-sky-500/10 text-sky-300",
   },
@@ -402,7 +402,7 @@ function InstagramWorkspacePage({
       const detail = reason
         ? (reasonLabels[reason] ?? "uma etapa não identificada")
         : "uma etapa não identificada";
-      setNotice(`A conexão parou em ${detail}. Escolha uma opção abaixo para tentar novamente.`);
+      setNotice(`A conexão parou em ${detail}. Clique em Conectar Conta para tentar de novo.`);
     }
   }, []);
 
@@ -1161,51 +1161,56 @@ function InstagramWorkspacePage({
           <section className="mt-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <Panel title="Conectar uma conta">
               <p className="text-sm text-muted-foreground">
-                Escolha como entrar. Você vai confirmar o acesso na tela oficial e voltar para cá. A
-                conta precisa ser profissional, do tipo empresa ou criador.
+                Na tela da Meta, escolha <strong>Continuar com Instagram</strong>, selecione o
+                perfil profissional e autorize o acesso.
               </p>
-              <div className="mt-4 grid gap-3">
-                <div className="space-y-2 rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/5 p-4">
-                  <p className="flex items-center gap-2 text-sm font-semibold">
-                    <Instagram className="size-4 text-fuchsia-300" /> Entrar pelo Instagram
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Entre com a conta profissional do Instagram e selecione o perfil que quer
-                    compartilhar. Não precisa vincular uma Página do Facebook.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => void connectInstagram("instagram_unified_login")}
-                    disabled={!!connecting}
-                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-                  >
-                    {connecting === "instagram_unified_login"
-                      ? "Abrindo autorização…"
-                      : "Continuar com Instagram"}
-                    <ArrowRight className="size-4" />
-                  </button>
-                </div>
-                <div className="space-y-2 rounded-xl border border-sky-500/25 bg-sky-500/5 p-4">
-                  <p className="flex items-center gap-2 text-sm font-semibold">
-                    <Users className="size-4 text-sky-300" /> Entrar pelo Facebook
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Escolha esta opção se seu Instagram está ligado a uma Página do Facebook que
-                    você gerencia.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => void connectInstagram("facebook_login")}
-                    disabled={!!connecting}
-                    className="inline-flex items-center gap-2 rounded-md border border-sky-500/30 px-4 py-2 text-sm font-semibold hover:bg-sky-500/10 disabled:opacity-50"
-                  >
-                    {connecting === "facebook_login"
-                      ? "Abrindo autorização…"
-                      : "Continuar com Facebook"}
-                    <ArrowRight className="size-4" />
-                  </button>
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => void connectInstagram("instagram_unified_login")}
+                disabled={!!connecting}
+                className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              >
+                <Instagram aria-hidden="true" className="size-4" />
+                {connecting === "instagram_unified_login"
+                  ? "Abrindo autorização…"
+                  : "Conectar Conta"}
+              </button>
+              <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">
+                <summary className="cursor-pointer font-medium">Ajuda para conectar</summary>
+                <p className="mt-2 text-muted-foreground">
+                  Se aparecer outro perfil, escolha <strong>Trocar de conta</strong>. Se a Meta
+                  mostrar <strong>App not active</strong>, confira o convite de teste.
+                </p>
+                <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-muted-foreground">
+                  <li>
+                    Em{" "}
+                    <a
+                      className="font-medium text-foreground underline underline-offset-2"
+                      href="https://developers.facebook.com/apps/2201393490722211/roles/roles/"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Funções do app na Meta
+                    </a>
+                    , o administrador adiciona o perfil como <strong>Testador do Instagram</strong>.
+                  </li>
+                  <li>
+                    No perfil convidado, abra{" "}
+                    <a
+                      className="font-medium text-foreground underline underline-offset-2"
+                      href="https://www.instagram.com/accounts/manage_access/"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Apps e sites do Instagram
+                    </a>{" "}
+                    e aceite o convite em <strong>Convites do testador</strong>.
+                  </li>
+                  <li>
+                    Volte aqui e clique em <strong>Conectar Conta</strong>.
+                  </li>
+                </ol>
+              </details>
             </Panel>
             <Panel title="Suas contas">
               <p className="mb-3 text-sm text-muted-foreground">

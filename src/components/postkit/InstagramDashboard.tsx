@@ -134,7 +134,7 @@ export function InstagramDashboard({
     {
       title: "Conecte uma conta do Instagram",
       done: !!accountCount,
-      action: "Conectar conta",
+      action: "Abrir contas",
       run: onAccounts,
     },
     {
