@@ -111,7 +111,7 @@ Os testes enviam mensagens pelo SMTP do Postfix, verificam PostgreSQL, sanitiza�
 
 1. Use VPS com IPv4 estável, Docker/Compose, disco persistente e permissão de **entrada TCP 25**. Confirme com o provedor antes de divulgar os endereços. Abra TCP 80/443 para a web. PostgreSQL, Redis, ingestão e socketmap ficam nas redes privadas do Compose.
 2. Reserve um hostname web e um hostname SMTP. Adquira certificados separados, por exemplo com um cliente ACME usando desafio DNS-01. Disponibilize `fullchain.pem` e `privkey.pem` em diretórios separados, com leitura restrita ao processo correto. Configure uma rotina de renovação que recarregue os serviços. Nunca versionar chaves.
-3. A partir de um `.env` novo, configure `APP_URL=https://<host-web>`, `WEB_HOST`, `SMTP_HOST`, `DEFAULT_MAIL_DOMAIN`, `ABUSE_CONTACT`, `TLS_WEB_DIR` e `TLS_SMTP_DIR`. Preserve os segredos aleatórios do gerador. Se definir a senha do PostgreSQL manualmente, use hex aleatório para que funcione na URL do banco.
+3. A partir de um `.env` novo, configure `APP_URL=https://<host-web>`, `WEB_HOST`, `SMTP_HOST`, `DEFAULT_MAIL_DOMAIN`, `ABUSE_CONTACT`, `TLS_WEB_DIR` `TLS_SMTP_DIR` e `WEB_AUTH_FILE`. Preserve os segredos aleatórios do gerador. Se definir a senha do PostgreSQL manualmente, use hex aleatório para que funcione na URL do banco.
 4. Execute os comandos abaixo a partir do módulo. Passe as credenciais iniciais pelo seed descartável com as mesmas flags `-f`. Registre os domínios adicionais como desativados, verifique o DNS e só depois ative-os.
 5. De um servidor externo, envie um e-mail para uma caixa criada na origem pública. Confirme aceitação pelo MX e entrega na interface, sem atualizar a página. Somente após essa validação configure `VITE_TEMP_MAIL_URL` no 00duHot e publique o frontend existente pelo Lovable.
 
@@ -121,15 +121,34 @@ docker compose -f compose.yaml -f compose.prod.yaml up --build --wait
 docker compose -f compose.yaml -f compose.prod.yaml ps
 ```
 
+### Restringir a caixa ao proprietário
+
+O Nginx pede credenciais tanto para a interface quanto para a API. A autenticação acontece sobre HTTPS. O Postfix continua acessível na porta 25 para remetentes externos.
+
+No VPS, instale a ferramenta `htpasswd` do pacote `apache2-utils` no Debian/Ubuntu. Para a primeira configuração, escolha uma senha exclusiva e longa, de preferência gerada pelo seu gerenciador de senhas:
+
+```sh
+install -d -m 0700 "$HOME/.config/00duhot-mail"
+htpasswd -cB "$HOME/.config/00duhot-mail/correio.htpasswd" operador
+chmod 0644 "$HOME/.config/00duhot-mail/correio.htpasswd"
+```
+
+Defina `WEB_AUTH_FILE` com o caminho absoluto desse arquivo no host. O diretório privado restringe a leitura no host. O arquivo de hashes é montado como somente leitura e fica legível para os workers do Nginx. Ao abrir a ferramenta pelo catálogo, entre com o usuário e a senha que você acabou de criar. O painel em `/admin` usa sua conta administrativa.
+
 ### Validar o serviço a partir de outra rede
 
 Em uma máquina fora da rede do VPS que possa abrir conexões de saída na porta 25, instale as dependências do módulo com `pnpm install --frozen-lockfile` e execute:
 
 ```sh
+read -r -p "Usuário da caixa: " MAIL_SMOKE_WEB_USER
+read -r -s -p "Senha da caixa: " MAIL_SMOKE_WEB_PASSWORD
+printf '\n'
+export MAIL_SMOKE_WEB_USER MAIL_SMOKE_WEB_PASSWORD
 pnpm smoke:production https://correio.seudominio.com temporario.seudominio.com
+unset MAIL_SMOKE_WEB_USER MAIL_SMOKE_WEB_PASSWORD
 ```
 
-O teste consulta o MX publicado, cria uma caixa descartável via HTTPS, exige STARTTLS com certificado válido, envia um e-mail de teste, aguarda a atualização SSE, verifica o HTML sanitizado e exclui a caixa. No GitHub Actions, o mesmo teste usa certificados e hostnames locais do runner com `--mx-host`. Essa execução valida a configuração de produção, enquanto a execução externa valida o DNS público e a entrada no VPS.
+O teste consulta o MX publicado, confirma que visitantes sem credenciais recebem 401, cria uma caixa descartável via HTTPS, exige STARTTLS com certificado válido, envia um e-mail de teste, aguarda a atualização SSE, verifica o HTML sanitizado e exclui a caixa. No GitHub Actions, o mesmo teste usa certificados e hostnames locais do runner com `--mx-host`. Essa execução valida a configuração de produção, enquanto a execução externa valida o DNS público e a entrada no VPS.
 
 Use um subdomínio para os endereços temporários, como `temporario.seudominio.com`, e aponte o MX desse subdomínio para `mx.seudominio.com`. Isso permite manter os registros MX do domínio raiz. O endereço padrão `*.lovable.app` continua servindo o catálogo.
 

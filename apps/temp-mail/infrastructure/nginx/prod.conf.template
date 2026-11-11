@@ -10,5 +10,7 @@ server {
     ssl_certificate /run/tls/fullchain.pem;
     ssl_certificate_key /run/tls/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
+    auth_basic "Correio Temporario";
+    auth_basic_user_file /run/secrets/temp-mail.htpasswd;
     include /etc/nginx/site.inc;
 }

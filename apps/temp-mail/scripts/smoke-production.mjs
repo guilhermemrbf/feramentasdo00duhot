@@ -24,6 +24,11 @@ const mx = values["mx-host"]
 assert(mx, "O domínio precisa de um registro MX válido.");
 console.log(values["mx-host"] ? "SMTP direcionado ao host de teste." : "DNS público: MX encontrado.");
 
+const user = process.env.MAIL_SMOKE_WEB_USER;
+const password = process.env.MAIL_SMOKE_WEB_PASSWORD;
+assert(user && password, "Defina MAIL_SMOKE_WEB_USER e MAIL_SMOKE_WEB_PASSWORD no ambiente.");
+const authorization = "Basic " + Buffer.from(user + ":" + password).toString("base64");
+
 let cookie;
 const events = new AbortController();
 
@@ -32,6 +37,7 @@ function request(path, method = "GET", body, signal = AbortSignal.timeout(12_000
     method,
     redirect: "error",
     headers: {
+      authorization,
       ...(cookie ? { cookie } : {}),
       ...(method !== "GET" ? { origin: site.origin, "x-mail-action": "1" } : {}),
       ...(body ? { "content-type": "application/json" } : {}),
@@ -67,6 +73,16 @@ const transport = nodemailer.createTransport({
 });
 
 try {
+  const anonymous = await fetch(site.origin, { redirect: "error", signal: AbortSignal.timeout(8000) });
+  assert.equal(anonymous.status, 401, "A página precisa exigir autenticação.");
+  assert.match(anonymous.headers.get("www-authenticate") ?? "", /^Basic\b/i);
+  const anonymousApi = await fetch(site.origin + "/api/health/ready", {
+    redirect: "error",
+    signal: AbortSignal.timeout(8000),
+  });
+  assert.equal(anonymousApi.status, 401, "A API precisa exigir autenticação.");
+  console.log("Acesso privado: a interface e a API recusaram visitantes sem credenciais.");
+
   const ready = await request("/health/ready");
   assert.equal(ready.status, 200, "O serviço HTTPS precisa estar pronto.");
   const created = await request("/mailboxes", "POST", { domain });

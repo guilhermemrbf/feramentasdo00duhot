@@ -14,6 +14,12 @@ services:
     volumes:
       - ./infrastructure/nginx/prod.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ${TLS_WEB_DIR:?configure TLS_WEB_DIR}:/run/tls:ro
+      - type: bind
+        source: ${WEB_AUTH_FILE:?configure WEB_AUTH_FILE}
+        target: /run/secrets/temp-mail.htpasswd
+        read_only: true
+        bind:
+          create_host_path: false
   postfix:
     ports: ["25:25"]
     environment:

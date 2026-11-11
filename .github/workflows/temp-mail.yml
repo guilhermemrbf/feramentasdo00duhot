@@ -53,6 +53,14 @@ jobs:
         run: |
           cert_dir="$RUNNER_TEMP/temp-mail-cert"
           mkdir -p "$cert_dir"
+          if ! command -v htpasswd >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq apache2-utils
+          fi
+          web_password="$(openssl rand -hex 24)"
+          echo "::add-mask::$web_password"
+          printf '%s\n' "$web_password" | htpasswd -niB owner > "$cert_dir/correio.htpasswd"
+          chmod 0644 "$cert_dir/correio.htpasswd"
           openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 2 \
             -subj "/CN=correio.example.com" \
             -addext "subjectAltName=DNS:correio.example.com,DNS:mx.example.com" \
@@ -67,6 +75,9 @@ jobs:
             echo "TLS_WEB_DIR=$cert_dir"
             echo "TLS_SMTP_DIR=$cert_dir"
             echo "NODE_EXTRA_CA_CERTS=$cert_dir/fullchain.pem"
+            echo "WEB_AUTH_FILE=$cert_dir/correio.htpasswd"
+            echo "MAIL_SMOKE_WEB_USER=owner"
+            echo "MAIL_SMOKE_WEB_PASSWORD=$web_password"
           } >> "$GITHUB_ENV"
       - name: Subir o perfil de produção no runner
         run: docker compose -p temp-mail-production-check -f compose.yaml -f compose.prod.yaml up --wait --wait-timeout 120
