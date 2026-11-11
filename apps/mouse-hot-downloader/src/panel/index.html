@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mouse Hot</title>
+  <link rel="stylesheet" href="../styles/panel.css">
+</head>
+<body>
+  <main>
+    <header class="brand">
+      <img src="../../icons/48.png" alt="" width="46" height="46">
+      <div><h1>Mouse Hot</h1><p>Downloads do Instagram e TikTok</p></div>
+    </header>
+    <p class="notice" id="notice" role="status" aria-live="polite" hidden></p>
+    <section class="surface">
+      <div class="section-title">
+        <h2>Mídias da aba</h2>
+        <span class="pill" id="source">Aguardando</span>
+      </div>
+      <p class="muted" id="capture-hint">Abra o Instagram ou TikTok e clique no ícone Mouse Hot na barra do Chrome.</p>
+      <button type="button" id="allow" class="soft" hidden>Permitir acesso à mídia</button>
+      <div class="toolbar" id="scroll-tools" hidden>
+        <button type="button" id="scroll-start" class="soft">Rolar e procurar</button>
+        <button type="button" id="scroll-stop" class="soft" hidden>Encerrar busca</button>
+        <span class="muted" id="scroll-info" role="status"></span>
+      </div>
+      <div class="toolbar" id="selection-tools" hidden>
+        <button type="button" id="select-all" class="soft">Selecionar arquivos</button>
+        <button type="button" id="select-none" class="soft">Limpar seleção</button>
+      </div>
+      <ul id="items" class="items" aria-label="Mídias encontradas"></ul>
+      <button type="button" id="enqueue" class="primary" hidden>Baixar selecionadas</button>
+    </section>
+    <section class="surface">
+      <div class="section-title">
+        <h2>Fila de downloads</h2>
+        <button type="button" id="clear" class="soft" hidden>Limpar histórico</button>
+      </div>
+      <p class="muted" id="queue-hint">Os arquivos salvos ficam em Downloads → Mouse Hot.</p>
+      <ul id="jobs" class="items" aria-label="Downloads"></ul>
+    </section>
+  </main>
+  <script src="panel.js" defer></script>
+</body>
+</html>
