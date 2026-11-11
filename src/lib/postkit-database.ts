@@ -68,6 +68,17 @@ export type PostkitDatabase = Omit<Database, "public"> & {
       >;
     };
     Functions: Database["public"]["Functions"] & {
+      save_instagram_unified_accounts: {
+        Args: {
+          p_workspace_id: string;
+          p_user_id: string;
+          p_accounts: Json;
+          p_scopes: string[];
+          p_token_ciphertext: string;
+          p_expires_at: string | null;
+        };
+        Returns: undefined;
+      };
       claim_instagram_analytics: { Args: Record<string, never>; Returns: Json };
       finish_instagram_analytics: {
         Args: { p_account: string; p_lease: string; p_result: Json };

@@ -1,6 +1,6 @@
 const OAUTH_TTL_SECONDS = 10 * 60;
 
-export type InstagramAuthMode = "instagram_login" | "facebook_login";
+export type InstagramAuthMode = "instagram_login" | "facebook_login" | "instagram_unified_login";
 
 export const INSTAGRAM_LOGIN_SCOPES = [
   "instagram_business_basic",
@@ -119,8 +119,9 @@ export async function verifyInstagramOAuthState(state: string): Promise<{
   ) {
     throw new Error("OAuth state expired.");
   }
-  const mode: InstagramAuthMode =
-    parsed.mode === "facebook_login" ? "facebook_login" : "instagram_login";
+  const mode = parsed.mode ?? "instagram_login";
+  if (mode !== "instagram_login" && mode !== "facebook_login" && mode !== "instagram_unified_login")
+    throw new Error("Invalid OAuth login mode.");
   return {
     workspaceId: parsed.workspaceId,
     userId: parsed.userId,
@@ -174,9 +175,6 @@ export async function getInstagramAccountAccessToken(accountId: string): Promise
   if (error || !data) throw new Error("Instagram account token is unavailable.");
 
   let accessToken = await decryptInstagramToken(data.access_token_ciphertext);
-  if (!data.token_expires_at) throw new Error("Instagram account token has no expiry.");
-  const expiresAt = new Date(data.token_expires_at).getTime();
-  if (expiresAt <= Date.now()) throw new Error("Instagram account authorization expired.");
 
   const { data: accountRow, error: accountLookupError } = await supabaseAdmin
     .from("instagram_accounts")
@@ -184,8 +182,13 @@ export async function getInstagramAccountAccessToken(accountId: string): Promise
     .eq("id", accountId)
     .maybeSingle();
   if (accountLookupError || !accountRow) throw new Error("Instagram account is unavailable.");
-  const mode: InstagramAuthMode =
-    accountRow.auth_mode === "facebook_login" ? "facebook_login" : "instagram_login";
+  const mode = accountRow.auth_mode;
+  const expiresAt = data.token_expires_at ? Date.parse(data.token_expires_at) : null;
+  if (expiresAt !== null && (!Number.isFinite(expiresAt) || expiresAt <= Date.now())) {
+    throw new Error("Instagram account authorization expired.");
+  }
+  if (mode === "instagram_unified_login") return accessToken;
+  if (expiresAt === null) throw new Error("Instagram account token has no expiry.");
 
   // Facebook Login publishing uses a Page access token. It is not accepted by
   // Instagram's refresh_access_token endpoint or the user-token fb_exchange_token

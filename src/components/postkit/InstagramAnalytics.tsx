@@ -29,7 +29,11 @@ const types = [
   ["story", "Stories"],
 ] as const;
 type Kind = (typeof types)[number][0];
-type Account = { id: string; username: string; auth_mode: "instagram_login" | "facebook_login" };
+type Account = {
+  id: string;
+  username: string;
+  auth_mode: "instagram_login" | "facebook_login" | "instagram_unified_login";
+};
 type Profile = Account & {
   followers: number | null;
   following: number | null;
@@ -449,16 +453,23 @@ export function InstagramAnalytics({
                     seguindo
                   </p>
                   <p>{showNumber(profile.reel_views)} views de Reels no histórico</p>
-                  {(profile.issue === "permission" ||
-                    profile.issue === "reconnect" ||
-                    (!profile.measured && (profile.issue || profile.reels > 0))) && (
+                  {profile.auth_mode === "instagram_unified_login" &&
+                    profile.issue === "permission" && (
+                      <p>Métricas ainda não liberadas pela Meta.</p>
+                    )}
+                  {(profile.issue === "reconnect" ||
+                    (profile.auth_mode !== "instagram_unified_login" &&
+                      (profile.issue === "permission" ||
+                        (!profile.measured && (profile.issue || profile.reels > 0))))) && (
                     <button
                       type="button"
                       disabled={connecting}
                       onClick={() => onAuthorize(profile.auth_mode)}
                       className="mt-1 font-semibold text-sky-300 hover:underline disabled:opacity-50"
                     >
-                      Autorizar métricas
+                      {profile.auth_mode === "instagram_unified_login"
+                        ? "Reconectar Instagram"
+                        : "Autorizar métricas"}
                     </button>
                   )}
                 </div>

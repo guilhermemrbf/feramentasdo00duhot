@@ -35,6 +35,7 @@ import {
 import { WorkspaceGate, type Workspace } from "@/components/postkit/WorkspaceGate";
 import { supabase } from "@/integrations/supabase/client";
 import { startInstagramOAuth } from "@/lib/api/instagram-oauth.functions";
+import type { InstagramAuthMode } from "@/lib/instagram-oauth.server";
 import {
   enableInstagramWorker,
   getInstagramWorkerStatus,
@@ -251,7 +252,7 @@ function InstagramWorkspacePage({
   const [previewSettings, setPreviewSettings] = useState("");
   const [previewError, setPreviewError] = useState("");
   const [savingQueue, setSavingQueue] = useState(false);
-  const [connecting, setConnecting] = useState<"instagram_login" | "facebook_login" | null>(null);
+  const [connecting, setConnecting] = useState<InstagramAuthMode | null>(null);
   const [workerActive, setWorkerActive] = useState<boolean | null>(null);
   const [activatingWorker, setActivatingWorker] = useState(false);
   const [selectedVideoIds, setSelectedVideoIds] = useState<string[] | null>(null);
@@ -382,6 +383,11 @@ function InstagramWorkspacePage({
         instagram_not_linked_to_page:
           "a conta profissional não apareceu vinculada às Páginas autorizadas",
         facebook_instagram_profile_lookup: "a leitura dos dados da conta profissional do Instagram",
+        unified_code_exchange: "a troca do código do Login Unificado",
+        unified_grant: "a validação do acesso concedido pelo Instagram",
+        unified_permissions: "a confirmação das permissões de perfil e publicação",
+        unified_account_lookup: "a busca das contas compartilhadas pela Meta",
+        unified_accounts_empty: "a seleção de contas. Escolha uma conta profissional no portfólio",
         no_linked_account: "a busca por Instagram profissional vinculado a uma Página",
         account_save: "o salvamento da conta do Instagram",
         token_save: "o armazenamento seguro da autorização",
@@ -395,10 +401,7 @@ function InstagramWorkspacePage({
     }
   }, []);
 
-  const connectInstagram = async (
-    mode: "instagram_login" | "facebook_login",
-    analytics = false,
-  ) => {
+  const connectInstagram = async (mode: InstagramAuthMode, analytics = false) => {
     setConnecting(mode);
     setNotice("");
     try {
@@ -1162,15 +1165,16 @@ function InstagramWorkspacePage({
                     <Instagram className="size-4 text-fuchsia-300" /> Entrar pelo Instagram
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Use os dados da própria conta do Instagram que você quer adicionar.
+                    Entre com a conta profissional do Instagram e selecione o perfil que quer
+                    compartilhar. Não precisa vincular uma Página do Facebook.
                   </p>
                   <button
                     type="button"
-                    onClick={() => void connectInstagram("instagram_login")}
+                    onClick={() => void connectInstagram("instagram_unified_login")}
                     disabled={!!connecting}
                     className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
                   >
-                    {connecting === "instagram_login"
+                    {connecting === "instagram_unified_login"
                       ? "Abrindo autorização…"
                       : "Continuar com Instagram"}
                     <ArrowRight className="size-4" />

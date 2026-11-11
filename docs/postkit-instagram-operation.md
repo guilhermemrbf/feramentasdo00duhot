@@ -47,7 +47,9 @@ Configurar no servidor (nunca no frontend ou em `VITE_*`):
 - Credenciais de servidor Supabase já usadas pelo projeto.
 - O segredo do worker é criado no servidor e guardado no Vault do Supabase; o frontend nunca recebe seu valor.
 
-Cadastrar callback `<APP_BASE_URL>/api/instagram/oauth/callback` no app Meta. No login unificado do Instagram, autorizar `instagram_business_basic` e `instagram_business_content_publish`. No login do Facebook usado por esta conta, habilitar `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_content_publish` e `business_management`. Verificar acesso de teste/revisão exigido pela Meta antes de atender outras contas. O usuário informou que ainda não possui app Meta/conta profissional de teste configurados.
+Cadastrar o callback `<APP_BASE_URL>/api/instagram/oauth/callback` no painel da Meta. O botão **Continuar com Instagram** usa o Login Unificado. A configuração deve aceitar contas profissionais do Instagram como ativo obrigatório, com token de usuário do sistema e permissões `instagram_basic` e `instagram_content_publish`. O app 00duHot Publisher tem configuração própria. Em outro app Meta, defina o ID da configuração compatível em `META_INSTAGRAM_LOGIN_CONFIG_ID`. O usuário escolhe os perfis no portfólio empresarial durante a autorização.
+
+O botão **Continuar com Facebook** mantém o fluxo por Página e usa `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_content_publish` e `business_management`. Para liberar o Login Unificado a clientes externos, conclua a análise do app e obtenha acesso avançado às permissões no painel da Meta.
 
 Na aba Configurações do PostKit, uma pessoa owner/admin ativa o processamento. A ativação cria um segredo aleatório no servidor, guarda o valor no Vault do Supabase, grava apenas seu hash para validação e agenda `POST /api/instagram/worker` pelo `pg_cron`/`pg_net` a cada minuto. Uma chamada executa uma etapa; o tempo total depende da preparação da Meta e da fila. A frequência de um minuto não significa publicação exata em um minuto.
 

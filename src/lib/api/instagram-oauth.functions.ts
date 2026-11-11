@@ -8,7 +8,9 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
   .validator(
     z.object({
       workspaceId: z.string().uuid(),
-      mode: z.enum(["instagram_login", "facebook_login"]).default("instagram_login"),
+      mode: z
+        .enum(["instagram_login", "facebook_login", "instagram_unified_login"])
+        .default("instagram_login"),
       analytics: z.boolean().optional(),
     }),
   )
@@ -22,6 +24,7 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
     const {
       createInstagramOAuthState,
       facebookAuthorizationUrl,
+      getInstagramOAuthConfig,
       instagramAuthorizationUrl,
       instagramOAuthCookieOptions,
       instagramOAuthCookieName,
@@ -32,11 +35,17 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
       mode: data.mode,
       analytics: data.analytics,
     });
-    setCookie(instagramOAuthCookieName(), state, instagramOAuthCookieOptions());
-    return {
-      authorizationUrl:
+    let authorizationUrl: string;
+    if (data.mode === "instagram_unified_login") {
+      const { instagramUnifiedAuthorizationUrl } =
+        await import("@/lib/instagram-unified-login.server");
+      authorizationUrl = instagramUnifiedAuthorizationUrl(state, getInstagramOAuthConfig());
+    } else {
+      authorizationUrl =
         data.mode === "facebook_login"
           ? facebookAuthorizationUrl(state, data.analytics)
-          : instagramAuthorizationUrl(state, data.analytics),
-    };
+          : instagramAuthorizationUrl(state, data.analytics);
+    }
+    setCookie(instagramOAuthCookieName(), state, instagramOAuthCookieOptions());
+    return { authorizationUrl };
   });

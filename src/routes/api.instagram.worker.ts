@@ -2,7 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { authenticateInstagramWorkerRequest } from "@/lib/instagram-worker-auth.server";
-import { getInstagramAccountAccessToken } from "@/lib/instagram-oauth.server";
+import {
+  getInstagramAccountAccessToken,
+  type InstagramAuthMode,
+} from "@/lib/instagram-oauth.server";
 import { runInstagramPublishStep } from "@/lib/instagram-publish-step";
 import type { PostkitDatabase } from "@/lib/postkit-database";
 import {
@@ -164,7 +167,7 @@ async function authorizedAccount(
     instagram_account_id: string;
     workspace_id: string;
   },
-) {
+): Promise<{ instagramUserId: string; authMode: InstagramAuthMode; accessToken: string }> {
   const { data, error } = await client
     .from("instagram_accounts")
     .select("instagram_user_id,connection_status,auth_mode")
@@ -173,8 +176,13 @@ async function authorizedAccount(
     .maybeSingle();
   if (error || !data || data.connection_status !== "connected")
     throw new Error("Account unavailable");
-  const authMode: "instagram_login" | "facebook_login" =
-    data.auth_mode === "facebook_login" ? "facebook_login" : "instagram_login";
+  const authMode = data.auth_mode;
+  if (
+    authMode !== "instagram_login" &&
+    authMode !== "facebook_login" &&
+    authMode !== "instagram_unified_login"
+  )
+    throw new Error("Unsupported Instagram authorization.");
   return {
     instagramUserId: data.instagram_user_id,
     authMode,

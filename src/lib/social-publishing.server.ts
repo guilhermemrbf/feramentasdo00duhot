@@ -1,7 +1,9 @@
 /** Instagram publishing API adapter. Treat an ambiguous publish response as a
  * reconciliation task; callers must never blindly retry media_publish. */
 
-export type InstagramAuthMode = "instagram_login" | "facebook_login";
+import type { InstagramAuthMode } from "./instagram-oauth.server";
+
+export type { InstagramAuthMode };
 
 class InstagramRequestError extends Error {
   readonly status: number;
@@ -17,7 +19,7 @@ export function getMetaGraphBaseUrl(mode: InstagramAuthMode = "instagram_login")
   if (!version || !/^v\d+\.\d+$/.test(version)) {
     throw new Error("Set META_GRAPH_API_VERSION to a supported Meta Graph API version.");
   }
-  const host = mode === "facebook_login" ? "graph.facebook.com" : "graph.instagram.com";
+  const host = mode === "instagram_login" ? "graph.instagram.com" : "graph.facebook.com";
   return `https://${host}/${version}`;
 }
 

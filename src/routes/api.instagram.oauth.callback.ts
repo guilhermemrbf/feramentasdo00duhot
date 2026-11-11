@@ -39,6 +39,11 @@ function oauthFailureReason(error: unknown): string {
     "Facebook did not return a long-lived token.": "facebook_long_token_missing",
     "Facebook Pages lookup failed.": "facebook_pages_lookup",
     "Facebook Instagram profile lookup failed.": "facebook_instagram_profile_lookup",
+    "Instagram Unified Login code exchange failed.": "unified_code_exchange",
+    "Instagram Unified Login grant is invalid.": "unified_grant",
+    "Instagram Unified Login permissions were not granted.": "unified_permissions",
+    "Instagram Unified Login account lookup failed.": "unified_account_lookup",
+    "No Instagram accounts were shared in Unified Login.": "unified_accounts_empty",
     "Facebook returned no accessible Pages.": "facebook_pages_empty",
     "Facebook Pages did not include Page access tokens.": "facebook_page_token_missing",
     "No professional Instagram account was found on the authorized Pages.":
@@ -106,6 +111,22 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
           }
           if (mode === "facebook_login") {
             return await connectViaFacebookLogin({ code, config, workspaceId, userId, analytics });
+          }
+          if (mode === "instagram_unified_login") {
+            const { readInstagramUnifiedGrant } =
+              await import("@/lib/instagram-unified-login.server");
+            const grant = await readInstagramUnifiedGrant(code, config);
+            const postkit = supabaseAdmin as unknown as SupabaseClient<PostkitDatabase>;
+            const { error } = await postkit.rpc("save_instagram_unified_accounts", {
+              p_workspace_id: workspaceId,
+              p_user_id: userId,
+              p_accounts: grant.accounts,
+              p_scopes: grant.scopes,
+              p_token_ciphertext: await encryptInstagramToken(grant.token),
+              p_expires_at: grant.expiry,
+            });
+            if (error) throw new Error("Instagram account could not be saved.");
+            return redirectToApp(config.appBaseUrl, "connected");
           }
           const tokenResponse = await fetch("https://api.instagram.com/oauth/access_token", {
             method: "POST",
