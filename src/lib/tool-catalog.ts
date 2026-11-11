@@ -4,7 +4,7 @@ function publicMailUrl(value: string | undefined) {
     const url = new URL(value);
     const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
     if (url.username || url.password || url.href !== url.origin + "/") return null;
-    if (url.protocol === "https:" || (import.meta.env.DEV && local && url.protocol === "http:")) {
+    if (url.protocol === "https:" || (import.meta.env?.DEV && local && url.protocol === "http:")) {
       return url.href;
     }
   } catch {
@@ -13,7 +13,7 @@ function publicMailUrl(value: string | undefined) {
   return null;
 }
 
-export const TEMP_MAIL_URL = publicMailUrl(import.meta.env.VITE_TEMP_MAIL_URL);
+export const TEMP_MAIL_URL = publicMailUrl(import.meta.env?.VITE_TEMP_MAIL_URL);
 
 const ALL_TOOLS = [
   {
