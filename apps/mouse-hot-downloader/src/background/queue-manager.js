@@ -5,7 +5,7 @@ const busy = new Set(["starting", "running", "pausing"]);
 const retryable = new Set(["NETWORK_TIMEOUT", "NETWORK_DISCONNECTED", "NETWORK_FAILED",
   "SERVER_UNREACHABLE", "SERVER_FAILED"]);
 const terminal = new Set(["done", "cancelled", "failed", "review"]);
-const withBytes = (j) => ({ ...j, item: { ...j.item, source: undefined, thumb: undefined } });
+const withBytes = (j) => ({ ...j, item: { ...j.item, source: undefined, thumb: undefined, alternates: undefined } });
 const own = (d) => d?.byExtensionId === chrome.runtime.id;
 const labels = {
   queued: "Aguardando", starting: "Verificando arquivo…", running: "Baixando",
@@ -39,8 +39,24 @@ export function makeQueue(notify) {
     job.status = status;
     job.message = message;
     job.updated = Date.now();
-    if (status === "done" || status === "cancelled") delete job.item.source;
+    if (status === "done" || status === "cancelled") {
+      delete job.item.source;
+      delete job.item.alternates;
+    }
     void notify(job.tabId, job.item.key, labels[status], busy.has(status) || status === "queued");
+  }
+  function nextVideoSource(job) {
+    if (job.item.platform !== "instagram" || job.item.kind !== "video") return false;
+    const [next, ...remaining] = job.item.alternates || [];
+    if (!next) return false;
+    job.item.source = next;
+    job.item.alternates = remaining;
+    job.downloadId = null;
+    job.filename = "";
+    job.canResume = false;
+    job.next = 0;
+    state(job, "queued", "Tentando outra versão do vídeo.");
+    return true;
   }
   async function ingest(job, d) {
     if (!own(d)) return;
@@ -58,6 +74,7 @@ export function makeQueue(notify) {
         ? "Confira o aviso de segurança em chrome://downloads." : "");
     }
     if (d.error === "USER_CANCELED") return state(job, "cancelled");
+    if ((d.error?.startsWith("SERVER_") || d.error?.startsWith("NETWORK_")) && nextVideoSource(job)) return;
     if (retryable.has(d.error) && job.attempts < 3 && job.item.source) {
       job.downloadId = null;
       job.next = Date.now() + 30000 * job.attempts;
@@ -96,13 +113,18 @@ export function makeQueue(notify) {
     state(job, "starting");
     await save();
     let path;
-    try {
-      const ext = await verifyMedia(job.item);
-      path = filePath(job.item, ext);
-    } catch (error) {
-      state(job, "failed", error.message);
-      await save();
-      return;
+    while (!path) {
+      try {
+        path = filePath(job.item, await verifyMedia(job.item));
+      } catch (error) {
+        if (!nextVideoSource(job)) {
+          state(job, "failed", error.message);
+          await save();
+          return;
+        }
+        state(job, "starting", "Verificando outra versão do vídeo…");
+        await save();
+      }
     }
     job.filename = path;
     await save();
@@ -117,13 +139,17 @@ export function makeQueue(notify) {
       state(job, "failed", "O Chrome não iniciou o download. Confira a pasta de destino e as permissões.");
     }
     await save();
+    if (job.status === "queued" && !job.next) await launch(job);
   }
   async function pump() {
-    const available = 2 - jobs.filter(j => busy.has(j.status)).length;
-    if (available <= 0) return;
-    const ready = jobs.filter(j => j.status === "queued" && (!j.next || j.next <= Date.now())).slice(0, available);
-    // Start one at a time so a queue snapshot cannot overwrite another job's journal.
-    for (const job of ready) await launch(job);
+    // A rejected probe emits no Chrome event. Continue with later items without
+    // waiting for the alarm, but cap each pass if the entire batch is invalid.
+    for (let attempted = 0; attempted < 4; attempted++) {
+      if (jobs.filter(j => busy.has(j.status)).length >= 2) return;
+      const ready = jobs.find(j => j.status === "queued" && (!j.next || j.next <= Date.now()));
+      if (!ready) return;
+      await launch(ready);
+    }
   }
   let initialized = false;
   const run = (fn) => exclusive(async () => {
@@ -137,7 +163,13 @@ export function makeQueue(notify) {
       // DownloadItem's byte counters are read on demand; no guessed progress.
       for (const j of jobs.filter(j => j.status === "running")) {
         const [d] = await chrome.downloads.search({ id: j.downloadId });
-        if (own(d)) await ingest(j, d);
+        if (own(d)) {
+          await ingest(j, d);
+          if (j.status === "queued" && !j.next) {
+            await save();
+            await pump();
+          }
+        }
       }
       return jobs.map(withBytes).reverse();
     }),

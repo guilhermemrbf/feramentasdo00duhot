@@ -83,12 +83,17 @@ function describesVideo(node) {
 
 function asset(node, index, postUrl, videoOnly = false) {
   if (!node || typeof node !== "object") return null;
-  const video = largestSource(node.video_versions, postUrl) ||
-    mediaSource(node.video_url, postUrl) || mediaSource(node.playback_url, postUrl);
+  const versions = Array.isArray(node.video_versions) ? node.video_versions.slice(0, 100) : [];
+  const videos = [...new Set([
+    ...versions.sort((a, b) => dimension(b?.width) * dimension(b?.height) - dimension(a?.width) * dimension(a?.height))
+      .map(version => mediaSource(version?.url || version?.src, postUrl)),
+    mediaSource(node.video_url, postUrl), mediaSource(node.playback_url, postUrl),
+  ].filter(Boolean))].slice(0, 4);
   const image = largestSource(node.image_versions2?.candidates, postUrl) ||
     largestSource(node.display_resources, postUrl) ||
     mediaSource(node.display_url, postUrl) || mediaSource(node.image_url, postUrl);
-  if (video) return { postUrl: postUrl.href, index, kind: "video", source: video, thumb: image };
+  if (videos.length) return { postUrl: postUrl.href, index, kind: "video", source: videos[0], thumb: image,
+    ...(videos.length > 1 ? { alternates: videos.slice(1) } : {}) };
   if (videoOnly || describesVideo(node)) return null;
   return image ? { postUrl: postUrl.href, index, kind: "image", source: image, thumb: image } : null;
 }

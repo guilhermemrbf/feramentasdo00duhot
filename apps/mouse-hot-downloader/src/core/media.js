@@ -71,6 +71,15 @@ export function classify(raw, platform) {
   if (!mediaUrl(raw, platform)) return "O site não mostrou um arquivo de uma origem compatível.";
   return "";
 }
+export function directVideoSources(urls, platform) {
+  const sources = new Set();
+  for (const raw of urls) {
+    if (classify(raw, platform)) continue;
+    sources.add(mediaUrl(raw, platform).href);
+    if (sources.size === 4) break;
+  }
+  return [...sources];
+}
 export function makeCandidate(input, platform) {
   if (!cdns[platform] || !input || !["image", "video"].includes(input.kind)) return null;
   const post = pageInfo(input.postUrl);
@@ -83,10 +92,15 @@ export function makeCandidate(input, platform) {
   const u = parseUrl(input.postUrl);
   const source = typeof input.source === "string" && input.source.length <= 4096 ? input.source : "";
   const reason = source ? classify(source, platform) : "";
+  const alternates = input.kind === "video" && platform === "instagram" && source && !reason &&
+    Array.isArray(input.alternates)
+    ? directVideoSources([source, ...input.alternates.slice(0, 12)], platform).slice(1)
+    : [];
   return {
     key, platform, id, index, kind: input.kind, handle, source: reason ? "" : (mediaUrl(source, platform)?.href || ""),
     postUrl: u.origin + u.pathname, thumb: mediaUrl(input.thumb, platform)?.href || "",
     status: reason ? "unavailable" : source ? "check" : "open", reason,
+    ...(alternates.length ? { alternates } : {}),
   };
 }
 export function profileHandle(value) {

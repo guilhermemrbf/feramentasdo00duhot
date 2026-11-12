@@ -25,10 +25,20 @@ const generated = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f
 assert.equal(generated.status, 0, generated.stderr?.toString() || "FFmpeg is required for the test.");
 const video = generated.stdout;
 let active = 0, peak = 0, waitRequestStarted = false, waitRequestAborted = false;
+let expiredVideoAttempts = 0, interruptedVideoAttempts = 0;
 const server = createServer((req, res) => {
   const path = new URL(req.url, "http://localhost").pathname;
   if (path.startsWith("/media/")) {
-    if (path.includes("expired")) { res.writeHead(403); return res.end(); }
+    if (path.includes("expired")) {
+      if (path.endsWith(".mp4")) expiredVideoAttempts++;
+      res.writeHead(403);
+      return res.end();
+    }
+    if (path === "/media/full-denied.mp4" && req.headers.range !== "bytes=0-511") {
+      interruptedVideoAttempts++;
+      res.writeHead(403);
+      return res.end();
+    }
     const isVideo = path.endsWith(".mp4");
     const bytes = isVideo ? video : photo;
     const type = isVideo ? "video/mp4" : "image/png";
@@ -64,9 +74,14 @@ const server = createServer((req, res) => {
     const [, , code] = archivePost;
     const image = { media_type: 1, image_versions2: { candidates: [{ url: "/media/photo.png", width: 140, height: 140 }] } };
     const reel = { media_type: 2, video_versions: [{ url: "/media/reel.mp4", width: 160, height: 160 }] };
+    const variants = { media_type: 2, video_versions: [
+      { url: "/media/expired.mp4", width: 1920, height: 1080 },
+      { url: "/media/full-denied.mp4", width: 1280, height: 720 },
+      ...reel.video_versions,
+    ] };
     const unavailable = { media_type: 2, video_url: "/media/segmented.m3u8" };
     const node = code === "Mixed3" ? { media_type: 8, carousel_media: [image, reel, unavailable] } :
-      code === "Blocked3" ? {} : code === "Solo3" || code === "Wait3" ? reel : image;
+      code === "Blocked3" ? {} : code === "Solo3" ? variants : code === "Wait3" ? reel : image;
     const html = `<!doctype html><link rel="canonical" href="${origin}${path}">
       <script type="application/json">${JSON.stringify({ code, ...node })}</script>`;
     if (code === "Wait3") {
@@ -234,7 +249,8 @@ try {
   assert.doesNotMatch(await text(production), /Telegram/);
   const manifest = await evaluate(production, "chrome.runtime.getManifest()");
   assert.equal(manifest.name, "Mouse Hot");
-  assert.equal(manifest.version, "3.0.1");
+  const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
+  assert.equal(manifest.version, packageJson.version);
   assert.equal(manifest.side_panel, undefined);
   if (process.env.MOUSE_HOT_LIVE === "1") {
     const visit = await open("https://www.instagram.com/instagram/reels/");
@@ -480,6 +496,8 @@ try {
   await clickOverlay(vault, "#mh-items button[data-download]");
   const folder = join(downloadPath, "Mouse Hot", "Instagram", "vault");
   await fileWhenReady(join(folder, "post_solo3_1_video.mp4"), video);
+  assert.ok(expiredVideoAttempts > 0, "the preferred URL expired");
+  assert.ok(interruptedVideoAttempts > 0, "the next URL passed the probe but failed its Chrome download");
   assert.equal(await evaluate(vault, "location.pathname"), "/ig/vault/", "single download keeps the profile open");
 
   await clickOverlay(vault, "#mh-select-all");
@@ -529,7 +547,7 @@ try {
   await clickOverlay(tikTokProfile, "#mh-stop");
   assert.equal((await readdir(join(downloadPath, "Mouse Hot", "TikTok", "fixture"))).length, 1, "scan only saves no file");
 
-  console.log("Mouse Hot 3.0.1 — individual and batch media, re-download, no automatic JSON, separate export, carousel, scroll and cancel validated.");
+  console.log("Mouse Hot — individual and batch media, video fallback after expiry and Chrome interruption, no automatic JSON, carousel, scroll and cancel validated.");
   console.log(info.product + " — production package loaded. Instagram batch, 2 concurrent, expired URL, duplicate, persisted queue after restart, TikTok video and auto-scroll passed.");
 } finally {
   if (browser.exitCode === null) await closeBrowser();

@@ -31,6 +31,13 @@ test("uses stable post identity, distinct carousel positions and Windows-safe na
   assert.notEqual(candidate().key, candidate({ index: 1 }).key);
   assert.equal(filePath(candidate(), "mp4"), "Mouse Hot/Instagram/perfil_con/post_abc9_1_video.mp4");
 });
+test("only full video alternatives from approved origins survive capture", () => {
+  const other = "https://b.cdninstagram.com/full.mp4";
+  const item = candidate({ alternates: [video, other, other,
+    "https://b.cdninstagram.com/full.mp4?bytestart=0", "https://example.org/video.mp4",
+    "https://b.cdninstagram.com/x.m3u8"] });
+  assert.deepEqual(item.alternates, [other]);
+});
 test("requires a real media signature and reports expired URLs", async () => {
   const bytes = Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from("ftypisom"), Buffer.alloc(12)]);
   const sample = (data, mime) => new Response(data, { headers: { "content-type": mime } });

@@ -1,4 +1,4 @@
-import { cleanPathPart, makeCandidate, pageInfo } from "../core/media.js";
+import { cleanPathPart, directVideoSources, makeCandidate, pageInfo } from "../core/media.js";
 import { instagramProfileData, instagramProfileHandle } from "../core/profile-data.js";
 import { makeQueue } from "./queue-manager.js";
 
@@ -81,7 +81,13 @@ async function content(message, sender) {
           item.reason = typeof input.reason === "string" ? input.reason.slice(0, 160) : "";
         }
         if (item.source && !item.handle && state.account) item.handle = state.account;
-        if (items.get(item.key)?.source && !item.source) continue;
+        const previous = items.get(item.key);
+        if (previous?.source && !item.source) continue;
+        if (previous?.source && item.source && item.kind === "video" && item.platform === "instagram") {
+          const alternates = directVideoSources([item.source, ...(item.alternates || []),
+            previous.source, ...(previous.alternates || [])], item.platform).slice(1);
+          if (alternates.length) item.alternates = alternates;
+        }
         if (item.status === "open" && item.key.startsWith("instagram:post:") &&
           [...items.values()].some(prior => prior.source && sameInstagramPost(item, prior))) continue;
         if (item.source) {
@@ -129,7 +135,8 @@ async function command(id, state, message) {
     const jobs = await queue.list();
     const captured = new Set(state?.items.map(item => item.key));
     return { capture: state ? { scope: state.scope, account: state.account, scroll: state.scroll,
-      items: state.items.map(i => ({ ...i, sourceOrigin: i.source ? new URL(i.source).origin : "", source: undefined })),
+      items: state.items.map(i => ({ ...i, sourceOrigin: i.source ? new URL(i.source).origin : "",
+        source: undefined, alternates: undefined })),
       selected: state.selected } : null, jobs: fixture && message.type.startsWith("panel:") ? jobs :
         jobs.filter(job => captured.has(job.item.key)) };
   }
