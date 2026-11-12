@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Baixar mídias</title>
+<style>
+:root{color-scheme:dark;font:14px system-ui}body{width:380px;max-height:560px;overflow:auto;margin:0;background:#111318;color:#f3f4f6}
+header{position:sticky;top:0;padding:14px;background:#111318;border-bottom:1px solid #34383f}
+h1{margin:0 0 6px;font-size:17px}main{padding:12px}p{line-height:1.4}
+small{color:#aeb4c0}button{background:#db244e;border:0;color:white;padding:8px 10px;border-radius:7px;cursor:pointer;font-weight:600}
+button:disabled{opacity:.5;cursor:not-allowed}.secondary{background:#34383f}
+ul{list-style:none;padding:0;display:grid;gap:7px}li{padding:10px;border:1px solid #34383f;border-radius:8px;background:#1a1e25}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}.state{color:#aeb4c0;font-size:12px}
+.error{color:#fca5a5}.success{color:#86efac}
+</style></head><body>
+<header><h1>00 do Hot · Baixar mídia</h1><small>Instagram e TikTok · mídia acessível na página</small><p><button id="refresh" class="secondary">Atualizar</button> <button id="all" disabled>Baixar disponíveis</button></p></header>
+<main><p id="status" role="status">Procurando mídias…</p><ul id="items"></ul>
+<small>Em carrosséis, avance os slides e atualize. Vídeos blob:, fluxos protegidos e links expirados podem não permitir download.</small></main>
+<script src="shared.js"></script><script src="popup.js"></script></body></html>

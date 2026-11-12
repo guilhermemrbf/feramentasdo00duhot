@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "00 do Hot - Media Downloader",
+  "version": "0.1.0",
+  "description": "Baixa mídias visíveis e acessíveis de posts do Instagram e TikTok.",
+  "permissions": [
+    "activeTab",
+    "downloads"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.instagram.com/*",
+        "https://instagram.com/*",
+        "https://www.tiktok.com/*",
+        "https://tiktok.com/*"
+      ],
+      "js": [
+        "shared.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

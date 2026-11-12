@@ -1,0 +1,62 @@
+name: Verificar extensão de download de mídias
+
+on:
+  push:
+    paths:
+      - "apps/social-media-downloader-extension/**"
+      - "tests/social-media-downloader-extension.test.mjs"
+      - "tests/social-media-downloader-catalog.test.mjs"
+      - "src/lib/tool-catalog.ts"
+      - "src/components/AppShell.tsx"
+      - "src/lib/downloads.ts"
+      - "src/routes/baixar-midias.tsx"
+      - "public/downloads/00-do-hot-media-downloader-v0.1.0.zip"
+      - ".github/workflows/social-media-downloader-extension.yml"
+  pull_request:
+    paths:
+      - "apps/social-media-downloader-extension/**"
+      - "tests/social-media-downloader-extension.test.mjs"
+      - "tests/social-media-downloader-catalog.test.mjs"
+      - "src/lib/tool-catalog.ts"
+      - "src/components/AppShell.tsx"
+      - "src/lib/downloads.ts"
+      - "src/routes/baixar-midias.tsx"
+      - "public/downloads/00-do-hot-media-downloader-v0.1.0.zip"
+      - ".github/workflows/social-media-downloader-extension.yml"
+
+jobs:
+  extension-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Testar identificação, download e integração no catálogo
+        run: node --experimental-strip-types --test tests/social-media-downloader-extension.test.mjs tests/social-media-downloader-catalog.test.mjs
+      - name: Validar sintaxe dos scripts
+        run: |
+          for file in apps/social-media-downloader-extension/*.js; do
+            node --check "$file"
+          done
+      - name: Validar ZIP instalável e conteúdo
+        run: |
+          set -e
+          zipfile="public/downloads/00-do-hot-media-downloader-v0.1.0.zip"
+          unzip -t "$zipfile"
+          for name in manifest.json shared.js content.js background.js popup.html popup.js README.md; do
+            unzip -p "$zipfile" "$name" | cmp - "apps/social-media-downloader-extension/$name"
+          done
+          unzip -Z -1 "$zipfile" | sort > /tmp/actual-extension-files.txt
+          printf '%s\n' manifest.json shared.js content.js background.js popup.html popup.js README.md | sort > /tmp/expected-extension-files.txt
+          diff -u /tmp/expected-extension-files.txt /tmp/actual-extension-files.txt
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Instalar dependências travadas
+        run: bun install --frozen-lockfile
+      - name: Validar build da interface
+        run: bun run build

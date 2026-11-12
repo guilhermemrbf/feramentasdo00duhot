@@ -66,6 +66,23 @@ const ALL_TOOLS = [
     requirement: "Usa o Cloudinary configurado no projeto. Os arquivos enviados ficam públicos.",
   },
   {
+    id: "socialDownload",
+    path: "/baixar-midias",
+    name: "Baixar Mídias",
+    category: "Conteúdo",
+    mode: "Extensão Chrome/Edge",
+    summary: "Localize fotos e vídeos carregados em páginas do Instagram e TikTok para baixar quando disponíveis.",
+    input: "Uma página aberta do Instagram ou TikTok em um navegador compatível.",
+    output: "Downloads dos arquivos acessíveis e indicação das mídias indisponíveis.",
+    steps: [
+      "Baixe o ZIP da extensão e extraia a pasta.",
+      "Em chrome://extensions, ative o modo do desenvolvedor e carregue a pasta extraída.",
+      "Abra o post desejado, clique na extensão e baixe as mídias disponíveis.",
+    ],
+    requirement:
+      "Requer Chrome ou Edge no computador. Vídeos blob:/streaming, links expirados, arquivos protegidos e conteúdo não carregado podem ficar indisponíveis. Use apenas mídias autorizadas.",
+  },
+  {
     id: "pages",
     path: "/criar-pagina",
     name: "Criar Tela Privacy",

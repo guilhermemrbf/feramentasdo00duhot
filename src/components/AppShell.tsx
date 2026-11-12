@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowUpRight,
   CircleHelp,
+  Download,
   FileKey,
   GitBranch,
   Home,
@@ -34,6 +35,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 export const TOOL_ICONS = {
   telegram: Send,
   images: Image,
+  socialDownload: Download,
   pages: PanelTop,
   metadata: FileKey,
   creatives: ShieldCheck,
