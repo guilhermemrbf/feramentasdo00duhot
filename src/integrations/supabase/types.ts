@@ -161,10 +161,144 @@ export type Database = {
           },
         ]
       }
+      instagram_profile_drafts: {
+        Row: {
+          account_created: boolean
+          bio: string
+          created_at: string
+          display_name: string
+          handle: string
+          id: string
+          instagram_account_id: string | null
+          photo_path: string | null
+          product_url: string | null
+          reels_per_day: number
+          registration_email: string | null
+          starter_reels: string[]
+          workspace_id: string
+        }
+        Insert: {
+          account_created?: boolean
+          bio?: string
+          created_at?: string
+          display_name: string
+          handle: string
+          id: string
+          instagram_account_id?: string | null
+          photo_path?: string | null
+          product_url?: string | null
+          reels_per_day?: number
+          registration_email?: string | null
+          starter_reels?: string[]
+          workspace_id: string
+        }
+        Update: {
+          account_created?: boolean
+          bio?: string
+          created_at?: string
+          display_name?: string
+          handle?: string
+          id?: string
+          instagram_account_id?: string | null
+          photo_path?: string | null
+          product_url?: string | null
+          reels_per_day?: number
+          registration_email?: string | null
+          starter_reels?: string[]
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_profile_drafts_instagram_account_id_workspace_id_fkey"
+            columns: ["instagram_account_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "instagram_profile_drafts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_story_reminders: {
+        Row: {
+          audience: string
+          created_at: string
+          filename: string
+          id: string
+          instagram_account_id: string
+          link_title: string | null
+          link_url: string | null
+          mime_type: string
+          scheduled_at: string
+          state: string
+          sticker_x: number
+          sticker_y: number
+          stickers: Json | null
+          storage_path: string
+          workspace_id: string
+        }
+        Insert: {
+          audience?: string
+          created_at?: string
+          filename: string
+          id: string
+          instagram_account_id: string
+          link_title?: string | null
+          link_url?: string | null
+          mime_type: string
+          scheduled_at: string
+          state?: string
+          sticker_x: number
+          sticker_y: number
+          stickers?: Json | null
+          storage_path: string
+          workspace_id: string
+        }
+        Update: {
+          audience?: string
+          created_at?: string
+          filename?: string
+          id?: string
+          instagram_account_id?: string
+          link_title?: string | null
+          link_url?: string | null
+          mime_type?: string
+          scheduled_at?: string
+          state?: string
+          sticker_x?: number
+          sticker_y?: number
+          stickers?: Json | null
+          storage_path?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_story_reminders_instagram_account_id_workspace_i_fkey"
+            columns: ["instagram_account_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "instagram_story_reminders_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       instagram_tokens: {
         Row: {
           access_token_ciphertext: string
           account_id: string
+          analytics_access_token_ciphertext: string | null
+          analytics_token_expires_at: string | null
           encryption_key_version: string | null
           refresh_token_ciphertext: string | null
           token_expires_at: string | null
@@ -173,6 +307,8 @@ export type Database = {
         Insert: {
           access_token_ciphertext: string
           account_id: string
+          analytics_access_token_ciphertext?: string | null
+          analytics_token_expires_at?: string | null
           encryption_key_version?: string | null
           refresh_token_ciphertext?: string | null
           token_expires_at?: string | null
@@ -181,6 +317,8 @@ export type Database = {
         Update: {
           access_token_ciphertext?: string
           account_id?: string
+          analytics_access_token_ciphertext?: string | null
+          analytics_token_expires_at?: string | null
           encryption_key_version?: string | null
           refresh_token_ciphertext?: string | null
           token_expires_at?: string | null
@@ -204,9 +342,13 @@ export type Database = {
           duration_seconds: number | null
           height: number | null
           id: string
+          import_batch_id: string | null
+          import_folder: string | null
+          import_position: number | null
           mime_type: string
           original_filename: string
           processing_error: string | null
+          reel_account_id: string | null
           size_bytes: number
           status: Database["public"]["Enums"]["media_status"]
           storage_path: string
@@ -222,9 +364,13 @@ export type Database = {
           duration_seconds?: number | null
           height?: number | null
           id?: string
+          import_batch_id?: string | null
+          import_folder?: string | null
+          import_position?: number | null
           mime_type: string
           original_filename: string
           processing_error?: string | null
+          reel_account_id?: string | null
           size_bytes: number
           status?: Database["public"]["Enums"]["media_status"]
           storage_path: string
@@ -240,9 +386,13 @@ export type Database = {
           duration_seconds?: number | null
           height?: number | null
           id?: string
+          import_batch_id?: string | null
+          import_folder?: string | null
+          import_position?: number | null
           mime_type?: string
           original_filename?: string
           processing_error?: string | null
+          reel_account_id?: string | null
           size_bytes?: number
           status?: Database["public"]["Enums"]["media_status"]
           storage_path?: string
@@ -258,6 +408,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reel_media_account_same_workspace"
+            columns: ["reel_account_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id", "workspace_id"]
           },
         ]
       }
@@ -415,8 +572,12 @@ export type Database = {
           attempt_count: number
           caption: string
           content_type: string
+          cover_asset_id: string | null
           created_at: string
           created_by: string | null
+          first_comment: string | null
+          first_comment_attempted_at: string | null
+          first_comment_status: string | null
           hashtags: string[]
           id: string
           idempotency_key: string
@@ -444,8 +605,12 @@ export type Database = {
           attempt_count?: number
           caption?: string
           content_type?: string
+          cover_asset_id?: string | null
           created_at?: string
           created_by?: string | null
+          first_comment?: string | null
+          first_comment_attempted_at?: string | null
+          first_comment_status?: string | null
           hashtags?: string[]
           id?: string
           idempotency_key?: string
@@ -473,8 +638,12 @@ export type Database = {
           attempt_count?: number
           caption?: string
           content_type?: string
+          cover_asset_id?: string | null
           created_at?: string
           created_by?: string | null
+          first_comment?: string | null
+          first_comment_attempted_at?: string | null
+          first_comment_status?: string | null
           hashtags?: string[]
           id?: string
           idempotency_key?: string
@@ -526,6 +695,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reel_cover_same_workspace"
+            columns: ["cover_asset_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "media_assets"
+            referencedColumns: ["id", "workspace_id"]
           },
         ]
       }
@@ -786,8 +962,12 @@ export type Database = {
           attempt_count: number
           caption: string
           content_type: string
+          cover_asset_id: string | null
           created_at: string
           created_by: string | null
+          first_comment: string | null
+          first_comment_attempted_at: string | null
+          first_comment_status: string | null
           hashtags: string[]
           id: string
           idempotency_key: string
@@ -817,6 +997,17 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      claim_instagram_analytics: { Args: never; Returns: Json }
+      claim_instagram_first_comment: {
+        Args: never
+        Returns: {
+          first_comment: string
+          id: string
+          instagram_account_id: string
+          meta_media_id: string
+          workspace_id: string
+        }[]
       }
       claim_instagram_publish_step: {
         Args: never
@@ -824,8 +1015,12 @@ export type Database = {
           attempt_count: number
           caption: string
           content_type: string
+          cover_asset_id: string | null
           created_at: string
           created_by: string | null
+          first_comment: string | null
+          first_comment_attempted_at: string | null
+          first_comment_status: string | null
           hashtags: string[]
           id: string
           idempotency_key: string
@@ -856,10 +1051,24 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      create_instagram_reel_loops: {
+        Args: {
+          p_account_ids: string[]
+          p_asset_ids: string[]
+          p_caption: string
+          p_interval_minutes: number
+          p_name: string
+          p_start_at: string
+          p_workspace_id: string
+        }
+        Returns: number
+      }
       create_postkit_device_invite: {
         Args: { p_token_hash: string; p_workspace_id: string }
         Returns: undefined
       }
+      enable_instagram_worker: { Args: never; Returns: boolean }
+      enqueue_due_instagram_reel_loops: { Args: never; Returns: number }
       ensure_postkit_workspace: {
         Args: never
         Returns: {
@@ -877,6 +1086,28 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      finish_instagram_analytics: {
+        Args: { p_account: string; p_lease: string; p_result: Json }
+        Returns: boolean
+      }
+      finish_instagram_first_comment: {
+        Args: { p_id: string; p_result: string }
+        Returns: boolean
+      }
+      get_instagram_analytics: {
+        Args: {
+          p_account: string
+          p_end: string
+          p_page: number
+          p_start: string
+          p_workspace: string
+        }
+        Returns: Json
+      }
+      get_instagram_top_posts: {
+        Args: { p_account: string; p_workspace: string }
+        Returns: Json
+      }
       has_workspace_role: {
         Args: {
           allowed_roles: Database["public"]["Enums"]["workspace_role"][]
@@ -884,13 +1115,48 @@ export type Database = {
         }
         Returns: boolean
       }
+      instagram_worker_is_active: { Args: never; Returns: boolean }
       is_workspace_member: {
         Args: { target_workspace: string }
         Returns: boolean
       }
+      list_instagram_reel_loops: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          account_id: string
+          asset_index: number
+          id: string
+          interval_minutes: number
+          name: string
+          next_at: string
+          pause_reason: string
+          state: string
+          total: number
+          username: string
+        }[]
+      }
       revoke_postkit_device_invite: {
         Args: { p_token_hash: string }
         Returns: undefined
+      }
+      save_instagram_unified_accounts: {
+        Args: {
+          p_accounts: Json
+          p_expires_at: string
+          p_scopes: string[]
+          p_token_ciphertext: string
+          p_user_id: string
+          p_workspace_id: string
+        }
+        Returns: undefined
+      }
+      set_instagram_reel_loop_paused: {
+        Args: { p_id: string; p_paused: boolean }
+        Returns: boolean
+      }
+      verify_instagram_worker_secret: {
+        Args: { p_token: string }
+        Returns: boolean
       }
     }
     Enums: {
