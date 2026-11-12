@@ -1,0 +1,29 @@
+name: Verificar extensão de download de mídias
+
+on:
+  push:
+    paths:
+      - "apps/social-media-downloader-extension/**"
+      - "tests/social-media-downloader-extension.test.mjs"
+      - ".github/workflows/social-media-downloader-extension.yml"
+  pull_request:
+    paths:
+      - "apps/social-media-downloader-extension/**"
+      - "tests/social-media-downloader-extension.test.mjs"
+      - ".github/workflows/social-media-downloader-extension.yml"
+
+jobs:
+  extension-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Testar detecção e download
+        run: node --test tests/social-media-downloader-extension.test.mjs
+      - name: Validar sintaxe dos scripts
+        run: |
+          for file in apps/social-media-downloader-extension/*.js; do
+            node --check "$file"
+          done
