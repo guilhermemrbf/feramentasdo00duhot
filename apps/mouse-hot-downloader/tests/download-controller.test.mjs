@@ -70,6 +70,17 @@ test("one known photo queues every carousel asset after resolution", async () =>
   assert.deepEqual(harness.calls.at(-1)[1].keys, ["instagram:post:Slides:0:image", "instagram:post:Slides:1:video"]);
 });
 
+test("retry skips a cached video when Instagram no longer supplies its source", async () => {
+  const item = candidate(carousel, { ...video, index: 1 });
+  const harness = setup({ items: [item], resolve: async (postUrl, { onUnavailable }) => {
+    onUnavailable([1], { 1: "video" });
+    return [{ ...photo, postUrl, index: 0 }];
+  } });
+  await harness.run("retry-one", { key: item.key });
+  assert.deepEqual(harness.calls, []);
+  assert.equal(harness.operations.at(-1).error, true);
+});
+
 test("selection reports an unavailable post and still queues the next publication once", async () => {
   const items = [candidate(reel), candidate(carousel, photo), candidate(carousel, { ...video, index: 1 })];
   const resolved = [];

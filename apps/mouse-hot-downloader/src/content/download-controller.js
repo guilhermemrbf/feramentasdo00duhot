@@ -63,7 +63,8 @@ export function makeDownloadController({ getContext, getSnapshot, collect, readP
       }
 
       const all = action === "download-all";
-      const single = action === "download-one";
+      const retry = action === "retry-one";
+      const single = action === "download-one" || retry;
       let scanNotice = "";
       progress(all ? "Procurando mais publicações nesta aba…" : "Preparando downloads…");
       if (all) {
@@ -93,16 +94,18 @@ export function makeDownloadController({ getContext, getSnapshot, collect, readP
         const message = [scanNotice, "Preparando " + (index + 1) + " de " + selected.length + "…"].filter(Boolean).join(" ");
         progress(message);
         const direct = items.filter(item => item.status === "check");
+        const affectedKeys = retry ? [key] : items.map(item => item.key);
         const missingIndexes = new Set();
         const missingKinds = new Map();
         let missing = 0;
         try {
-          let downloadKeys = direct.map(item => item.key);
+          let downloadKeys = retry ? [] : direct.map(item => item.key);
           let omitted = [];
           if (isInstagramPost(item)) {
             const resolved = await resolvePost(item.postUrl, {
               signal,
               onUnavailable(indexes, kinds = {}) {
+                if (retry) return;
                 for (const index of indexes) {
                   missingIndexes.add(index);
                   if (kinds[index]) missingKinds.set(index, kinds[index]);
@@ -113,7 +116,8 @@ export function makeDownloadController({ getContext, getSnapshot, collect, readP
             const normalized = new Map();
             for (const asset of resolved) {
               const media = makeCandidate({ ...asset, handle: capture.account || item.handle }, "instagram");
-              if (media?.source && media.id === item.id && media.postUrl === item.postUrl) normalized.set(media.key, media);
+              if (media?.source && media.id === item.id && media.postUrl === item.postUrl &&
+                  (!retry || media.key === key)) normalized.set(media.key, media);
             }
             if (normalized.size || missingIndexes.size) {
               for (const asset of normalized.values()) missingIndexes.delete(asset.index);
@@ -145,11 +149,11 @@ export function makeDownloadController({ getContext, getSnapshot, collect, readP
           full += result.full || 0;
           unavailable += missing;
           const unresolvedKeys = items.filter(item => missingIndexes.has(item.index)).map(item => item.key);
-          progress(message, { readyKeys: items.map(item => item.key), unavailableKeys: [...omitted, ...unresolvedKeys] });
+          progress(message, { readyKeys: affectedKeys, unavailableKeys: [...omitted, ...unresolvedKeys] });
         } catch {
           guard();
           unavailable += Math.max(1, missing);
-          progress(message, { unavailableKeys: items.map(item => item.key) });
+          progress(message, { unavailableKeys: affectedKeys });
         }
       }
       const queued = added ? added + (added === 1 ? " arquivo na fila." : " arquivos na fila.") :

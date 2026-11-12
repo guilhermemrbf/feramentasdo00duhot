@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Mouse Hot",
   "description": "Organize e baixe fotos e vídeos autorizados do Instagram e TikTok.",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "minimum_chrome_version": "120",
   "permissions": ["storage", "downloads", "alarms"],
   "host_permissions": [

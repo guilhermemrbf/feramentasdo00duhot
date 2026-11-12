@@ -13,6 +13,9 @@ const formats = {
   "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov",
   "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
 };
+const probeBytes = 512;
+const verificationTimeout = 6500;
+const instagramRangeTimeout = 3000;
 export function parseUrl(raw, base) {
   if (typeof raw !== "string" || raw.length > 4096) return null;
   try { return new URL(raw, base); } catch { return null; }
@@ -130,26 +133,71 @@ function sniff(bytes) {
   if (["GIF87a", "GIF89a"].includes(ascii(0, 6))) return "gif";
   return "";
 }
+
+class RetryableMediaProbeError extends Error {}
+
+function matchesRequestedRange(value) {
+  const match = /^bytes 0-(\d+)\/(\d+|\*)$/i.exec(value);
+  if (!match) return false;
+  const end = Number(match[1]);
+  const size = Number(match[2]);
+  return end < probeBytes && (match[2] === "*" || (Number.isSafeInteger(size) && size > end));
+}
+
 export async function verifyMedia(item, fetcher = fetch) {
   const invalid = classify(item.source, item.platform);
   if (invalid) throw new Error(invalid);
+  const instagramVideo = item.platform === "instagram" && item.kind === "video";
+  const deadline = new AbortController();
+  const timer = setTimeout(() => deadline.abort(), verificationTimeout);
+  try {
+    try {
+      return await probeMedia(item, fetcher, deadline.signal, true, instagramVideo);
+    } catch (error) {
+      if (!instagramVideo || !(error instanceof RetryableMediaProbeError) || deadline.signal.aborted) throw error;
+      return await probeMedia(item, fetcher, deadline.signal, false, instagramVideo);
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function probeMedia(item, fetcher, deadline, useRange, instagramVideo) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 6500);
+  const abort = () => ctrl.abort();
+  deadline.addEventListener("abort", abort, { once: true });
+  const rangeTimer = instagramVideo && useRange ? setTimeout(abort, instagramRangeTimeout) : undefined;
+  let response;
   let reader;
   try {
-    const response = await fetcher(item.source, {
+    response = await fetcher(item.source, {
       signal: ctrl.signal, credentials: "omit", cache: "no-store", referrerPolicy: "no-referrer",
-      redirect: "error", headers: { Range: "bytes=0-511" },
+      redirect: "error",
+      ...(useRange ? { headers: { Range: "bytes=0-" + (probeBytes - 1) } } : {}),
     });
     if ([401, 403, 404, 410].includes(response.status)) throw new Error("Arquivo expirado ou sem acesso. Reabra a publicação.");
-    if (![200, 206].includes(response.status)) throw new Error("O servidor de mídia não disponibilizou o arquivo.");
-    if (response.status === 206 && !/^bytes 0-\d+\/(?:\d+|\*)$/i.test(response.headers.get("content-range") || "")) {
+    if (![200, 206].includes(response.status)) {
+      const message = instagramVideo ? "O servidor de mídia respondeu com HTTP " + response.status + "." :
+        "O servidor de mídia não disponibilizou o arquivo.";
+      if (instagramVideo && useRange && [400, 416].includes(response.status)) throw new RetryableMediaProbeError(message);
+      throw new Error(message);
+    }
+    const partial = response.status === 206;
+    const contentRange = partial ? response.headers.get("content-range") || "" : "";
+    if (partial && !instagramVideo && !/^bytes 0-\d+\/(?:\d+|\*)$/i.test(contentRange)) {
       throw new Error("A origem não retornou o início do arquivo.");
     }
     const mime = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
-    if (mime && mime !== "application/octet-stream" && !formats[mime]) throw new Error("O servidor não retornou um formato compatível.");
+    const declaredFormat = formats[mime];
+    if (mime && mime !== "application/octet-stream" && (!declaredFormat || (instagramVideo && mime.startsWith("image/")))) {
+      throw new Error("O servidor não retornou um formato compatível.");
+    }
+    if (partial && !useRange) throw new Error("O servidor retornou uma resposta parcial ao solicitar o arquivo completo.");
+    if (partial && instagramVideo && !matchesRequestedRange(contentRange)) {
+      throw new RetryableMediaProbeError("A origem não retornou o intervalo solicitado do arquivo.");
+    }
     reader = response.body?.getReader();
-    const sample = new Uint8Array(512);
+    const sample = new Uint8Array(probeBytes);
     let n = 0;
     while (reader && n < sample.length) {
       const { value, done } = await reader.read();
@@ -158,20 +206,26 @@ export async function verifyMedia(item, fetcher = fetch) {
       sample.set(chunk, n);
       n += chunk.length;
     }
-    const ext = sniff(sample.subarray(0, n));
-    if (!ext || (formats[mime] && formats[mime] !== ext) ||
+    const ext = instagramVideo && n < 12 ? "" : sniff(sample.subarray(0, n));
+    if (!ext || (declaredFormat && declaredFormat !== ext) ||
         (["mp4","webm","mov"].includes(ext) ? "video" : "image") !== item.kind) {
       throw new Error("O conteúdo não corresponde à mídia detectada.");
     }
     return ext;
   } catch (error) {
-    if (error.name === "AbortError" || error instanceof TypeError) {
+    if (ctrl.signal.aborted || error.name === "AbortError" || error instanceof TypeError) {
+      if (instagramVideo) {
+        const message = ctrl.signal.aborted ? "O tempo limite para verificar o vídeo foi atingido." :
+          "Uma falha de rede impediu a verificação do vídeo.";
+        throw new RetryableMediaProbeError(message);
+      }
       throw new Error("Não foi possível verificar o arquivo. Confira a permissão de mídia ou reabra a publicação.");
     }
     throw error;
   } finally {
-    clearTimeout(timer);
-    ctrl.abort();
-    void reader?.cancel().catch(() => {});
+    clearTimeout(rangeTimer);
+    deadline.removeEventListener("abort", abort);
+    abort();
+    void (reader || response?.body)?.cancel().catch(() => {});
   }
 }

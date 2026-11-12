@@ -122,9 +122,13 @@ export function makeOverlay(send, fixture, runDownload) {
     downloadSelected.textContent = selected.size ? "Baixar seleção (" + selected.size + ")" : "Baixar seleção";
   }
   function draw() {
-    const { capture, jobs = [] } = snapshot || {};
+    const { capture, jobs: history = [] } = snapshot || {};
     const all = capture?.items || [];
-    const jobsByKey = new Map(jobs.map(job => [job.item.key, job]));
+    const jobsByKey = new Map();
+    for (const job of history) {
+      if (!jobsByKey.has(job.item.key)) jobsByKey.set(job.item.key, job);
+    }
+    const jobs = [...jobsByKey.values()];
     const counts = [];
     const direct = all.filter(item => item.status === "check").length;
     const done = jobs.filter(job => job.status === "done").length;
@@ -223,7 +227,13 @@ export function makeOverlay(send, fixture, runDownload) {
       }
       if (job.status === "paused" && job.canResume) task("Retomar", "resume");
       if (active.has(job.status)) task("Cancelar", "cancel");
-      if (job.status === "failed") task("Tentar de novo", "retry");
+      if (job.status === "failed") {
+        if (job.item.key.startsWith("instagram:post:")) {
+          const retry = make("button", row, {}, "Tentar de novo");
+          retry.disabled = busy;
+          onClick(retry, () => download("retry-one", { key: job.item.key }));
+        } else task("Tentar de novo", "retry");
+      }
       return row;
     }));
   }

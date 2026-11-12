@@ -25,7 +25,8 @@ const generated = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f
 assert.equal(generated.status, 0, generated.stderr?.toString() || "FFmpeg is required for the test.");
 const video = generated.stdout;
 let active = 0, peak = 0, waitRequestStarted = false, waitRequestAborted = false;
-let expiredVideoAttempts = 0, interruptedVideoAttempts = 0;
+let expiredVideoAttempts = 0, interruptedVideoAttempts = 0, rejectedRangeAttempts = 0, ordinaryVideoRequests = 0;
+let updatedRetryPost = false;
 const server = createServer((req, res) => {
   const path = new URL(req.url, "http://localhost").pathname;
   if (path.startsWith("/media/")) {
@@ -38,6 +39,14 @@ const server = createServer((req, res) => {
       interruptedVideoAttempts++;
       res.writeHead(403);
       return res.end();
+    }
+    if (path === "/media/no-range.mp4") {
+      if (req.headers.range) {
+        rejectedRangeAttempts++;
+        req.socket.destroy();
+        return;
+      }
+      ordinaryVideoRequests++;
     }
     const isVideo = path.endsWith(".mp4");
     const bytes = isVideo ? video : photo;
@@ -55,10 +64,10 @@ const server = createServer((req, res) => {
     return setTimeout(() => res.end(bytes.subarray(40)), 2900);
   }
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-  if (path === "/ig/vault/" || path === "/ig/canceltest/") {
-    const account = path.includes("canceltest") ? "canceltest" : "vault";
+  if (["/ig/vault/", "/ig/canceltest/", "/ig/retrycase/"].includes(path)) {
+    const account = path.split("/")[2];
     const tile = (id) => `<a href="/ig/${account}/p/${id}/"><img width="140" height="140" src="/media/photo.png"></a>`;
-    const tiles = account === "vault" ? ["Solo3", "Mixed3", "Blocked3"] : ["Wait3"];
+    const tiles = account === "vault" ? ["Solo3", "Mixed3", "Blocked3"] : account === "retrycase" ? ["Retry3"] : ["Wait3"];
     const lazy = account === "vault" ? `<script>window.addEventListener("scroll", () => document.querySelector("main")
       .insertAdjacentHTML("beforeend", ${JSON.stringify(tile("Lazy3"))}), {once:true})</script>` : "";
     return res.end(`<!doctype html><main><header><h2>${account}</h2><strong data-profile-name>Equipe Mouse Hot</strong>
@@ -69,7 +78,7 @@ const server = createServer((req, res) => {
       <a aria-hidden="true" href="/ig/${account}/p/Hidden2/"><img width="140" height="140" src="/media/photo.png"></a>
       <div style="height:1150px"></div>${lazy}</main>`);
   }
-  const archivePost = path.match(/^\/ig\/(vault|canceltest)\/p\/(Solo3|Mixed3|Blocked3|Lazy3|Wait3)\/$/);
+  const archivePost = path.match(/^\/ig\/(vault|canceltest|retrycase)\/p\/(Solo3|Mixed3|Blocked3|Lazy3|Wait3|Retry3)\/$/);
   if (archivePost) {
     const [, , code] = archivePost;
     const image = { media_type: 1, image_versions2: { candidates: [{ url: "/media/photo.png", width: 140, height: 140 }] } };
@@ -77,11 +86,13 @@ const server = createServer((req, res) => {
     const variants = { media_type: 2, video_versions: [
       { url: "/media/expired.mp4", width: 1920, height: 1080 },
       { url: "/media/full-denied.mp4", width: 1280, height: 720 },
-      ...reel.video_versions,
+      { url: "/media/no-range.mp4", width: 160, height: 160 },
     ] };
     const unavailable = { media_type: 2, video_url: "/media/segmented.m3u8" };
+    const retryAlbum = { media_type: 8, carousel_media: [image, { media_type: 2,
+      video_url: updatedRetryPost ? "/media/fresh-retry.mp4" : "/media/expired-retry.mp4" }] };
     const node = code === "Mixed3" ? { media_type: 8, carousel_media: [image, reel, unavailable] } :
-      code === "Blocked3" ? {} : code === "Solo3" ? variants : code === "Wait3" ? reel : image;
+      code === "Blocked3" ? {} : code === "Solo3" ? variants : code === "Wait3" ? reel : code === "Retry3" ? retryAlbum : image;
     const html = `<!doctype html><link rel="canonical" href="${origin}${path}">
       <script type="application/json">${JSON.stringify({ code, ...node })}</script>`;
     if (code === "Wait3") {
@@ -498,6 +509,8 @@ try {
   await fileWhenReady(join(folder, "post_solo3_1_video.mp4"), video);
   assert.ok(expiredVideoAttempts > 0, "the preferred URL expired");
   assert.ok(interruptedVideoAttempts > 0, "the next URL passed the probe but failed its Chrome download");
+  assert.ok(rejectedRangeAttempts > 0, "the usable CDN URL rejects a Range probe");
+  assert.ok(ordinaryVideoRequests >= 2, "the worker verified and Chrome downloaded the file using ordinary GETs");
   assert.equal(await evaluate(vault, "location.pathname"), "/ig/vault/", "single download keeps the profile open");
 
   await clickOverlay(vault, "#mh-select-all");
@@ -534,6 +547,20 @@ try {
   assert.equal(await evaluate(cancel, "location.pathname"), "/ig/canceltest/");
   await assert.rejects(readFile(join(downloadPath, "Mouse Hot", "Instagram", "canceltest", "post_wait3_1_video.mp4")),
     { code: "ENOENT" });
+
+  const retry = await open(origin + "/ig/retrycase/");
+  await waitUntil(async () => (await overlayValue(retry, "#mh-summary"))?.includes("1 publicação"), "retry fixture");
+  await clickOverlay(retry, "#mh-toggle");
+  await clickOverlay(retry, "#mh-items button[data-download]");
+  const retryFolder = join(downloadPath, "Mouse Hot", "Instagram", "retrycase");
+  await fileWhenReady(join(retryFolder, "post_retry3_1_image.png"), photo);
+  await waitUntil(async () => (await overlayValue(retry, "#mh-jobs"))?.includes("Falhou"), "expired link is reported");
+  updatedRetryPost = true;
+  await clickOverlay(retry, "#mh-jobs button");
+  await fileWhenReady(join(retryFolder, "post_retry3_2_video.mp4"), video);
+  await waitUntil(async () => (await overlayValue(retry, "#mh-summary"))?.includes("2 salvos") &&
+    await overlayValue(retry, "#mh-jobs") === "", "latest success replaces the old failure");
+  assert.deepEqual((await readdir(retryFolder)).sort(), ["post_retry3_1_image.png", "post_retry3_2_video.mp4"]);
 
   const tikTokProfile = await open(origin + "/tt/@fixture");
   await waitUntil(async () => (await overlayValue(tikTokProfile, "#mh-summary"))?.includes("1 publicação"), "TikTok profile ready");
