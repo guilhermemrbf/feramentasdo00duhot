@@ -64,6 +64,22 @@ const server = createServer((req, res) => {
     return setTimeout(() => res.end(bytes.subarray(40)), 2900);
   }
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  if (path === "/ig/covercase/") {
+    const posts = ["Cover3", "OnlyCover3", "RealPhoto3"];
+    return res.end("<!doctype html><main>" + posts.map(code =>
+      '<a href="/ig/covercase/p/' + code + '/"><img width="140" height="140" src="/media/photo.png"></a>'
+    ).join("") + "</main>");
+  }
+  const coverPost = path.match(/^\/ig\/(?:covercase\/p|reel)\/(Cover3|OnlyCover3|RealPhoto3)\/$/);
+  if (coverPost) {
+    const [, code] = coverPost;
+    const isVideoPage = path.startsWith("/ig/reel/");
+    const node = code === "RealPhoto3" ? { media_type: 1, display_url: "/media/photo.png" } :
+      code === "Cover3" && isVideoPage ? { media_type: 2, video_versions: [{ url: "/media/reel.mp4" }] } : {};
+    return res.end(`<!doctype html><link rel="canonical" href="${origin}${path}">
+      <meta property="og:image" content="/media/photo.png">
+      <script type="application/json">${JSON.stringify({ code, ...node })}</script>`);
+  }
   if (["/ig/vault/", "/ig/canceltest/", "/ig/retrycase/"].includes(path)) {
     const account = path.split("/")[2];
     const tile = (id) => `<a href="/ig/${account}/p/${id}/"><img width="140" height="140" src="/media/photo.png"></a>`;
@@ -561,6 +577,19 @@ try {
   await waitUntil(async () => (await overlayValue(retry, "#mh-summary"))?.includes("2 salvos") &&
     await overlayValue(retry, "#mh-jobs") === "", "latest success replaces the old failure");
   assert.deepEqual((await readdir(retryFolder)).sort(), ["post_retry3_1_image.png", "post_retry3_2_video.mp4"]);
+
+  const coverCase = await open(origin + "/ig/covercase/");
+  await waitUntil(async () => (await overlayValue(coverCase, "#mh-summary"))?.includes("3 publicações"), "mixed preview grid");
+  await clickOverlay(coverCase, "#mh-toggle");
+  await clickOverlay(coverCase, "#mh-select-all");
+  await clickOverlay(coverCase, "#mh-download-selected");
+  const coverFolder = join(downloadPath, "Mouse Hot", "Instagram", "covercase");
+  await fileWhenReady(join(coverFolder, "post_realphoto3_1_image.png"), photo);
+  await fileWhenReady(join(coverFolder, "post_cover3_1_video.mp4"), video);
+  await waitUntil(async () => /1 indisponível/.test(await overlayValue(coverCase, "#mh-operation") || ""),
+    "report missing Reel instead of downloading its cover");
+  assert.deepEqual((await readdir(coverFolder)).sort(), ["post_cover3_1_video.mp4", "post_realphoto3_1_image.png"]);
+  assert.equal(await evaluate(coverCase, "location.pathname"), "/ig/covercase/");
 
   const tikTokProfile = await open(origin + "/tt/@fixture");
   await waitUntil(async () => (await overlayValue(tikTokProfile, "#mh-summary"))?.includes("1 publicação"), "TikTok profile ready");

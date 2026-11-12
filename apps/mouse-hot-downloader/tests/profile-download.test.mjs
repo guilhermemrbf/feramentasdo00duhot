@@ -141,12 +141,62 @@ test("matches the shortcode exactly and ignores unrelated media and executable s
   assert.deepEqual(await resolveInstagramPost(postUrl), []);
 });
 
+test("recovers the video behind a /p/ preview through the same shortcode's Reel route", async t => {
+  const preview = origin + "/fixture/p/Clip9/";
+  const reel = origin + "/reel/Clip9/";
+  const requests = [];
+  mockPage(t, async url => {
+    requests.push(String(url));
+    if (url === preview) return htmlResponse(canonical(preview) + '<meta property="og:image" content="' + image + '">');
+    assert.equal(url, reel);
+    return htmlResponse(canonical(origin + "/fixture/reel/Clip9/") +
+      script({ code: "Clip9", media_type: 2, video_versions: [{ url: video }], display_url: image }));
+  });
+  const { resolveInstagramPost } = await import("../src/adapters/instagram/profile-download.js");
+  assert.deepEqual(await resolveInstagramPost(preview), [
+    { postUrl: preview, index: 0, kind: "video", source: video, thumb: image },
+  ]);
+  assert.deepEqual(requests, [preview, reel]);
+});
+
+test("a Reel with a cover and no accessible video reports the video as unavailable", async t => {
+  const reel = origin + "/reel/Mixed9/";
+  const calls = [];
+  mockPage(t, async url => url === postUrl ?
+    htmlResponse(canonical(postUrl) + script({ code: "Mixed9", product_type: "clips", display_url: image })) :
+    htmlResponse(canonical(reel) + '<meta property="og:image" content="' + image + '">'));
+  const { resolveInstagramPost } = await import("../src/adapters/instagram/profile-download.js");
+  assert.deepEqual(await resolveInstagramPost(postUrl, { onUnavailable: (...args) => calls.push(args) }), []);
+  assert.deepEqual(calls, [[[0], { 0: "video" }]]);
+});
+
+test("the Reel route rejects another shortcode and is skipped after access denial", async t => {
+  const requested = [];
+  const reel = origin + "/reel/Mixed9/";
+  const fetchResponses = [
+    htmlResponse("", { status: 401 }),
+    htmlResponse("", { status: 403 }),
+    htmlResponse(canonical(postUrl) + '<meta property="og:type" content="video.other">'),
+    htmlResponse(canonical(origin + "/reel/Other/") + script({ code: "Mixed9", video_url: video })),
+  ];
+  mockPage(t, async (url, options) => {
+    requested.push([url, options.redirect, options.signal]);
+    return fetchResponses.shift();
+  });
+  const { resolveInstagramPost } = await import("../src/adapters/instagram/profile-download.js");
+  for (let i = 0; i < 3; i++) assert.deepEqual(await resolveInstagramPost(postUrl), []);
+  assert.deepEqual(requested.map(([url, redirect]) => [url, redirect]), [
+    [postUrl, "error"], [postUrl, "error"], [postUrl, "error"], [reel, "error"],
+  ]);
+  assert.equal(requested[2][2], requested[3][2]);
+});
+
 test("requires the canonical to match before using Open Graph media", async t => {
   const photoMeta = '<meta property="og:image" content="' + image + '">';
   const pages = [
     canonical(origin + "/p/Other/") + photoMeta + script({ code: "Mixed9", ...photo }),
     photoMeta,
-    canonical(postUrl) + photoMeta,
+    canonical(postUrl) + photoMeta + script({ code: "Mixed9", media_type: 1 }),
   ];
   mockPage(t, async () => htmlResponse(pages.shift()));
   const { resolveInstagramPost } = await import("../src/adapters/instagram/profile-download.js");

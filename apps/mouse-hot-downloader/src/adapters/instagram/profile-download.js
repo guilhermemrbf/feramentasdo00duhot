@@ -76,9 +76,15 @@ function largestSource(versions, postUrl) {
 
 function describesVideo(node) {
   return node.is_video === true || node.media_type === 2 || node.media_type === "2" ||
+    node.product_type === "clips" || node.product_type === "reels" ||
     node.__typename === "GraphVideo" || (Array.isArray(node.video_versions) && node.video_versions.length > 0) ||
     (typeof node.video_url === "string" && !!node.video_url) ||
     (typeof node.playback_url === "string" && !!node.playback_url);
+}
+
+function describesPhoto(node) {
+  return node.media_type === 1 || node.media_type === "1" || node.is_video === false ||
+    node.__typename === "GraphImage";
 }
 
 function asset(node, index, postUrl, videoOnly = false) {
@@ -113,19 +119,20 @@ function structuredAsset(node, post) {
   const page = node.mainEntityOfPage?.["@id"] || node.mainEntityOfPage || node.url;
   if (permalink(parseUrl(page, post.url)?.href, post.url.origin)?.code !== post.code) return null;
   const source = mediaSource(node.contentUrl, post.url);
-  if (!source || (kind === "image" && post.route !== "p")) return null;
   const thumb = kind === "image" ? source : mediaSource(node.thumbnailUrl, post.url);
   return { postUrl: post.url.href, index: 0, kind, source, thumb };
 }
 
-function embeddedAssets(document, post) {
+function embeddedAssets(document, post, videoOnly) {
   const stack = jsonNodes(document).reverse();
   const singles = [];
   const carousel = new Map();
   const carouselKinds = new Map();
   let hasCarousel = false;
   let carouselSize = 0;
-  let hasVideo = post.route !== "p";
+  let hasVideo = videoOnly;
+  let hasPhoto = false;
+  let hasCover = false;
   let visited = 0;
   while (stack.length && ++visited <= maxJsonNodes) {
     const node = stack.pop();
@@ -140,8 +147,7 @@ function embeddedAssets(document, post) {
           children.forEach((child, index) => {
             const media = child?.node || child;
             if (!media || typeof media !== "object") return;
-            const kind = describesVideo(media) ? "video" :
-              (Number(media.media_type) === 1 || media.is_video === false || media.__typename === "GraphImage") ? "image" : "";
+            const kind = describesVideo(media) ? "video" : describesPhoto(media) ? "image" : "";
             if (kind && (kind === "video" || !carouselKinds.has(index))) carouselKinds.set(index, kind);
             const item = asset(media, index, post.url);
             if (item && (!carousel.has(index) || item.kind === "video")) carousel.set(index, item);
@@ -150,13 +156,17 @@ function embeddedAssets(document, post) {
       } else {
         const item = asset(node, 0, post.url, hasVideo);
         hasVideo ||= item?.kind === "video" || describesVideo(node);
-        if (item) singles.push(item);
+        const isPhoto = describesPhoto(node);
+        hasPhoto ||= isPhoto;
+        if (item?.kind === "video" || (item && isPhoto)) singles.push(item);
+        else if (item?.kind === "image") hasCover = true;
       }
     } else {
       const item = structuredAsset(node, post);
       if (item) {
         hasVideo ||= item.kind === "video";
-        singles.push(item);
+        hasPhoto ||= item.kind === "image";
+        if (item.source) singles.push(item);
       }
     }
     for (const key of Object.keys(node)) {
@@ -171,7 +181,7 @@ function embeddedAssets(document, post) {
   const missing = Array.from({ length: carouselSize }, (_, index) => index).filter(index => !carousel.has(index));
   const missingKinds = Object.fromEntries(missing.filter(index => carouselKinds.has(index))
     .map(index => [index, carouselKinds.get(index)]));
-  return { hasCarousel, hasVideo, missing, missingKinds, items: hasCarousel ?
+  return { hasCarousel, hasVideo, hasPhoto, hasCover, missing, missingKinds, items: hasCarousel ?
     [...carousel.values()].sort((a, b) => a.index - b.index) :
     singles.filter(item => !hasVideo || item.kind === "video").slice(0, 1) };
 }
@@ -180,38 +190,60 @@ function meta(document, name) {
   return document.querySelector('meta[property="' + name + '"]')?.getAttribute("content") || "";
 }
 
+async function readPostPage(url, post, signal, videoOnly) {
+  const response = await fetch(url.href, { method: "GET", mode: "same-origin", credentials: "same-origin",
+    cache: "no-store", redirect: "error", referrerPolicy: "no-referrer", signal,
+    headers: { Accept: "text/html" } });
+  const html = await readHtml(response);
+  if (!html || signal.aborted) return null;
+  // Template contents stay detached and inert, including scripts, images and iframes.
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  const root = template.content;
+  const canonical = root.querySelector('link[rel~="canonical"]');
+  const canonicalPost = canonical && permalink(parseUrl(canonical.getAttribute("href"), url)?.href, url.origin);
+  if (canonical && canonicalPost?.code !== post.code) return null;
+  const videoMeta = meta(root, "og:video:secure_url") || meta(root, "og:video") || meta(root, "og:video:url");
+  const videoPage = videoOnly || post.route !== "p" || (canonicalPost && canonicalPost.route !== "p") ||
+    !!videoMeta || !!meta(root, "og:video:type") || /^video(?:[.:]|$)/i.test(meta(root, "og:type"));
+  const assets = embeddedAssets(root, post, videoPage);
+  if (assets.items.length || !canonicalPost || assets.hasCarousel) return assets;
+
+  const source = mediaSource(videoMeta, url);
+  const thumb = mediaSource(meta(root, "og:image:secure_url"), url) ||
+    mediaSource(meta(root, "og:image"), url);
+  if (source) assets.items.push({ postUrl: post.url.href, index: 0, kind: "video", source, thumb });
+  else if (!assets.hasVideo && assets.hasPhoto && thumb) {
+    assets.items.push({ postUrl: post.url.href, index: 0, kind: "image", source: thumb, thumb });
+  }
+  assets.hasCover ||= !!thumb;
+  return assets;
+}
+
 export async function resolveInstagramPost(postUrl, { signal, onUnavailable } = {}) {
   const post = permalink(postUrl, location.origin);
   if (!post || signal?.aborted) return [];
   const timeout = AbortSignal.timeout(8000);
   const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
+  let expectedVideo = post.route !== "p";
   try {
-    const response = await fetch(post.url.href, { method: "GET", mode: "same-origin", credentials: "same-origin",
-      cache: "no-store", redirect: "error", referrerPolicy: "no-referrer", signal: requestSignal,
-      headers: { Accept: "text/html" } });
-    const html = await readHtml(response);
-    if (!html || requestSignal.aborted) return [];
-    // Template contents stay detached and inert, including scripts, images and iframes.
-    const template = document.createElement("template");
-    template.innerHTML = html;
-    const root = template.content;
-    const canonical = root.querySelector('link[rel~="canonical"]');
-    if (canonical && permalink(parseUrl(canonical.getAttribute("href"), post.url)?.href,
-      post.url.origin)?.code !== post.code) return [];
-    const { items, hasCarousel, hasVideo, missing, missingKinds } = embeddedAssets(root, post);
-    if (missing.length) onUnavailable?.(missing, missingKinds);
-    if (items.length || !canonical || hasCarousel) return items;
-    const videoMeta = meta(root, "og:video:secure_url") || meta(root, "og:video") || meta(root, "og:video:url");
-    const source = mediaSource(videoMeta, post.url);
-    const thumb = mediaSource(meta(root, "og:image:secure_url"), post.url) ||
-      mediaSource(meta(root, "og:image"), post.url);
-    if (source) return [{ postUrl: post.url.href, index: 0, kind: "video", source, thumb }];
-    if (hasVideo || videoMeta || meta(root, "og:video:type") ||
-        /^video(?:[.:]|$)/i.test(meta(root, "og:type")) || !thumb) return [];
-    return [{ postUrl: post.url.href, index: 0, kind: "image", source: thumb, thumb }];
+    const assets = await readPostPage(post.url, post, requestSignal, false);
+    if (assets) {
+      if (assets.missing.length) onUnavailable?.(assets.missing, assets.missingKinds);
+      if (assets.items.length || assets.hasCarousel) return assets.items;
+      expectedVideo ||= assets.hasVideo || assets.hasCover;
+      const prefix = post.url.protocol === "http:" ? "/ig" : "";
+      const reel = new URL(prefix + "/reel/" + post.code + "/", post.url.origin);
+      if (expectedVideo && reel.pathname !== post.url.pathname && !requestSignal.aborted) {
+        const alternate = await readPostPage(reel, post, requestSignal, true);
+        if (alternate && !alternate.hasCarousel && alternate.items.length) return alternate.items;
+      }
+    }
   } catch {
-    return [];
+    // A failed or redirected page is not a media source.
   }
+  if (expectedVideo && !requestSignal.aborted) onUnavailable?.([0], { 0: "video" });
+  return [];
 }
 
 const displayedCount = "(\\d[\\d.,\\u00a0\\u202f]*(?:\\s*(?:mil|mi|bi|[kmb]))?)";
