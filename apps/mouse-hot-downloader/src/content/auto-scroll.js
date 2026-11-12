@@ -1,7 +1,8 @@
 export const captureLimit = 350;
+export const scanTimeLimitSeconds = 75;
 
 export function makeAutoScroll(report, count) {
-  let mode = "idle", timer, started, steps, stale, previous, route, onFinish;
+  let mode = "idle", timer, started, stale, previous, route, onFinish;
 
   function finish(reason, message) {
     clearInterval(timer);
@@ -24,7 +25,7 @@ export function makeAutoScroll(report, count) {
     }
     if (mode === "running" || (action !== "start" && action !== "resume")) return;
     if (mode !== "paused") {
-      steps = stale = 0;
+      stale = 0;
       started = Date.now();
       route = location.pathname;
       previous = count();
@@ -34,7 +35,7 @@ export function makeAutoScroll(report, count) {
     timer = setInterval(() => {
       if (route !== location.pathname) return finish("changed", "Busca encerrada porque a página mudou.");
       if (document.hidden) return finish("hidden", "Busca encerrada porque a aba ficou oculta.");
-      if (++steps > 60 || Date.now() - started > 90000 || count() >= captureLimit) {
+      if (Date.now() - started >= scanTimeLimitSeconds * 1000 || count() >= captureLimit) {
         return finish("limit", "Limite da busca atingido.");
       }
       const next = count();

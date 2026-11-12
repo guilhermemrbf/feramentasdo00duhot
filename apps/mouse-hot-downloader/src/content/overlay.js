@@ -1,3 +1,4 @@
+import { captureLimit, scanTimeLimitSeconds } from "./auto-scroll.js";
 import { canDownloadItem } from "./download-controller.js";
 
 const css = `
@@ -141,7 +142,10 @@ export function makeOverlay(send, fixture, runDownload) {
     downloadAll.disabled = busy || !capture;
     downloadProfile.hidden = !(profile && scope.startsWith("instagram:"));
     downloadProfile.disabled = busy || !capture;
-    hint.textContent = capture && !all.length ? "Nenhuma publicação detectada nesta página." : "";
+    const hints = [];
+    if (capture && !all.length) hints.push("Nenhuma publicação detectada nesta página.");
+    if (profile) hints.push("Até " + captureLimit + " itens ou " + scanTimeLimitSeconds + " segundos de rolagem por busca.");
+    hint.textContent = hints.join(" ");
     const eligible = all.filter(canDownloadItem);
     const eligibleKeys = new Set(eligible.map(item => item.key));
     for (const key of selected) {

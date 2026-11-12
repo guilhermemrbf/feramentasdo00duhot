@@ -2,6 +2,11 @@ import { makeCandidate } from "../core/media.js";
 
 const isInstagramPost = item => item.key.startsWith("instagram:post:");
 export const canDownloadItem = item => item.status === "check" || isInstagramPost(item);
+const incompleteScanMessages = {
+  limit: "Limite da busca atingido.",
+  hidden: "Busca encerrada porque a aba ficou oculta.",
+  stopped: "Busca encerrada.",
+};
 
 export function makeDownloadController({ getContext, getSnapshot, collect, readProfile, resolvePost, send, setOperation }) {
   let current;
@@ -68,9 +73,7 @@ export function makeDownloadController({ getContext, getSnapshot, collect, readP
           abort.abort("page-changed");
           guard();
         }
-        if (["limit", "hidden", "stopped"].includes(result.reason)) {
-          scanNotice = result.message || "Limite da busca atingido.";
-        }
+        scanNotice = incompleteScanMessages[result.reason] || "";
         if (start.page.platform === "instagram" && start.page.surface === "profile") {
           try {
             await saveProfile();

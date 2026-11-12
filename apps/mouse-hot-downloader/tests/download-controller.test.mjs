@@ -147,3 +147,18 @@ test("queues accepted carousel assets and reports when capture omitted another a
   assert.deepEqual(harness.calls.at(-1)[1].keys, ["instagram:post:Slides:0:image"]);
   assert.match(harness.operations.at(-1).message, /1 indispon/);
 });
+
+for (const [reason, expected] of [
+  ["hidden", /aba ficou oculta/],
+  ["stopped", /busca encerrada/i],
+]) {
+  test("an incomplete scan still queues discovered items and reports " + reason, async () => {
+    const item = candidate(reel);
+    const harness = setup({ items: [item], collect: async () => ({ reason }),
+      resolve: async postUrl => [{ ...video, postUrl }] });
+    await harness.run("download-all");
+    assert.deepEqual(harness.calls.at(-1)[1].keys, ["instagram:post:Reel:0:video"]);
+    assert.ok(harness.operations.some(operation => operation.busy && expected.test(operation.message)));
+    assert.match(harness.operations.at(-1).message, expected);
+  });
+}
