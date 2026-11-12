@@ -84,7 +84,8 @@ function asset(node, index, postUrl, videoOnly = false) {
   if (!node || typeof node !== "object") return null;
   const video = largestSource(node.video_versions, postUrl) ||
     mediaSource(node.video_url, postUrl) || mediaSource(node.playback_url, postUrl);
-  const image = largestSource(node.image_versions2?.candidates || node.display_resources, postUrl) ||
+  const image = largestSource(node.image_versions2?.candidates, postUrl) ||
+    largestSource(node.display_resources, postUrl) ||
     mediaSource(node.display_url, postUrl) || mediaSource(node.image_url, postUrl);
   if (video) return { postUrl: postUrl.href, index, kind: "video", source: video, thumb: image };
   if (videoOnly || describesVideo(node)) return null;
@@ -205,7 +206,7 @@ function visibleText(node) {
   if (!node || node.closest('[hidden], [aria-hidden="true"]') ||
       (node.ownerDocument.defaultView?.getComputedStyle && (!node.getClientRects().length ||
         node.ownerDocument.defaultView.getComputedStyle(node).visibility !== "visible"))) return "";
-  return (node.innerText || node.textContent || "").trim();
+  return (node.innerText ?? node.textContent ?? "").trim();
 }
 
 function shownText(header, selector) {
@@ -230,8 +231,22 @@ export function readInstagramProfile(page = document) {
   }
   if (header) {
     profile.name = shownText(header, '[data-profile-name], [itemprop="name"]') || profile.name;
-    profile.biography = shownText(header, '[data-profile-bio], [itemprop="description"]') ||
-      [...header.querySelectorAll("h1")].map(visibleText).find(value => value && value.toLowerCase() !== handle) || "";
+    profile.biography = shownText(header, '[data-profile-bio], [itemprop="description"]');
+    // A plain heading and paragraph can identify the pair when the heading is unambiguous.
+    if (!profile.biography) {
+      const headings = [...header.querySelectorAll("h1")].filter(heading => {
+        const text = visibleText(heading);
+        return text && text.replace(/^@/, "").toLowerCase() !== handle;
+      });
+      if (headings.length === 1 && headings[0].nextElementSibling?.matches("p")) {
+        const name = visibleText(headings[0]);
+        const biography = visibleText(headings[0].nextElementSibling);
+        if (biography && (!profile.name || profile.name === name)) {
+          profile.name = name;
+          profile.biography = biography;
+        }
+      }
+    }
     for (const key of Object.keys(countLabels)) {
       const labeled = [...header.querySelectorAll("li, a, button, [aria-label]")].find(node => {
         const text = visibleText(node);

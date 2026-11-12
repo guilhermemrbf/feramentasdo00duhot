@@ -50,6 +50,18 @@ test("resolves full media in a mixed carousel with original positions", async t 
   ]);
 });
 
+test("uses display resources when image candidates contain no valid source", async t => {
+  const responses = [[], [{ url: "https://unknown.example/invalid.jpg" }]].map(candidates =>
+    htmlResponse(script({ code: "Mixed9", media_type: 1, image_versions2: { candidates },
+      display_resources: [{ src: image, config_width: 1080, config_height: 1350 }] })));
+  mockPage(t, async () => responses.shift());
+  const { resolveInstagramPost } = await import("../src/adapters/instagram/profile-download.js");
+  for (let i = 0; i < 2; i++) {
+    assert.deepEqual(await resolveInstagramPost(postUrl),
+      [{ postUrl, index: 0, kind: "image", source: image, thumb: image }]);
+  }
+});
+
 test("uses GraphSidecar children even when a malformed matching record also appears", async t => {
   const children = [
     { node: { __typename: "GraphImage", display_url: image } },
@@ -136,6 +148,34 @@ test("reads display data from the current Instagram profile header only", async 
     handle: "fixture", name: "Nome visível", biography: "Uma bio pública", links: ["https://example.org/"],
     followers: "1.234", following: "10",
   });
+});
+
+test("reads an ordinary profile header with separate display name and biography", async t => {
+  const page = mockPage(t, async () => htmlResponse(""), profileUrl, `<html><body><main><header>
+    <h2>@fixture</h2><section><h1 hidden>Wrong name</h1><h1>Display Name</h1>
+    <p>Public biography</p></section><aside><p>Unrelated banner</p></aside>
+  </header><article><h1>Unrelated heading</h1><p>Unrelated article</p></article></main></body></html>`);
+  const { readInstagramProfile } = await import("../src/adapters/instagram/profile-download.js");
+  assert.deepEqual(readInstagramProfile(page), { handle: "fixture", name: "Display Name", biography: "Public biography" });
+});
+
+test("omits biography when the only non-handle heading could be a name", async t => {
+  const page = mockPage(t, async () => htmlResponse(""), profileUrl, `<html><head>
+    <meta property="og:title" content="Display Name (@fixture) • Instagram photos and videos">
+    </head><body><main><header><h2>fixture</h2><h1>Display Name</h1></header></main></body></html>`);
+  const { readInstagramProfile } = await import("../src/adapters/instagram/profile-download.js");
+  assert.deepEqual(readInstagramProfile(page), { handle: "fixture", name: "Display Name" });
+});
+
+test("an empty rendered biography does not expose text from hidden descendants", async t => {
+  const page = mockPage(t, async () => htmlResponse(""), profileUrl, `<html><body><main><header>
+    <h2>fixture</h2><div itemprop="description"><span hidden>Hidden profile text</span></div>
+  </header></main></body></html>`);
+  const biography = page.querySelector('[itemprop="description"]');
+  assert.equal(biography.textContent, "Hidden profile text");
+  Object.defineProperty(biography, "innerText", { value: "" });
+  const { readInstagramProfile } = await import("../src/adapters/instagram/profile-download.js");
+  assert.deepEqual(readInstagramProfile(page), { handle: "fixture" });
 });
 
 test("resolves same-origin fixture metadata and declines a reel cover without direct media", async t => {
