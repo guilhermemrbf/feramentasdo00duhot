@@ -1,4 +1,5 @@
-import { makeCandidate, pageInfo } from "../core/media.js";
+import { cleanPathPart, makeCandidate, pageInfo } from "../core/media.js";
+import { instagramProfileData, instagramProfileHandle } from "../core/profile-data.js";
 import { makeQueue } from "./queue-manager.js";
 
 const fixture = typeof __MOUSE_HOT_FIXTURE__ !== "undefined" && __MOUSE_HOT_FIXTURE__;
@@ -10,6 +11,10 @@ const tell = (tabId, message, documentId) => chrome.tabs.sendMessage(tabId, mess
 const queue = makeQueue((tabId, key, label, active) => tell(tabId, { type: "capture:state", key, label, active }));
 const runQueue = () => void queue.start().catch(() => {});
 const captureLocks = new Map();
+function sameInstagramPost(a, b) {
+  return a.key.startsWith("instagram:post:") && b.key.startsWith("instagram:post:") &&
+    a.id === b.id && new URL(a.postUrl).origin === new URL(b.postUrl).origin;
+}
 function withCapture(tabId, work) {
   const next = (captureLocks.get(tabId) || Promise.resolve()).catch(() => {}).then(work);
   captureLocks.set(tabId, next);
@@ -78,10 +83,13 @@ async function content(message, sender) {
         }
         if (item.source && !item.handle && state.account) item.handle = state.account;
         if (items.get(item.key)?.source && !item.source) continue;
+        if (item.status === "open" && item.key.startsWith("instagram:post:") &&
+          [...items.values()].some(prior => prior.source && sameInstagramPost(item, prior))) continue;
         items.set(item.key, item);
         if (item.source) {
           for (const [k, prior] of items) {
-            if (prior.postUrl === item.postUrl && prior.status === "open" && k !== item.key) items.delete(k);
+            const samePost = prior.postUrl === item.postUrl || sameInstagramPost(item, prior);
+            if (samePost && prior.status === "open" && k !== item.key) items.delete(k);
           }
         }
       }
@@ -94,6 +102,17 @@ async function content(message, sender) {
         message: typeof message.state?.message === "string" ? message.state.message.slice(0, 140) : "" };
       await persist(id, state);
       return true;
+    }
+    if (message.type === "capture:save-profile") {
+      const profile = instagramProfileData(message.profile, instagramProfileHandle(sender.url));
+      if (!profile) throw new Error("Abra o perfil do Instagram para salvar os dados exibidos.");
+      const json = JSON.stringify(profile, null, 2) + "\n";
+      return chrome.downloads.download({
+        url: "data:application/json;charset=utf-8," + encodeURIComponent(json),
+        filename: "Mouse Hot/Instagram/" + cleanPathPart(profile.handle) + "/perfil.json",
+        conflictAction: "uniquify",
+        saveAs: false,
+      });
     }
     return command(id, state, message);
   });
@@ -140,11 +159,12 @@ async function command(id, state, message) {
       return true;
     }
     if (action === "enqueue") {
-      const wanted = new Set(message.key ? [message.key] : state.selected);
+      const explicit = Array.isArray(message.keys);
+      const wanted = new Set(explicit ? message.keys.slice(0, 350) : message.key ? [message.key] : state.selected);
       const items = state.items.filter(i => i.source && wanted.has(i.key));
       if (!items.length) throw new Error("Selecione uma mídia com arquivo direto.");
       const added = await queue.enqueue(items, id);
-      if (!added) throw new Error("Os itens selecionados já estão na fila ou no histórico.");
+      if (!added && !explicit) throw new Error("Os itens selecionados já estão na fila ou no histórico.");
       state.selected = state.selected.filter(k => !wanted.has(k));
       await persist(id, state);
       runQueue();

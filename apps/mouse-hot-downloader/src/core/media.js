@@ -13,12 +13,12 @@ const formats = {
   "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov",
   "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
 };
-function parse(raw) {
+export function parseUrl(raw, base) {
   if (typeof raw !== "string" || raw.length > 4096) return null;
-  try { return new URL(raw); } catch { return null; }
+  try { return new URL(raw, base); } catch { return null; }
 }
 export function pageInfo(raw) {
-  const u = parse(raw);
+  const u = parseUrl(raw);
   if (!u || u.username || u.password) return null;
   const parts = u.pathname.split("/").filter(Boolean);
   const local = fixture && u.protocol === "http:" && u.hostname === "127.0.0.1";
@@ -57,14 +57,14 @@ export function pageInfo(raw) {
   return null;
 }
 export function mediaUrl(raw, platform) {
-  const u = parse(raw);
+  const u = parseUrl(raw);
   if (!u || u.username || u.password) return null;
   if (fixture && u.protocol === "http:" && u.hostname === "127.0.0.1" && u.pathname.startsWith("/media/")) return u;
   if (u.protocol !== "https:" || u.port || !(cdns[platform] || []).some(s => exactOrSubdomain(u.hostname, s))) return null;
   return u;
 }
 export function classify(raw, platform) {
-  const u = parse(raw);
+  const u = parseUrl(raw);
   if (u?.protocol === "blob:") return "O player só mostrou um vídeo interno, sem arquivo direto.";
   if (u && (/\.(?:m3u8|mpd|m4s|ts)$/i.test(u.pathname) ||
       [...u.searchParams.keys()].some(key => /^(?:bytestart|byteend)$/i.test(key)))) return "O vídeo está dividido em segmentos.";
@@ -80,7 +80,7 @@ export function makeCandidate(input, platform) {
   const handle = post.handle || (safeHandle.test(input.handle || "") ? input.handle.toLowerCase() : "");
   const surface = post.surface;
   const key = [platform, surface, id, index, input.kind].join(":");
-  const u = parse(input.postUrl);
+  const u = parseUrl(input.postUrl);
   const source = typeof input.source === "string" && input.source.length <= 4096 ? input.source : "";
   const reason = source ? classify(source, platform) : "";
   return {
@@ -89,16 +89,20 @@ export function makeCandidate(input, platform) {
     status: reason ? "unavailable" : source ? "check" : "open", reason,
   };
 }
+export function profileHandle(value) {
+  return typeof value === "string" && safeHandle.test(value) ? value.toLowerCase() : "";
+}
+export function cleanPathPart(value) {
+  const clean = value.toLowerCase().replace(/[^a-z0-9._-]/g, "_").replace(/^\.+|\.+$/g, "").slice(0, 80).replace(/\.+$/g, "");
+  return !clean || /^(?:con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(clean) ?
+    "perfil_" + (clean || "sem-nome") : clean;
+}
 export function filePath(item, ext) {
   if (!Object.values(formats).includes(ext)) throw new Error("Formato inválido.");
-  const clean = (v) => {
-    const s = v.toLowerCase().replace(/[^a-z0-9._-]/g, "_").replace(/^\.+|\.+$/g, "").slice(0, 80).replace(/\.+$/g, "");
-    return !s || /^(?:con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(s) ? "perfil_" + (s || "sem-nome") : s;
-  };
   const site = item.platform === "instagram" ? "Instagram" : "TikTok";
-  const profile = clean(item.handle || "perfil-nao-identificado");
-  return "Mouse Hot/" + site + "/" + profile + "/" + clean(item.surface || item.key.split(":")[1]) + "_" +
-    clean(item.id) + "_" + (item.index + 1) + "_" + item.kind + "." + ext;
+  const profile = cleanPathPart(item.handle || "perfil-nao-identificado");
+  return "Mouse Hot/" + site + "/" + profile + "/" + cleanPathPart(item.surface || item.key.split(":")[1]) + "_" +
+    cleanPathPart(item.id) + "_" + (item.index + 1) + "_" + item.kind + "." + ext;
 }
 function sniff(bytes) {
   const ascii = (from, to) => String.fromCharCode(...bytes.subarray(from, to));
