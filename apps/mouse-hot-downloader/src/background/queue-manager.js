@@ -141,17 +141,22 @@ export function makeQueue(notify) {
       }
       return jobs.map(withBytes).reverse();
     }),
-    enqueue: (items, tabId) => run(async () => {
-      let added = 0;
+    enqueue: (items, tabId, { repeat = false } = {}) => run(async () => {
+      let added = 0, existing = 0, full = 0;
+      let active = jobs.filter(j => !terminal.has(j.status)).length;
       for (const item of items) {
-        const prior = jobs.find(j => j.item.key === item.key && !["cancelled","failed"].includes(j.status));
-        if (prior || !item.source || jobs.filter(j => !terminal.has(j.status)).length >= 350) continue;
+        const prior = jobs.some(j => j.item.key === item.key && !["cancelled","failed"].includes(j.status) &&
+          (!repeat || j.status !== "done"));
+        if (!item.source) continue;
+        if (prior) { existing++; continue; }
+        if (active >= 350) { full++; continue; }
         jobs.push({ id: crypto.randomUUID(), item, tabId, status: "queued", updated: Date.now(),
           attempts: 0, received: 0, total: 0, downloadId: null, message: "" });
         added++;
+        active++;
       }
       await save();
-      return added;
+      return { added, existing, full };
     }),
     changed: (id) => run(async () => {
       const j = jobs.find(j => j.downloadId === id && !terminal.has(j.status));

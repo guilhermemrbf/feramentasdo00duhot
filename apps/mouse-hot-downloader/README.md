@@ -12,7 +12,7 @@ Extensão para guardar fotos e vídeos autorizados do Instagram e do TikTok. A m
 
 Se uma versão anterior estiver instalada, desative-a na tela de extensões antes de carregar a pasta da versão 3.0. O ícone na barra do Chrome abre os atalhos do Instagram e do TikTok.
 
-Quando a grade do Instagram mostra só uma miniatura, **Baixar** consulta a própria publicação em segundo plano. As fotos e os vídeos de um carrossel são arquivos separados. **Baixar tudo** procura mais publicações ao rolar o perfil, envia os arquivos encontrados para a fila e salva os dados disponíveis em `perfil.json`. Use **Baixar dados do perfil** para exportar apenas o JSON. Ele contém os campos visíveis que a extensão identificou, como nome, biografia, links e contagens.
+Quando a grade do Instagram mostra só uma miniatura, **Baixar** consulta a própria publicação em segundo plano. As fotos e os vídeos de um carrossel são arquivos separados. **Baixar todas as mídias** procura mais publicações ao rolar o perfil e envia somente fotos e vídeos para a fila. **Exportar dados (JSON)** é uma ação separada que salva `perfil.json` com os campos visíveis identificados. Se quiser baixar um arquivo novamente, use **Baixar** na publicação.
 
 O painel informa quando chega ao limite de 350 itens ou 75 segundos de rolagem por busca. A resolução dos arquivos acontece depois da rolagem. O painel também sinaliza publicações e partes de carrosséis sem arquivo disponível. A fila confirma a conclusão quando o Chrome termina de salvar. Se o navegador estiver configurado para perguntar onde salvar cada download, o Chrome pode solicitar o destino de cada arquivo.
 

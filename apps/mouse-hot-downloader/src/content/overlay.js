@@ -72,8 +72,8 @@ export function makeOverlay(send, fixture, runDownload) {
   const controls = make("div", details, { class: "bar" });
   const selectAll = make("button", controls, { id: "mh-select-all", disabled: "" }, "Selecionar tudo");
   const downloadSelected = make("button", controls, { id: "mh-download-selected", disabled: "" }, "Baixar seleção");
-  const downloadAll = make("button", controls, { id: "mh-download-all", class: "primary", hidden: "" }, "Baixar tudo");
-  const downloadProfile = make("button", controls, { id: "mh-download-profile", hidden: "" }, "Baixar dados do perfil");
+  const downloadAll = make("button", controls, { id: "mh-download-all", class: "primary", hidden: "" }, "Baixar todas as mídias");
+  const downloadProfile = make("button", controls, { id: "mh-download-profile", hidden: "" }, "Exportar dados (JSON)");
   const scanOnly = make("button", controls, { id: "mh-scroll", hidden: "" }, "Rolar e procurar");
   const stopScan = make("button", controls, { id: "mh-stop", hidden: "" }, "Parar");
   const cancel = make("button", controls, { id: "mh-abort-download", hidden: "" }, "Cancelar busca");

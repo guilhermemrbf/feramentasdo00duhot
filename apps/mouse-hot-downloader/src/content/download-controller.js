@@ -64,7 +64,7 @@ export function makeDownloadController({ getContext, getSnapshot, collect, readP
 
       const all = action === "download-all";
       const single = action === "download-one";
-      let scanNotice = "", profileResult = "";
+      let scanNotice = "";
       progress(all ? "Procurando mais publicações nesta aba…" : "Preparando downloads…");
       if (all) {
         const result = await collect(signal);
@@ -74,15 +74,6 @@ export function makeDownloadController({ getContext, getSnapshot, collect, readP
           guard();
         }
         scanNotice = incompleteScanMessages[result.reason] || "";
-        if (start.page.platform === "instagram" && start.page.surface === "profile") {
-          try {
-            await saveProfile();
-            profileResult = " Dados do perfil salvos.";
-          } catch {
-            guard();
-            profileResult = " Dados do perfil indisponíveis.";
-          }
-        }
       }
 
       const capture = await snapshot(true);
@@ -95,7 +86,7 @@ export function makeDownloadController({ getContext, getSnapshot, collect, readP
         groups.get(groupKey).push(item);
       }
       const selected = [...groups.values()].filter(items => all || items.some(item => wanted.has(item.key)));
-      let added = 0, unavailable = 0;
+      let added = 0, unavailable = 0, existing = 0, full = 0;
       for (const [index, items] of selected.entries()) {
         guard();
         const item = items.find(item => wanted.has(item.key)) || items[0];
@@ -148,7 +139,10 @@ export function makeDownloadController({ getContext, getSnapshot, collect, readP
             }
           }
           if (!downloadKeys.length) throw new Error("Arquivo indisponível.");
-          added += await request("enqueue", { keys: downloadKeys });
+          const result = await request("enqueue", { keys: downloadKeys, details: true, repeat: single });
+          added += typeof result === "number" ? result : result.added;
+          existing += result.existing || 0;
+          full += result.full || 0;
           unavailable += missing;
           const unresolvedKeys = items.filter(item => missingIndexes.has(item.index)).map(item => item.key);
           progress(message, { readyKeys: items.map(item => item.key), unavailableKeys: [...omitted, ...unresolvedKeys] });
@@ -158,9 +152,11 @@ export function makeDownloadController({ getContext, getSnapshot, collect, readP
           progress(message, { unavailableKeys: items.map(item => item.key) });
         }
       }
-      const queued = added === 1 ? "1 arquivo na fila." : added + " arquivos na fila.";
+      const queued = added ? added + (added === 1 ? " arquivo na fila." : " arquivos na fila.") :
+        existing ? "As mídias encontradas já estão na fila ou no histórico." : "Nenhum arquivo de mídia entrou na fila.";
       const skipped = unavailable ? " " + unavailable + (unavailable === 1 ? " indisponível." : " indisponíveis.") : "";
-      finish([queued + skipped + profileResult, scanNotice].filter(Boolean).join(" "), !!unavailable && !added);
+      const blocked = full ? " " + full + (full === 1 ? " arquivo não entrou porque a fila está cheia." : " arquivos não entraram porque a fila está cheia.") : "";
+      finish([queued + skipped + blocked, scanNotice].filter(Boolean).join(" "), !added && (!existing || !!full));
     } catch (error) {
       finish(signal.aborted ? signal.reason === "page-changed" ? "Busca encerrada porque a página mudou." : "Busca cancelada." :
         error.message, !signal.aborted);

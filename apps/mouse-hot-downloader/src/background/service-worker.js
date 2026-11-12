@@ -163,12 +163,13 @@ async function command(id, state, message) {
       const wanted = new Set(explicit ? message.keys.slice(0, 350) : message.key ? [message.key] : state.selected);
       const items = state.items.filter(i => i.source && wanted.has(i.key));
       if (!items.length) throw new Error("Selecione uma mídia com arquivo direto.");
-      const added = await queue.enqueue(items, id);
-      if (!added && !explicit) throw new Error("Os itens selecionados já estão na fila ou no histórico.");
+      const result = await queue.enqueue(items, id, { repeat: explicit && message.repeat === true });
+      if (!result.added && !explicit) throw new Error(result.full ? "A fila está cheia." :
+        "Os itens selecionados já estão na fila ou no histórico.");
       state.selected = state.selected.filter(k => !wanted.has(k));
       await persist(id, state);
       runQueue();
-      return added;
+      return message.details === true ? result : result.added;
     }
     throw new Error("Comando indisponível.");
 }

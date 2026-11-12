@@ -111,16 +111,40 @@ test("scope changes abort an active permalink fetch and discard its results", as
   assert.deepEqual(harness.calls, []);
 });
 
-test("full profile download saves the JSON and queues posts collected while scrolling", async () => {
+test("full profile download queues only media collected while scrolling", async () => {
   const items = [];
   const harness = setup({ items, resolve: async postUrl => [{ ...photo, postUrl }], collect: async () => {
     items.push(candidate(carousel));
     return { reason: "limit" };
   } });
   await harness.run("download-all");
-  assert.deepEqual(harness.calls.filter(([type]) => type === "save-profile"), [["save-profile", { profile }]]);
+  assert.deepEqual(harness.calls.filter(([type]) => type === "save-profile"), []);
   assert.deepEqual(harness.calls.at(-1)[1].keys, ["instagram:post:Slides:0:image"]);
   assert.match(harness.operations.at(-1).message, /limite/i);
+});
+
+test("a bulk operation without available media explains the failure and writes no JSON", async () => {
+  const harness = setup({ items: [candidate(reel)] });
+  await harness.run("download-all");
+  assert.deepEqual(harness.calls, []);
+  assert.match(harness.operations.at(-1).message, /nenhum arquivo de mídia/i);
+  assert.equal(harness.operations.at(-1).error, true);
+});
+
+test("profile data is exported only when explicitly requested", async () => {
+  const harness = setup();
+  await harness.run("download-profile");
+  assert.deepEqual(harness.calls, [["save-profile", { profile }]]);
+});
+
+test("individual actions can request a fresh download and report queue saturation", async () => {
+  const item = candidate(reel, video);
+  const harness = setup({ items: [item], send: type => type === "enqueue"
+    ? { ok: true, value: { added: 0, existing: 0, full: 1 } } : undefined });
+  await harness.run("download-one", { key: item.key });
+  assert.equal(harness.calls.at(-1)[1].repeat, true);
+  assert.match(harness.operations.at(-1).message, /fila está cheia/i);
+  assert.equal(harness.operations.at(-1).error, true);
 });
 
 test("canceling collection prevents the download and profile export", async () => {

@@ -46,7 +46,8 @@ test("the installable manifest automatically overlays supported sites and provid
   const root = new URL("../", import.meta.url);
   const manifest = JSON.parse(await readFile(new URL("manifest.json", root)));
   assert.equal(manifest.name, "Mouse Hot");
-  assert.equal(manifest.version, "3.0.0");
+  const packageJson = JSON.parse(await readFile(new URL("package.json", root)));
+  assert.equal(manifest.version, packageJson.version);
   assert.deepEqual(manifest.web_accessible_resources, [{ resources: ["icons/48.png"], matches: manifest.content_scripts[0].matches }]);
   assert.equal(manifest.side_panel, undefined);
   assert.ok(!manifest.permissions.includes("cookies"));

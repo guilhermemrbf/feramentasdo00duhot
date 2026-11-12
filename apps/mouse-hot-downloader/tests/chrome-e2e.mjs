@@ -198,6 +198,32 @@ async function fileWhenReady(path, expected) {
     try { return (await readFile(path)).equals(expected); } catch (error) { if (error.code !== "ENOENT") throw error; return false; }
   }, "Chrome saves expected bytes at " + path);
 }
+async function closedOverlayNode(target, matches) {
+  const { root: documentNode } = await command("DOM.getDocument", {}, target.session);
+  const { nodeId } = await command("DOM.querySelector", { nodeId: documentNode.nodeId, selector: "#mouse-hot-overlay" }, target.session);
+  if (!nodeId) return null;
+  const { node } = await command("DOM.describeNode", { nodeId, depth: 12, pierce: true }, target.session);
+  function visit(item) {
+    if (matches(item)) return item;
+    for (const child of [...(item.shadowRoots || []), ...(item.children || [])]) {
+      const found = visit(child);
+      if (found) return found;
+    }
+    return null;
+  }
+  return visit(node);
+}
+async function clickProductionOverlay(target, name, value) {
+  const node = await waitUntil(() => closedOverlayNode(target, node => node.nodeName === "BUTTON" &&
+    (node.attributes || []).some((attribute, i, all) => i % 2 === 0 && attribute === name && (!value || all[i+1] === value))),
+  "production overlay control " + name);
+  const { model } = await command("DOM.getBoxModel", { backendNodeId: node.backendNodeId }, target.session);
+  const [x1, y1, , , x2, y2] = model.content;
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await command("Input.dispatchMouseEvent", { type, x: (x1 + x2) / 2, y: (y1 + y2) / 2,
+      button: "left", clickCount: 1 }, target.session);
+  }
+}
 try {
   const info = await command("Browser.getVersion");
   const { id: productionId } = await command("Extensions.loadUnpacked", { path: resolve(root, "dist", "release", "Mouse Hot") });
@@ -207,13 +233,13 @@ try {
   assert.doesNotMatch(await text(production), /Telegram/);
   const manifest = await evaluate(production, "chrome.runtime.getManifest()");
   assert.equal(manifest.name, "Mouse Hot");
-  assert.equal(manifest.version, "3.0.0");
+  assert.equal(manifest.version, "3.0.1");
   assert.equal(manifest.side_panel, undefined);
   if (process.env.MOUSE_HOT_LIVE === "1") {
     const visit = await open("https://www.instagram.com/instagram/reels/");
     await waitUntil(() => evaluate(visit, "document.readyState === 'complete'"), "public Instagram profile");
     await delay(2300);
-    const point = await evaluate(visit, `(() => { const b = [...document.querySelectorAll('[role=dialog] button')]
+    const point = await evaluate(visit, `(() => { const b = [...document.querySelectorAll('[role=dialog] button,[role=dialog] [role=button]')]
       .find(e => /close|fechar/i.test(e.getAttribute('aria-label') || e.querySelector('svg')?.getAttribute('aria-label') || ''));
       if (!b) return null;
       const r = b.getBoundingClientRect();
@@ -240,7 +266,6 @@ try {
       videos: document.querySelectorAll('video').length, loginDialog: !!document.querySelector('[role=dialog]') })`);
     console.log("Live public Instagram:", JSON.stringify({ ...DOM, overlayState: await publicOverlay(visit) }));
     const reel = await evaluate(visit, "document.querySelector('main a[href*=\"/reel/\"]')?.href");
-    await command("Target.closeTarget", { targetId: visit.targetId });
     if (reel?.startsWith("https://www.instagram.com/")) {
       const direct = await open(reel);
       await waitUntil(() => evaluate(direct, "document.readyState === 'complete'"), "public Instagram Reel");
@@ -305,8 +330,42 @@ try {
           console.log("Live public Instagram CDN, 512-byte probe:", JSON.stringify(check));
         }
       }
+      if (process.env.MOUSE_HOT_LIVE_MEDIA === "1") {
+        assert.equal(DOM.loginDialog, false, "public profile is visible after closing Instagram's dialog");
+        await command("Target.activateTarget", { targetId: visit.targetId });
+        await clickProductionOverlay(visit, "id", "mh-toggle");
+        const code = metrics.path.split("/").filter(Boolean).at(-1);
+        await clickProductionOverlay(visit, "data-download", "instagram:post:" + code + ":0:video");
+        let last = [];
+        try {
+          const saved = await waitUntil(async () => {
+            last = await evaluate(production, `chrome.downloads.search({}).then(items =>
+              items.filter(item=>item.byExtensionId===chrome.runtime.id).map(({state,error,filename,mime,bytesReceived})=>
+                ({state,error,filename,mime,bytesReceived})))`);
+            return last.find(item => item.state === "complete" && /\.mp4$/i.test(item.filename));
+          }, "a complete real Instagram MP4 on disk", 32000);
+          const bytes = await readFile(saved.filename);
+          assert.ok(bytes.length > 1024);
+          assert.equal(bytes.toString("ascii", 4, 8), "ftyp");
+          const probe = spawnSync("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries",
+            "stream=codec_name,duration", "-of", "json", saved.filename], { encoding: "utf8" });
+          assert.equal(probe.status, 0, probe.stderr);
+          const stream = JSON.parse(probe.stdout).streams[0];
+          assert.ok(stream.codec_name && Number(stream.duration) > 0);
+          assert.equal(await evaluate(visit, "location.pathname"), DOM.path);
+          console.log("Live Instagram profile downloaded a complete MP4 without navigating:",
+            JSON.stringify({ bytes: bytes.length, mime: saved.mime, codec: stream.codec_name, seconds: Number(stream.duration) }));
+        } catch (error) {
+          const notice = await closedOverlayNode(visit, node => node.nodeName === "P" &&
+            (node.attributes || []).includes("mh-operation"));
+          const jobs = await evaluate(production, `chrome.storage.local.get("mouse-hot.queue.v1").then(store =>
+            (store["mouse-hot.queue.v1"] || []).map(({status,message,received,total})=>({status,message,received,total})))`);
+          throw new Error(error.message + " | " + JSON.stringify({ last, jobs, notice: notice?.children?.map(n=>n.nodeValue) }));
+        }
+      }
       await command("Target.closeTarget", { targetId: direct.targetId });
     }
+    await command("Target.closeTarget", { targetId: visit.targetId });
   }
   await command("Target.closeTarget", { targetId: production.targetId });
   await command("Extensions.uninstall", { id: productionId });
@@ -412,6 +471,8 @@ try {
 
   await clickOverlay(vault, "#mh-download-all");
   await fileWhenReady(join(folder, "post_lazy3_1_image.png"), photo);
+  await assert.rejects(readFile(join(folder, "perfil.json")), { code: "ENOENT" });
+  await clickOverlay(vault, "#mh-download-profile");
   const exported = await waitUntil(async () => {
     try { return JSON.parse(await readFile(join(folder, "perfil.json"), "utf8")); }
     catch (error) { if (error.code !== "ENOENT") throw error; return false; }
@@ -420,6 +481,9 @@ try {
     links:["https://example.com/"], followers:"24" });
   assert.deepEqual((await readdir(folder)).filter(name => !name.endsWith(".crdownload")).sort(),
     ["perfil.json","post_lazy3_1_image.png","post_mixed3_1_image.png","post_mixed3_2_video.mp4","post_solo3_1_video.mp4"]);
+  await clickOverlay(vault, "#mh-items li:has(button[data-download*='Solo3']) button[data-download]");
+  await waitUntil(async () => (await readdir(folder)).filter(name => /^post_solo3_1_video.*\.mp4$/.test(name)).length === 2,
+    "explicit media re-download is allowed even with history");
 
   const cancel = await open(origin + "/ig/canceltest/");
   await waitUntil(async () => (await overlayValue(cancel, "#mh-summary"))?.includes("1 publicação"), "cancel fixture");
@@ -444,7 +508,7 @@ try {
   await clickOverlay(tikTokProfile, "#mh-stop");
   assert.equal((await readdir(join(downloadPath, "Mouse Hot", "TikTok", "fixture"))).length, 1, "scan only saves no file");
 
-  console.log("Mouse Hot 3.0 — logo, Instagram shortcut, single and selected download, mixed carousel, full scroll with lazy post, profile JSON, deduplication and cancel validated.");
+  console.log("Mouse Hot 3.0.1 — individual and batch media, re-download, no automatic JSON, separate export, carousel, scroll and cancel validated.");
   console.log(info.product + " — production package loaded. Instagram batch, 2 concurrent, expired URL, duplicate, persisted queue after restart, TikTok video and auto-scroll passed.");
 } finally {
   if (browser.exitCode === null) await closeBrowser();
