@@ -213,10 +213,11 @@ async function closedOverlayNode(target, matches) {
   }
   return visit(node);
 }
-async function clickProductionOverlay(target, name, value) {
-  const node = await waitUntil(() => closedOverlayNode(target, node => node.nodeName === "BUTTON" &&
+async function clickProductionOverlay(target, name, value, tag = "BUTTON") {
+  const node = await waitUntil(() => closedOverlayNode(target, node => node.nodeName === tag &&
     (node.attributes || []).some((attribute, i, all) => i % 2 === 0 && attribute === name && (!value || all[i+1] === value))),
   "production overlay control " + name);
+  await command("DOM.scrollIntoViewIfNeeded", { backendNodeId: node.backendNodeId }, target.session);
   const { model } = await command("DOM.getBoxModel", { backendNodeId: node.backendNodeId }, target.session);
   const [x1, y1, , , x2, y2] = model.content;
   for (const type of ["mousePressed", "mouseReleased"]) {
@@ -355,6 +356,26 @@ try {
           assert.equal(await evaluate(visit, "location.pathname"), DOM.path);
           console.log("Live Instagram profile downloaded a complete MP4 without navigating:",
             JSON.stringify({ bytes: bytes.length, mime: saved.mime, codec: stream.codec_name, seconds: Number(stream.duration) }));
+          if (process.env.MOUSE_HOT_LIVE_BATCH === "1") {
+            const codes = await evaluate(visit, `[...new Set([...document.querySelectorAll('main a[href*="/reel/"]')]
+              .map(a => new URL(a.href).pathname.split('/').filter(Boolean).at(-1)))].slice(1,3)`);
+            assert.equal(codes.length, 2);
+            for (const selectedCode of codes) {
+              await clickProductionOverlay(visit, "data-select", "instagram:post:" + selectedCode + ":0:video", "INPUT");
+            }
+            await clickProductionOverlay(visit, "id", "mh-download-selected");
+            const batch = await waitUntil(async () => {
+              const items = await evaluate(production, `chrome.downloads.search({}).then(items => items.filter(
+                item => item.byExtensionId === chrome.runtime.id && item.state === "complete").map(({filename,bytesReceived})=>({filename,bytesReceived})))`);
+              const picked = items.filter(item => codes.some(selectedCode => item.filename.toLowerCase().includes(
+                "post_" + selectedCode.toLowerCase() + "_1_video.mp4")));
+              assert.ok(!items.some(item => item.filename.endsWith(".json")), "media actions must not save JSON");
+              return picked.length === codes.length ? picked : null;
+            }, "two selected real Instagram MP4s", 42000);
+            for (const file of batch) assert.equal((await readFile(file.filename)).toString("ascii", 4, 8), "ftyp");
+            assert.equal(await evaluate(visit, "location.pathname"), DOM.path);
+            console.log("Live Instagram selected batch saved only MP4 files:", batch.map(item => item.bytesReceived));
+          }
         } catch (error) {
           const notice = await closedOverlayNode(visit, node => node.nodeName === "P" &&
             (node.attributes || []).includes("mh-operation"));
