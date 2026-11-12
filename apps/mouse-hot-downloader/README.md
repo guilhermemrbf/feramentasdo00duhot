@@ -10,9 +10,11 @@ Extensão para guardar fotos e vídeos autorizados do Instagram e do TikTok. A m
 4. Recarregue um perfil ou uma publicação do Instagram ou TikTok. A barra **Mouse Hot** aparece no canto inferior direito.
 5. Abra a barra e clique em **Baixar** na publicação que deseja salvar. Para um lote, marque as publicações ou use **Selecionar tudo** e clique em **Baixar seleção**.
 
-Se uma versão anterior estiver instalada, desative-a na tela de extensões antes de carregar a pasta da versão 3.0. O ícone na barra do Chrome abre os atalhos do Instagram e do TikTok.
+Se uma versão anterior estiver instalada, desative-a na tela de extensões antes de carregar a pasta da versão 3.0.5. O ícone na barra do Chrome abre os atalhos do Instagram e do TikTok.
 
 Quando a grade do Instagram mostra só uma miniatura, **Baixar** consulta a publicação e, quando necessário, verifica a página do Reel correspondente. Se o Instagram disponibilizar só a capa, o painel indica que a mídia está indisponível. As fotos e os vídeos de um carrossel são arquivos separados. **Baixar todas as mídias** procura mais publicações ao rolar o perfil e envia somente fotos e vídeos para a fila. **Exportar dados (JSON)** é uma ação separada que salva `perfil.json` com os campos visíveis identificados. Se quiser baixar um arquivo novamente, use **Baixar** na publicação.
+
+O Mouse Hot baixa um arquivo por vez. Os demais aparecem como **Aguardando** na fila. Quando uma transferência termina, falha ou é cancelada, o próximo arquivo pode começar. Uma transferência pausada mantém sua vez até ser retomada ou cancelada.
 
 O painel informa quando chega ao limite de 350 itens ou 75 segundos de rolagem por busca. A resolução dos arquivos acontece depois da rolagem. A extensão pode verificar o vídeo sem pedir um trecho quando a leitura parcial falha. Se o Instagram fornecer mais de uma versão direta do vídeo, a fila tenta outra quando a origem falha ou o Chrome informa um erro de rede. No Instagram, **Tentar de novo** consulta a publicação para obter o endereço atual do arquivo que falhou. O painel sinaliza publicações e partes de carrosséis sem arquivo disponível. A fila confirma a conclusão quando o Chrome termina de salvar. Se o navegador estiver configurado para perguntar onde salvar cada download, o Chrome pode solicitar o destino de cada arquivo.
 
@@ -30,4 +32,6 @@ node build.mjs --fixture
 npm run test:chrome
 ```
 
-O build instalável fica em `dist/release/Mouse Hot`. Os testes de navegador usam FFmpeg, um Chrome com suporte ao carregamento via DevTools e um perfil descartável. É possível definir o executável por `MOUSE_HOT_CHROME`. A opção `MOUSE_HOT_LIVE=1` inclui uma checagem pública do Instagram, sem conta, e uma leitura de até 512 bytes do MP4 para validar o formato. `dist/fixture` inclui permissões de loopback para os testes e é independente do build distribuído.
+O build instalável fica em `dist/release/Mouse Hot`. Os testes de navegador usam FFmpeg, um Chrome com suporte ao carregamento via DevTools e um perfil descartável. É possível definir o executável por `MOUSE_HOT_CHROME`. O lote local de três Reels mantém o primeiro MP4 incompleto enquanto os outros aguardam, registra a falha do segundo e compara os bytes dos dois vídeos salvos. `dist/fixture` inclui permissões de loopback para os testes e é independente do build distribuído.
+
+A opção `MOUSE_HOT_LIVE=1` inclui uma checagem pública do Instagram, sem conta, e uma leitura de até 512 bytes do MP4 para validar o formato. Com `MOUSE_HOT_LIVE_MEDIA=1` e `MOUSE_HOT_LIVE_BATCH=1` junto dessa opção, o teste baixa um Reel individual e depois dois Reels selecionados. O Chrome fornece os horários de início e fim usados para verificar a ordem do lote.

@@ -19,17 +19,24 @@ await writeFile(join(profile, "Default", "Preferences"), JSON.stringify({
   download: { default_directory: downloadPath, prompt_for_download: false },
 }));
 const photo = await readFile(join(root, "assets/icons/128.png"));
-const generated = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi",
-  "-i", "color=c=blue:s=160x160:r=15", "-t", "0.5", "-c:v", "libx264", "-threads", "1",
-  "-movflags", "frag_keyframe+empty_moov", "-f", "mp4", "pipe:1"]);
-assert.equal(generated.status, 0, generated.stderr?.toString() || "FFmpeg is required for the test.");
-const video = generated.stdout;
+function makeVideo(color) {
+  const generated = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi",
+    "-i", "color=c=" + color + ":s=160x160:r=15", "-t", "0.5", "-c:v", "libx264", "-threads", "1",
+    "-movflags", "frag_keyframe+empty_moov", "-f", "mp4", "pipe:1"]);
+  assert.equal(generated.status, 0, generated.stderr?.toString() || "FFmpeg is required for the test.");
+  return generated.stdout;
+}
+const video = makeVideo("blue");
+const serialVideos = new Map([["First3", video], ["Denied3", video], ["Last3", makeVideo("red")]]);
+const serialTransfers = [];
+let finishFirstReel;
 let active = 0, peak = 0, waitRequestStarted = false, waitRequestAborted = false;
 let expiredVideoAttempts = 0, interruptedVideoAttempts = 0, rejectedRangeAttempts = 0, ordinaryVideoRequests = 0;
 let updatedRetryPost = false;
 const server = createServer((req, res) => {
   const path = new URL(req.url, "http://localhost").pathname;
   if (path.startsWith("/media/")) {
+    const serialCode = path.match(/^\/media\/serial-(\w+)\.mp4$/)?.[1];
     if (path.includes("expired")) {
       if (path.endsWith(".mp4")) expiredVideoAttempts++;
       res.writeHead(403);
@@ -49,12 +56,26 @@ const server = createServer((req, res) => {
       ordinaryVideoRequests++;
     }
     const isVideo = path.endsWith(".mp4");
-    const bytes = isVideo ? video : photo;
+    const bytes = serialVideos.get(serialCode) ?? (isVideo ? video : photo);
     const type = isVideo ? "video/mp4" : "image/png";
     if (req.headers.range) {
       const size = Math.min(512, bytes.length);
       res.writeHead(206, { "Content-Type": type, "Content-Length": size, "Content-Range": "bytes 0-" + (size - 1) + "/" + bytes.length });
       return res.end(bytes.subarray(0, size));
+    }
+    if (serialVideos.has(serialCode)) {
+      serialTransfers.push("start:" + serialCode);
+      res.once("finish", () => serialTransfers.push("finish:" + serialCode));
+      if (serialCode === "Denied3") {
+        res.writeHead(403);
+        return res.end();
+      }
+      if (serialCode === "First3") {
+        res.writeHead(200, { "Content-Type": type, "Content-Length": bytes.length });
+        res.write(bytes.subarray(0, 512));
+        finishFirstReel = () => res.end(bytes.subarray(512));
+        return;
+      }
     }
     res.writeHead(200, { "Content-Type": type, "Content-Length": bytes.length });
     if (!path.includes("slow") || req.headers["sec-fetch-dest"] === "image") return res.end(bytes);
@@ -64,6 +85,17 @@ const server = createServer((req, res) => {
     return setTimeout(() => res.end(bytes.subarray(40)), 2900);
   }
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  if (path === "/ig/serialcase/reels/") {
+    return res.end("<!doctype html><main>" + [...serialVideos.keys()].map(code =>
+      '<a href="/ig/serialcase/reel/' + code + '/"><img width="140" height="140" src="/media/photo.png"></a>'
+    ).join("") + "</main>");
+  }
+  const serialPost = path.match(/^\/ig\/serialcase\/reel\/(\w+)\/$/)?.[1];
+  if (serialVideos.has(serialPost)) {
+    return res.end(`<!doctype html><link rel="canonical" href="${origin}${path}">
+      <script type="application/json">${JSON.stringify({ code: serialPost, media_type: 2,
+        video_versions: [{ url: "/media/serial-" + serialPost + ".mp4" }] })}</script>`);
+  }
   if (path === "/ig/covercase/") {
     const posts = ["Cover3", "OnlyCover3", "RealPhoto3"];
     return res.end("<!doctype html><main>" + posts.map(code =>
@@ -310,6 +342,9 @@ try {
       videos: document.querySelectorAll('video').length, loginDialog: !!document.querySelector('[role=dialog]') })`);
     console.log("Live public Instagram:", JSON.stringify({ ...DOM, overlayState: await publicOverlay(visit) }));
     const reel = await evaluate(visit, "document.querySelector('main a[href*=\"/reel/\"]')?.href");
+    if (process.env.MOUSE_HOT_LIVE_MEDIA === "1") {
+      assert.ok(reel?.startsWith("https://www.instagram.com/"), "public profile exposes a Reel without logging in");
+    }
     if (reel?.startsWith("https://www.instagram.com/")) {
       const direct = await open(reel);
       await waitUntil(() => evaluate(direct, "document.readyState === 'complete'"), "public Instagram Reel");
@@ -409,15 +444,25 @@ try {
             await clickProductionOverlay(visit, "id", "mh-download-selected");
             const batch = await waitUntil(async () => {
               const items = await evaluate(production, `chrome.downloads.search({}).then(items => items.filter(
-                item => item.byExtensionId === chrome.runtime.id && item.state === "complete").map(({filename,bytesReceived})=>({filename,bytesReceived})))`);
+                item => item.byExtensionId === chrome.runtime.id && item.state === "complete")
+                .map(({filename,bytesReceived,startTime,endTime})=>({filename,bytesReceived,startTime,endTime})))`);
               const picked = items.filter(item => codes.some(selectedCode => item.filename.toLowerCase().includes(
                 "post_" + selectedCode.toLowerCase() + "_1_video.mp4")));
               assert.ok(!items.some(item => item.filename.endsWith(".json")), "media actions must not save JSON");
               return picked.length === codes.length ? picked : null;
             }, "two selected real Instagram MP4s", 42000);
-            for (const file of batch) assert.equal((await readFile(file.filename)).toString("ascii", 4, 8), "ftyp");
+            for (const file of batch) {
+              const bytes = await readFile(file.filename);
+              assert.equal(bytes.length, file.bytesReceived);
+              assert.equal(bytes.toString("ascii", 4, 8), "ftyp");
+              assert.ok(Date.parse(file.startTime) <= Date.parse(file.endTime), "Chrome reports both download times");
+            }
+            batch.sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
+            assert.ok(Date.parse(batch[0].endTime) <= Date.parse(batch[1].startTime),
+              "Chrome must finish the first public Reel before starting the second");
             assert.equal(await evaluate(visit, "location.pathname"), DOM.path);
-            console.log("Live Instagram selected batch saved only MP4 files:", batch.map(item => item.bytesReceived));
+            console.log("Live Instagram selected batch saved two sequential MP4s:",
+              JSON.stringify(batch.map(({ bytesReceived, startTime, endTime }) => ({ bytesReceived, startTime, endTime }))));
           }
         } catch (error) {
           const notice = await closedOverlayNode(visit, node => node.nodeName === "P" &&
@@ -474,7 +519,7 @@ try {
   await waitUntil(async () => (await text(ig)).includes("Baixar 4 arquivos"), "four selected items");
   await click(ig, "#enqueue");
   await waitUntil(async () => await count(ig, "done") === 3 && await count(ig, "failed") === 1, "three downloads and an expired URL");
-  assert.equal(peak, 2, "queue allows exactly two concurrent downloads");
+  assert.equal(peak, 1, "queue allows only one active transfer");
   assert.deepEqual(await readFile(join(downloadPath, "Mouse Hot", "Instagram", "fixture", "post_fixture-pack_1_image.png")), photo);
   await click(ig, "#items .row button");
   await waitUntil(async () => (await text(ig)).includes("já estão na fila ou no histórico"), "duplicate denied");
@@ -510,6 +555,35 @@ try {
   assert.equal(restoredId, fixtureId);
   const restored = await open(panelPage(restoredId));
   await waitUntil(async () => await count(restored, "done") === 4, "queue survives restarting Chrome");
+
+  const serial = await open(origin + "/ig/serialcase/reels/");
+  await waitUntil(async () => (await overlayValue(serial, "#mh-summary"))?.includes("3 publicações"), "three Reels appear on the profile");
+  await clickOverlay(serial, "#mh-toggle");
+  await clickOverlay(serial, "#mh-select-all");
+  await clickOverlay(serial, "#mh-download-selected");
+  await waitUntil(() => finishFirstReel, "Chrome starts receiving the first Reel");
+  const serialJobs = () => evaluate(restored, `[...document.querySelectorAll('#jobs .job')]
+    .filter(job => job.textContent.includes('@serialcase')).map(job => ({ status: job.dataset.status, text: job.textContent }))`);
+  await waitUntil(async () => {
+    if (serialTransfers.length > 1) return true;
+    const states = (await serialJobs()).map(job => job.status).sort();
+    return states.join() === "queued,queued,running";
+  }, "queue shows one running Reel and two waiting while the first MP4 is incomplete");
+  assert.deepEqual(serialTransfers, ["start:First3"], "no second transfer can start before the first MP4 completes");
+  finishFirstReel();
+  await waitUntil(async () => {
+    const states = (await serialJobs()).map(job => job.status).sort();
+    return states.join() === "done,done,failed";
+  }, "queue reports two complete Reels and keeps the failed Reel");
+  const failedReel = (await serialJobs()).find(job => job.status === "failed");
+  assert.match(failedReel.text, /Falhou.*post_denied3_1_video\.mp4/i);
+  assert.deepEqual(serialTransfers, [
+    "start:First3", "finish:First3", "start:Denied3", "finish:Denied3", "start:Last3", "finish:Last3",
+  ], "the full requests run in order and the terminal failure releases the next Reel");
+  const serialFolder = join(downloadPath, "Mouse Hot", "Instagram", "serialcase");
+  await fileWhenReady(join(serialFolder, "post_first3_1_video.mp4"), serialVideos.get("First3"));
+  await fileWhenReady(join(serialFolder, "post_last3_1_video.mp4"), serialVideos.get("Last3"));
+  assert.deepEqual((await readdir(serialFolder)).sort(), ["post_first3_1_video.mp4", "post_last3_1_video.mp4"]);
 
   const vault = await open(origin + "/ig/vault/");
   await waitUntil(async () => (await overlayValue(vault, "#mh-summary"))?.includes("3 publicações"), "profile sees three previews");
@@ -604,7 +678,7 @@ try {
   assert.equal((await readdir(join(downloadPath, "Mouse Hot", "TikTok", "fixture"))).length, 1, "scan only saves no file");
 
   console.log("Mouse Hot — individual and batch media, video fallback after expiry and Chrome interruption, no automatic JSON, carousel, scroll and cancel validated.");
-  console.log(info.product + " — production package loaded. Instagram batch, 2 concurrent, expired URL, duplicate, persisted queue after restart, TikTok video and auto-scroll passed.");
+  console.log(info.product + " — production package loaded. One transfer at a time, Reel failure advances the queue, exact MP4 bytes, duplicate, queue persistence and TikTok validated.");
 } finally {
   if (browser.exitCode === null) await closeBrowser();
   server.closeAllConnections();

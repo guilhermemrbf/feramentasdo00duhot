@@ -122,7 +122,7 @@ function renderJobs(jobs) {
   $("clear").hidden = !jobs.some(j => terminal.has(j.status));
   $("queue-hint").textContent = !jobs.length ? "Os arquivos salvos ficam em Downloads → Mouse Hot." :
     jobs.filter(j => j.status === "done").length + " salvos de " + jobs.length +
-    " na lista · até 2 downloads por vez";
+    " na lista · um download por vez";
   $("jobs").replaceChildren(...jobs.map(job => {
     const row = el("li", "row job");
     row.dataset.status = job.status;
