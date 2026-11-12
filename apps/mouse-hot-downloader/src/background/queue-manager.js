@@ -2,6 +2,7 @@ import { classify, filePath, verifyMedia } from "../core/media.js";
 
 const key = "mouse-hot.queue.v1";
 const busy = new Set(["starting", "running", "pausing"]);
+const holdsSlot = (job) => busy.has(job.status) || job.status === "paused";
 const retryable = new Set(["NETWORK_TIMEOUT", "NETWORK_DISCONNECTED", "NETWORK_FAILED",
   "SERVER_UNREACHABLE", "SERVER_FAILED"]);
 const terminal = new Set(["done", "cancelled", "failed", "review"]);
@@ -131,25 +132,32 @@ export function makeQueue(notify) {
     try {
       job.downloadId = await chrome.downloads.download({ url: job.item.source, filename: path,
         conflictAction: "uniquify", saveAs: false });
-      state(job, "running");
-      await save();
-      const [d] = await chrome.downloads.search({ id: job.downloadId });
-      if (d) await ingest(job, d);
     } catch {
       state(job, "failed", "O Chrome não iniciou o download. Confira a pasta de destino e as permissões.");
+      await save();
+      return;
     }
+    state(job, "running");
+    await save();
+    // A failed lookup cannot release a transfer Chrome already started.
+    const [d] = await chrome.downloads.search({ id: job.downloadId }).catch(() => []);
+    if (d) await ingest(job, d);
     await save();
     if (job.status === "queued" && !job.next) await launch(job);
   }
+  function nextReady() {
+    if (jobs.some(holdsSlot)) return;
+    return jobs.find(j => j.status === "queued" && (!j.next || j.next <= Date.now()));
+  }
   async function pump() {
-    // A rejected probe emits no Chrome event. Continue with later items without
-    // waiting for the alarm, but cap each pass if the entire batch is invalid.
     for (let attempted = 0; attempted < 4; attempted++) {
-      if (jobs.filter(j => busy.has(j.status)).length >= 2) return;
-      const ready = jobs.find(j => j.status === "queued" && (!j.next || j.next <= Date.now()));
+      const ready = nextReady();
       if (!ready) return;
       await launch(ready);
     }
+    // Failed probes emit no Chrome event. Continue in another serialized pass
+    // so actions already waiting on the current pass can run first.
+    if (nextReady()) void run(pump).catch(() => {});
   }
   let initialized = false;
   const run = (fn) => exclusive(async () => {
@@ -205,7 +213,10 @@ export function makeQueue(notify) {
         await chrome.downloads.pause(j.downloadId);
         state(j, "paused");
       } else if (command === "resume" && ["paused","failed"].includes(j.status) && j.canResume) {
-        if (jobs.filter(it => busy.has(it.status)).length >= 2) throw new Error("Aguarde uma das duas vagas na fila.");
+        // Older queues can have several paused jobs. Any one can resume when
+        // the transfer slot is free, while failed jobs must wait for them.
+        const blocked = jobs.some(it => busy.has(it.status) || (j.status === "failed" && it.status === "paused"));
+        if (blocked) throw new Error("Aguarde o download atual terminar ou ser cancelado.");
         await chrome.downloads.resume(j.downloadId);
         state(j, "running");
       } else if (command === "cancel" && !terminal.has(j.status)) {
