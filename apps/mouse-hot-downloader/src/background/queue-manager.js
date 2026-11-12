@@ -8,6 +8,12 @@ const retryable = new Set(["NETWORK_TIMEOUT", "NETWORK_DISCONNECTED", "NETWORK_F
 const terminal = new Set(["done", "cancelled", "failed", "review"]);
 const withBytes = (j) => ({ ...j, item: { ...j.item, source: undefined, thumb: undefined, alternates: undefined } });
 const own = (d) => d?.byExtensionId === chrome.runtime.id;
+function matchesDownloadPath(filename, path) {
+  const normalized = filename.replaceAll("\\", "/");
+  const requested = "/" + path;
+  return normalized.endsWith(requested) ||
+    normalized.replace(/ \([1-9]\d*\)(?=\.[^./]+$)/, "").endsWith(requested);
+}
 const labels = {
   queued: "Aguardando", starting: "Verificando arquivo…", running: "Baixando",
   paused: "Pausado", pausing: "Pausando…", done: "Salvo no computador",
@@ -61,13 +67,21 @@ export function makeQueue(notify) {
   }
   async function ingest(job, d) {
     if (!own(d)) return;
-    const final = d.finalUrl || d.url;
-    if (final && classify(final, job.item.platform)) {
-      await chrome.downloads.cancel(d.id).catch(() => {});
-      return state(job, "review", "O destino mudou. Confira esta transferência no Chrome.");
-    }
     job.received = d.bytesReceived || 0;
     job.total = d.totalBytes > 0 ? d.totalBytes : 0;
+    const final = d.finalUrl || d.url;
+    if (final && classify(final, job.item.platform)) {
+      job.canResume = false;
+      if (d.state === "in_progress") {
+        try {
+          await chrome.downloads.cancel(d.id);
+        } catch {
+          return state(job, d.paused ? "paused" : "running",
+            "O destino mudou. Aguardando o Chrome confirmar o cancelamento.");
+        }
+      }
+      return state(job, "review", "O destino mudou. Confira esta transferência no Chrome.");
+    }
     job.canResume = !!d.canResume;
     if (d.state === "complete") return state(job, "done");
     if (d.state === "in_progress") {
@@ -96,12 +110,16 @@ export function makeQueue(notify) {
           continue;
         }
         const matches = (await chrome.downloads.search({
-          url: j.item.source, startedAfter: new Date(j.updated - 5000).toISOString(), limit: 15,
-        })).filter(d => own(d) && d.filename.replaceAll("\\", "/").endsWith("/" + j.filename));
-        if (matches.length === 1) {
+          url: j.item.source, startedAfter: new Date(j.updated - 5000).toISOString(), limit: 0,
+        })).filter(d => own(d) && (d.filename ? matchesDownloadPath(d.filename, j.filename) : d.state === "in_progress"));
+        if (matches.length === 1 && matches[0].filename) {
           j.downloadId = matches[0].id;
           await ingest(j, matches[0]);
-        } else state(j, "review", "O Chrome foi fechado durante o início. Confira a lista de downloads antes de repetir.");
+        } else if (!matches.some(d => d.state === "in_progress")) {
+          state(j, "review", "O Chrome foi fechado durante o início. Confira a lista de downloads antes de repetir.");
+        }
+        // Keep the original search window while Chrome is assigning a filename
+        // or several matches prevent us from identifying the transfer.
       }
     }
     await save();
@@ -172,11 +190,10 @@ export function makeQueue(notify) {
       for (const j of jobs.filter(j => j.status === "running")) {
         const [d] = await chrome.downloads.search({ id: j.downloadId });
         if (own(d)) {
+          const previousMessage = j.message;
           await ingest(j, d);
-          if (j.status === "queued" && !j.next) {
-            await save();
-            await pump();
-          }
+          if (j.status !== "running" || j.message !== previousMessage) await save();
+          if (!holdsSlot(j)) await pump();
         }
       }
       return jobs.map(withBytes).reverse();
@@ -220,6 +237,9 @@ export function makeQueue(notify) {
         await chrome.downloads.resume(j.downloadId);
         state(j, "running");
       } else if (command === "cancel" && !terminal.has(j.status)) {
+        if (j.status === "starting" && j.filename && j.downloadId == null) {
+          throw new Error("Confira a transferência na lista de downloads do Chrome antes de cancelar.");
+        }
         if (j.downloadId != null) await chrome.downloads.cancel(j.downloadId);
         state(j, "cancelled");
       } else if (command === "retry" && ["failed","review"].includes(j.status) && j.item.source) {

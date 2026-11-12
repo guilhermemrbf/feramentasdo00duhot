@@ -21,14 +21,19 @@ function savedJob(id, status, downloadId = null) {
   };
 }
 
-function setup(t, { saved = [], invalid = [], failFirstSearch = false, notify = () => {} } = {}) {
+function setup(t, {
+  saved = [], native = [], invalid = [], failFirstSearch = false, cancel = (d) => {
+    Object.assign(d, { state: "interrupted", error: "USER_CANCELED" });
+  }, notify = () => {},
+} = {}) {
   let stored = structuredClone(saved);
   const downloads = new Map();
   let nextDownloadId = 1;
-  function addDownload({ url, filename, paused = false, state = "in_progress" }) {
+  function addDownload({ url, filename, paused = false, state = "in_progress", byExtensionId = extensionId }) {
     const id = nextDownloadId++;
     downloads.set(id, { id, url, finalUrl: url, filename, state, paused,
-      danger: "safe", canResume: paused, bytesReceived: 0, totalBytes: 24, byExtensionId: extensionId });
+      danger: "safe", canResume: paused, bytesReceived: 0, totalBytes: 24, byExtensionId,
+      startTime: new Date().toISOString() });
     return id;
   }
   for (const job of saved) {
@@ -37,6 +42,8 @@ function setup(t, { saved = [], invalid = [], failFirstSearch = false, notify = 
       paused: job.status === "paused", state: job.status === "failed" ? "interrupted" : "in_progress" });
     assert.equal(id, job.downloadId);
   }
+
+  for (const download of native) addDownload(download);
 
   t.mock.method(globalThis, "fetch", async (url) => {
     return invalid.some(id => video(id).source === url)
@@ -52,16 +59,18 @@ function setup(t, { saved = [], invalid = [], failFirstSearch = false, notify = 
     } },
     downloads: {
       download: async ({ url, filename }) => addDownload({ url, filename }),
-      search: async ({ id }) => {
+      search: async ({ id, url, startedAfter, limit }) => {
         if (failFirstSearch) {
           failFirstSearch = false;
           throw new Error("Chrome temporarily unavailable");
         }
-        return downloads.has(id) ? [structuredClone(downloads.get(id))] : [];
+        if (id != null) return downloads.has(id) ? [structuredClone(downloads.get(id))] : [];
+        return structuredClone([...downloads.values()].filter(d => d.url === url && d.startTime > startedAfter)
+          .slice(0, limit || undefined));
       },
       pause: async (id) => Object.assign(downloads.get(id), { paused: true, canResume: true }),
       resume: async (id) => Object.assign(downloads.get(id), { state: "in_progress", paused: false, canResume: false }),
-      cancel: async (id) => Object.assign(downloads.get(id), { state: "interrupted", error: "USER_CANCELED" }),
+      cancel: async (id) => cancel(downloads.get(id)),
     },
   } });
   t.after(() => {
@@ -174,4 +183,118 @@ test("a failed Chrome lookup cannot release an already-started transfer's slot",
   await queue.start();
   assert.deepEqual(statuses(await queue.list()), { first: "running", second: "queued" });
   assert.deepEqual(active(), [video("first").source]);
+});
+
+
+test("an incompatible download keeps its slot while Chrome refuses to cancel it", async (t) => {
+  let allowCancel = false;
+  const { queue, downloads, active } = setup(t, { cancel: (download) => {
+    if (!allowCancel) throw new Error("Chrome temporarily unavailable");
+    Object.assign(download, { state: "interrupted", error: "USER_CANCELED" });
+  } });
+  await queue.enqueue(["first", "second"].map(video), 1);
+  await queue.start();
+  const first = downloads.get(1);
+  first.finalUrl = "https://example.org/first.mp4";
+  await queue.changed(1);
+  assert.deepEqual(active(), [video("first").source]);
+  const jobs = await queue.list();
+  assert.deepEqual(statuses(jobs), { first: "running", second: "queued" });
+  assert.match(jobs.find(job => job.item.id === "first").message, /destino.*cancelamento/i);
+
+  Object.assign(first, { paused: true, canResume: true });
+  await queue.tick();
+  assert.deepEqual(statuses(await queue.list()), { first: "paused", second: "queued" });
+  assert.equal(downloads.size, 1);
+  await assert.rejects(queue.act(jobs.find(job => job.item.id === "first").id, "resume"));
+
+  allowCancel = true;
+  const restarted = makeQueue(() => {});
+  await restarted.tick();
+  assert.equal(first.state, "interrupted");
+  assert.deepEqual(statuses(await restarted.list()), { first: "review", second: "running" });
+  assert.deepEqual(active(), [video("second").source]);
+});
+
+test("polling a completion before its Chrome event persists it and starts the next transfer", async (t) => {
+  const { queue, downloads, active } = setup(t);
+  await queue.enqueue(["first", "second"].map(video), 1);
+  await queue.start();
+  downloads.get(1).state = "complete";
+  assert.deepEqual(statuses(await queue.list()), { first: "done", second: "running" });
+  await queue.changed(1);
+  assert.deepEqual(active(), [video("second").source]);
+  downloads.get(2).state = "complete";
+  await queue.list();
+  downloads.delete(2);
+  assert.deepEqual(statuses(await makeQueue(() => {}).list()), { first: "done", second: "done" });
+});
+
+const starting = () => ({
+  ...savedJob("first", "starting"), filename: "Mouse Hot/Instagram/perfil-nao-identificado/post_first_1_video.mp4",
+});
+
+function recoveredDownload(job, suffix, byExtensionId) {
+  return {
+    url: job.item.source,
+    filename: "C:/Downloads/" + job.filename.replace(/\.mp4$/, suffix + ".mp4"),
+    byExtensionId,
+  };
+}
+
+test("recovery claims Chrome's uniquified target after the worker loses the download ID", async (t) => {
+  const first = starting();
+  const { queue, downloads } = setup(t, {
+    saved: [first, savedJob("second", "queued")],
+    native: [recoveredDownload(first, " (1)"), recoveredDownload(first, "", "another-extension")],
+  });
+  await queue.start();
+  assert.deepEqual(statuses(await queue.list()), { first: "running", second: "queued" });
+  assert.equal(downloads.size, 2);
+
+  downloads.get(1).state = "complete";
+  await queue.changed(1);
+  assert.deepEqual(statuses(await queue.list()), { first: "done", second: "running" });
+  assert.equal(downloads.get(2).state, "in_progress");
+});
+
+test("recovery preserves the slot while matching owned downloads are ambiguous", async (t) => {
+  const first = starting();
+  const { queue, downloads } = setup(t, {
+    saved: [first, savedJob("second", "queued")],
+    native: [recoveredDownload(first, ""), recoveredDownload(first, " (2)")],
+  });
+  await queue.start();
+  assert.deepEqual(statuses(await queue.list()), { first: "starting", second: "queued" });
+  await assert.rejects(queue.act(first.id, "cancel"), /confira.*Chrome/i);
+  await queue.start();
+  assert.equal(downloads.size, 2);
+  downloads.get(1).state = "complete";
+  await queue.tick();
+  assert.deepEqual(statuses(await queue.list()), { first: "starting", second: "queued" });
+  assert.equal(downloads.size, 2);
+
+  downloads.get(2).state = "complete";
+  await queue.tick();
+  assert.deepEqual(statuses(await queue.list()), { first: "review", second: "running" });
+});
+
+
+test("recovery waits for Chrome to assign the owned download's target path", async (t) => {
+  const first = starting();
+  const { queue, downloads } = setup(t, {
+    saved: [first, savedJob("second", "queued")],
+    native: [{ ...recoveredDownload(first, ""), filename: "" }],
+  });
+  await queue.start();
+  assert.deepEqual(statuses(await queue.list()), { first: "starting", second: "queued" });
+  assert.equal(downloads.size, 1);
+
+  downloads.get(1).filename = recoveredDownload(first, " (3)").filename;
+  await queue.tick();
+  assert.deepEqual(statuses(await queue.list()), { first: "running", second: "queued" });
+
+  downloads.get(1).state = "complete";
+  await queue.changed(1);
+  assert.deepEqual(statuses(await queue.list()), { first: "done", second: "running" });
 });
