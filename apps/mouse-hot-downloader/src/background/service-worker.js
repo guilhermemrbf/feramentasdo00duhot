@@ -75,8 +75,7 @@ async function content(message, sender) {
       const items = new Map(state.items.map(i => [i.key, i]));
       for (const input of message.items.slice(0, 350)) {
         const item = makeCandidate(input, state.platform);
-        if (!item || (state.account && item.handle && state.account !== item.handle) ||
-          (items.size >= 350 && !items.has(item.key))) continue;
+        if (!item || (state.account && item.handle && state.account !== item.handle)) continue;
         if (!item.source && input.reason && input.status === "unavailable") {
           item.status = "unavailable";
           item.reason = typeof input.reason === "string" ? input.reason.slice(0, 160) : "";
@@ -85,13 +84,14 @@ async function content(message, sender) {
         if (items.get(item.key)?.source && !item.source) continue;
         if (item.status === "open" && item.key.startsWith("instagram:post:") &&
           [...items.values()].some(prior => prior.source && sameInstagramPost(item, prior))) continue;
-        items.set(item.key, item);
         if (item.source) {
           for (const [k, prior] of items) {
             const samePost = prior.postUrl === item.postUrl || sameInstagramPost(item, prior);
             if (samePost && prior.status === "open" && k !== item.key) items.delete(k);
           }
         }
+        if (items.size >= 350 && !items.has(item.key)) continue;
+        items.set(item.key, item);
       }
       state.items = [...items.values()];
       await persist(id, state);

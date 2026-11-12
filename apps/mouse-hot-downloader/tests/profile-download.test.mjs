@@ -278,3 +278,29 @@ test("explicit enqueue keys select only captured items with a direct source", as
   assert.equal(local["mouse-hot.queue.v1"][0].filename, "Mouse Hot/Instagram/perfil_con/post_mixed9_2_video.mp4");
   assert.equal(local["mouse-hot.queue.v1"][0].item.source, video);
 });
+
+test("a resolved photo can replace its placeholder in a full capture", async t => {
+  const { send } = mockChrome(t);
+  await import("../src/background/service-worker.js?full-capture");
+  await send({ type: "capture:register" });
+  const scope = "instagram:@con";
+  const url = origin + "/con/";
+  const others = Array.from({ length: 349 }, (_, index) => ({
+    postUrl: origin + "/p/Other" + index + "/",
+    kind: "video", index: 0,
+  }));
+  await send({ type: "capture:items", scope, url, items: [
+    ...others, { postUrl: origin + "/con/p/Mixed9/", kind: "video", index: 0 },
+  ] });
+  await send({ type: "capture:items", scope, url, items: [
+    { postUrl, kind: "image", index: 0, source: image },
+    { postUrl, kind: "video", index: 1, source: video },
+    { postUrl: origin + "/p/Unrelated/", kind: "image", index: 0, source: image },
+  ] });
+  const { items } = (await send({ type: "capture:snapshot" })).value.capture;
+  assert.deepEqual(items.map(item => item.key), [
+    ...others.map((_, index) => "instagram:post:Other" + index + ":0:video"),
+    "instagram:post:Mixed9:0:image",
+  ]);
+  assert.equal(items.at(-1).sourceOrigin, "https://images.cdninstagram.com");
+});
