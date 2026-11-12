@@ -213,6 +213,21 @@ function shownText(header, selector) {
   return [...header.querySelectorAll(selector)].map(visibleText).find(Boolean) || "";
 }
 
+function renderedBiography(header) {
+  const counts = [...header.querySelectorAll(":scope > section")].find(section =>
+    [...section.querySelectorAll("a[href], li")].some(element => {
+      const text = visibleText(element);
+      return text && (/\/(?:followers|following)\/?(?:[?#]|$)/.test(element.getAttribute("href") || "") ||
+        Object.keys(countLabels).some(key => countFrom(text, key)));
+    }));
+  const section = counts?.nextElementSibling;
+  if (!section?.matches("section")) return "";
+  const bios = [...section.querySelectorAll(':scope > div > span[dir="auto"]')].filter(span =>
+    shownText(span.parentElement, ':scope > div > span[dir="auto"]') &&
+    shownText(span, ':scope > div[role="button"] > span[dir="auto"]')).map(visibleText).filter(Boolean);
+  return bios.length === 1 ? bios[0] : "";
+}
+
 export function readInstagramProfile(page = document) {
   const url = page.URL;
   const handle = instagramProfileHandle(url);
@@ -247,6 +262,7 @@ export function readInstagramProfile(page = document) {
         }
       }
     }
+    profile.biography ||= renderedBiography(header);
     for (const key of Object.keys(countLabels)) {
       const labeled = [...header.querySelectorAll("li, a, button, [aria-label]")].find(node => {
         const text = visibleText(node);

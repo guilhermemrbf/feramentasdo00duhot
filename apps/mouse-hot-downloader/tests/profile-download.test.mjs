@@ -178,6 +178,28 @@ test("an empty rendered biography does not expose text from hidden descendants",
   assert.deepEqual(readInstagramProfile(page), { handle: "fixture" });
 });
 
+test("reads the rendered Instagram biography after profile counts and before highlights", async t => {
+  const page = mockPage(t, async () => htmlResponse(""), profileUrl, `<html><head>
+    <meta property="og:title" content="Display Name (@fixture) • Instagram photos and videos">
+    </head><body><main><header>
+    <section><h2>fixture</h2></section>
+    <section><div><a href="/fixture/followers/">1.234 seguidores</a></div></section>
+    <section><div>
+      <div><span dir="auto">Display Name</span></div><div></div>
+      <span dir="auto" hidden><div role="button"><span dir="auto">Hidden bio</span></div></span>
+      <span dir="auto"><div role="button"><span dir="auto">Biografia pública</span></div></span>
+      <button><span dir="auto">example.org</span></button>
+    </div></section>
+    <section><div><span dir="auto"><div role="button"><span dir="auto">Highlights</span></div></span></div></section>
+  </header></main></body></html>`);
+  const { readInstagramProfile } = await import("../src/adapters/instagram/profile-download.js");
+  assert.deepEqual(readInstagramProfile(page), {
+    handle: "fixture", name: "Display Name", biography: "Biografia pública", followers: "1.234",
+  });
+  page.querySelectorAll("header > section")[2].remove();
+  assert.deepEqual(readInstagramProfile(page), { handle: "fixture", name: "Display Name", followers: "1.234" });
+});
+
 test("resolves same-origin fixture metadata and declines a reel cover without direct media", async t => {
   const fixtureOrigin = "http://127.0.0.1:8910";
   const fixturePost = fixtureOrigin + "/ig/p/Fixture9/";
