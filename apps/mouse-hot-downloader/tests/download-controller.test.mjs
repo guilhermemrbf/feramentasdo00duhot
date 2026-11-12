@@ -173,3 +173,14 @@ test("retains a known direct carousel slot and reports a different missing slot"
   assert.deepEqual(harness.calls.at(-1)[1].keys, ["instagram:post:Slides:0:video", "instagram:post:Slides:1:image"]);
   assert.match(harness.operations.at(-1).message, /1 indispon/);
 });
+
+test("a carousel video thumbnail cannot replace an unavailable video", async () => {
+  const thumbnail = candidate(carousel, { ...photo, index: 1 });
+  const harness = setup({ items: [thumbnail], resolve: async (postUrl, { onUnavailable }) => {
+    onUnavailable?.([1], { 1: "video" });
+    return [{ ...photo, postUrl, index: 0 }];
+  } });
+  await harness.run("download-one", { key: thumbnail.key });
+  assert.deepEqual(harness.calls.at(-1)[1].keys, ["instagram:post:Slides:0:image"]);
+  assert.match(harness.operations.at(-1).message, /1 indispon/);
+});

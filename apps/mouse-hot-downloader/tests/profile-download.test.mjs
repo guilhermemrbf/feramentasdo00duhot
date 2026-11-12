@@ -51,7 +51,8 @@ test("resolves full media in a mixed carousel with original positions", async t 
 });
 
 test("reports only missing positions from the matching carousel, up to the supported limit", async t => {
-  const larger = Array.from({ length: 41 }, (_, index) => index === 2 || index === 39 ? null : photo);
+  const segmented = { media_type: 2, video_url: "https://videos.cdninstagram.com/stream.mpd" };
+  const larger = Array.from({ length: 41 }, (_, index) => index === 2 ? segmented : index === 39 ? null : photo);
   const responses = [
     htmlResponse(script([
       { code: "Other9", carousel_media: [null, null] },
@@ -63,14 +64,14 @@ test("reports only missing positions from the matching carousel, up to the suppo
   mockPage(t, async () => responses.shift());
   const { resolveInstagramPost } = await import("../src/adapters/instagram/profile-download.js");
   const calls = [];
-  const options = { onUnavailable: indexes => calls.push(indexes) };
+  const options = { onUnavailable: (indexes, kinds) => calls.push([indexes, kinds]) };
   const assets = await resolveInstagramPost(postUrl, options);
   assert.equal(assets.length, 38);
   assert.ok(assets.some(item => item.index === 1));
   assert.ok(!assets.some(item => item.index === 40));
-  assert.deepEqual(calls, [[2, 39]]);
+  assert.deepEqual(calls, [[[2, 39], { 2: "video" }]]);
   assert.equal((await resolveInstagramPost(postUrl, options)).length, 1);
-  assert.deepEqual(calls, [[2, 39]]);
+  assert.deepEqual(calls, [[[2, 39], { 2: "video" }]]);
 });
 
 test("grid capture skips hidden anchors and hidden media even with a nonzero rectangle", async t => {

@@ -8,11 +8,13 @@ Extensão para guardar fotos e vídeos autorizados do Instagram e do TikTok. A m
 2. No Google Chrome, abra `chrome://extensions` e ative **Modo do desenvolvedor**.
 3. Clique em **Carregar sem compactação** e selecione a pasta **Mouse Hot**, onde está o arquivo `manifest.json`.
 4. Recarregue um perfil ou uma publicação do Instagram ou TikTok. A barra **Mouse Hot** aparece no canto inferior direito.
-5. Clique em **Abrir** na barra, depois em **Baixar** para um arquivo, ou selecione vários e clique em **Baixar seleção**.
+5. Abra a barra e clique em **Baixar** na publicação que deseja salvar. Para um lote, marque as publicações ou use **Selecionar tudo** e clique em **Baixar seleção**.
 
-Se a versão 0.1.0 estiver instalada, desative-a na tela de extensões antes de carregar esta versão. O ícone na barra do Chrome abre os atalhos do TikTok e do Telegram Web.
+Se uma versão anterior estiver instalada, desative-a na tela de extensões antes de carregar a pasta da versão 3.0. O ícone na barra do Chrome abre os atalhos do Instagram e do TikTok.
 
-Em perfis, **Rolar e procurar** encontra publicações à medida que a página carrega. Se o perfil mostra apenas uma miniatura, use **Abrir** para localizar o arquivo na publicação. A extensão consegue reconhecer a versão MP4 que o próprio Instagram inclui nos dados da página, mesmo quando o player usa `blob:`. A fila confirma a conclusão quando o Chrome termina de salvar.
+Quando a grade do Instagram mostra só uma miniatura, **Baixar** consulta a própria publicação em segundo plano. As fotos e os vídeos de um carrossel são arquivos separados. **Baixar tudo** procura mais publicações ao rolar o perfil, envia os arquivos encontrados para a fila e salva os dados disponíveis em `perfil.json`. Use **Baixar dados do perfil** para exportar apenas o JSON. Ele contém os campos visíveis que a extensão identificou, como nome, biografia, links e contagens.
+
+O painel informa quando chega ao limite de 350 itens ou 75 segundos de rolagem por busca. A resolução dos arquivos acontece depois da rolagem. O painel também sinaliza publicações e partes de carrosséis sem arquivo disponível. A fila confirma a conclusão quando o Chrome termina de salvar. Se o navegador estiver configurado para perguntar onde salvar cada download, o Chrome pode solicitar o destino de cada arquivo.
 
 Se a página disponibilizar apenas segmentos ou um player sem arquivo direto, o painel indica a limitação. URLs temporárias podem exigir que a publicação seja aberta de novo. Quando o autor não puder ser identificado, o arquivo fica na pasta `perfil-nao-identificado`. Use apenas conteúdo que você tenha autorização para baixar.
 

@@ -1,6 +1,10 @@
 # Mouse Hot — extensão de downloads para Chrome
 
-**Estado:** versão local 0.2.0 com painel flutuante, atalhos e detecção de Reels atualizada. O código e as instruções estão em [apps/mouse-hot-downloader](../apps/mouse-hot-downloader/README.md).
+**Estado:** versão local 3.0.0 com downloads pelo painel flutuante. O código e as instruções estão em [apps/mouse-hot-downloader](../apps/mouse-hot-downloader/README.md).
+
+A versão 3.0 substitui o atalho do Telegram por Instagram e mantém o TikTok. A sobreposição usa a logo e inclui **Baixar**, **Selecionar tudo**, **Baixar seleção**, **Baixar tudo** e **Baixar dados do perfil**. Quando o Instagram mostra apenas uma miniatura, a extensão resolve a própria publicação em segundo plano, mantendo a aba no perfil. **Baixar tudo** inclui o que a rolagem encontra e salva `perfil.json`. O painel informa mídia indisponível e quando a busca chega a 350 itens ou 75 segundos de rolagem.
+
+O teste local no Chrome conferiu os bytes do download individual, as duas mídias de um carrossel, a foto que apareceu ao rolar, o JSON do perfil, a deduplicação e o cancelamento da requisição em andamento. Uma checagem sem login em perfil público confirmou que o resolvedor encontra o MP4 do Reel sem navegar até ele. Não houve download completo de mídia de terceiros durante essa checagem pública.
 
 Na 0.2.0, a versão inicial do painel lateral foi substituída por uma sobreposição recolhível, exibida automaticamente em perfis e publicações reconhecidos. O popup da barra de ferramentas abre TikTok e Telegram Web. A extensão verifica mídias nos servidores conhecidos de Instagram e TikTok com as permissões do manifesto.
 

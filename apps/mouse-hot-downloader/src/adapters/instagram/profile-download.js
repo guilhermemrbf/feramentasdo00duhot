@@ -117,6 +117,7 @@ function embeddedAssets(document, post) {
   const stack = jsonNodes(document).reverse();
   const singles = [];
   const carousel = new Map();
+  const carouselKinds = new Map();
   let hasCarousel = false;
   let carouselSize = 0;
   let hasVideo = post.route !== "p";
@@ -132,8 +133,13 @@ function embeddedAssets(document, post) {
           const children = group.slice(0, maxCarouselItems);
           carouselSize = Math.max(carouselSize, children.length);
           children.forEach((child, index) => {
-            const item = asset(child?.node || child, index, post.url);
-            if (item && !carousel.has(index)) carousel.set(index, item);
+            const media = child?.node || child;
+            if (!media || typeof media !== "object") return;
+            const kind = describesVideo(media) ? "video" :
+              (Number(media.media_type) === 1 || media.is_video === false || media.__typename === "GraphImage") ? "image" : "";
+            if (kind && (kind === "video" || !carouselKinds.has(index))) carouselKinds.set(index, kind);
+            const item = asset(media, index, post.url);
+            if (item && (!carousel.has(index) || item.kind === "video")) carousel.set(index, item);
           });
         }
       } else {
@@ -154,8 +160,13 @@ function embeddedAssets(document, post) {
       if (value && typeof value === "object") stack.push(value);
     }
   }
+  for (const [index, kind] of carouselKinds) {
+    if (carousel.has(index) && carousel.get(index).kind !== kind) carousel.delete(index);
+  }
   const missing = Array.from({ length: carouselSize }, (_, index) => index).filter(index => !carousel.has(index));
-  return { hasCarousel, hasVideo, missing, items: hasCarousel ?
+  const missingKinds = Object.fromEntries(missing.filter(index => carouselKinds.has(index))
+    .map(index => [index, carouselKinds.get(index)]));
+  return { hasCarousel, hasVideo, missing, missingKinds, items: hasCarousel ?
     [...carousel.values()].sort((a, b) => a.index - b.index) :
     singles.filter(item => !hasVideo || item.kind === "video").slice(0, 1) };
 }
@@ -182,8 +193,8 @@ export async function resolveInstagramPost(postUrl, { signal, onUnavailable } = 
     const canonical = root.querySelector('link[rel~="canonical"]');
     if (canonical && permalink(parseUrl(canonical.getAttribute("href"), post.url)?.href,
       post.url.origin)?.code !== post.code) return [];
-    const { items, hasCarousel, hasVideo, missing } = embeddedAssets(root, post);
-    if (missing.length) onUnavailable?.(missing);
+    const { items, hasCarousel, hasVideo, missing, missingKinds } = embeddedAssets(root, post);
+    if (missing.length) onUnavailable?.(missing, missingKinds);
     if (items.length || !canonical || hasCarousel) return items;
     const videoMeta = meta(root, "og:video:secure_url") || meta(root, "og:video") || meta(root, "og:video:url");
     const source = mediaSource(videoMeta, post.url);

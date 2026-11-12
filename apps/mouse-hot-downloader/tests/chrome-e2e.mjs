@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -24,7 +24,7 @@ const generated = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f
   "-movflags", "frag_keyframe+empty_moov", "-f", "mp4", "pipe:1"]);
 assert.equal(generated.status, 0, generated.stderr?.toString() || "FFmpeg is required for the test.");
 const video = generated.stdout;
-let active = 0, peak = 0;
+let active = 0, peak = 0, waitRequestStarted = false, waitRequestAborted = false;
 const server = createServer((req, res) => {
   const path = new URL(req.url, "http://localhost").pathname;
   if (path.startsWith("/media/")) {
@@ -45,11 +45,51 @@ const server = createServer((req, res) => {
     return setTimeout(() => res.end(bytes.subarray(40)), 2900);
   }
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  if (path === "/ig/vault/" || path === "/ig/canceltest/") {
+    const account = path.includes("canceltest") ? "canceltest" : "vault";
+    const tile = (id) => `<a href="/ig/${account}/p/${id}/"><img width="140" height="140" src="/media/photo.png"></a>`;
+    const tiles = account === "vault" ? ["Solo3", "Mixed3", "Blocked3"] : ["Wait3"];
+    const lazy = account === "vault" ? `<script>window.addEventListener("scroll", () => document.querySelector("main")
+      .insertAdjacentHTML("beforeend", ${JSON.stringify(tile("Lazy3"))}), {once:true})</script>` : "";
+    return res.end(`<!doctype html><main><header><h2>${account}</h2><strong data-profile-name>Equipe Mouse Hot</strong>
+      <div data-profile-bio>Relatórios e vídeos da equipe</div><a href="https://example.com/">Site da equipe</a>
+      <a href="/ig/${account}/followers/">24 seguidores</a></header>
+      ${tiles.map(tile).join("")}
+      <a style="visibility:hidden" href="/ig/${account}/p/Hidden1/"><img width="140" height="140" src="/media/photo.png"></a>
+      <a aria-hidden="true" href="/ig/${account}/p/Hidden2/"><img width="140" height="140" src="/media/photo.png"></a>
+      <div style="height:1150px"></div>${lazy}</main>`);
+  }
+  const archivePost = path.match(/^\/ig\/(vault|canceltest)\/p\/(Solo3|Mixed3|Blocked3|Lazy3|Wait3)\/$/);
+  if (archivePost) {
+    const [, , code] = archivePost;
+    const image = { media_type: 1, image_versions2: { candidates: [{ url: "/media/photo.png", width: 140, height: 140 }] } };
+    const reel = { media_type: 2, video_versions: [{ url: "/media/reel.mp4", width: 160, height: 160 }] };
+    const unavailable = { media_type: 2, video_url: "/media/segmented.m3u8" };
+    const node = code === "Mixed3" ? { media_type: 8, carousel_media: [image, reel, unavailable] } :
+      code === "Blocked3" ? {} : code === "Solo3" || code === "Wait3" ? reel : image;
+    const html = `<!doctype html><link rel="canonical" href="${origin}${path}">
+      <script type="application/json">${JSON.stringify({ code, ...node })}</script>`;
+    if (code === "Wait3") {
+      waitRequestStarted = true;
+      const timer = setTimeout(() => res.end(html), 9000);
+      res.once("close", () => {
+        clearTimeout(timer);
+        waitRequestAborted = !res.writableEnded;
+      });
+      return;
+    }
+    return res.end(html);
+  }
   if (path === "/ig/fixture/") return res.end(`<!doctype html><main>
     <a href="/ig/p/pending/"><img width="160" height="160" src="/media/photo.png"></a>
     <div style="height:1000px"></div>
     <script>window.addEventListener("scroll", () => document.querySelector("main").insertAdjacentHTML(
       "beforeend", '<a href="/ig/p/dynamic/"><img width="160" height="160" src="/media/photo.png"></a>'), {once:true})</script></main>`);
+  if (path === "/tt/@fixture") return res.end(`<!doctype html><main>
+    <a href="/tt/@fixture/video/42"><img width="160" height="160" src="/media/photo.png"></a>
+    <div style="height:1000px"></div>
+    <script>window.addEventListener("scroll", () => document.querySelector("main").insertAdjacentHTML(
+      "beforeend", '<a href="/tt/@fixture/video/43"><img width="160" height="160" src="/media/photo.png"></a>'), {once:true})</script></main>`);
   if (path === "/ig/reeltest/reels/") return res.end(`<!doctype html><main>
     <a href="/ig/reeltest/reel/livecode/"><img width="140" height="140" src="/media/photo.png"></a>
     <a href="/ig/reel/othercode/"><img width="140" height="140" src="/media/photo.png"></a>
@@ -138,13 +178,36 @@ const list = target => evaluate(target, "document.querySelector('#items')?.child
 const count = (target, state) => evaluate(target, "document.querySelectorAll('.job[data-status=" + state + "]').length");
 const click = (target, selector) => evaluate(target, "document.querySelector(" + JSON.stringify(selector) + ")?.click()");
 const text = target => evaluate(target, "document.body?.innerText || ''");
+const overlayValue = (target, selector, property = "textContent") => evaluate(target,
+  "document.querySelector('#mouse-hot-overlay')?.shadowRoot?.querySelector(" + JSON.stringify(selector) +
+  ")?.[" + JSON.stringify(property) + "]");
+async function clickOverlay(target, selector) {
+  const point = await waitUntil(() => evaluate(target, `(() => {
+    const item = document.querySelector("#mouse-hot-overlay")?.shadowRoot?.querySelector(${JSON.stringify(selector)});
+    if (!item || item.disabled) return null;
+    item.scrollIntoView({ block: "nearest" });
+    const rect = item.getBoundingClientRect();
+    return rect.width && rect.height ? [rect.x + rect.width / 2, rect.y + rect.height / 2] : null;
+  })()`), "visible overlay control " + selector);
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await command("Input.dispatchMouseEvent", { type, x: point[0], y: point[1], button: "left", clickCount: 1 }, target.session);
+  }
+}
+async function fileWhenReady(path, expected) {
+  await waitUntil(async () => {
+    try { return (await readFile(path)).equals(expected); } catch (error) { if (error.code !== "ENOENT") throw error; return false; }
+  }, "Chrome saves expected bytes at " + path);
+}
 try {
   const info = await command("Browser.getVersion");
   const { id: productionId } = await command("Extensions.loadUnpacked", { path: resolve(root, "dist", "release", "Mouse Hot") });
   const production = await open("chrome-extension://" + productionId + "/src/popup/index.html");
-  await waitUntil(async () => (await text(production)).includes("Telegram"), "production popup");
+  await waitUntil(async () => /Abrir Instagram/.test(await text(production)), "production popup");
+  assert.match(await text(production), /TikTok/);
+  assert.doesNotMatch(await text(production), /Telegram/);
   const manifest = await evaluate(production, "chrome.runtime.getManifest()");
   assert.equal(manifest.name, "Mouse Hot");
+  assert.equal(manifest.version, "3.0.0");
   assert.equal(manifest.side_panel, undefined);
   if (process.env.MOUSE_HOT_LIVE === "1") {
     const visit = await open("https://www.instagram.com/instagram/reels/");
@@ -262,7 +325,7 @@ try {
     }
   }
   await overlayClick("#mh-toggle");
-  assert.match(await overlay("#mh-items"), /Abrir/);
+  assert.match(await overlay("#mh-items"), /Baixar/);
   await overlayClick("#mh-items button[data-download]");
   await waitUntil(async () => (await overlay("#mh-summary"))?.includes("1 salvo"), "embedded video downloaded using overlay");
   assert.deepEqual(await readFile(join(downloadPath, "Mouse Hot", "Instagram", "reeltest", "post_livecode_1_video.mp4")), video);
@@ -324,6 +387,64 @@ try {
   assert.equal(restoredId, fixtureId);
   const restored = await open(panelPage(restoredId));
   await waitUntil(async () => await count(restored, "done") === 4, "queue survives restarting Chrome");
+
+  const vault = await open(origin + "/ig/vault/");
+  await waitUntil(async () => (await overlayValue(vault, "#mh-summary"))?.includes("3 publicações"), "profile sees three previews");
+  await waitUntil(async () => await overlayValue(vault, "header img", "naturalWidth") > 0, "logo loads in the overlay");
+  await clickOverlay(vault, "#mh-toggle");
+  if (process.env.MOUSE_HOT_SCREENSHOT) {
+    const shot = await command("Page.captureScreenshot", { format:"png" }, vault.session);
+    await writeFile(process.env.MOUSE_HOT_SCREENSHOT, Buffer.from(shot.data, "base64"));
+  }
+  assert.match(await overlayValue(vault, "#mh-items"), /Solo3/);
+  await clickOverlay(vault, "#mh-items button[data-download]");
+  const folder = join(downloadPath, "Mouse Hot", "Instagram", "vault");
+  await fileWhenReady(join(folder, "post_solo3_1_video.mp4"), video);
+  assert.equal(await evaluate(vault, "location.pathname"), "/ig/vault/", "single download keeps the profile open");
+
+  await clickOverlay(vault, "#mh-select-all");
+  await clickOverlay(vault, "#mh-download-selected");
+  await fileWhenReady(join(folder, "post_mixed3_1_image.png"), photo);
+  await fileWhenReady(join(folder, "post_mixed3_2_video.mp4"), video);
+  await waitUntil(async () => /2 indisponíveis/i.test(
+    await overlayValue(vault, "#mh-operation") || ""), "unavailable post reported without stopping the batch");
+  assert.equal(await evaluate(vault, "location.pathname"), "/ig/vault/", "batch stays in the profile");
+
+  await clickOverlay(vault, "#mh-download-all");
+  await fileWhenReady(join(folder, "post_lazy3_1_image.png"), photo);
+  const exported = await waitUntil(async () => {
+    try { return JSON.parse(await readFile(join(folder, "perfil.json"), "utf8")); }
+    catch (error) { if (error.code !== "ENOENT") throw error; return false; }
+  }, "Chrome saves profile JSON");
+  assert.deepEqual(exported, { handle:"vault", name:"Equipe Mouse Hot", biography:"Relatórios e vídeos da equipe",
+    links:["https://example.com/"], followers:"24" });
+  assert.deepEqual((await readdir(folder)).filter(name => !name.endsWith(".crdownload")).sort(),
+    ["perfil.json","post_lazy3_1_image.png","post_mixed3_1_image.png","post_mixed3_2_video.mp4","post_solo3_1_video.mp4"]);
+
+  const cancel = await open(origin + "/ig/canceltest/");
+  await waitUntil(async () => (await overlayValue(cancel, "#mh-summary"))?.includes("1 publicação"), "cancel fixture");
+  await clickOverlay(cancel, "#mh-toggle");
+  await clickOverlay(cancel, "#mh-items button[data-download]");
+  await waitUntil(() => waitRequestStarted, "permalink fetch started");
+  await clickOverlay(cancel, "#mh-abort-download");
+  await waitUntil(() => waitRequestAborted, "permalink fetch aborted");
+  assert.equal(await evaluate(cancel, "location.pathname"), "/ig/canceltest/");
+  await assert.rejects(readFile(join(downloadPath, "Mouse Hot", "Instagram", "canceltest", "post_wait3_1_video.mp4")),
+    { code: "ENOENT" });
+
+  const tikTokProfile = await open(origin + "/tt/@fixture");
+  await waitUntil(async () => (await overlayValue(tikTokProfile, "#mh-summary"))?.includes("1 publicação"), "TikTok profile ready");
+  await clickOverlay(tikTokProfile, "#mh-toggle");
+  await clickOverlay(tikTokProfile, "#mh-scroll");
+  await waitUntil(async () => (await overlayValue(tikTokProfile, "#mh-summary"))?.includes("2 publicações"),
+    "TikTok discovers another publication without queueing media");
+  await clickOverlay(tikTokProfile, "#mh-scroll");
+  await waitUntil(async () => await overlayValue(tikTokProfile, "#mh-scroll") === "Continuar busca", "TikTok scan pauses");
+  await clickOverlay(tikTokProfile, "#mh-scroll");
+  await clickOverlay(tikTokProfile, "#mh-stop");
+  assert.equal((await readdir(join(downloadPath, "Mouse Hot", "TikTok", "fixture"))).length, 1, "scan only saves no file");
+
+  console.log("Mouse Hot 3.0 — logo, Instagram shortcut, single and selected download, mixed carousel, full scroll with lazy post, profile JSON, deduplication and cancel validated.");
   console.log(info.product + " — production package loaded. Instagram batch, 2 concurrent, expired URL, duplicate, persisted queue after restart, TikTok video and auto-scroll passed.");
 } finally {
   if (browser.exitCode === null) await closeBrowser();

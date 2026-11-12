@@ -103,13 +103,20 @@ export function makeDownloadController({ getContext, getSnapshot, collect, readP
         progress(message);
         const direct = items.filter(item => item.status === "check");
         const missingIndexes = new Set();
+        const missingKinds = new Map();
         let missing = 0;
         try {
           let downloadKeys = direct.map(item => item.key);
           let omitted = [];
           if (isInstagramPost(item)) {
             const resolved = await resolvePost(item.postUrl, {
-              signal, onUnavailable: indexes => indexes.forEach(index => missingIndexes.add(index)),
+              signal,
+              onUnavailable(indexes, kinds = {}) {
+                for (const index of indexes) {
+                  missingIndexes.add(index);
+                  if (kinds[index]) missingKinds.set(index, kinds[index]);
+                }
+              },
             }).catch(() => []);
             guard();
             const normalized = new Map();
@@ -121,7 +128,9 @@ export function makeDownloadController({ getContext, getSnapshot, collect, readP
               for (const asset of normalized.values()) missingIndexes.delete(asset.index);
               const fallback = new Map();
               for (const asset of direct) {
-                if (missingIndexes.has(asset.index) && (!fallback.has(asset.index) || asset.kind === "video")) {
+                const kind = missingKinds.get(asset.index);
+                if (missingIndexes.has(asset.index) && (!kind || kind === asset.kind) &&
+                    (!fallback.has(asset.index) || asset.kind === "video")) {
                   fallback.set(asset.index, asset.key);
                 }
               }
