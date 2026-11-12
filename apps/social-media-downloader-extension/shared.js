@@ -47,7 +47,7 @@ function scan(doc,page) {
     if (results.length >= 80) break;
     const tag = el.tagName.toLowerCase(), kind = tag === "video" ? "video" : "image";
     if (tag === "img") {
-      const container = el.closest && el.closest('article, [role="dialog"], [data-e2e="photo-mode"], [data-e2e="video-feed-item"]');
+      const container = el.closest && el.closest('article, [role="dialog"], a[href*="/p/"], a[href*="/reel/"], a[href*="/video/"], a[href*="/photo/"], [data-e2e="photo-mode"], [data-e2e="video-feed-item"]');
       if (!container && !dedicated) continue;
       const rect = el.getBoundingClientRect();
       if ((rect.width > 0 && rect.width < 200) || (rect.height > 0 && rect.height < 160) || el.naturalWidth < 240 || el.naturalHeight < 240) continue;
