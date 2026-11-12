@@ -46,10 +46,13 @@ test("the installable manifest automatically overlays supported sites and provid
   const root = new URL("../", import.meta.url);
   const manifest = JSON.parse(await readFile(new URL("manifest.json", root)));
   assert.equal(manifest.name, "Mouse Hot");
+  assert.equal(manifest.version, "3.0.0");
+  assert.deepEqual(manifest.web_accessible_resources, [{ resources: ["icons/48.png"], matches: manifest.content_scripts[0].matches }]);
   assert.equal(manifest.side_panel, undefined);
   assert.ok(!manifest.permissions.includes("cookies"));
   assert.ok(manifest.content_scripts.some(script => script.matches.includes("https://www.instagram.com/*")));
   const html = await readFile(new URL(manifest.action.default_popup, root), "utf8");
   assert.match(html, /https:\/\/www\.tiktok\.com\//);
-  assert.match(html, /https:\/\/web\.telegram\.org\//);
+  assert.match(html, /https:\/\/www\.instagram\.com\//);
+  assert.doesNotMatch(html, /telegram/);
 });

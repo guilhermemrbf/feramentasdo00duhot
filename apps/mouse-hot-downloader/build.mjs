@@ -11,6 +11,7 @@ const manifest = JSON.parse(await readFile(resolve(root, "manifest.json"), "utf8
 if (fixture) {
   manifest.name += " — teste local";
   manifest.host_permissions = ["http://127.0.0.1/*"];
+  manifest.web_accessible_resources[0].matches = ["http://127.0.0.1/*"];
   manifest.content_scripts = [{
     matches: ["http://127.0.0.1/*"], js: ["src/content/content.js"], run_at: "document_idle",
   }];

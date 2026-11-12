@@ -1,38 +1,45 @@
+import { canDownloadItem } from "./download-controller.js";
+
 const css = `
-:host { color-scheme:dark; color:#fff0e5; font:13px/1.42 system-ui,sans-serif; }
+:host { color-scheme:dark; color:#fff0e5; font:14px/1.45 system-ui,sans-serif; }
 *, *::before, *::after { box-sizing:border-box; }
-section { background:#20171c; border:1px solid #6c414b; border-radius:14px; box-shadow:0 8px 32px #0008;
-  overflow:hidden; color:#fff0e5; color-scheme:dark; font:13px/1.42 system-ui,sans-serif; }
-header, .bar, li { display:flex; align-items:center; gap:7px; }
-header { padding:7px 9px; min-width:210px; }
-header strong { font-size:13px; white-space:nowrap; }
-header small { color:#e1bec4; font-size:11px; }
-.badge { border-radius:50%; width:9px; height:9px; background:#ef947c; flex:none; }
-header button { margin-left:auto; }
-button { background:#3c2830; border:1px solid #68434f; border-radius:7px; color:#fff0df;
-  padding:4px 7px; font:600 11px system-ui,sans-serif; cursor:pointer; }
-button:hover { background:#53343e; }
+section { background:#20171c; border:1px solid #6c414b; border-radius:16px; box-shadow:0 8px 32px #0008;
+  overflow:hidden; color:#fff0e5; color-scheme:dark; font:14px/1.45 system-ui,sans-serif;
+  max-width:calc(100vw - 28px); }
+header, .bar, li { display:flex; align-items:center; gap:8px; }
+header { padding:10px 12px; }
+header img { width:34px; height:34px; border-radius:8px; flex:none; }
+header div { display:grid; flex:1; min-width:0; margin-right:6px; }
+header strong { font-size:15px; white-space:nowrap; }
+header small { color:#e1bec4; }
+button { background:#3c2830; border:1px solid #68434f; border-radius:8px; color:#fff0df;
+  padding:6px 9px; font:600 12px system-ui,sans-serif; cursor:pointer; min-height:30px; }
+button:not(:disabled):hover { background:#53343e; }
 button:disabled { opacity:.54; cursor:default; }
 button:focus-visible, input:focus-visible { outline:2px solid #ffc889; outline-offset:2px; }
 input { accent-color:#ffc889; }
 [hidden] { display:none !important; }
-main { padding:0 9px 9px; width:min(285px, calc(100vw - 30px)); }
+main { padding:4px 12px 12px; width:min(440px, calc(100vw - 30px)); max-height:calc(100dvh - 86px);
+  overflow:auto; overscroll-behavior:contain; }
 .bar { flex-wrap:wrap; }
-ul { padding:0; margin:6px 0; list-style:none; overflow:auto; overscroll-behavior:contain; max-height:min(28vh, 210px); }
-li { min-height:35px; padding:4px 0; border-bottom:1px solid #4c333a; justify-content:space-between; }
+ul { padding:0; margin:8px 0 0; list-style:none; overflow:auto; overscroll-behavior:contain; max-height:min(38vh, 270px); }
+ul:empty, p:empty { display:none; }
+#mh-jobs { max-height:min(20vh, 140px); }
+li { min-height:42px; padding:5px 2px; border-top:1px solid #4c333a; justify-content:space-between; }
 li span { flex:1; min-width:0; overflow-wrap:anywhere; }
-small, p { color:#dec5ca; font-size:11px; }
-p { margin:5px 0; }
-.notice[data-error=true] { color:#ffb9af; }
+li small { display:block; }
+small, p { color:#dec5ca; font-size:12px; }
+p { margin:7px 0 0; overflow-wrap:anywhere; }
+#mh-operation[data-error=true], .unavailable { color:#ffb9af; }
 .primary { background:#ffc889; color:#28161d; border-color:#ffc889; }
-.primary:hover { background:#ffddb2; }
+.primary:not(:disabled):hover { background:#ffddb2; }
 .job progress { max-width:63px; height:6px; accent-color:#ffc889; }
 `;
 const active = new Set(["queued", "starting", "running", "pausing", "paused"]);
 const labels = { done:"Salvo", failed:"Falhou", running:"Baixando", paused:"Pausado", starting:"Verificando",
   queued:"Na fila", cancelled:"Cancelado", review:"Confira no Chrome" };
 
-export function makeOverlay(send, fixture) {
+export function makeOverlay(send, fixture, runDownload) {
   const host = document.createElement("div");
   host.id = "mouse-hot-overlay";
   host.style.setProperty("all", "initial", "important");
@@ -55,138 +62,162 @@ export function makeOverlay(send, fixture) {
     return node;
   };
   const header = make("header", box);
-  make("span", header, { class: "badge", "aria-hidden": "true" });
-  make("strong", header, {}, "Mouse Hot");
-  make("small", header, { id: "mh-summary" }, "Procurando mídias…");
-  make("button", header, { id: "mh-toggle", "aria-expanded": "false", "aria-controls": "mh-details" }, "Abrir");
-  const main = make("main", box, { id: "mh-details", hidden: "" });
-  make("p", main, { class: "notice", role: "status" });
-  const controls = make("div", main, { class: "bar" });
-  make("button", controls, { id: "mh-scroll", hidden: "" }, "Rolar e procurar");
-  make("button", controls, { id: "mh-stop", hidden: "" }, "Parar");
-  make("button", controls, { id: "mh-select", hidden: "" }, "Selecionar disponíveis");
-  make("p", main, { id: "mh-hint" });
-  make("ul", main, { id: "mh-items", "aria-label": "Publicações detectadas" });
-  make("button", main, { id: "mh-batch", class: "primary", hidden: "" }, "Baixar seleção");
-  make("ul", main, { id: "mh-jobs", "aria-label": "Fila desta página" });
+  make("img", header, { src: chrome.runtime.getURL("icons/48.png"), alt: "", width: "34", height: "34" });
+  const heading = make("div", header);
+  make("strong", heading, {}, "Mouse Hot");
+  const summary = make("small", heading, { id: "mh-summary" }, "Procurando mídias…");
+  const toggle = make("button", header, { id: "mh-toggle", "aria-expanded": "false", "aria-controls": "mh-details" }, "Abrir");
+  const details = make("main", box, { id: "mh-details", hidden: "" });
+  const controls = make("div", details, { class: "bar" });
+  const selectAll = make("button", controls, { id: "mh-select-all", disabled: "" }, "Selecionar tudo");
+  const downloadSelected = make("button", controls, { id: "mh-download-selected", disabled: "" }, "Baixar seleção");
+  const downloadAll = make("button", controls, { id: "mh-download-all", class: "primary", hidden: "" }, "Baixar tudo");
+  const downloadProfile = make("button", controls, { id: "mh-download-profile", hidden: "" }, "Baixar dados do perfil");
+  const cancel = make("button", controls, { id: "mh-abort-download", hidden: "" }, "Cancelar busca");
+  const notice = make("p", details, { id: "mh-operation", role: "status" });
+  const hint = make("p", details, { id: "mh-hint" });
+  const list = make("ul", details, { id: "mh-items", "aria-label": "Publicações detectadas" });
+  const queue = make("ul", details, { id: "mh-jobs", "aria-label": "Fila desta página" });
   shadow.append(box);
-  const $ = (id) => shadow.getElementById(id);
-  const notice = box.querySelector(".notice");
-  const toggle = $("mh-toggle");
-  const details = $("mh-details");
-  const summary = $("mh-summary");
-  let snapshot, stamp, working = false, shown = false, refreshPromise;
-  const button = (label, run, attr) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.textContent = label;
-    if (attr) b.dataset[attr] = "";
-    b.addEventListener("click", e => { if (e.isTrusted) void run(); });
-    return b;
-  };
-  async function action(type, data) {
-    if (working) return;
-    working = true;
-    notice.textContent = "";
-    try {
-      const result = await send(type, data);
-      if (!result?.ok) throw new Error(result?.error || "Recarregue a página para tentar novamente.");
-      if (type === "enqueue") notice.textContent = result.value + " adicionado(s) à fila.";
-      notice.dataset.error = "false";
-    } catch (error) {
-      notice.textContent = error.message;
-      notice.dataset.error = "true";
-    } finally {
-      working = false;
-      await refresh();
+
+  const selected = new Set();
+  const unavailable = new Set();
+  let snapshot, stamp, busy = false, scope = "", refreshPromise;
+  const onClick = (button, run) => button.addEventListener("click", event => {
+    if (event.isTrusted) void run();
+  });
+  const download = (action, data) => runDownload(action, data).finally(refresh);
+  function setOperation({ message, busy: nextBusy, canCancel, error, readyKeys = [], unavailableKeys = [] }) {
+    notice.textContent = message;
+    notice.dataset.error = String(!!error);
+    cancel.hidden = !canCancel;
+    let changed = busy !== nextBusy;
+    busy = nextBusy;
+    for (const key of readyKeys) {
+      const wasUnavailable = unavailable.delete(key);
+      const wasSelected = selected.delete(key);
+      changed ||= wasUnavailable || wasSelected;
     }
+    for (const key of unavailableKeys) {
+      changed ||= !unavailable.has(key);
+      unavailable.add(key);
+    }
+    if (changed) draw();
+  }
+  async function action(type, data) {
+    const result = await send(type, data);
+    if (!result?.ok && !busy) {
+      setOperation({ message: result?.error || "Recarregue a página para tentar novamente.", busy: false, error: true });
+    }
+    await refresh();
+  }
+  function updateSelection(eligible) {
+    const everything = eligible.length > 0 && eligible.every(item => selected.has(item.key));
+    selectAll.textContent = everything ? "Limpar seleção" : "Selecionar tudo";
+    selectAll.disabled = busy || !eligible.length;
+    downloadSelected.disabled = busy || !selected.size;
+    downloadSelected.textContent = selected.size ? "Baixar seleção (" + selected.size + ")" : "Baixar seleção";
   }
   function draw() {
     const { capture, jobs = [] } = snapshot || {};
     const all = capture?.items || [];
-    const selected = new Set(capture?.selected || []);
-    const downloadable = all.filter(item => item.status === "check");
+    const jobsByKey = new Map(jobs.map(job => [job.item.key, job]));
+    const counts = [];
+    const direct = all.filter(item => item.status === "check").length;
     const done = jobs.filter(job => job.status === "done").length;
     const activeJobs = jobs.filter(job => active.has(job.status)).length;
     const failed = jobs.filter(job => job.status === "failed" || job.status === "review").length;
-    const counts = [];
-    if (downloadable.length) counts.push(downloadable.length + (downloadable.length === 1 ? " disponível" : " disponíveis"));
-    else if (all.length) counts.push(all.length + (all.length === 1 ? " encontrada" : " encontradas"));
+    if (direct) counts.push(direct + (direct === 1 ? " disponível" : " disponíveis"));
+    if (all.length > direct) {
+      const pending = all.length - direct;
+      counts.push(pending + (pending === 1 ? " publicação" : " publicações"));
+    }
     if (activeJobs) counts.push(activeJobs + " na fila");
     if (done) counts.push(done + (done === 1 ? " salvo" : " salvos"));
     if (failed) counts.push(failed + (failed === 1 ? " falha" : " falhas"));
-    summary.textContent = counts.join(" · ") || "Nenhum arquivo direto";
-    const mode = capture?.scroll.mode;
-    $("mh-scroll").hidden = !capture?.scope?.includes(":@");
-    $("mh-scroll").textContent = mode === "running" ? "Pausar busca" : mode === "paused" ? "Continuar busca" : "Rolar e procurar";
-    $("mh-stop").hidden = mode !== "running" && mode !== "paused";
-    $("mh-select").hidden = !downloadable.length;
-    $("mh-select").textContent = downloadable.every(item => selected.has(item.key)) ? "Limpar seleção" : "Selecionar disponíveis";
-    $("mh-batch").hidden = !selected.size;
-    $("mh-batch").textContent = selected.size === 1 ? "Baixar 1 arquivo" : "Baixar " + selected.size + " arquivos";
-    $("mh-hint").textContent = mode === "running" ? "Buscando mais publicações…" :
-      all.some(item => item.status === "open") ? "Use Abrir quando aparecer só a prévia." :
-      !all.length ? "Abra uma publicação ou role para carregar mais." : "";
+    summary.textContent = counts.join(" · ") || (capture ? "Nenhuma mídia encontrada" : "Procurando mídias…");
+    const profile = scope.includes(":@");
+    downloadAll.hidden = !profile;
+    downloadAll.disabled = busy || !capture;
+    downloadProfile.hidden = !(profile && scope.startsWith("instagram:"));
+    downloadProfile.disabled = busy || !capture;
+    hint.textContent = capture && !all.length ? "Nenhuma publicação detectada nesta página." : "";
+    const eligible = all.filter(canDownloadItem);
+    const eligibleKeys = new Set(eligible.map(item => item.key));
+    for (const key of selected) {
+      if (!eligibleKeys.has(key)) selected.delete(key);
+    }
+    updateSelection(eligible);
     const currentFocus = shadow.activeElement?.dataset.focus;
     const rows = all.map(item => {
       const row = document.createElement("li");
       const title = document.createElement("span");
-      const name = item.status === "open" ? "Publicação " : item.kind === "video" ? "Vídeo " : "Foto ";
+      const name = item.status !== "check" ? "Publicação " : item.kind === "video" ? "Vídeo " : "Foto ";
       title.textContent = name + item.id + (item.index ? " · " + (item.index + 1) : "");
-      if (item.reason) {
-        title.title = item.reason;
-        title.append(document.createElement("br"), document.createTextNode(item.reason));
+      const available = canDownloadItem(item);
+      if (unavailable.has(item.key)) {
+        make("small", title, { class: "unavailable" }, "Arquivo indisponível");
+      } else if (item.reason && !available) {
+        make("small", title, {}, item.reason);
       }
-      if (item.status === "check") {
-        const input = document.createElement("input");
-        input.type = "checkbox";
+      if (available) {
+        const input = make("input", row, { type: "checkbox", "aria-label": "Selecionar " + name + item.id });
         input.checked = selected.has(item.key);
-        input.dataset.focus = item.key;
-        input.setAttribute("aria-label", "Selecionar " + title.textContent);
+        input.disabled = busy;
+        input.dataset.select = item.key;
+        input.dataset.focus = "select:" + item.key;
         input.addEventListener("change", event => {
-          if (event.isTrusted) void action("select", { keys: [item.key], selected: input.checked });
+          if (!event.isTrusted) return;
+          if (input.checked) selected.add(item.key);
+          else selected.delete(item.key);
+          updateSelection(eligible);
         });
-        row.append(input);
       }
       row.append(title);
-      if (item.status === "open") row.append(button("Abrir", () => action("open", { key: item.key })));
-      if (item.status === "check") {
-        const job = jobs.find(job => job.item.key === item.key);
-        const done = job?.status === "done";
-        const inQueue = active.has(job?.status);
-        const download = button(done ? "Salvo" : inQueue ? labels[job.status] : "Baixar",
-          () => action("enqueue", { key: item.key }), "download");
-        download.disabled = done || inQueue;
-        row.append(download);
+      if (!available) {
+        const open = make("button", row, { "data-focus": "open:" + item.key }, "Abrir");
+        open.disabled = busy;
+        onClick(open, () => action("open", { key: item.key }));
+        return row;
       }
+      const job = jobsByKey.get(item.key);
+      const done = job?.status === "done";
+      const inQueue = active.has(job?.status);
+      const label = done ? "Salvo" : inQueue ? labels[job.status] || "Na fila" : "Baixar";
+      const resolvePost = item.key.startsWith("instagram:post:");
+      const button = make("button", row, { "data-download": item.key, "data-focus": "download:" + item.key },
+        resolvePost ? "Baixar" : label);
+      button.disabled = busy || (!resolvePost && (done || inQueue));
+      onClick(button, () => download("download-one", { key: item.key }));
       return row;
     });
-    $("mh-items").replaceChildren(...rows);
-    if (currentFocus) [...$("mh-items").querySelectorAll("input")].find(input => input.dataset.focus === currentFocus)?.focus();
-    $("mh-jobs").replaceChildren(...jobs.filter(job => job.status !== "done").map(job => {
+    list.replaceChildren(...rows);
+    if (currentFocus) [...list.querySelectorAll("[data-focus]")].find(node => node.dataset.focus === currentFocus)?.focus();
+    queue.replaceChildren(...jobs.filter(job => job.status !== "done").map(job => {
       const row = document.createElement("li");
       row.className = "job";
-      const title = document.createElement("span");
-      title.textContent = (labels[job.status] || job.status) + " · " + job.item.id;
-      if (job.message) { title.append(document.createElement("br"), document.createTextNode(job.message)); }
-      row.append(title);
-      const task = (label, command) => button(label, () => action("queue-action", { id: job.id, command }));
+      const title = make("span", row, {}, (labels[job.status] || job.status) + " · " + job.item.id);
+      if (job.message) make("small", title, {}, job.message);
+      const task = (label, command) => {
+        const button = make("button", row, {}, label);
+        onClick(button, () => action("queue-action", { id: job.id, command }));
+      };
       if (job.status === "running") {
-        const progress = document.createElement("progress");
-        progress.setAttribute("aria-label", "Progresso");
+        const progress = make("progress", row, { "aria-label": "Progresso" });
         if (job.total > 0) { progress.max = job.total; progress.value = Math.min(job.total, job.received); }
-        row.append(progress, task("Pausar", "pause"));
+        task("Pausar", "pause");
       }
-      if (job.status === "paused" && job.canResume) row.append(task("Retomar", "resume"));
-      if (active.has(job.status)) row.append(task("Cancelar", "cancel"));
-      if (job.status === "failed") row.append(task("Tentar de novo", "retry"));
+      if (job.status === "paused" && job.canResume) task("Retomar", "resume");
+      if (active.has(job.status)) task("Cancelar", "cancel");
+      if (job.status === "failed") task("Tentar de novo", "retry");
       return row;
     }));
   }
+
   function refresh() {
-    if (!shown || refreshPromise) return refreshPromise;
+    if (!scope || refreshPromise) return refreshPromise;
     refreshPromise = send("snapshot").then(reply => {
-      if (!reply?.ok) return;
+      if (!reply?.ok || reply.value.capture?.scope !== scope) return;
       const next = JSON.stringify(reply.value);
       if (next === stamp) return;
       stamp = next;
@@ -195,33 +226,38 @@ export function makeOverlay(send, fixture) {
     }).finally(() => { refreshPromise = undefined; });
     return refreshPromise;
   }
-  toggle.addEventListener("click", event => {
-    if (!event.isTrusted) return;
+
+  onClick(toggle, () => {
     details.hidden = !details.hidden;
     toggle.textContent = details.hidden ? "Abrir" : "Recolher";
     toggle.setAttribute("aria-expanded", String(!details.hidden));
     void refresh();
   });
-  $("mh-scroll").addEventListener("click", event => {
-    if (!event.isTrusted) return;
-    const mode = snapshot?.capture?.scroll.mode;
-    void action("scroll", { command: mode === "running" ? "pause" : mode === "paused" ? "resume" : "start" });
+  onClick(selectAll, () => {
+    const eligible = snapshot.capture.items.filter(canDownloadItem);
+    if (eligible.every(item => selected.has(item.key))) selected.clear();
+    else for (const item of eligible) selected.add(item.key);
+    draw();
   });
-  $("mh-stop").addEventListener("click", event => { if (event.isTrusted) void action("scroll", { command: "stop" }); });
-  $("mh-batch").addEventListener("click", event => { if (event.isTrusted) void action("enqueue", {}); });
-  $("mh-select").addEventListener("click", event => {
-    if (!event.isTrusted) return;
-    const capture = snapshot?.capture;
-    if (!capture) return;
-    const keys = capture.items.filter(item => item.status === "check").map(item => item.key);
-    void action("select", { keys, selected: !keys.every(key => capture.selected.includes(key)) });
-  });
+  onClick(downloadSelected, () => download("download-selected", { keys: [...selected] }));
+  onClick(downloadAll, () => download("download-all"));
+  onClick(downloadProfile, () => download("download-profile"));
+  onClick(cancel, () => download("abort-download"));
+
   return {
-    display(value) {
-      shown = value;
-      if (shown && !host.isConnected) document.documentElement.append(host);
-      if (!shown && host.isConnected) host.remove();
+    display(nextScope) {
+      if (scope !== nextScope) {
+        scope = nextScope;
+        stamp = snapshot = undefined;
+        selected.clear();
+        unavailable.clear();
+        if (!busy) notice.textContent = "";
+        draw();
+      }
+      if (scope && !host.isConnected) document.documentElement.append(host);
+      if (!scope && host.isConnected) host.remove();
     },
     refresh,
+    setOperation,
   };
 }

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Mouse Hot",
   "description": "Organize e baixe fotos e vídeos autorizados do Instagram e TikTok.",
-  "version": "0.2.0",
+  "version": "3.0.0",
   "minimum_chrome_version": "120",
   "permissions": ["storage", "downloads", "alarms"],
   "host_permissions": [
@@ -18,6 +18,10 @@
     "matches": ["https://www.instagram.com/*", "https://instagram.com/*", "https://www.tiktok.com/*", "https://tiktok.com/*", "https://m.tiktok.com/*"],
     "js": ["src/content/content.js"],
     "run_at": "document_idle"
+  }],
+  "web_accessible_resources": [{
+    "resources": ["icons/48.png"],
+    "matches": ["https://www.instagram.com/*", "https://instagram.com/*", "https://www.tiktok.com/*", "https://tiktok.com/*", "https://m.tiktok.com/*"]
   }],
   "action": {
     "default_title": "Mouse Hot",
