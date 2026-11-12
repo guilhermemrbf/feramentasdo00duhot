@@ -101,33 +101,51 @@ export function makeDownloadController({ getContext, getSnapshot, collect, readP
         const item = items.find(item => wanted.has(item.key)) || items[0];
         const message = [scanNotice, "Preparando " + (index + 1) + " de " + selected.length + "…"].filter(Boolean).join(" ");
         progress(message);
-        const direct = items.filter(item => item.status === "check").map(item => item.key);
+        const direct = items.filter(item => item.status === "check");
+        const missingIndexes = new Set();
+        let missing = 0;
         try {
-          let downloadKeys = direct;
+          let downloadKeys = direct.map(item => item.key);
           let omitted = [];
           if (isInstagramPost(item)) {
-            const resolved = await resolvePost(item.postUrl, { signal }).catch(() => []);
+            const resolved = await resolvePost(item.postUrl, {
+              signal, onUnavailable: indexes => indexes.forEach(index => missingIndexes.add(index)),
+            }).catch(() => []);
             guard();
             const normalized = new Map();
             for (const asset of resolved) {
               const media = makeCandidate({ ...asset, handle: capture.account || item.handle }, "instagram");
               if (media?.source && media.id === item.id && media.postUrl === item.postUrl) normalized.set(media.key, media);
             }
-            if (normalized.size) {
-              await request("items", { scope: start.scope, url: getContext().url, items: [...normalized.values()] });
-              const saved = await snapshot();
-              const accepted = new Set(saved.items.filter(item => item.status === "check").map(item => item.key));
-              downloadKeys = [...normalized.keys()].filter(key => accepted.has(key));
-              omitted = [...normalized.keys()].filter(key => !accepted.has(key));
+            if (normalized.size || missingIndexes.size) {
+              for (const asset of normalized.values()) missingIndexes.delete(asset.index);
+              const fallback = new Map();
+              for (const asset of direct) {
+                if (missingIndexes.has(asset.index) && (!fallback.has(asset.index) || asset.kind === "video")) {
+                  fallback.set(asset.index, asset.key);
+                }
+              }
+              for (const index of fallback.keys()) missingIndexes.delete(index);
+              downloadKeys = [...fallback.values()];
+              if (normalized.size) {
+                await request("items", { scope: start.scope, url: getContext().url, items: [...normalized.values()] });
+                const saved = await snapshot();
+                const accepted = new Set(saved.items.filter(item => item.status === "check").map(item => item.key));
+                const resolvedKeys = [...normalized.keys()];
+                downloadKeys = [...resolvedKeys.filter(key => accepted.has(key)), ...downloadKeys];
+                omitted = resolvedKeys.filter(key => !accepted.has(key));
+              }
+              missing = missingIndexes.size + omitted.length;
             }
           }
           if (!downloadKeys.length) throw new Error("Arquivo indisponível.");
           added += await request("enqueue", { keys: downloadKeys });
-          if (omitted.length) unavailable++;
-          progress(message, { readyKeys: items.map(item => item.key), unavailableKeys: omitted });
+          unavailable += missing;
+          const unresolvedKeys = items.filter(item => missingIndexes.has(item.index)).map(item => item.key);
+          progress(message, { readyKeys: items.map(item => item.key), unavailableKeys: [...omitted, ...unresolvedKeys] });
         } catch {
           guard();
-          unavailable++;
+          unavailable += Math.max(1, missing);
           progress(message, { unavailableKeys: items.map(item => item.key) });
         }
       }

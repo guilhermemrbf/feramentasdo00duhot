@@ -67,13 +67,15 @@ export function makeOverlay(send, fixture, runDownload) {
   const heading = make("div", header);
   make("strong", heading, {}, "Mouse Hot");
   const summary = make("small", heading, { id: "mh-summary" }, "Procurando mídias…");
-  const toggle = make("button", header, { id: "mh-toggle", "aria-expanded": "false", "aria-controls": "mh-details" }, "Abrir");
+  const toggle = make("button", header, { id: "mh-toggle", "aria-expanded": "false", "aria-controls": "mh-details" }, "Ver mídias");
   const details = make("main", box, { id: "mh-details", hidden: "" });
   const controls = make("div", details, { class: "bar" });
   const selectAll = make("button", controls, { id: "mh-select-all", disabled: "" }, "Selecionar tudo");
   const downloadSelected = make("button", controls, { id: "mh-download-selected", disabled: "" }, "Baixar seleção");
   const downloadAll = make("button", controls, { id: "mh-download-all", class: "primary", hidden: "" }, "Baixar tudo");
   const downloadProfile = make("button", controls, { id: "mh-download-profile", hidden: "" }, "Baixar dados do perfil");
+  const scanOnly = make("button", controls, { id: "mh-scroll", hidden: "" }, "Rolar e procurar");
+  const stopScan = make("button", controls, { id: "mh-stop", hidden: "" }, "Parar");
   const cancel = make("button", controls, { id: "mh-abort-download", hidden: "" }, "Cancelar busca");
   const notice = make("p", details, { id: "mh-operation", role: "status" });
   const hint = make("p", details, { id: "mh-hint" });
@@ -142,7 +144,15 @@ export function makeOverlay(send, fixture, runDownload) {
     downloadAll.disabled = busy || !capture;
     downloadProfile.hidden = !(profile && scope.startsWith("instagram:"));
     downloadProfile.disabled = busy || !capture;
+    const tiktokProfile = profile && scope.startsWith("tiktok:");
+    const mode = capture?.scroll?.mode;
+    scanOnly.hidden = !tiktokProfile;
+    scanOnly.disabled = busy || !capture;
+    scanOnly.textContent = mode === "running" ? "Pausar busca" : mode === "paused" ? "Continuar busca" : "Rolar e procurar";
+    stopScan.hidden = !tiktokProfile || (mode !== "running" && mode !== "paused");
+    stopScan.disabled = busy;
     const hints = [];
+    if (tiktokProfile && capture?.scroll?.message) hints.push(capture.scroll.message);
     if (capture && !all.length) hints.push("Nenhuma publicação detectada nesta página.");
     if (profile) hints.push("Até " + captureLimit + " itens ou " + scanTimeLimitSeconds + " segundos de rolagem por busca.");
     hint.textContent = hints.join(" ");
@@ -233,7 +243,7 @@ export function makeOverlay(send, fixture, runDownload) {
 
   onClick(toggle, () => {
     details.hidden = !details.hidden;
-    toggle.textContent = details.hidden ? "Abrir" : "Recolher";
+    toggle.textContent = details.hidden ? "Ver mídias" : "Recolher";
     toggle.setAttribute("aria-expanded", String(!details.hidden));
     void refresh();
   });
@@ -246,6 +256,11 @@ export function makeOverlay(send, fixture, runDownload) {
   onClick(downloadSelected, () => download("download-selected", { keys: [...selected] }));
   onClick(downloadAll, () => download("download-all"));
   onClick(downloadProfile, () => download("download-profile"));
+  onClick(scanOnly, () => {
+    const mode = snapshot?.capture?.scroll?.mode;
+    return action("scroll", { command: mode === "running" ? "pause" : mode === "paused" ? "resume" : "start" });
+  });
+  onClick(stopScan, () => action("scroll", { command: "stop" }));
   onClick(cancel, () => download("abort-download"));
 
   return {
