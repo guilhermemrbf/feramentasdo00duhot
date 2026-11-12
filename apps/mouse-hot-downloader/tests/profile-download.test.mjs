@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { parseHTML } from "linkedom";
 
 globalThis.__MOUSE_HOT_FIXTURE__ = true;
-Object.assign(globalThis, { document: undefined, location: undefined, chrome: undefined });
+Object.assign(globalThis, { document: undefined, location: undefined, chrome: undefined, getComputedStyle: undefined });
 
 const origin = "https://www.instagram.com";
 const profileUrl = origin + "/fixture/";
@@ -48,6 +48,52 @@ test("resolves full media in a mixed carousel with original positions", async t 
     { postUrl, index: 1, kind: "video", source: video, thumb: image },
     { postUrl, index: 3, kind: "image", source: image, thumb: image },
   ]);
+});
+
+test("reports only missing positions from the matching carousel, up to the supported limit", async t => {
+  const larger = Array.from({ length: 41 }, (_, index) => index === 2 || index === 39 ? null : photo);
+  const responses = [
+    htmlResponse(script([
+      { code: "Other9", carousel_media: [null, null] },
+      { code: "Mixed9", carousel_media: [photo, null] },
+      { shortcode: "Mixed9", edge_sidecar_to_children: { edges: larger.map(node => ({ node })) } },
+    ])),
+    htmlResponse(script([{ code: "Other9", carousel_media: [null] }, { code: "Mixed9", ...photo }])),
+  ];
+  mockPage(t, async () => responses.shift());
+  const { resolveInstagramPost } = await import("../src/adapters/instagram/profile-download.js");
+  const calls = [];
+  const options = { onUnavailable: indexes => calls.push(indexes) };
+  const assets = await resolveInstagramPost(postUrl, options);
+  assert.equal(assets.length, 38);
+  assert.ok(assets.some(item => item.index === 1));
+  assert.ok(!assets.some(item => item.index === 40));
+  assert.deepEqual(calls, [[2, 39]]);
+  assert.equal((await resolveInstagramPost(postUrl, options)).length, 1);
+  assert.deepEqual(calls, [[2, 39]]);
+});
+
+test("grid capture skips hidden anchors and hidden media even with a nonzero rectangle", async t => {
+  const page = mockPage(t, async () => htmlResponse(""), profileUrl, `<html><body>
+    <a href="${origin}/p/Visible/"><img src="${image}"></a>
+    <div hidden><a href="${origin}/p/HiddenParent/"><img src="${image}"></a></div>
+    <a aria-hidden="true" href="${origin}/p/HiddenAnchor/"><img src="${image}"></a>
+    <a data-visibility="hidden" href="${origin}/p/Invisible/"><img src="${image}"></a>
+    <a href="${origin}/p/HiddenImg/"><img hidden src="${image}"></a>
+    <a href="${origin}/p/HiddenVideo/"><video aria-hidden="true"></video></a>
+    <a href="${origin}/p/CollapsedImg/"><img data-visibility="collapse" src="${image}"></a>
+  </body></html>`);
+  t.mock.property(globalThis, "getComputedStyle", node => ({
+    visibility: node.getAttribute("data-visibility") || "visible",
+  }));
+  for (const el of page.querySelectorAll("a, img, video")) {
+    el.getBoundingClientRect = () => ({ width: 160, height: 160 });
+    if (el.tagName === "A" && !el.pathname) {
+      Object.defineProperty(el, "pathname", { value: new URL(el.href).pathname });
+    }
+  }
+  const { gridEntries } = await import("../src/adapters/shared.js");
+  assert.deepEqual(gridEntries("instagram", "fixture", "a").map(item => item.postUrl), [origin + "/p/Visible/"]);
 });
 
 test("uses display resources when image candidates contain no valid source", async t => {

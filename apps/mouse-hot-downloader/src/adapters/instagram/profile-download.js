@@ -3,6 +3,7 @@ import { instagramProfileData, instagramProfileHandle, publicProfileLink } from 
 
 const maxHtmlBytes = 8_000_000;
 const maxJsonNodes = 55_000;
+const maxCarouselItems = 40;
 const jsonSelector = 'script[type="application/json"], script[type="application/ld+json"]';
 const postRoutes = new Set(["p", "reel", "reels", "tv"]);
 
@@ -117,19 +118,24 @@ function embeddedAssets(document, post) {
   const singles = [];
   const carousel = new Map();
   let hasCarousel = false;
+  let carouselSize = 0;
   let hasVideo = post.route !== "p";
   let visited = 0;
   while (stack.length && ++visited <= maxJsonNodes) {
     const node = stack.pop();
     if (!node || typeof node !== "object") continue;
     if ((node.shortcode || node.code || node.media_shortcode) === post.code) {
-      const children = node.carousel_media || node.edge_sidecar_to_children?.edges;
-      if (Array.isArray(children) || node.media_type === 8 || node.media_type === "8" || node.__typename === "GraphSidecar") {
+      const groups = [node.carousel_media, node.edge_sidecar_to_children?.edges].filter(Array.isArray);
+      if (groups.length || node.media_type === 8 || node.media_type === "8" || node.__typename === "GraphSidecar") {
         hasCarousel = true;
-        if (Array.isArray(children)) children.slice(0, 40).forEach((child, index) => {
-          const item = asset(child?.node || child, index, post.url);
-          if (item && !carousel.has(index)) carousel.set(index, item);
-        });
+        for (const group of groups) {
+          const children = group.slice(0, maxCarouselItems);
+          carouselSize = Math.max(carouselSize, children.length);
+          children.forEach((child, index) => {
+            const item = asset(child?.node || child, index, post.url);
+            if (item && !carousel.has(index)) carousel.set(index, item);
+          });
+        }
       } else {
         const item = asset(node, 0, post.url, hasVideo);
         hasVideo ||= item?.kind === "video" || describesVideo(node);
@@ -148,7 +154,8 @@ function embeddedAssets(document, post) {
       if (value && typeof value === "object") stack.push(value);
     }
   }
-  return { hasCarousel, hasVideo, items: hasCarousel ?
+  const missing = Array.from({ length: carouselSize }, (_, index) => index).filter(index => !carousel.has(index));
+  return { hasCarousel, hasVideo, missing, items: hasCarousel ?
     [...carousel.values()].sort((a, b) => a.index - b.index) :
     singles.filter(item => !hasVideo || item.kind === "video").slice(0, 1) };
 }
@@ -157,7 +164,7 @@ function meta(document, name) {
   return document.querySelector('meta[property="' + name + '"]')?.getAttribute("content") || "";
 }
 
-export async function resolveInstagramPost(postUrl, { signal } = {}) {
+export async function resolveInstagramPost(postUrl, { signal, onUnavailable } = {}) {
   const post = permalink(postUrl, location.origin);
   if (!post || signal?.aborted) return [];
   const timeout = AbortSignal.timeout(8000);
@@ -175,7 +182,8 @@ export async function resolveInstagramPost(postUrl, { signal } = {}) {
     const canonical = root.querySelector('link[rel~="canonical"]');
     if (canonical && permalink(parseUrl(canonical.getAttribute("href"), post.url)?.href,
       post.url.origin)?.code !== post.code) return [];
-    const { items, hasCarousel, hasVideo } = embeddedAssets(root, post);
+    const { items, hasCarousel, hasVideo, missing } = embeddedAssets(root, post);
+    if (missing.length) onUnavailable?.(missing);
     if (items.length || !canonical || hasCarousel) return items;
     const videoMeta = meta(root, "og:video:secure_url") || meta(root, "og:video") || meta(root, "og:video:url");
     const source = mediaSource(videoMeta, post.url);

@@ -39,14 +39,21 @@ export function mediaEntries(root, postUrl, handle, opts) {
     };
   });
 }
+function visibleGridElement(element) {
+  return !element.closest('[hidden], [aria-hidden="true"]') &&
+    !["hidden", "collapse"].includes(getComputedStyle(element).visibility);
+}
 export function gridEntries(platform, handle, matches) {
   const result = [];
   for (const a of document.querySelectorAll(matches)) {
     if (result.length >= 350) break;
     const info = pageInfo(a.href);
-    const img = a.querySelector("img");
-    if (info?.platform !== platform || !info.id) continue;
-    const video = a.querySelector("video");
+    if (info?.platform !== platform || !info.id || !visibleGridElement(a)) continue;
+    const media = [...a.querySelectorAll("img, video")];
+    const visible = media.filter(visibleGridElement);
+    if (media.length && !visible.length) continue;
+    const img = visible.find(element => element.tagName === "IMG");
+    const video = visible.find(element => element.tagName === "VIDEO");
     const box = (video || img || a).getBoundingClientRect();
     if (box.width < 55 || box.height < 55) continue;
     if (info.handle && handle && info.handle !== handle) continue;
