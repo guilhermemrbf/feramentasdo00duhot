@@ -8,3 +8,8 @@
 - [x] Atualizar catálogo, home, navegação e busca para Instagram.
 - [x] Redirecionar o endereço antigo e remover a tela/helpers exclusivos de TikTok, preservando pesquisas internas e a integração Instagram.
 - [x] Executar testes e conferir o build automático, sem publicar.
+
+# Solicitação atual: renovação visual MauseHot
+- [ ] Renovar visão geral, navegação e identidade visual com a logo existente e fotos relevantes.
+- [ ] Unificar cabeçalhos e apresentação de todas as ferramentas, preservando os fluxos existentes.
+- [ ] Conferir testes, build automático e navegação no preview; não publicar.

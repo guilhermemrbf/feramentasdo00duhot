@@ -4,7 +4,11 @@ import { Download, Laptop, ShieldCheck, ArrowRight, Eye, Link2 } from "lucide-re
 import { AppShell, PageIntro } from "@/components/AppShell";
 
 export const Route = createFileRoute("/telegram-sync")({
-  head: () => ({ meta: [{ title: "Trocar links do meu canal — Telegram Sync · MauseHot" }] }),
+  head: () => ({ meta: [
+      { property: "og:title", content: "Telegram Sync — MauseHot" },
+      { property: "og:description", content: "Atualize os links de posts do seu canal com prévia e backup local." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },{ title: "Telegram Sync — MauseHot" }, { name: "description", content: "Atualize os links de posts do seu canal com prévia e backup local." }] }),
   component: TelegramSync,
 });
 const { url: download, release } = downloads.telegramSync;

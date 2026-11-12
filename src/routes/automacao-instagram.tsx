@@ -73,7 +73,11 @@ export const Route = createFileRoute("/automacao-instagram")({
   }),
   head: () => ({
     meta: [
-      { title: "Automação Instagram — MauseHot" },
+      { property: "og:title", content: "Automatic Post · Instagram — MauseHot" },
+      { property: "og:description", content: "Organize contas profissionais, vídeos, legendas e agendamentos de Reels." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { title: "Automatic Post · Instagram — MauseHot" },
       {
         name: "description",
         content:

@@ -4,7 +4,11 @@ import { AppShell } from "@/components/AppShell";
 import { TEMP_MAIL_URL } from "@/lib/tool-catalog";
 
 export const Route = createFileRoute("/email-temporario")({
-  head: () => ({ meta: [{ title: "Correio Temporário — MauseHot" }] }),
+  head: () => ({ meta: [
+      { property: "og:title", content: "Correio Temporário — MauseHot" },
+      { property: "og:description", content: "Receba mensagens em uma caixa de e-mail descartável." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },{ title: "Correio Temporário — MauseHot" }, { name: "description", content: "Receba mensagens em uma caixa de e-mail descartável." }] }),
   component: TemporaryEmail,
 });
 
