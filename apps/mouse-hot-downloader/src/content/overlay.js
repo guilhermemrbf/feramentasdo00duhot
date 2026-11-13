@@ -4,29 +4,32 @@ import { canDownloadItem } from "./download-controller.js";
 const css = `
 :host { color-scheme:dark; color:#fff0e5; font:14px/1.45 system-ui,sans-serif; }
 *, *::before, *::after { box-sizing:border-box; }
-section { background:#20171c; border:1px solid #6c414b; border-radius:16px; box-shadow:0 8px 32px #0008;
+section { background:#19151a; border:1px solid #70505b; border-radius:18px; box-shadow:0 12px 44px #000a;
   overflow:hidden; color:#fff0e5; color-scheme:dark; font:14px/1.45 system-ui,sans-serif;
   max-width:calc(100vw - 28px); }
 header, .bar, li { display:flex; align-items:center; gap:8px; }
-header { padding:10px 12px; }
+header { padding:12px; background:linear-gradient(105deg,#30202a,#1c171c 76%); }
 header img { width:34px; height:34px; border-radius:8px; flex:none; }
 header div { display:grid; flex:1; min-width:0; margin-right:6px; }
 header strong { font-size:15px; white-space:nowrap; }
 header small { color:#e1bec4; }
-button { background:#3c2830; border:1px solid #68434f; border-radius:8px; color:#fff0df;
-  padding:6px 9px; font:600 12px system-ui,sans-serif; cursor:pointer; min-height:30px; }
+button { background:#382934; border:1px solid #70505b; border-radius:9px; color:#fff0df;
+  padding:7px 10px; font:650 12px system-ui,sans-serif; cursor:pointer; min-height:34px; }
 button:not(:disabled):hover { background:#53343e; }
 button:disabled { opacity:.54; cursor:default; }
 button:focus-visible, input:focus-visible { outline:2px solid #ffc889; outline-offset:2px; }
 input { accent-color:#ffc889; }
 [hidden] { display:none !important; }
-main { padding:4px 12px 12px; width:min(440px, calc(100vw - 30px)); max-height:calc(100dvh - 86px);
+main { padding:10px 12px 12px; width:min(440px, calc(100vw - 30px)); max-height:calc(100dvh - 86px);
   overflow:auto; overscroll-behavior:contain; }
 .bar { flex-wrap:wrap; }
-ul { padding:0; margin:8px 0 0; list-style:none; overflow:auto; overscroll-behavior:contain; max-height:min(38vh, 270px); }
+ul { padding:0; margin:6px 0 0; list-style:none; overflow:auto; overscroll-behavior:contain; max-height:min(35vh, 270px); }
 ul:empty, p:empty { display:none; }
 #mh-jobs { max-height:min(20vh, 140px); }
-li { min-height:42px; padding:5px 2px; border-top:1px solid #4c333a; justify-content:space-between; }
+li { min-height:44px; padding:5px 7px; margin-bottom:4px; background:#251f26; border:1px solid #463640;
+  border-radius:9px; justify-content:space-between; }
+li:has(input:checked) { background:#3b2a31; border-color:#ad795e; }
+li input { width:16px; height:16px; flex:none; margin:0 2px; }
 li span { flex:1; min-width:0; overflow-wrap:anywhere; }
 li small { display:block; }
 small, p { color:#dec5ca; font-size:12px; }
@@ -35,10 +38,19 @@ p { margin:7px 0 0; overflow-wrap:anywhere; }
 .primary { background:#ffc889; color:#28161d; border-color:#ffc889; }
 .primary:not(:disabled):hover { background:#ffddb2; }
 .job progress { max-width:63px; height:6px; accent-color:#ffc889; }
+.group-title { margin:12px 0 5px; color:#fff0e5; font-size:13px; font-weight:750; }
+.guide { color:#e7cdd7; margin:0 0 8px; }
+.secondary { margin-top:9px; padding-top:8px; border-top:1px solid #4c333a; }
+.status { display:inline-block; border-radius:6px; padding:2px 6px; margin-right:5px; background:#393140;
+  color:#f2e2f3; font-size:11px; font-weight:750; }
+[data-state="running"] .status { background:#193f45; color:#baf6f4; }
+[data-state="failed"] .status, [data-state="review"] .status { background:#4e262d; color:#ffc3bd; }
+[data-state="paused"] .status { background:#4d3521; color:#ffdb9a; }
+.saved { color:#a9e7c2; }
 `;
 const active = new Set(["queued", "starting", "running", "pausing", "paused"]);
 const labels = { done:"Salvo", failed:"Falhou", running:"Baixando", paused:"Pausado", starting:"Preparando",
-  queued:"Na fila", cancelled:"Cancelado", review:"Confira no Chrome" };
+  queued:"Aguardando", cancelled:"Cancelado", review:"Confira no Chrome" };
 
 export function makeOverlay(send, fixture, runDownload) {
   const host = document.createElement("div");
@@ -67,20 +79,25 @@ export function makeOverlay(send, fixture, runDownload) {
   const heading = make("div", header);
   make("strong", heading, {}, "Mouse Hot");
   const summary = make("small", heading, { id: "mh-summary" }, "Procurando mídias…");
-  const toggle = make("button", header, { id: "mh-toggle", "aria-expanded": "false", "aria-controls": "mh-details" }, "Ver mídias");
+  const toggle = make("button", header, { id: "mh-toggle", class: "primary", "aria-expanded": "false", "aria-controls": "mh-details" }, "Ver mídias");
   const details = make("main", box, { id: "mh-details", hidden: "" });
+  make("p", details, { class: "guide" }, "Marque o que quer salvar ou clique em Baixar ao lado de uma publicação.");
   const controls = make("div", details, { class: "bar" });
   const selectAll = make("button", controls, { id: "mh-select-all", disabled: "" }, "Selecionar tudo");
-  const downloadSelected = make("button", controls, { id: "mh-download-selected", disabled: "" }, "Baixar seleção");
-  const downloadAll = make("button", controls, { id: "mh-download-all", class: "primary", hidden: "" }, "Baixar todas as mídias");
-  const downloadProfile = make("button", controls, { id: "mh-download-profile", hidden: "" }, "Exportar dados (JSON)");
+  const downloadSelected = make("button", controls, { id: "mh-download-selected", class: "primary", disabled: "" }, "Baixar seleção");
+  const downloadAll = make("button", controls, { id: "mh-download-all", hidden: "" }, "Buscar e baixar tudo");
   const scanOnly = make("button", controls, { id: "mh-scroll", hidden: "" }, "Rolar e procurar");
   const stopScan = make("button", controls, { id: "mh-stop", hidden: "" }, "Parar");
   const cancel = make("button", controls, { id: "mh-abort-download", hidden: "" }, "Cancelar busca");
   const notice = make("p", details, { id: "mh-operation", role: "status" });
   const hint = make("p", details, { id: "mh-hint" });
+  const mediaTitle = make("h2", details, { class: "group-title", hidden: "" }, "Publicações encontradas");
   const list = make("ul", details, { id: "mh-items", "aria-label": "Publicações detectadas" });
+  const queueTitle = make("h2", details, { class: "group-title", hidden: "" }, "Fila de downloads");
   const queue = make("ul", details, { id: "mh-jobs", "aria-label": "Fila desta página" });
+  const footer = make("div", details, { class: "secondary" });
+  const downloadProfile = make("button", footer, { id: "mh-download-profile", hidden: "" }, "Exportar dados do perfil");
+  make("p", footer, {}, "Os arquivos ficam em Downloads → Mouse Hot.");
   shadow.append(box);
 
   const selected = new Set();
@@ -129,6 +146,8 @@ export function makeOverlay(send, fixture, runDownload) {
       if (!jobsByKey.has(job.item.key)) jobsByKey.set(job.item.key, job);
     }
     const jobs = [...jobsByKey.values()];
+    mediaTitle.hidden = !all.length;
+    queueTitle.hidden = !jobs.some(job => job.status !== "done");
     const counts = [];
     const direct = all.filter(item => item.status === "check").length;
     const done = jobs.filter(job => job.status === "done").length;
@@ -201,7 +220,8 @@ export function makeOverlay(send, fixture, runDownload) {
       const job = jobsByKey.get(item.key);
       const done = job?.status === "done";
       const inQueue = active.has(job?.status);
-      const label = done ? "Salvo" : inQueue ? labels[job.status] || "Na fila" : "Baixar";
+      if (done) make("small", title, { class: "saved" }, "Salvo no computador");
+      const label = done ? "Salvo" : inQueue ? labels[job.status] || "Aguardando" : "Baixar";
       const resolvePost = item.key.startsWith("instagram:post:");
       const button = make("button", row, { "data-download": item.key, "data-focus": "download:" + item.key },
         resolvePost ? "Baixar" : label);
@@ -214,7 +234,10 @@ export function makeOverlay(send, fixture, runDownload) {
     queue.replaceChildren(...jobs.filter(job => job.status !== "done").map(job => {
       const row = document.createElement("li");
       row.className = "job";
-      const title = make("span", row, {}, (labels[job.status] || job.status) + " · " + job.item.id);
+      row.dataset.state = job.status;
+      const title = make("span", row);
+      make("strong", title, { class: "status" }, labels[job.status] || job.status);
+      title.append(job.item.id);
       if (job.message) make("small", title, {}, job.message);
       const task = (label, command) => {
         const button = make("button", row, {}, label);

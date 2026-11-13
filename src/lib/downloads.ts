@@ -9,6 +9,10 @@ function packageDownload(tag: string, filename: string) {
 }
 
 export const downloads = {
+  mouseHotDownloader: {
+    version: "3.0.7",
+    url: "/downloads/Mouse-Hot-Downloader-3.0.7.zip",
+  },
   telegramSync: {
     version: "0.7.1",
     ...packageDownload("telegram-sync-desktop-18-1", "TelegramSync-Windows.zip"),

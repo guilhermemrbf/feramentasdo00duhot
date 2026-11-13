@@ -50,6 +50,22 @@ const ALL_TOOLS = [
       "Computador Windows ligado, aplicativo aberto, internet e permissão para editar os posts do canal.",
   },
   {
+    id: "downloader",
+    path: "/mouse-hot-downloader",
+    name: "Mouse Hot Downloader",
+    category: "Conteúdo",
+    mode: "Extensão para Chrome",
+    summary: "Baixe fotos, vídeos e Reels do Instagram e do TikTok, direto no computador.",
+    input: "Um perfil ou publicação que você tem permissão para baixar.",
+    output: "Arquivos salvos na pasta Downloads do Chrome, um por vez.",
+    steps: [
+      "Baixe o ZIP e extraia a pasta Mouse Hot.",
+      "Instale a pasta em Extensões no Chrome.",
+      "Abra a rede social, clique em Ver mídias e escolha o que baixar.",
+    ],
+    requirement: "Google Chrome 120 ou mais recente em um computador.",
+  },
+  {
     id: "images",
     path: "/image-links",
     name: "Image Links",

@@ -19,6 +19,7 @@ import { Route as GerarPreviewRouteImport } from './routes/gerar-preview'
 import { Route as HotProfilesRouteImport } from './routes/hot-profiles'
 import { Route as ImageLinksRouteImport } from './routes/image-links'
 import { Route as LimparMetadadosRouteImport } from './routes/limpar-metadados'
+import { Route as MouseHotDownloaderRouteImport } from './routes/mouse-hot-downloader'
 import { Route as OtimizarCriativosRouteImport } from './routes/otimizar-criativos'
 import { Route as TelegramSyncRouteImport } from './routes/telegram-sync'
 import { Route as ApiInstagramWorkerRouteImport } from './routes/api.instagram.worker'
@@ -74,6 +75,11 @@ const LimparMetadadosRoute = LimparMetadadosRouteImport.update({
   path: '/limpar-metadados',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MouseHotDownloaderRoute = MouseHotDownloaderRouteImport.update({
+  id: '/mouse-hot-downloader',
+  path: '/mouse-hot-downloader',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OtimizarCriativosRoute = OtimizarCriativosRouteImport.update({
   id: '/otimizar-criativos',
   path: '/otimizar-criativos',
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/hot-profiles': typeof HotProfilesRoute
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
+  '/mouse-hot-downloader': typeof MouseHotDownloaderRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
   '/telegram-sync': typeof TelegramSyncRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/hot-profiles': typeof HotProfilesRoute
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
+  '/mouse-hot-downloader': typeof MouseHotDownloaderRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
   '/telegram-sync': typeof TelegramSyncRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/hot-profiles': typeof HotProfilesRoute
   '/image-links': typeof ImageLinksRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
+  '/mouse-hot-downloader': typeof MouseHotDownloaderRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
   '/telegram-sync': typeof TelegramSyncRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/hot-profiles'
     | '/image-links'
     | '/limpar-metadados'
+    | '/mouse-hot-downloader'
     | '/otimizar-criativos'
     | '/telegram-sync'
     | '/api/instagram/worker'
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
     | '/hot-profiles'
     | '/image-links'
     | '/limpar-metadados'
+    | '/mouse-hot-downloader'
     | '/otimizar-criativos'
     | '/telegram-sync'
     | '/api/instagram/worker'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/hot-profiles'
     | '/image-links'
     | '/limpar-metadados'
+    | '/mouse-hot-downloader'
     | '/otimizar-criativos'
     | '/telegram-sync'
     | '/api/instagram/worker'
@@ -207,6 +219,7 @@ export interface RootRouteChildren {
   HotProfilesRoute: typeof HotProfilesRoute
   ImageLinksRoute: typeof ImageLinksRoute
   LimparMetadadosRoute: typeof LimparMetadadosRoute
+  MouseHotDownloaderRoute: typeof MouseHotDownloaderRoute
   OtimizarCriativosRoute: typeof OtimizarCriativosRoute
   TelegramSyncRoute: typeof TelegramSyncRoute
   ApiInstagramWorkerRoute: typeof ApiInstagramWorkerRoute
@@ -285,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LimparMetadadosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mouse-hot-downloader': {
+      id: '/mouse-hot-downloader'
+      path: '/mouse-hot-downloader'
+      fullPath: '/mouse-hot-downloader'
+      preLoaderRoute: typeof MouseHotDownloaderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/otimizar-criativos': {
       id: '/otimizar-criativos'
       path: '/otimizar-criativos'
@@ -327,6 +347,7 @@ const rootRouteChildren: RootRouteChildren = {
   HotProfilesRoute: HotProfilesRoute,
   ImageLinksRoute: ImageLinksRoute,
   LimparMetadadosRoute: LimparMetadadosRoute,
+  MouseHotDownloaderRoute: MouseHotDownloaderRoute,
   OtimizarCriativosRoute: OtimizarCriativosRoute,
   TelegramSyncRoute: TelegramSyncRoute,
   ApiInstagramWorkerRoute: ApiInstagramWorkerRoute,

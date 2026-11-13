@@ -10,6 +10,7 @@ import type { Tool } from "./tool-catalog";
 export const TOOL_VISUALS: Record<Tool["id"], { image: string; alt: string; action: string }> = {
   social: { image: reels, alt: "Gravação de um vídeo vertical com celular", action: "Agendar Reels" },
   images: { image: media, alt: "Fotografias e arquivos de mídia organizados", action: "Gerar links" },
+  downloader: { image: media, alt: "Fotografias e arquivos de mídia organizados", action: "Baixar extensão" },
   pages: { image: profile, alt: "Página de perfil em um computador e celular", action: "Gerar prompt" },
   metadata: { image: privacy, alt: "Detalhes de uma fotografia e armazenamento de arquivos", action: "Limpar arquivos" },
   creatives: { image: creatives, alt: "Edição de um criativo com mesa digitalizadora", action: "Preparar criativos" },

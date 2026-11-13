@@ -4,8 +4,7 @@ import { TOOL_CATALOG, searchTools, findTool, cleanPreferences } from "../src/li
 import { outputName, queueCandidates, validPublicUrl } from "../src/lib/media/files.ts";
 import { selectMediaFiles, formatMediaLink } from "../src/lib/media/selection.ts";
 test("catalog keeps every tool reachable, searchable and documented", () => {
-  assert.equal(TOOL_CATALOG.length, 9);
-  assert.equal(new Set(TOOL_CATALOG.map((t) => t.path)).size, 9);
+  assert.equal(new Set(TOOL_CATALOG.map((t) => t.path)).size, TOOL_CATALOG.length);
   for (const tool of TOOL_CATALOG) {
     assert.equal(tool.steps.length, 3);
     assert.ok(tool.input && tool.output && tool.requirement);
@@ -84,15 +83,17 @@ test("catalog finds Automatic Post and Hot Profiles through their Instagram feat
   assert.equal(TOOL_CATALOG.find((tool) => tool.id === "social")?.path, "/automacao-instagram");
   assert.deepEqual(searchTools("Automatic Post").map((tool) => tool.path), ["/automacao-instagram"]);
   assert.deepEqual(searchTools("Instagram").map((tool) => tool.path), [
+    "/mouse-hot-downloader",
     "/automacao-instagram",
     "/hot-profiles",
   ]);
   assert.deepEqual(searchTools("Reels").map((tool) => tool.path), [
+    "/mouse-hot-downloader",
     "/automacao-instagram",
     "/hot-profiles",
   ]);
   assert.deepEqual(searchTools("Hot Profiles").map((tool) => tool.path), ["/hot-profiles"]);
-  assert.deepEqual(searchTools("TikTok"), []);
+  assert.deepEqual(searchTools("TikTok").map((tool) => tool.path), ["/mouse-hot-downloader"]);
   assert.equal(findTool("/automacao-tiktok"), undefined);
   assert.deepEqual(cleanPreferences({ favorites: ["social"], recent: ["social"] }), {
     favorites: ["social"], recent: ["social"],
