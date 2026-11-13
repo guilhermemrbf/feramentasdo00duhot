@@ -35,3 +35,14 @@ gpt-6-astra indisponível por cota; gpt-6.1-terra realizou a revisão final. Um 
 
 ## Finalização operacional
 Aplicar apenas a nova migration 20261113190000_instagram_reviewed_schedule.sql após confirmar a função inexistente (já conferido). Fazer push/PR/merge em main, aguardar sincronização Lovable e publicar pelo connector (nunca chat Lovable). Verificar versão de produção no navegador interno e download do conector. Registrar abaixo os IDs reais ao concluir.
+
+## Integração confirmada
+PR #19: https://github.com/guilhermemrbf/feramentasdo00duhot/pull/19, integrado em main 45a3ea969e2b2085e8e5e4f5cdd771ad82e35043.
+Migration aplicada e função conferida em produção, EXECUTE negado a anon e permitido a authenticated com validação interna de papel/workspace.
+Lovable sincronizou exatamente esse SHA e preview ficou ready. Deploy 335f6d04-5d72-4c42-8a90-bea8739bad8c solicitado, inicialmente pending. Validar cartões na produção antes de marcar publicado. Download via CLI encontrou proteção Cloudflare; usar link no navegador normal, sem contornar a proteção.
+
+## Entrega verificada em 13/11/2026
+Deploy confirmado no navegador interno: produção apresenta os cinco passos por conta e Conectar Conta abre o pareamento do conector isolado. URL: https://feramentasdo00duhot.lovable.app/automacao-instagram.
+Download real pelo link publicado concluído em C:\Users\User\Downloads\hot-profiles-connector.zip. SHA256 idêntico ao ZIP testado: 5CA040AF30C59D058DFDBA567980426F706817059A51DA17EB443E0580C3F329.
+A migration e o merge descritos acima já foram concluídos; NÃO repetir a seção antiga de finalização operacional. Não houve publicação real nem novo login Meta nesta validação. O operador precisa executar o conector atualizado, parear o código e conceder o login normalmente.
+Próximo agente: partir de origin/main, preservar bibliotecas e agendamentos reais; qualquer teste de postagem deve identificar conta e mídia autorizadas. Melhorias menores e limitações estão documentadas acima. Evidências de testes resumidas neste documento antes da limpeza do diretório temporário deste plano.
