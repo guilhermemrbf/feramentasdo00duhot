@@ -64,6 +64,7 @@ test("Facebook Login keeps linked accounts when Meta omits the username in the P
     {
       pageName: "Creator Page",
       pageAccessToken: "page-token-3",
+      isBusinessAccount: true,
       ig: { id: "ig-3" },
     },
   ]);
