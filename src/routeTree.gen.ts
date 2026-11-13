@@ -18,6 +18,7 @@ import { Route as FunilRouteImport } from './routes/funil'
 import { Route as GerarPreviewRouteImport } from './routes/gerar-preview'
 import { Route as HotProfilesRouteImport } from './routes/hot-profiles'
 import { Route as ImageLinksRouteImport } from './routes/image-links'
+import { Route as InstagramIntelligenceRouteImport } from './routes/instagram-intelligence'
 import { Route as LimparMetadadosRouteImport } from './routes/limpar-metadados'
 import { Route as MouseHotDownloaderRouteImport } from './routes/mouse-hot-downloader'
 import { Route as OtimizarCriativosRouteImport } from './routes/otimizar-criativos'
@@ -70,6 +71,11 @@ const ImageLinksRoute = ImageLinksRouteImport.update({
   path: '/image-links',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InstagramIntelligenceRoute = InstagramIntelligenceRouteImport.update({
+  id: '/instagram-intelligence',
+  path: '/instagram-intelligence',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LimparMetadadosRoute = LimparMetadadosRouteImport.update({
   id: '/limpar-metadados',
   path: '/limpar-metadados',
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
   '/image-links': typeof ImageLinksRoute
+  '/instagram-intelligence': typeof InstagramIntelligenceRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/mouse-hot-downloader': typeof MouseHotDownloaderRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
   '/image-links': typeof ImageLinksRoute
+  '/instagram-intelligence': typeof InstagramIntelligenceRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/mouse-hot-downloader': typeof MouseHotDownloaderRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
   '/image-links': typeof ImageLinksRoute
+  '/instagram-intelligence': typeof InstagramIntelligenceRoute
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/mouse-hot-downloader': typeof MouseHotDownloaderRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/gerar-preview'
     | '/hot-profiles'
     | '/image-links'
+    | '/instagram-intelligence'
     | '/limpar-metadados'
     | '/mouse-hot-downloader'
     | '/otimizar-criativos'
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/gerar-preview'
     | '/hot-profiles'
     | '/image-links'
+    | '/instagram-intelligence'
     | '/limpar-metadados'
     | '/mouse-hot-downloader'
     | '/otimizar-criativos'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/gerar-preview'
     | '/hot-profiles'
     | '/image-links'
+    | '/instagram-intelligence'
     | '/limpar-metadados'
     | '/mouse-hot-downloader'
     | '/otimizar-criativos'
@@ -218,6 +230,7 @@ export interface RootRouteChildren {
   GerarPreviewRoute: typeof GerarPreviewRoute
   HotProfilesRoute: typeof HotProfilesRoute
   ImageLinksRoute: typeof ImageLinksRoute
+  InstagramIntelligenceRoute: typeof InstagramIntelligenceRoute
   LimparMetadadosRoute: typeof LimparMetadadosRoute
   MouseHotDownloaderRoute: typeof MouseHotDownloaderRoute
   OtimizarCriativosRoute: typeof OtimizarCriativosRoute
@@ -291,6 +304,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ImageLinksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/instagram-intelligence': {
+      id: '/instagram-intelligence'
+      path: '/instagram-intelligence'
+      fullPath: '/instagram-intelligence'
+      preLoaderRoute: typeof InstagramIntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/limpar-metadados': {
       id: '/limpar-metadados'
       path: '/limpar-metadados'
@@ -346,6 +366,7 @@ const rootRouteChildren: RootRouteChildren = {
   GerarPreviewRoute: GerarPreviewRoute,
   HotProfilesRoute: HotProfilesRoute,
   ImageLinksRoute: ImageLinksRoute,
+  InstagramIntelligenceRoute: InstagramIntelligenceRoute,
   LimparMetadadosRoute: LimparMetadadosRoute,
   MouseHotDownloaderRoute: MouseHotDownloaderRoute,
   OtimizarCriativosRoute: OtimizarCriativosRoute,

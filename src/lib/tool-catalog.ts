@@ -166,6 +166,24 @@ const ALL_TOOLS = [
       "Conta profissional do Instagram autorizada; a conexão via Facebook exige uma Página vinculada. O serviço de publicação precisa estar ativo para executar os horários salvos. Agendar não confirma uma publicação: confira o Histórico.",
   },
   {
+    id: "intelligence",
+    path: "/instagram-intelligence",
+    name: "Instagram Intelligence",
+    category: "Planejamento",
+    mode: "Análise de perfis",
+    summary:
+      "Analise lotes privados de até 1.000 perfis e compare potencial, desempenho e conformidade.",
+    input: "Perfis do Instagram e métricas de fontes autorizadas.",
+    output: "Ranking, fichas por Reel e relatórios com evidências.",
+    steps: [
+      "Entre com Google e crie um lote.",
+      "Selecione contas conectadas ou importe métricas autorizadas.",
+      "Revise as evidências e exporte os resultados.",
+    ],
+    requirement:
+      "A análise depende de métricas disponíveis e de revisão autorizada para classificar conteúdo e conformidade.",
+  },
+  {
     id: "funnels",
     path: "/funil",
     name: "Funil",
@@ -221,9 +239,7 @@ export function normalizeSearch(value: string) {
     .trim();
 }
 export function findTool(path: string) {
-  return TOOL_CATALOG.find(
-    (tool) => tool.path === path,
-  );
+  return TOOL_CATALOG.find((tool) => tool.path === path);
 }
 export function searchTools(query: string, category = "Todas") {
   const terms = normalizeSearch(query).split(/\s+/).filter(Boolean);

@@ -85,6 +85,7 @@ test("catalog finds Automatic Post and Hot Profiles through their Instagram feat
   assert.deepEqual(searchTools("Instagram").map((tool) => tool.path), [
     "/mouse-hot-downloader",
     "/automacao-instagram",
+    "/instagram-intelligence",
     "/hot-profiles",
   ]);
   assert.deepEqual(searchTools("Reels").map((tool) => tool.path), [
