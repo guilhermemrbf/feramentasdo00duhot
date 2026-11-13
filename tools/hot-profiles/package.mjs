@@ -13,6 +13,7 @@ const files = [
   "frame-cache.mjs",
   "proxy.mjs",
   "browser.mjs",
+  "instagram-login.mjs",
   "android.mjs",
   "android-runtime.mjs",
   "android-settings.mjs",

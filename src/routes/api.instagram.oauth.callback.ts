@@ -1,3 +1,4 @@
+import { instagramOAuthResult } from "@/lib/instagram-oauth-result";
 import { createFileRoute } from "@tanstack/react-router";
 import { deleteCookie, getCookie } from "@tanstack/react-start/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -23,11 +24,8 @@ type FacebookPagesResponse = {
   }>;
 };
 
-function redirectToApp(baseUrl: URL, result: string, reason?: string) {
-  const target = new URL("/automacao-instagram", baseUrl);
-  target.searchParams.set("instagram", result);
-  if (reason) target.searchParams.set("instagram_reason", reason);
-  return new Response(null, { status: 303, headers: { Location: target.href } });
+function redirectToApp(_baseUrl: URL, result: string, reason?: string) {
+  return instagramOAuthResult(result, reason);
 }
 
 function oauthFailureReason(error: unknown): string {

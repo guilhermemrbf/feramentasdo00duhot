@@ -47,5 +47,13 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
           : instagramAuthorizationUrl(state, data.analytics);
     }
     setCookie(instagramOAuthCookieName(), state, instagramOAuthCookieOptions());
-    return { authorizationUrl };
+    return {
+      authorizationUrl,
+      cookie: {
+        name: instagramOAuthCookieName(),
+        value: state,
+        url: getInstagramOAuthConfig().appBaseUrl.origin,
+        maxAge: 600,
+      },
+    };
   });
