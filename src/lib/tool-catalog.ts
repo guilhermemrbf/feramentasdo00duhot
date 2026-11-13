@@ -166,6 +166,22 @@ const ALL_TOOLS = [
       "Conta profissional do Instagram autorizada; a conexão via Facebook exige uma Página vinculada. O serviço de publicação precisa estar ativo para executar os horários salvos. Agendar não confirma uma publicação: confira o Histórico.",
   },
   {
+    id: "intelligence",
+    path: "/instagram-intelligence",
+    name: "Instagram Intelligence",
+    category: "Planejamento",
+    mode: "Importação de perfis",
+    summary: "Cadastre e consulte lotes privados de até 1.000 perfis do Instagram.",
+    input: "Links de perfil ou nomes de usuário.",
+    output: "Uma lista de perfis sem duplicatas, guardada na sua conta.",
+    steps: [
+      "Entre com Google.",
+      "Cole os perfis e confira a prévia.",
+      "Salve o lote e consulte os perfis cadastrados.",
+    ],
+    requirement: "O cadastro não confirma a existência dos perfis nem coleta métricas.",
+  },
+  {
     id: "funnels",
     path: "/funil",
     name: "Funil",

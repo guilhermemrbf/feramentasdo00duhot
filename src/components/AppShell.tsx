@@ -36,6 +36,7 @@ export const TOOL_ICONS = {
   telegram: Send,
   images: Image,
   downloader: Download,
+  intelligence: Search,
   pages: PanelTop,
   metadata: FileKey,
   creatives: ShieldCheck,
