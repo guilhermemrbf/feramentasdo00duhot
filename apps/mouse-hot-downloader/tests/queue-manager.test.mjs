@@ -22,12 +22,13 @@ function savedJob(id, status, downloadId = null) {
 }
 
 function setup(t, {
-  saved = [], native = [], invalid = [], failFirstSearch = false, cancel = (d) => {
+  saved = [], native = [], invalid = [], blockProbe = false, refreshVideo, failFirstSearch = false, cancel = (d) => {
     Object.assign(d, { state: "interrupted", error: "USER_CANCELED" });
   }, notify = () => {},
 } = {}) {
   let stored = structuredClone(saved);
   const downloads = new Map();
+  const removed = [];
   let nextDownloadId = 1;
   function addDownload({ url, filename, paused = false, state = "in_progress", byExtensionId = extensionId }) {
     const id = nextDownloadId++;
@@ -46,6 +47,7 @@ function setup(t, {
   for (const download of native) addDownload(download);
 
   t.mock.method(globalThis, "fetch", async (url) => {
+    if (blockProbe) throw new TypeError("Preflight blocked");
     return invalid.some(id => video(id).source === url)
       ? new Response("", { status: 403 })
       : new Response(mp4Header, { headers: { "content-type": "video/mp4" } });
@@ -58,7 +60,10 @@ function setup(t, {
       set: async (data) => { stored = structuredClone(data[storageKey]); },
     } },
     downloads: {
-      download: async ({ url, filename }) => addDownload({ url, filename }),
+      download: async ({ url, filename }) => {
+        if (invalid.some(id => video(id).source === url)) throw new Error("Chrome refused to start");
+        return addDownload({ url, filename });
+      },
       search: async ({ id, url, startedAfter, limit }) => {
         if (failFirstSearch) {
           failFirstSearch = false;
@@ -71,6 +76,7 @@ function setup(t, {
       pause: async (id) => Object.assign(downloads.get(id), { paused: true, canResume: true }),
       resume: async (id) => Object.assign(downloads.get(id), { state: "in_progress", paused: false, canResume: false }),
       cancel: async (id) => cancel(downloads.get(id)),
+      removeFile: async (id) => { removed.push(id); },
     },
   } });
   t.after(() => {
@@ -78,12 +84,54 @@ function setup(t, {
     else delete globalThis.chrome;
   });
   return {
-    queue: makeQueue(notify), downloads,
+    queue: makeQueue(notify, refreshVideo), downloads, removed,
     active: () => [...downloads.values()].filter(d => d.state === "in_progress" && !d.paused).map(d => d.url),
   };
 }
 
 const statuses = (jobs) => Object.fromEntries(jobs.map(job => [job.item.id, job.status]));
+
+test("starts a native MOV download without making any media request first", async (t) => {
+  const { queue, downloads } = setup(t, { blockProbe: true });
+  const item = { ...video("quicktime"), source: "https://media.cdninstagram.com/native.MOV?token=1" };
+  await queue.enqueue([item], 1);
+  await queue.start();
+  assert.equal(globalThis.fetch.mock.callCount(), 0);
+  assert.match(downloads.get(1)?.filename, /\.mov$/);
+  Object.assign(downloads.get(1), { state: "complete", mime: "video/quicktime" });
+  await queue.changed(1);
+  assert.equal((await queue.list())[0].status, "done");
+});
+
+test("refreshes an expired video's native URL once and advances after a second refusal", async (t) => {
+  const refreshCalls = [];
+  const updated = "https://media.cdninstagram.com/first.mp4?fresh=1";
+  const { queue, downloads, active } = setup(t, { refreshVideo: async job => {
+    refreshCalls.push([job.item.key, job.tabId, job.documentId]);
+    return [updated];
+  } });
+  await queue.enqueue(["first", "second"].map(video), 8, { documentId: "original-doc" });
+  await queue.start();
+  Object.assign(downloads.get(1), { state: "interrupted", error: "SERVER_FORBIDDEN" });
+  await queue.changed(1);
+  assert.deepEqual(active(), [updated]);
+  assert.deepEqual(refreshCalls, [[video("first").key, 8, "original-doc"]]);
+  Object.assign(downloads.get(2), { state: "interrupted", error: "SERVER_FORBIDDEN" });
+  await queue.changed(2);
+  assert.deepEqual(active(), [video("second").source]);
+  assert.equal(refreshCalls.length, 1);
+  assert.match((await queue.list()).find(job => job.item.id === "first").message, /SERVER_FORBIDDEN/);
+});
+
+test("does not mark an HTML response from a native video transfer as saved", async (t) => {
+  const { queue, downloads, removed } = setup(t);
+  await queue.enqueue([video("html")], 1);
+  await queue.start();
+  Object.assign(downloads.get(1), { state: "complete", mime: "text/html; charset=utf-8" });
+  await queue.changed(1);
+  assert.deepEqual(removed, [1]);
+  assert.equal((await queue.list())[0].status, "failed");
+});
 
 test("starts one transfer at a time and advances past a terminal Chrome error", async (t) => {
   const { queue, downloads, active } = setup(t);

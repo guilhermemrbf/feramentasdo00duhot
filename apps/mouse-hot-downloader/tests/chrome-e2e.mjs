@@ -19,24 +19,27 @@ await writeFile(join(profile, "Default", "Preferences"), JSON.stringify({
   download: { default_directory: downloadPath, prompt_for_download: false },
 }));
 const photo = await readFile(join(root, "assets/icons/128.png"));
-function makeVideo(color) {
+function makeVideo(color, format = "mp4") {
   const generated = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi",
     "-i", "color=c=" + color + ":s=160x160:r=15", "-t", "0.5", "-c:v", "libx264", "-threads", "1",
-    "-movflags", "frag_keyframe+empty_moov", "-f", "mp4", "pipe:1"]);
+    "-movflags", "frag_keyframe+empty_moov", "-f", format, "pipe:1"]);
   assert.equal(generated.status, 0, generated.stderr?.toString() || "FFmpeg is required for the test.");
   return generated.stdout;
 }
 const video = makeVideo("blue");
+const mov = makeVideo("green", "mov");
 const serialVideos = new Map([["First3", video], ["Denied3", video], ["Last3", makeVideo("red")]]);
 const serialTransfers = [];
 let finishFirstReel;
 let active = 0, peak = 0, waitRequestStarted = false, waitRequestAborted = false;
 let expiredVideoAttempts = 0, interruptedVideoAttempts = 0, rejectedRangeAttempts = 0, ordinaryVideoRequests = 0;
 let updatedRetryPost = false;
+let autoRefreshAttempts = 0, autoRefreshPages = 0;
 const server = createServer((req, res) => {
   const path = new URL(req.url, "http://localhost").pathname;
   if (path.startsWith("/media/")) {
     const serialCode = path.match(/^\/media\/serial-(\w+)\.mp4$/)?.[1];
+    if (path === "/media/auto-expired.mp4") autoRefreshAttempts++;
     if (path.includes("expired")) {
       if (path.endsWith(".mp4")) expiredVideoAttempts++;
       res.writeHead(403);
@@ -55,9 +58,14 @@ const server = createServer((req, res) => {
       }
       ordinaryVideoRequests++;
     }
+    if (path === "/media/error-page.mp4") {
+      res.writeHead(200, { "Content-Type": "text/html" });
+      return res.end("<!doctype html><title>Arquivo indisponível</title>");
+    }
+    const isMov = path.endsWith(".mov");
     const isVideo = path.endsWith(".mp4");
-    const bytes = serialVideos.get(serialCode) ?? (isVideo ? video : photo);
-    const type = isVideo ? "video/mp4" : "image/png";
+    const bytes = serialVideos.get(serialCode) ?? (isMov ? mov : isVideo ? video : photo);
+    const type = isMov ? "video/quicktime" : isVideo ? "video/mp4" : "image/png";
     if (req.headers.range) {
       const size = Math.min(512, bytes.length);
       res.writeHead(206, { "Content-Type": type, "Content-Length": size, "Content-Range": "bytes 0-" + (size - 1) + "/" + bytes.length });
@@ -85,6 +93,19 @@ const server = createServer((req, res) => {
     return setTimeout(() => res.end(bytes.subarray(40)), 2900);
   }
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  if (path === "/ig/directcase/reels/") {
+    return res.end("<!doctype html><main>" + ["Refresh3", "Html3"].map(code =>
+      '<a href="/ig/directcase/reel/' + code + '/"><img width="140" height="140" src="/media/photo.png"></a>'
+    ).join("") + "</main>");
+  }
+  const directPost = path.match(/^\/ig\/directcase\/reel\/(Refresh3|Html3)\/$/)?.[1];
+  if (directPost) {
+    if (directPost === "Refresh3") autoRefreshPages++;
+    const source = directPost === "Html3" ? "/media/error-page.mp4" :
+      autoRefreshAttempts ? "/media/fresh.mov" : "/media/auto-expired.mp4";
+    return res.end(`<!doctype html><link rel="canonical" href="${origin}${path}">
+      <script type="application/json">${JSON.stringify({ code: directPost, media_type: 2, video_url: source })}</script>`);
+  }
   if (path === "/ig/serialcase/reels/") {
     return res.end("<!doctype html><main>" + [...serialVideos.keys()].map(code =>
       '<a href="/ig/serialcase/reel/' + code + '/"><img width="140" height="140" src="/media/photo.png"></a>'
@@ -585,6 +606,19 @@ try {
   await fileWhenReady(join(serialFolder, "post_last3_1_video.mp4"), serialVideos.get("Last3"));
   assert.deepEqual((await readdir(serialFolder)).sort(), ["post_first3_1_video.mp4", "post_last3_1_video.mp4"]);
 
+  const direct = await open(origin + "/ig/directcase/reels/");
+  await waitUntil(async () => (await overlayValue(direct, "#mh-summary"))?.includes("2 publicações"), "direct video profile");
+  await clickOverlay(direct, "#mh-toggle");
+  await clickOverlay(direct, "#mh-select-all");
+  await clickOverlay(direct, "#mh-download-selected");
+  const directFolder = join(downloadPath, "Mouse Hot", "Instagram", "directcase");
+  await fileWhenReady(join(directFolder, "post_refresh3_1_video.mov"), mov);
+  await waitUntil(async () => /O servidor retornou text\/html/.test(await overlayValue(direct, "#mh-jobs") || ""),
+    "actual response reports HTML as failed");
+  assert.deepEqual(await readdir(directFolder), ["post_refresh3_1_video.mov"]);
+  assert.equal(autoRefreshAttempts, 1, "expired URL was tried once");
+  assert.equal(autoRefreshPages, 2, "publication was fetched initially and once after interruption");
+
   const vault = await open(origin + "/ig/vault/");
   await waitUntil(async () => (await overlayValue(vault, "#mh-summary"))?.includes("3 publicações"), "profile sees three previews");
   await waitUntil(async () => await overlayValue(vault, "header img", "naturalWidth") > 0, "logo loads in the overlay");
@@ -598,9 +632,9 @@ try {
   const folder = join(downloadPath, "Mouse Hot", "Instagram", "vault");
   await fileWhenReady(join(folder, "post_solo3_1_video.mp4"), video);
   assert.ok(expiredVideoAttempts > 0, "the preferred URL expired");
-  assert.ok(interruptedVideoAttempts > 0, "the next URL passed the probe but failed its Chrome download");
-  assert.ok(rejectedRangeAttempts > 0, "the usable CDN URL rejects a Range probe");
-  assert.ok(ordinaryVideoRequests >= 2, "the worker verified and Chrome downloaded the file using ordinary GETs");
+  assert.ok(interruptedVideoAttempts > 0, "the next URL failed its Chrome download");
+  assert.equal(rejectedRangeAttempts, 0, "no Range preflight was made");
+  assert.equal(ordinaryVideoRequests, 1, "only the full native download was requested");
   assert.equal(await evaluate(vault, "location.pathname"), "/ig/vault/", "single download keeps the profile open");
 
   await clickOverlay(vault, "#mh-select-all");

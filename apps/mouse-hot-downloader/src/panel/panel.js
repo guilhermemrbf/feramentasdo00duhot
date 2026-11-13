@@ -2,7 +2,7 @@ const fixture = typeof __MOUSE_HOT_FIXTURE__ !== "undefined" && __MOUSE_HOT_FIXT
 const testTabId = fixture ? Number(new URLSearchParams(location.search).get("fixtureTabId")) : null;
 const $ = (id) => document.getElementById(id);
 const labels = {
-  queued: "Aguardando", starting: "Verificando arquivo", running: "Baixando",
+  queued: "Aguardando", starting: "Preparando download", running: "Baixando",
   paused: "Pausado", done: "Salvo", failed: "Falhou", cancelled: "Cancelado", review: "Confira no Chrome",
 };
 const terminal = new Set(["done","failed","cancelled","review"]);

@@ -8,7 +8,11 @@ const panelUrl = chrome.runtime.getURL("src/panel/index.html");
 const current = async (tabId) => (await chrome.storage.session.get(captureKey(tabId)))[captureKey(tabId)];
 const persist = (tabId, state) => chrome.storage.session.set({ [captureKey(tabId)]: state });
 const tell = (tabId, message, documentId) => chrome.tabs.sendMessage(tabId, message, documentId ? { documentId } : {}).catch(() => {});
-const queue = makeQueue((tabId, key, label, active) => tell(tabId, { type: "capture:state", key, label, active }));
+const queue = makeQueue(
+  (tabId, key, label, active) => tell(tabId, { type: "capture:state", key, label, active }),
+  ({ tabId, documentId, item }) => tell(tabId, { type: "capture:refresh-video", postUrl: item.postUrl,
+    index: item.index, handle: item.handle }, documentId),
+);
 const runQueue = () => void queue.start().catch(() => {});
 const captureLocks = new Map();
 function sameInstagramPost(a, b) {
@@ -170,7 +174,7 @@ async function command(id, state, message) {
       const wanted = new Set(explicit ? message.keys.slice(0, 350) : message.key ? [message.key] : state.selected);
       const items = state.items.filter(i => i.source && wanted.has(i.key));
       if (!items.length) throw new Error("Selecione uma mídia com arquivo direto.");
-      const result = await queue.enqueue(items, id, { repeat: explicit && message.repeat === true });
+      const result = await queue.enqueue(items, id, { repeat: explicit && message.repeat === true, documentId: state.documentId });
       if (!result.added && !explicit) throw new Error(result.full ? "A fila está cheia." :
         "Os itens selecionados já estão na fila ou no histórico.");
       state.selected = state.selected.filter(k => !wanted.has(k));

@@ -1,10 +1,11 @@
-import { classify, filePath, verifyMedia } from "../core/media.js";
+import { classify, directVideoSources, filePath, verifyMedia } from "../core/media.js";
 
 const key = "mouse-hot.queue.v1";
 const busy = new Set(["starting", "running", "pausing"]);
 const holdsSlot = (job) => busy.has(job.status) || job.status === "paused";
 const retryable = new Set(["NETWORK_TIMEOUT", "NETWORK_DISCONNECTED", "NETWORK_FAILED",
   "SERVER_UNREACHABLE", "SERVER_FAILED"]);
+const expiredSource = new Set(["SERVER_FORBIDDEN", "SERVER_UNAUTHORIZED", "SERVER_BAD_CONTENT", "SERVER_FAILED"]);
 const terminal = new Set(["done", "cancelled", "failed", "review"]);
 const withBytes = (j) => ({ ...j, item: { ...j.item, source: undefined, thumb: undefined, alternates: undefined } });
 const own = (d) => d?.byExtensionId === chrome.runtime.id;
@@ -15,12 +16,12 @@ function matchesDownloadPath(filename, path) {
     normalized.replace(/ \([1-9]\d*\)(?=\.[^./]+$)/, "").endsWith(requested);
 }
 const labels = {
-  queued: "Aguardando", starting: "Verificando arquivo…", running: "Baixando",
+  queued: "Aguardando", starting: "Preparando download…", running: "Baixando",
   paused: "Pausado", pausing: "Pausando…", done: "Salvo no computador",
   failed: "Não foi possível baixar", cancelled: "Cancelado", review: "Confira no Chrome",
 };
 export function queueLabel(job) { return labels[job.status] || job.status; }
-export function makeQueue(notify) {
+export function makeQueue(notify, refreshVideo = async () => []) {
   let jobs, serial = Promise.resolve();
   const exclusive = (run) => {
     const work = serial.then(async () => {
@@ -65,6 +66,17 @@ export function makeQueue(notify) {
     state(job, "queued", "Tentando outra versão do vídeo.");
     return true;
   }
+  async function renewVideoSource(job) {
+    if (job.item.platform !== "instagram" || job.item.kind !== "video" || job.sourceRefreshed || !job.documentId) return false;
+    job.sourceRefreshed = true;
+    await save();
+    const sources = await refreshVideo(job).catch(() => []);
+    const fresh = directVideoSources(Array.isArray(sources) ? sources : [], job.item.platform)
+      .filter(url => url !== job.item.source);
+    if (!fresh.length) return false;
+    job.item.alternates = fresh;
+    return nextVideoSource(job);
+  }
   async function ingest(job, d) {
     if (!own(d)) return;
     job.received = d.bytesReceived || 0;
@@ -83,13 +95,27 @@ export function makeQueue(notify) {
       return state(job, "review", "O destino mudou. Confira esta transferência no Chrome.");
     }
     job.canResume = !!d.canResume;
-    if (d.state === "complete") return state(job, "done");
+    if (d.state === "complete") {
+      const mime = (d.mime || "").split(";")[0].trim().toLowerCase();
+      if (job.item.kind === "video" && mime && !mime.startsWith("video/") &&
+          !["application/octet-stream", "binary/octet-stream", "application/mp4"].includes(mime)) {
+        job.canResume = false;
+        try {
+          await chrome.downloads.removeFile(d.id);
+        } catch {
+          return state(job, "review", "O servidor não entregou um vídeo. Confira o arquivo no Chrome.");
+        }
+        return state(job, "failed", "O servidor retornou " + mime + " em vez do vídeo.");
+      }
+      return state(job, "done");
+    }
     if (d.state === "in_progress") {
       return state(job, d.paused ? "paused" : "running", d.danger && !["safe","accepted"].includes(d.danger)
         ? "Confira o aviso de segurança em chrome://downloads." : "");
     }
     if (d.error === "USER_CANCELED") return state(job, "cancelled");
     if ((d.error?.startsWith("SERVER_") || d.error?.startsWith("NETWORK_")) && nextVideoSource(job)) return;
+    if (expiredSource.has(d.error) && await renewVideoSource(job)) return;
     if (retryable.has(d.error) && job.attempts < 3 && job.item.source) {
       job.downloadId = null;
       job.next = Date.now() + 30000 * job.attempts;
@@ -106,7 +132,7 @@ export function makeQueue(notify) {
         else state(j, "review", "O Chrome não localizou a transferência. Confira antes de repetir.");
       } else if (j.status === "starting") {
         if (!j.filename) {
-          state(j, "queued", "Validação retomada.");
+          state(j, "queued", "Preparação retomada.");
           continue;
         }
         const matches = (await chrome.downloads.search({
@@ -125,25 +151,25 @@ export function makeQueue(notify) {
     await save();
   }
   async function launch(job) {
-    // Mark validation separately from the journal of the browser call.
+    // Persist the destination before asking Chrome to start the transfer.
     job.filename = "";
     job.attempts++;
     job.received = job.total = 0;
     state(job, "starting");
     await save();
     let path;
-    while (!path) {
-      try {
-        path = filePath(job.item, await verifyMedia(job.item));
-      } catch (error) {
-        if (!nextVideoSource(job)) {
-          state(job, "failed", error.message);
-          await save();
-          return;
-        }
-        state(job, "starting", "Verificando outra versão do vídeo…");
-        await save();
-      }
+    try {
+      const { source, platform, kind } = job.item;
+      const invalid = classify(source, platform);
+      if (invalid) throw new Error(invalid);
+      const extension = kind === "video"
+        ? new URL(source).pathname.match(/\.(mp4|mov|webm)$/i)?.[1].toLowerCase() || "mp4"
+        : await verifyMedia(job.item);
+      path = filePath(job.item, extension);
+    } catch (error) {
+      state(job, "failed", error.message);
+      await save();
+      return;
     }
     job.filename = path;
     await save();
@@ -198,7 +224,7 @@ export function makeQueue(notify) {
       }
       return jobs.map(withBytes).reverse();
     }),
-    enqueue: (items, tabId, { repeat = false } = {}) => run(async () => {
+    enqueue: (items, tabId, { repeat = false, documentId } = {}) => run(async () => {
       let added = 0, existing = 0, full = 0;
       let active = jobs.filter(j => !terminal.has(j.status)).length;
       for (const item of items) {
@@ -207,7 +233,7 @@ export function makeQueue(notify) {
         if (!item.source) continue;
         if (prior) { existing++; continue; }
         if (active >= 350) { full++; continue; }
-        jobs.push({ id: crypto.randomUUID(), item, tabId, status: "queued", updated: Date.now(),
+        jobs.push({ id: crypto.randomUUID(), item, tabId, documentId, status: "queued", updated: Date.now(),
           attempts: 0, received: 0, total: 0, downloadId: null, message: "" });
         added++;
         active++;
@@ -245,6 +271,7 @@ export function makeQueue(notify) {
       } else if (command === "retry" && ["failed","review"].includes(j.status) && j.item.source) {
         j.downloadId = null;
         j.attempts = 0;
+        j.sourceRefreshed = false;
         j.next = 0;
         state(j, "queued");
       } else throw new Error("Essa ação não está disponível para este download.");

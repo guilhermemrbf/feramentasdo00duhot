@@ -37,7 +37,7 @@ p { margin:7px 0 0; overflow-wrap:anywhere; }
 .job progress { max-width:63px; height:6px; accent-color:#ffc889; }
 `;
 const active = new Set(["queued", "starting", "running", "pausing", "paused"]);
-const labels = { done:"Salvo", failed:"Falhou", running:"Baixando", paused:"Pausado", starting:"Verificando",
+const labels = { done:"Salvo", failed:"Falhou", running:"Baixando", paused:"Pausado", starting:"Preparando",
   queued:"Na fila", cancelled:"Cancelado", review:"Confira no Chrome" };
 
 export function makeOverlay(send, fixture, runDownload) {

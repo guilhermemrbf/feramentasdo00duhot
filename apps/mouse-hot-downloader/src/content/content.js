@@ -95,10 +95,30 @@ function start() {
     void overlay.refresh();
   }
 
-  chrome.runtime.onMessage.addListener((message, sender) => {
+  async function refreshVideo({ postUrl, index, handle }) {
+    const start = getContext();
+    const post = pageInfo(postUrl);
+    if (post?.platform !== "instagram" || post.surface !== "post" ||
+        start?.page.platform !== "instagram" || new URL(postUrl).origin !== location.origin) return [];
+    const samePublication = () => {
+      const current = getContext();
+      return current?.scope === start.scope &&
+        (current.page.surface === "profile" ? current.page.handle === handle : current.page.id === post.id);
+    };
+    if (!samePublication()) return [];
+    const items = await resolveInstagramPost(postUrl);
+    const asset = items.find(item => item.kind === "video" && item.index === index);
+    return samePublication() && asset ? [asset.source, ...(asset.alternates || [])] : [];
+  }
+
+  chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (sender.id !== chrome.runtime.id) return;
     if (message.type === "capture:scroll") scroll.command(message.command);
     if (message.type === "capture:state") void overlay.refresh();
+    if (message.type === "capture:refresh-video") {
+      void refreshVideo(message).then(respond, () => respond([]));
+      return true;
+    }
   });
   const observer = new MutationObserver(schedule);
   observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true,
