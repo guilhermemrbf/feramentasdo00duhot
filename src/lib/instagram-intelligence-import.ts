@@ -1,6 +1,10 @@
 export const PROFILE_LIMIT = 1_000;
 export const IMPORT_LIMIT = 150_000;
 
+export function instagramProfileUrl(username: string) {
+  return "https://www.instagram.com/" + username + "/";
+}
+
 const reserved = new Set([
   "about",
   "accounts",

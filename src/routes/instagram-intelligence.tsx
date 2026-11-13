@@ -178,13 +178,13 @@ function PrivateBatches({ userId }: { userId: string }) {
             value={text}
             maxLength={IMPORT_LIMIT + 1}
             disabled={busy}
-            placeholder="@perfil1 ou https://www.instagram.com/perfil1/"
+            placeholder={"https://www.instagram.com/perfil1/\nhttps://www.instagram.com/perfil2/"}
             aria-describedby="intelligence-import-help"
             onChange={(e) => setText(e.target.value)}
           />
         </label>
         <div id="intelligence-import-help" className="space-y-1 text-sm text-muted-foreground">
-          <p>Separe por linha, vírgula ou ponto e vírgula. Limite de 1.000 perfis distintos.</p>
+          <p>Cole a lista em texto, com um link por linha. Até 1.000 perfis distintos por lote.</p>
           {parsed.error === "size" && (
             <p role="alert">A lista é longa demais. Divida a entrada em lotes menores.</p>
           )}

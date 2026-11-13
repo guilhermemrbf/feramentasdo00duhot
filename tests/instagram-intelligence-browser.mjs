@@ -135,8 +135,29 @@ try {
   );
   await page.goto(web + "/instagram-intelligence");
   await page.getByLabel("Nome do lote").fill("Validação local");
-  await page.getByLabel("Links de perfil ou @usuários").fill("@perfil_teste");
+  await page
+    .getByLabel("Links de perfil ou @usuários")
+    .fill(
+      [
+        "https://www.instagram.com/perfil_teste/?igsh=fixture",
+        "https://www.instagram.com/segundo_perfil/",
+        "@Perfil_Teste",
+      ].join("\n"),
+    );
   await page.getByRole("button", { name: "Salvar lote" }).click();
+  await page.getByLabel("Abrir @segundo_perfil no Instagram").waitFor();
+  const [links] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Baixar todos os links (.txt)" }).click(),
+  ]);
+  assert.equal(
+    await readFile(await links.path(), "utf8"),
+    [
+      "https://www.instagram.com/perfil_teste/",
+      "https://www.instagram.com/segundo_perfil/",
+      "",
+    ].join("\n"),
+  );
   const publishedAt = new Date(Date.now() - 24 * 3600000).toISOString();
   await page.getByLabel("Arquivo de métricas autorizadas").setInputFiles({
     name: "metricas-autorizadas.json",

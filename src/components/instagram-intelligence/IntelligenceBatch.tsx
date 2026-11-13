@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { instagramProfileUrl } from "@/lib/instagram-intelligence-import";
 import {
   enqueueIntelligenceConnected,
   enqueueIntelligenceImport,
@@ -334,6 +335,21 @@ export function IntelligenceBatch({
           <Button
             variant="outline"
             size="sm"
+            disabled={!results.data?.length}
+            onClick={() => {
+              const links = (results.data ?? []).map((row) => instagramProfileUrl(row.username));
+              downloadFile(
+                links.join("\n") + "\n",
+                "text/plain;charset=utf-8",
+                "links-instagram.txt",
+              );
+            }}
+          >
+            Baixar todos os links (.txt)
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             disabled={!rows.length}
             onClick={() =>
               downloadFile(
@@ -409,6 +425,15 @@ export function IntelligenceBatch({
                       ) : (
                         <span>@{row.username}</span>
                       )}
+                      <a
+                        className="ml-2 text-xs text-primary underline"
+                        href={instagramProfileUrl(row.username)}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={"Abrir @" + row.username + " no Instagram"}
+                      >
+                        Abrir link
+                      </a>
                     </td>
                     <td>
                       {statuses[row.state]}
