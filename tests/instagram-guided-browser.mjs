@@ -28,7 +28,7 @@ const api=http.createServer(async(req,res)=>{
  res.end(JSON.stringify(body));
 });
 await new Promise(r=>api.listen(4385,'127.0.0.1',r));
-const env={...process.env,VITE_SUPABASE_URL:apiUrl,VITE_SUPABASE_PUBLISHABLE_KEY:'fixture-anon',SUPABASE_URL:apiUrl,SUPABASE_PUBLISHABLE_KEY:'fixture-anon',SUPABASE_SERVICE_ROLE_KEY:'fixture-service',APP_BASE_URL:web};
+const env={...process.env,VITE_SUPABASE_URL:apiUrl,VITE_SUPABASE_PUBLISHABLE_KEY:'fixture-anon',SUPABASE_URL:apiUrl,SUPABASE_PUBLISHABLE_KEY:'fixture-anon',SUPABASE_SERVICE_ROLE_KEY:'fixture-service',APP_BASE_URL:web,META_APP_ID:'fixture-id',META_APP_SECRET:'fixture-secret',META_GRAPH_API_VERSION:'v24.0'};
 const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','4384'],{env,stdio:['ignore','pipe','pipe'],windowsHide:true});
 let output='';vite.stdout.on('data',x=>output+=x);vite.stderr.on('data',x=>output+=x);
 let browser;
@@ -56,6 +56,7 @@ try{
  await page.screenshot({path:'.superpowers/sdd/2026-11-13-instagram-guided-automation/desktop.png',fullPage:true});
  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
  await page.screenshot({path:'.superpowers/sdd/2026-11-13-instagram-guided-automation/mobile.png',fullPage:true});
+ const isolated=await browser.newContext(); const resultPage=await isolated.newPage(); await resultPage.goto(web+'/api/instagram/oauth/callback?error=access_denied'); await resultPage.getByText(/autoriza.*cancelada/).waitFor(); assert.equal(await resultPage.getByRole('button',{name:'Continuar com Google'}).count(),0); await isolated.close();
  assert.deepEqual(errors,[]);console.log('PASS: isolated-login setup, 20 account-owned Reels at 10/day, Stories review gate, confirmed RPC, responsive layout; fixtures only');
 }catch(e){console.error(e.message);console.error('API calls:',[...new Set(calls)].join(','));console.error(output.slice(-1500));process.exitCode=1;}
 finally{await browser?.close();vite.kill();api.closeAllConnections();await new Promise(r=>api.close(r));}

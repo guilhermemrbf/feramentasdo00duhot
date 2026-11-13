@@ -1,36 +1,37 @@
 # Continuidade — Instagram unificado
-Atualizado: 2026-11-13. Ainda em desenvolvimento, NÃO publicado.
+Atualizado em 2026-11-13. Implementação validada; integração/publicação em andamento.
 
-## Onde
+## Localização
 Checkout: C:/Users/User/AppData/Local/Temp/00duhot-mouse-hot-v3
-Branch: feat/instagram-guided-automation, base origin/main 678feed.
-Plano: docs/superpowers/plans/2026-11-13-instagram-guided-automation.md
-Ledger: .superpowers/sdd/2026-11-13-instagram-guided-automation/progress.md
+Branch: feat/instagram-guided-automation, base main 678feed.
+Plano: docs/superpowers/plans/2026-11-13-instagram-guided-automation.md.
+Projeto Lovable: 03560931-5f6a-41e1-a222-0510d1828a23.
+GitHub: guilhermemrbf/feramentasdo00duhot.
 
-## Pedido
-Conexão de Instagram em Chrome isolado por tentativa, unificar Hot Profiles e Automate Post; biblioteca separada por conta, legenda/hashtags/capa/1–10 horários por dia, revisar Stories antes de ativar. Não publicar conteúdo real durante testes. Sem perguntas de rotina. Manter continuidade para outro agente.
+## Implementado
+- Menu unificado no Automatic Post, favoritos antigos Hot Profiles convertidos. URL antiga redireciona a contas; mode=local/cloud preservados.
+- Conectar Conta usa Hot Profiles autenticado em loopback e abre Chrome/Edge visível com diretório novo por tentativa. Cookie temporário OAuth transferido, sem sessão pessoal do navegador/app. Uma janela por vez.
+- Retorno OAuth apresenta sucesso/falha em página pública estática segura, sem exigir login MauseHot. Corrigido na revisão independente.
+- Conta → biblioteca própria → legenda/hashtags/capa/1–10 horários → Stories → checklist → ativação. Padrão 10 Reels/dia, sem repetir vídeos.
+- RPC schedule_reviewed_instagram_reels valida papel no workspace, conta conectada, mídia pertencente à conta, datas, limite por dia, Stories e idempotência.
+- Conector distribuível: public/hot-profiles-connector.zip.
 
-## Feito, ainda sem commit
-- Lido PDF: criação/configuração de contas, 10 Reels + 1 Story com link + 1 post/dia. Implementação segue pedido de conectar contas existentes. Não constrói signup automático.
-- FreeLLMAPI ask e health falharam localhost:31415; seguir sem esse serviço.
-- Conector POST /v1/instagram-login validado por origem/token, perfil Chrome único visível, cookie OAuth temporário; sem copiar sessão do app ou Instagram.
-- Dois testes login RED→GREEN, um teste revisão RED→GREEN.
-- Novo RPC SQL para validar conta/mídia/Stories/limite diário e inserir fila atomicamente.
-- Cards de passos e revisão na interface; dependem de testes e refinamentos.
+## Evidências
+135/135 testes, TypeScript e build passaram. PGlite comprovou isolamento, idempotência, Stories de outra conta, horários vencidos, limite diário e histórico não relacionado. Chrome real: 2 perfis separados, cookie OAuth presente e cookie anterior ausente. Playwright: 20 Reels da conta A, 10/dia, biblioteca B excluída, gate de Stories, confirmação RPC, sem overflow mobile e callback negado sem Google login. Tudo com fixtures locais, nenhuma publicação na Meta.
 
-## Próximo
-1. Compilação TS em execução, corrigir erros.
-2. Validar SQL PGlite usando deps C:/Users/User/AppData/Local/Temp/mausehot-pg-intelligence. Atenção: has_workspace_role usa workspace_role[], status posts enum, ambos precisam casts corretos.
-3. Testar Chrome real só com fixture localhost, verificar cookie OAuth e isolamento; nenhuma conta real.
-4. E2E UI com mocks, suíte completa, build, gerar public/hot-profiles-connector.zip.
-5. Revisão independente de branch conforme executing-plans, corrigir importantes.
-6. Commit, GitHub e deploy Lovable autorizados previamente, sem usar chat Lovable. Aplicar nova migration só após passar nos testes. Não declarar produção pronta antes de verificar.
+## Revisão
+gpt-6-astra indisponível por cota; gpt-6.1-terra realizou a revisão final. Um achado importante (callback oculto pelo login) corrigido com teste RED→GREEN e suíte verde. Menor adiado: texto do catálogo diz programar Reels e Stories; fluxo e documentação esclarecem que Stories com link são lembretes manuais.
 
-## Decisões
-Manter object storage existente, sem migrar para Drive. Stories com link continuam preparo e lembretes manuais; não dizer que link clicável publica via API. Usar novo contexto por login, uma janela por vez, fechar antes da próxima. Não tocar em sessões pessoais.
+## Decisões e limites
+- Object storage existente mantido, PostgreSQL só metadados; sem Drive. Custo: armazenamento atual permanece.
+- Não implementados signup automático nem post de feed diário do PDF; pedido principal conecta contas existentes.
+- Stories com link continuam preparo e lembretes para publicar manualmente; há checagem de ao menos um futuro, não cobertura diária automática do lote inteiro.
+- Editores podem ler status do worker; ativar worker continua restrito a owner/admin. Custo: status ativo/inativo visível aos editores.
+- Agendamentos e loops legados mantidos; novo checklist cobre a programação guiada. Custo: caminhos legados não recebem a nova revisão de Stories.
+- Diretórios de login ficam locais e não são reutilizados em outras tentativas; sem remover dados automaticamente. Custo: uso de disco e retenção local de sessões.
+- Não realizado login real Meta durante testes; permissões particulares de cada conta precisam ser concedidas pelo operador no fluxo normal.
+- FreeLLMAPI ask e health falharam em localhost:31415; trabalho continuou sem ele.
+- Checkout isolado existente reaproveitado; commits/push/deploy cobertos por autorização do usuário. Nenhuma postagem real autorizada por este teste.
 
-## Validação intermediária
-- 133/133 testes da suíte passaram fora do sandbox (servidores locais). TypeScript e build passaram.
-- SQL PGlite: gate, mídia de outra conta, Stories de outra conta, idempotência, limite e histórico em outros dias passaram. Casts dos enums corrigidos.
-- Chrome real: dois perfis descartáveis, cookie OAuth presente e cookie da conta anterior ausente, sem tocar navegador pessoal.
-- E2E encontrou gate de worker consultado apenas na aba Configurações; corrigido para consultar também ao abrir Agendar Reels, aguardando nova execução.
+## Finalização operacional
+Aplicar apenas a nova migration 20261113190000_instagram_reviewed_schedule.sql após confirmar a função inexistente (já conferido). Fazer push/PR/merge em main, aguardar sincronização Lovable e publicar pelo connector (nunca chat Lovable). Verificar versão de produção no navegador interno e download do conector. Registrar abaixo os IDs reais ao concluir.
