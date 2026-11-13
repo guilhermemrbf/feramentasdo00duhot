@@ -1,4 +1,5 @@
 import http from "node:http";
+import { createInstagramLoginManager } from "./instagram-login.mjs";
 import { performanceInfo, proxyKey } from "./policy.mjs";
 import { frameCache } from "./frame-cache.mjs";
 import { randomBytes, randomInt, timingSafeEqual } from "node:crypto";
@@ -68,6 +69,7 @@ let pairCode = String(randomInt(100000, 1000000));
 let pairExpires = Date.now() + 15 * 60 * 1000;
 let attempts = [];
 const sessions = new Map();
+const instagramLogin = createInstagramLoginManager({ directory });
 let shuttingDown = false;
 const equal = (a, b) => {
   if (typeof a !== "string") return false;
@@ -316,6 +318,11 @@ const server = http.createServer(async (request, response) => {
     const [version, collection, id, action] = segments;
     if (version !== "v1") fail("Operação não encontrada.", 404);
     const method = request.method;
+    if (collection === "instagram-login" && method === "POST") {
+      if (!origin || !origins.has(origin)) fail("Origem não autorizada.", 403);
+      send(response, 201, await instagramLogin.open(await body(request), origin));
+      return;
+    }
     if (collection === "state" && method === "GET") {
       send(response, 200, publicState());
       return;
@@ -511,6 +518,7 @@ renewCode.unref();
 const shutdown = async () => {
   if (shuttingDown) return;
   shuttingDown = true;
+  await instagramLogin.close();
   if (desktop) {
     try {
       await Promise.allSettled([...sessions.values()].map(stopSession));

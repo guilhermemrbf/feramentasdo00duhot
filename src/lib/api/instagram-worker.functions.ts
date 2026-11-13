@@ -22,7 +22,11 @@ export const getInstagramWorkerStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(workspaceInput)
   .handler(async ({ data, context }) => {
-    await requireWorkspaceAdmin(context, data.workspaceId);
+    const { data: allowed, error: accessError } = await context.supabase.rpc("has_workspace_role", {
+      target_workspace: data.workspaceId,
+      allowed_roles: ["owner", "admin", "editor"],
+    });
+    if (accessError || !allowed) throw new Error("Workspace access required.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const client = supabaseAdmin as unknown as SupabaseClient<PostkitDatabase>;
     const { data: active, error } = await client.rpc("instagram_worker_is_active");

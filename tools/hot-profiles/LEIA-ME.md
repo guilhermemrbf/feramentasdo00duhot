@@ -75,3 +75,9 @@ node bridge.mjs --max-sessions 2
 Só a sessão selecionada tem prévia atualizada. O seletor **Econômica / Equilibrada / Mais rápida** controla a frequência das capturas; não muda o Android ou a velocidade do site. Abas ocultas não pedem capturas. O conector compartilha capturas concorrentes e mantém somente o último frame em cache por 250 ms, invalidando-o após uma ação. Android usa capturas ADB, sem áudio; não é streaming de alta taxa de quadros. Ao encerrar o controle, o emulador permanece ligado. Feche instâncias sem uso pelo gerenciador para liberar CPU/RAM.
 
 Para um Android completo, instale e configure seu emulador, com virtualização ativada, e use uma instância independente por perfil. Criar um perfil no painel não cria nem baixa uma máquina Android. A alternativa mais leve é começar por perfis de navegador. Valide primeiro um ambiente e uma proxy antes de aumentar a simultaneidade.
+
+## Conectar Instagram no Automatic Post
+
+No painel unificado, clique em Conectar Conta. Digite o código do conector na primeira vez. Cada tentativa abre uma janela visível do Chrome (ou Edge) com diretório novo, sem copiar cookies de outras contas. Apenas o cookie temporário da transação OAuth é preparado; os tokens da Meta permanecem no backend. Feche a janela ao concluir antes de conectar a próxima conta. As contas do painel são atualizadas por até dez minutos enquanto você autoriza.
+
+Essa modalidade é diferente da transmissão headless dos ambientes legados. O navegador serve somente ao login; os Reels continuam sendo publicados pelo processador no servidor. Não é necessário manter 50 navegadores abertos para 50 contas. Atualize o ZIP completo, não apenas bridge.mjs.

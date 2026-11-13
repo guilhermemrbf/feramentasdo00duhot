@@ -154,7 +154,8 @@ const ALL_TOOLS = [
     name: "Automatic Post · Instagram",
     category: "Automação",
     mode: "Instagram Reels",
-    summary: "Organize vídeos, legendas e programações de Reels no Instagram.",
+    summary:
+      "Hot Profiles e Automatic Post juntos: conecte contas, organize bibliotecas e programe Reels e Stories.",
     input: "Vídeos, legendas, horários e conta profissional do Instagram autorizada no workspace.",
     output: "Programações salvas de Reels e acompanhamento das confirmações no Histórico.",
     steps: [
@@ -219,7 +220,7 @@ const ALL_TOOLS = [
   },
 ] as const;
 export const TOOL_CATALOG = ALL_TOOLS.filter(
-  (tool) => tool.id !== "tempMail" || Boolean(TEMP_MAIL_URL),
+  (tool) => tool.id !== "profiles" && (tool.id !== "tempMail" || Boolean(TEMP_MAIL_URL)),
 );
 export type Tool = (typeof ALL_TOOLS)[number];
 export type ToolPath = Tool["path"];
@@ -260,7 +261,11 @@ export function cleanPreferences(input: unknown): ToolPreferences {
   const clean = (value: unknown) =>
     Array.isArray(value)
       ? [
-          ...new Set(value.filter((id): id is string => typeof id === "string" && ids.has(id))),
+          ...new Set(
+            value
+              .filter((id): id is string => typeof id === "string" && ids.has(id))
+              .map((id) => (id === "profiles" ? "social" : id)),
+          ),
         ].slice(0, 9)
       : [];
   return { favorites: clean(data.favorites), recent: clean(data.recent) };

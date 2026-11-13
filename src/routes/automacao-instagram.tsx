@@ -34,6 +34,10 @@ import {
 } from "react";
 import { WorkspaceGate, type Workspace } from "@/components/postkit/WorkspaceGate";
 import { supabase } from "@/integrations/supabase/client";
+import { InstagramLocalLogin } from "@/components/postkit/InstagramLocalLogin";
+import { InstagramAutomationReview } from "@/components/postkit/InstagramAutomationReview";
+import { reviewAutomation, type StoriesChoice } from "@/lib/instagram-automation-review";
+import { bridgeRequest, HOT_CONNECTION_KEY, type HotConnection } from "@/lib/hot-profiles";
 import { startInstagramOAuth } from "@/lib/api/instagram-oauth.functions";
 import type { InstagramAuthMode } from "@/lib/instagram-oauth.server";
 import {
@@ -74,7 +78,10 @@ export const Route = createFileRoute("/automacao-instagram")({
   head: () => ({
     meta: [
       { property: "og:title", content: "Automatic Post · Instagram — MauseHot" },
-      { property: "og:description", content: "Organize contas profissionais, vídeos, legendas e agendamentos de Reels." },
+      {
+        property: "og:description",
+        content: "Organize contas profissionais, vídeos, legendas e agendamentos de Reels.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { title: "Automatic Post · Instagram — MauseHot" },
@@ -245,7 +252,7 @@ function InstagramWorkspacePage({
   const [reviewPage, setReviewPage] = useState(0);
   const [quantity, setQuantity] = useState<number | null>(null);
   const [startDate, setStartDate] = useState(() => calendarDateInZone(workspace.timezone, 1));
-  const [times, setTimes] = useState("09:00, 13:00, 18:00");
+  const [times, setTimes] = useState(() => dailyReelTimes(10));
   const [intervalMinutes, setIntervalMinutes] = useState(120);
   const [notice, setNotice] = useState("");
   const [connectedAccounts, setConnectedAccounts] = useState<
@@ -256,6 +263,24 @@ function InstagramWorkspacePage({
   const [previewSettings, setPreviewSettings] = useState("");
   const [previewError, setPreviewError] = useState("");
   const [savingQueue, setSavingQueue] = useState(false);
+  const [showLocalLogin, setShowLocalLogin] = useState(false);
+  const [pendingLogin, setPendingLogin] = useState<{ mode: InstagramAuthMode; analytics: boolean }>(
+    { mode: "instagram_unified_login", analytics: false },
+  );
+  const [accountRefresh, setAccountRefresh] = useState(0);
+  const [loginWaiting, setLoginWaiting] = useState(false);
+  const [storiesChoice, setStoriesChoice] = useState<StoriesChoice>("");
+  const [storyReviewCount, setStoryReviewCount] = useState(0);
+  const [reviewConfirmed, setReviewConfirmed] = useState(false);
+  useEffect(() => {
+    if (!loginWaiting) return;
+    const interval = window.setInterval(() => setAccountRefresh((value) => value + 1), 5000);
+    const timeout = window.setTimeout(() => setLoginWaiting(false), 600000);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
+  }, [loginWaiting]);
   const [connecting, setConnecting] = useState<InstagramAuthMode | null>(null);
   const [workerActive, setWorkerActive] = useState<boolean | null>(null);
   const [activatingWorker, setActivatingWorker] = useState(false);
@@ -294,7 +319,7 @@ function InstagramWorkspacePage({
           );
         }
       });
-  }, [workspace.id]);
+  }, [workspace.id, accountRefresh]);
 
   useEffect(() => {
     let active = true;
@@ -414,14 +439,30 @@ function InstagramWorkspacePage({
     setConnecting(mode);
     setNotice("");
     try {
-      const { authorizationUrl } = await startInstagramOAuth({
+      setPendingLogin({ mode, analytics });
+      const saved = sessionStorage.getItem(HOT_CONNECTION_KEY);
+      if (!saved) {
+        setShowLocalLogin(true);
+        return;
+      }
+      const connection = JSON.parse(saved) as HotConnection;
+      const authorization = await startInstagramOAuth({
         data: { workspaceId: workspace.id, mode, analytics },
       });
-      window.location.assign(authorizationUrl);
-    } catch {
+      await bridgeRequest(connection, "/v1/instagram-login", authorization);
+      setShowLocalLogin(false);
+      setLoginWaiting(true);
       setNotice(
-        "Não foi possível abrir a tela de autorização. Atualize a página e tente conectar novamente.",
+        "Uma janela nova foi aberta. Entre no Instagram e autorize o acesso. As contas serão atualizadas aqui; feche a janela de login antes de conectar a próxima conta.",
       );
+    } catch (error) {
+      setShowLocalLogin(true);
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível abrir o navegador isolado. Confira o conector atualizado.",
+      );
+    } finally {
       setConnecting(null);
     }
   };
@@ -638,6 +679,9 @@ function InstagramWorkspacePage({
   const chooseReelAccount = (id: string) => {
     if (id === selectedAccountId || libraryBusy) return;
     setSelectedAccountId(id);
+    setStoriesChoice("");
+    setStoryReviewCount(0);
+    setReviewConfirmed(false);
     setSourceFolder("");
     setSelectedVideoIds(null);
     setSingleVideoId("");
@@ -799,8 +843,28 @@ function InstagramWorkspacePage({
     }
   };
 
+  const reviewSignature = JSON.stringify([currentSettings, queue, storiesChoice]);
+  useEffect(() => {
+    setReviewConfirmed(false);
+  }, [reviewSignature]);
+  const activationErrors = reviewAutomation({
+    accountId: selectedAccountId,
+    connected: !!reelAccount,
+    videoCount: queue.length,
+    dailyCount: slotsPerDay,
+    previewCurrent: !!queue.length && !previewOutdated,
+    workerActive: workerActive === true,
+    stories: storiesChoice,
+    storyCount: storyReviewCount,
+    confirmed: reviewConfirmed,
+  });
+
   const saveQueue = async () => {
     if (savingQueue || queueSaved || previewOutdated) return;
+    if (activationErrors.length) {
+      setNotice(activationErrors.join(" "));
+      return;
+    }
     if (
       queue.some(
         (post) =>
@@ -860,8 +924,12 @@ function InstagramWorkspacePage({
         );
         if (stored.error) throw stored.error;
       }
-      const { error } = await postkit.from("posts").upsert(
-        queue.map((post) => ({
+      const { error } = await postkit.rpc("schedule_reviewed_instagram_reels", {
+        p_workspace_id: workspace.id,
+        p_account_id: selectedAccountId,
+        p_stories: storiesChoice,
+        p_confirmed: reviewConfirmed,
+        p_posts: queue.map((post) => ({
           idempotency_key: post.id,
           workspace_id: workspace.id,
           instagram_account_id: post.accountId,
@@ -875,13 +943,18 @@ function InstagramWorkspacePage({
           cover_asset_id: coverId,
           first_comment: firstComment.trim() || null,
         })),
-        { onConflict: "idempotency_key", ignoreDuplicates: true },
-      );
+      });
       if (error) {
         setNotice(
-          error.message.includes("reel_media_account_mismatch")
-            ? "Um vídeo não está vinculado a esta conta. Atualize a Biblioteca e gere uma nova prévia."
-            : "Não foi possível salvar o agendamento. Confira a conta e os vídeos e tente novamente.",
+          error.message.includes("stories_required")
+            ? "Prepare os Stories desta conta antes de ativar."
+            : error.message.includes("daily_limit_exceeded")
+              ? "Esta conta já tem Reels nesses dias. O total não pode passar de 10 por dia; confira a fila."
+              : error.code === "PGRST202"
+                ? "A revisão de agendamentos ainda precisa ser ativada no servidor."
+                : error.message.includes("reel_media_account_mismatch")
+                  ? "Um vídeo não está vinculado a esta conta. Atualize a Biblioteca e gere uma nova prévia."
+                  : "Não foi possível salvar o agendamento. Confira a conta e os vídeos e tente novamente.",
         );
         return;
       }
@@ -898,7 +971,7 @@ function InstagramWorkspacePage({
   };
 
   useEffect(() => {
-    if (tab !== "config") return;
+    if (tab !== "config" && tab !== "fila") return;
     let current = true;
     void getInstagramWorkerStatus({ data: { workspaceId: workspace.id } })
       .then(({ active }) => {
@@ -1005,6 +1078,94 @@ function InstagramWorkspacePage({
           )}
         </header>
 
+        {showLocalLogin && (
+          <InstagramLocalLogin
+            onReady={() => void connectInstagram(pendingLogin.mode, pendingLogin.analytics)}
+            onClose={() => setShowLocalLogin(false)}
+          />
+        )}
+        {(["dashboard", "contas", "biblioteca", "fila", "stories"] as Tab[]).includes(tab) && (
+          <section
+            className="mt-4 rounded-xl border border-sky-400/20 bg-card p-4"
+            aria-label="Passo a passo por conta"
+          >
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">Configure uma conta por vez</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Cada Instagram tem seus próprios vídeos e sua própria programação.
+                </p>
+              </div>
+              <WorkspaceSelect
+                label="Conta em configuração"
+                value={selectedAccountId}
+                options={readyAccounts.map((a) => ({ value: a.id, label: `@${a.username}` }))}
+                onValueChange={chooseReelAccount}
+              />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+              {[
+                {
+                  title: "1. Conectar conta",
+                  text: "Abrir um login novo e isolado",
+                  target: "contas",
+                  ready: !!reelAccount,
+                },
+                {
+                  title: "2. Biblioteca de Reels",
+                  text: `${libraryVideos.length} vídeos desta conta`,
+                  target: "biblioteca",
+                  ready: libraryVideos.length > 0,
+                },
+                {
+                  title: "3. Configurar Reels",
+                  text: "Legenda, hashtags, capa e 1–10 por dia",
+                  target: "fila",
+                  ready: queue.length > 0 && !previewOutdated,
+                },
+                {
+                  title: "4. Revisar Stories",
+                  text: "Preparar biblioteca ou continuar sem",
+                  target: "stories",
+                  ready:
+                    storiesChoice === "skip" ||
+                    (storiesChoice === "planned" && storyReviewCount > 0),
+                },
+                {
+                  title: "5. Revisar e ativar",
+                  text: queueSaved ? "Programação salva" : "Conferir tudo antes de publicar",
+                  target: "fila",
+                  ready: queueSaved,
+                },
+              ].map((item) => (
+                <button
+                  key={item.title}
+                  type="button"
+                  onClick={() => {
+                    if (item.target === "biblioteca" && selectedAccountId)
+                      openAccountLibrary(selectedAccountId);
+                    else {
+                      if (item.target === "stories" && selectedAccountId)
+                        setStoryAccount({
+                          id: selectedAccountId,
+                          request: crypto.randomUUID(),
+                          productUrl: null,
+                        });
+                      setTab(item.target as Tab);
+                    }
+                  }}
+                  className={`rounded-lg border p-3 text-left ${item.ready ? "border-emerald-400/30 bg-emerald-400/5" : "border-border bg-background/40 hover:border-sky-400/50"}`}
+                >
+                  <strong className="block text-sm">
+                    {item.ready ? "✓ " : ""}
+                    {item.title}
+                  </strong>
+                  <span className="mt-1 block text-xs text-muted-foreground">{item.text}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
         {notice && (
           <div className="mt-4 flex items-start justify-between gap-3 rounded-md border border-border bg-secondary/50 px-4 py-3 text-sm">
             <span role="status">{notice}</span>
@@ -1985,6 +2146,32 @@ function InstagramWorkspacePage({
                       </button>
                     </div>
                   )}
+                  <InstagramAutomationReview
+                    workspaceId={workspace.id}
+                    accountId={selectedAccountId}
+                    username={reelAccount?.username ?? ""}
+                    choice={storiesChoice}
+                    onChoice={setStoriesChoice}
+                    onStoryCount={setStoryReviewCount}
+                    confirmed={reviewConfirmed}
+                    onConfirm={setReviewConfirmed}
+                    disabled={savingQueue || queueSaved}
+                    onStories={() => {
+                      setStoryAccount({
+                        id: selectedAccountId,
+                        request: crypto.randomUUID(),
+                        productUrl: null,
+                      });
+                      setTab("stories");
+                    }}
+                  />
+                  {!queueSaved && activationErrors.length > 0 && (
+                    <ul className="mt-3 space-y-1 text-xs text-amber-200">
+                      {activationErrors.map((error) => (
+                        <li key={error}>{error}</li>
+                      ))}
+                    </ul>
+                  )}
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-secondary/30 p-4">
                     <p className="max-w-xl text-xs leading-5 text-muted-foreground">
                       Confira contas, vídeos e horários. Salvar autoriza a programação deste lote; o
@@ -1994,6 +2181,7 @@ function InstagramWorkspacePage({
                       onClick={() => void saveQueue()}
                       disabled={
                         savingQueue ||
+                        activationErrors.length > 0 ||
                         queueSaved ||
                         previewOutdated ||
                         queue.some(
@@ -2011,7 +2199,7 @@ function InstagramWorkspacePage({
                         ? "Salvando…"
                         : queueSaved
                           ? "Agendamento salvo"
-                          : "Confirmar agendamento"}
+                          : "Ativar esta programação"}
                     </button>
                   </div>
                 </>

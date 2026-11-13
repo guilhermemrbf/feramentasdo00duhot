@@ -20,7 +20,7 @@ test("preferences discard stale routes and untrusted values", () => {
       favorites: ["telegram", "invalid", "telegram", null],
       recent: ["profiles", 5, "images"],
     }),
-    { favorites: ["telegram"], recent: ["profiles", "images"] },
+    { favorites: ["telegram"], recent: ["social", "images"] },
   );
   assert.deepEqual(cleanPreferences(null), { favorites: [], recent: [] });
 });
@@ -86,14 +86,12 @@ test("catalog finds Automatic Post and Hot Profiles through their Instagram feat
     "/mouse-hot-downloader",
     "/automacao-instagram",
     "/instagram-intelligence",
-    "/hot-profiles",
   ]);
   assert.deepEqual(searchTools("Reels").map((tool) => tool.path), [
     "/mouse-hot-downloader",
     "/automacao-instagram",
-    "/hot-profiles",
   ]);
-  assert.deepEqual(searchTools("Hot Profiles").map((tool) => tool.path), ["/hot-profiles"]);
+  assert.deepEqual(searchTools("Hot Profiles").map((tool) => tool.path), ["/automacao-instagram"]);
   assert.deepEqual(searchTools("TikTok").map((tool) => tool.path), ["/mouse-hot-downloader"]);
   assert.equal(findTool("/automacao-tiktok"), undefined);
   assert.deepEqual(cleanPreferences({ favorites: ["social"], recent: ["social"] }), {

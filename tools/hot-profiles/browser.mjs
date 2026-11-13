@@ -84,7 +84,7 @@ class CDP {
   }
 }
 
-export async function startBrowser(profile, directory, gateway, onClose, signal) {
+export async function startBrowser(profile, directory, gateway, onClose, signal, options = {}) {
   const binary = await findBrowser();
   if (!binary) fail("Instale Chrome ou Edge neste computador para iniciar um navegador.", 409);
   const userDirectory = path.join(directory, "browsers", profile.id);
@@ -94,7 +94,7 @@ export async function startBrowser(profile, directory, gateway, onClose, signal)
     `--user-data-dir=${userDirectory}`,
     `--remote-debugging-port=${port}`,
     "--remote-debugging-address=127.0.0.1",
-    "--headless=new",
+    ...(options.visible ? [] : ["--headless=new"]),
     "--no-first-run",
     "--no-default-browser-check",
     "--disable-background-networking",
@@ -103,7 +103,7 @@ export async function startBrowser(profile, directory, gateway, onClose, signal)
   ];
   if (gateway) args.push(`--proxy-server=http://127.0.0.1:${gateway.port}`);
   args.push("about:blank");
-  const child = spawn(binary, args, { windowsHide: true, stdio: "ignore" });
+  const child = spawn(binary, args, { windowsHide: !options.visible, stdio: "ignore" });
   let exited = false;
   child.once("error", () => {
     exited = true;
@@ -339,6 +339,10 @@ export async function startBrowser(profile, directory, gateway, onClose, signal)
   };
   try {
     const connection = await page();
+    for (const cookie of options.cookies || []) {
+      const result = await connection.send("Network.setCookie", cookie);
+      if (!result.success) throw new Error("Não foi possível preparar a autorização segura.");
+    }
     if (profile.startUrls[0]) await connection.send("Page.navigate", { url: profile.startUrls[0] });
     for (const url of profile.startUrls.slice(1)) await session.addTab(url);
     return session;

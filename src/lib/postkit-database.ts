@@ -67,9 +67,20 @@ export type PostkitDatabase = Omit<Database, "public"> & {
         }
       >;
     };
-    Functions: Omit<Database["public"]["Functions"],
+    Functions: Omit<
+      Database["public"]["Functions"],
       "save_instagram_unified_accounts" | "get_instagram_analytics" | "get_instagram_top_posts"
     > & {
+      schedule_reviewed_instagram_reels: {
+        Args: {
+          p_workspace_id: string;
+          p_account_id: string;
+          p_posts: Json;
+          p_stories: string;
+          p_confirmed: boolean;
+        };
+        Returns: number;
+      };
       save_instagram_unified_accounts: {
         Args: {
           p_workspace_id: string;

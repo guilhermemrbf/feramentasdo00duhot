@@ -6,7 +6,10 @@ export const Route = createFileRoute("/hot-profiles")({
   head: () => ({
     meta: [
       { property: "og:title", content: "Hot Profiles — MauseHot" },
-      { property: "og:description", content: "Prepare seus perfis profissionais e organize o conteúdo inicial para Instagram." },
+      {
+        property: "og:description",
+        content: "Prepare seus perfis profissionais e organize o conteúdo inicial para Instagram.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { title: "Hot Profiles — MauseHot" },
@@ -21,7 +24,7 @@ export const Route = createFileRoute("/hot-profiles")({
   }),
   beforeLoad: ({ search }) => {
     if (!search.mode)
-      throw redirect({ to: "/automacao-instagram", search: { tab: "perfis" }, replace: true });
+      throw redirect({ to: "/automacao-instagram", search: { tab: "contas" }, replace: true });
   },
   component: HotProfiles,
 });
