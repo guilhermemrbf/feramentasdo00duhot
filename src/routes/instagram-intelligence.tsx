@@ -7,7 +7,10 @@ import { IntelligenceBatch } from "@/components/instagram-intelligence/Intellige
 import { Button } from "@/components/ui/button";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
-import { createIntelligenceBatch, getIntelligenceBatches } from "@/lib/instagram-intelligence-data";
+import {
+  analyzeIntelligenceBatch,
+  getIntelligenceBatches,
+} from "@/lib/instagram-intelligence-data";
 import {
   IMPORT_LIMIT,
   PROFILE_LIMIT,
@@ -103,7 +106,6 @@ const dateLabel = new Intl.DateTimeFormat("pt-BR", {
 const inputClass = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
 
 function PrivateBatches({ userId }: { userId: string }) {
-  const [name, setName] = useState("");
   const [text, setText] = useState("");
   const [batchPage, setBatchPage] = useState(0);
   const [batch, setBatch] = useState<{ id: string; name: string }>();
@@ -119,25 +121,26 @@ function PrivateBatches({ userId }: { userId: string }) {
   });
 
   async function save() {
-    if (
-      saving.current ||
-      !name.trim() ||
-      !parsed.usernames.length ||
-      parsed.invalidLines.length ||
-      parsed.error
-    )
+    if (saving.current || !parsed.usernames.length || parsed.invalidLines.length || parsed.error)
       return;
     saving.current = true;
     setBusy(true);
     setFeedback(undefined);
     try {
-      const id = await createIntelligenceBatch(name.trim(), parsed.usernames);
-      setBatch({ id, name: name.trim() });
+      const { id, name, queued, awaiting_source } = await analyzeIntelligenceBatch(
+        parsed.usernames,
+      );
+      setBatch({ id, name });
       if (batchPage === 0) void batches.refetch();
       else setBatchPage(0);
-      setName("");
       setText("");
-      setFeedback({ message: `Lote salvo com ${parsed.usernames.length} perfil(is).` });
+      const messages = [];
+      if (queued) messages.push(`${queued} perfil(is) na fila de análise.`);
+      if (awaiting_source)
+        messages.push(
+          `${awaiting_source} perfil(is) sem fonte automática disponível. Adicione métricas autorizadas no lote para continuar.`,
+        );
+      setFeedback({ message: messages.join(" ") });
     } catch (error) {
       setFeedback({
         message: error instanceof Error ? error.message : "Não foi possível salvar.",
@@ -159,17 +162,6 @@ function PrivateBatches({ userId }: { userId: string }) {
         }}
       >
         <h2 className="text-lg font-semibold">Novo lote</h2>
-        <label className="block space-y-1 text-sm">
-          <span>Nome do lote</span>
-          <input
-            className={inputClass}
-            value={name}
-            maxLength={80}
-            disabled={busy}
-            required
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
         <label className="block space-y-1 text-sm">
           <span>Links de perfil ou @usuários</span>
           <textarea
@@ -214,14 +206,10 @@ function PrivateBatches({ userId }: { userId: string }) {
         <Button
           type="submit"
           disabled={
-            busy ||
-            !name.trim() ||
-            !parsed.usernames.length ||
-            !!parsed.error ||
-            !!parsed.invalidLines.length
+            busy || !parsed.usernames.length || !!parsed.error || !!parsed.invalidLines.length
           }
         >
-          {busy ? "Salvando…" : "Salvar lote"}
+          {busy ? "Enviando…" : "Analisar"}
         </Button>
         {feedback && <p role={feedback.error ? "alert" : "status"}>{feedback.message}</p>}
       </form>

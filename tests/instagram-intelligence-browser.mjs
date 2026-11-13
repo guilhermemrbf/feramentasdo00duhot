@@ -25,7 +25,7 @@ const chrome =
     : "/usr/bin/google-chrome");
 
 const rpc = {
-  create_instagram_intelligence_batch: ["p_name", "p_usernames"],
+  analyze_instagram_intelligence_batch: ["p_usernames"],
   list_instagram_intelligence_sources: [],
   list_instagram_intelligence_results: ["p_batch"],
   enqueue_instagram_intelligence_import: ["p_batch", "p_label", "p_items"],
@@ -62,15 +62,19 @@ const api = createServer(async (req, res) => {
       const keys = rpc[name];
       assert(keys, "RPC inesperado " + name);
       const params = keys.map((_, i) => "$" + (i + 1)).join(",");
-      const statement =
-        name === "list_instagram_intelligence_sources"
-          ? "select * from public.list_instagram_intelligence_sources()"
-          : "select public." + name + "(" + params + ") as value";
+      const statement = [
+        "list_instagram_intelligence_sources",
+        "analyze_instagram_intelligence_batch",
+      ].includes(name)
+        ? "select * from public." + name + "(" + params + ")"
+        : "select public." + name + "(" + params + ") as value";
       const { rows } = await tx.query(
         statement,
         keys.map((key) => body[key]),
       );
-      return name === "list_instagram_intelligence_sources" ? rows : rows[0].value;
+      if (name === "list_instagram_intelligence_sources") return rows;
+      if (name === "analyze_instagram_intelligence_batch") return rows[0];
+      return rows[0].value;
     });
     if (name === "enqueue_instagram_intelligence_import")
       await db.query("select private.process_instagram_intelligence_jobs(25)");
@@ -99,6 +103,7 @@ try {
   for (const file of [
     "20261112235500_instagram_intelligence_import.sql",
     "20261113130000_instagram_intelligence_processing.sql",
+    "20261113193000_instagram_intelligence_analyze.sql",
   ]) {
     await db.exec(
       await readFile(new URL("../supabase/migrations/" + file, import.meta.url), "utf8"),
@@ -134,7 +139,6 @@ try {
     { uid, token, now },
   );
   await page.goto(web + "/instagram-intelligence");
-  await page.getByLabel("Nome do lote").fill("Validação local");
   await page
     .getByLabel("Links de perfil ou @usuários")
     .fill(
@@ -144,7 +148,8 @@ try {
         "@Perfil_Teste",
       ].join("\n"),
     );
-  await page.getByRole("button", { name: "Salvar lote" }).click();
+  await page.getByRole("button", { name: "Analisar" }).click();
+  await page.getByText(/2 perfil\(is\) sem fonte automática disponível/).waitFor();
   await page.getByLabel("Abrir @segundo_perfil no Instagram").waitFor();
   const [links] = await Promise.all([
     page.waitForEvent("download"),
