@@ -170,16 +170,18 @@ const ALL_TOOLS = [
     path: "/instagram-intelligence",
     name: "Instagram Intelligence",
     category: "Planejamento",
-    mode: "Importação de perfis",
-    summary: "Cadastre e consulte lotes privados de até 1.000 perfis do Instagram.",
-    input: "Links de perfil ou nomes de usuário.",
-    output: "Uma lista de perfis sem duplicatas, guardada na sua conta.",
+    mode: "Análise de perfis",
+    summary:
+      "Analise lotes privados de até 1.000 perfis e compare potencial, desempenho e conformidade.",
+    input: "Perfis do Instagram e métricas de fontes autorizadas.",
+    output: "Ranking, fichas por Reel e relatórios com evidências.",
     steps: [
-      "Entre com Google.",
-      "Cole os perfis e confira a prévia.",
-      "Salve o lote e consulte os perfis cadastrados.",
+      "Entre com Google e crie um lote.",
+      "Selecione contas conectadas ou importe métricas autorizadas.",
+      "Revise as evidências e exporte os resultados.",
     ],
-    requirement: "O cadastro não confirma a existência dos perfis nem coleta métricas.",
+    requirement:
+      "A análise depende de métricas disponíveis e de revisão autorizada para classificar conteúdo e conformidade.",
   },
   {
     id: "funnels",
@@ -237,9 +239,7 @@ export function normalizeSearch(value: string) {
     .trim();
 }
 export function findTool(path: string) {
-  return TOOL_CATALOG.find(
-    (tool) => tool.path === path,
-  );
+  return TOOL_CATALOG.find((tool) => tool.path === path);
 }
 export function searchTools(query: string, category = "Todas") {
   const terms = normalizeSearch(query).split(/\s+/).filter(Boolean);

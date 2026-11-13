@@ -3,14 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell, PageIntro } from "@/components/AppShell";
+import { IntelligenceBatch } from "@/components/instagram-intelligence/IntelligenceBatch";
 import { Button } from "@/components/ui/button";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  createIntelligenceBatch,
-  getIntelligenceBatches,
-  getIntelligenceProfiles,
-} from "@/lib/instagram-intelligence-data";
+import { createIntelligenceBatch, getIntelligenceBatches } from "@/lib/instagram-intelligence-data";
 import {
   IMPORT_LIMIT,
   PROFILE_LIMIT,
@@ -78,7 +75,7 @@ function InstagramIntelligence() {
         <PageIntro
           eyebrow="LOTES PRIVADOS"
           title="Instagram Intelligence"
-          description="Organize até 1.000 perfis por lote. Nesta etapa você cadastra os perfis para análise futura."
+          description="Analise até 1.000 perfis por lote usando dados autorizados e revise as evidências antes de decidir."
         />
         {session === undefined ? (
           <p role="status">Verificando acesso…</p>
@@ -109,7 +106,6 @@ function PrivateBatches({ userId }: { userId: string }) {
   const [name, setName] = useState("");
   const [text, setText] = useState("");
   const [batchPage, setBatchPage] = useState(0);
-  const [profilePage, setProfilePage] = useState(0);
   const [batch, setBatch] = useState<{ id: string; name: string }>();
   const [feedback, setFeedback] = useState<{ message: string; error?: boolean }>();
   const saving = useRef(false);
@@ -137,7 +133,6 @@ function PrivateBatches({ userId }: { userId: string }) {
     try {
       const id = await createIntelligenceBatch(name.trim(), parsed.usernames);
       setBatch({ id, name: name.trim() });
-      setProfilePage(0);
       if (batchPage === 0) void batches.refetch();
       else setBatchPage(0);
       setName("");
@@ -249,7 +244,6 @@ function PrivateBatches({ userId }: { userId: string }) {
                 aria-pressed={item.id === batch?.id}
                 onClick={() => {
                   setBatch(item);
-                  setProfilePage(0);
                 }}
               >
                 <span className="block break-words font-semibold">{item.name}</span>
@@ -268,57 +262,8 @@ function PrivateBatches({ userId }: { userId: string }) {
         />
       </section>
 
-      {batch && (
-        <BatchProfiles userId={userId} batch={batch} page={profilePage} select={setProfilePage} />
-      )}
+      {batch && <IntelligenceBatch key={batch.id} userId={userId} batch={batch} />}
     </>
-  );
-}
-
-function BatchProfiles({
-  userId,
-  batch,
-  page,
-  select,
-}: {
-  userId: string;
-  batch: { id: string; name: string };
-  page: number;
-  select: (page: number) => void;
-}) {
-  const profiles = useQuery({
-    queryKey: ["intelligence-profiles", userId, batch.id, page],
-    queryFn: ({ signal }) => getIntelligenceProfiles(batch.id, page, signal),
-    gcTime: 0,
-    retry: false,
-  });
-  return (
-    <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-      <h2 className="break-words text-lg font-semibold">Perfis de {batch.name}</h2>
-      <p className="text-sm text-muted-foreground">
-        Cadastro concluído. Ainda sem coleta ou análise.
-      </p>
-      {profiles.isPending && <p role="status">Carregando perfis…</p>}
-      {profiles.isError && (
-        <QueryError error={profiles.error} retry={() => void profiles.refetch()} />
-      )}
-      <ol className="grid gap-2 text-sm sm:grid-cols-2">
-        {profiles.data?.items.map(({ position, username }) => (
-          <li key={position} className="flex items-center gap-2">
-            <span className="text-muted-foreground">{position}.</span>
-            <a
-              href={`https://www.instagram.com/${username}/`}
-              className="break-all text-primary underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              @{username}
-            </a>
-          </li>
-        ))}
-      </ol>
-      <Pagination label="perfis" page={page} hasMore={!!profiles.data?.hasMore} select={select} />
-    </section>
   );
 }
 
