@@ -30,8 +30,6 @@ import {
 } from "@/lib/tool-catalog";
 import { recordTool, useToolPreferences } from "@/lib/tool-preferences";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { TOOL_VISUALS } from "@/lib/tool-visuals";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export const TOOL_ICONS = {
@@ -135,13 +133,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Brand />
       </Link>
       <div className="flex-1 overflow-y-auto px-3 py-5">
-        <Button variant="ghost"
+        <button
           onClick={openSearch}
           className="mb-5 flex min-h-11 w-full items-center gap-2 rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-muted-foreground hover:border-primary hover:text-foreground"
         >
           <Search className="size-4" />
           Buscar ferramenta<kbd className="ml-auto text-[10px]">Ctrl K</kbd>
-        </Button>
+        </button>
         <nav aria-label="Navegação principal">
           <Link
             to="/"
@@ -165,7 +163,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </div>
       <div className="border-t border-border px-5 py-4 text-xs leading-5 text-muted-foreground">
-        <span className="block font-medium text-foreground">MauseHot</span>Da preparação à publicação.
+        <span className="block font-medium text-foreground">Seu centro de operação</span>Conteúdo,
+        preparação e automação.
       </div>
     </>
   );
@@ -181,13 +180,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex min-w-0 items-center gap-3">
             <Sheet open={mobile} onOpenChange={setMobile}>
               <SheetTrigger asChild>
-                <Button variant="ghost"
+                <button
                   type="button"
                   aria-label="Abrir menu de ferramentas"
                   className="grid size-11 shrink-0 place-items-center rounded-lg border border-border hover:border-primary hover:bg-accent lg:hidden"
                 >
                   <Menu className="size-5" aria-hidden />
-                </Button>
+                </button>
               </SheetTrigger>
               <SheetContent
                 side="left"
@@ -219,19 +218,19 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="hidden text-muted-foreground/40 sm:block">/</span>
             <span className="truncate text-sm font-semibold">{current?.name || "Visão geral"}</span>
           </div>
-          <Button variant="ghost"
+          <button
             onClick={openSearch}
             aria-label="Buscar ferramenta"
             className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-input bg-background px-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground"
           >
             <Search className="size-4" aria-hidden />
             <span className="hidden sm:inline">Buscar</span>
-          </Button>
+          </button>
         </header>
         <div id="workspace-main" tabIndex={-1}>
-          {current && (current.id === "profiles" || current.id === "funnels" || current.id === "social") && (
+          {current && (current.id === "profiles" || current.id === "funnels") && (
             <div className="mx-auto max-w-7xl px-5 pt-4 sm:px-8">
-              <ToolHeader tool={current} />
+              <ToolGuide tool={current} />
             </div>
           )}
           {children}
@@ -254,14 +253,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             <h2 id="tool-search-title" className="font-semibold">
               Encontrar ferramenta
             </h2>
-            <Button variant="ghost"
+            <button
               type="button"
               aria-label="Fechar busca"
               className="grid size-10 place-items-center rounded-lg border border-border hover:bg-accent"
               onClick={() => dialog.current?.close()}
             >
               <X className="size-4" />
-            </Button>
+            </button>
           </div>
           <label htmlFor="tool-search" className="sr-only">
             Nome ou tarefa que deseja realizar
@@ -323,25 +322,18 @@ export function PageIntro({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const tool = findTool(pathname);
   return (
-    <>
-      <header className="page-intro">
-        {tool && <img className="tool-header-photo" src={TOOL_VISUALS[tool.id].image} alt={TOOL_VISUALS[tool.id].alt} width={1536} height={1024} />}
-        <div className="tool-header-copy">
-          <div className="mb-3 flex flex-wrap items-center gap-3">
-            <p className="text-xs font-semibold text-primary">{eyebrow}</p>
-            {tool && <span className="workspace-badge">{tool.mode}</span>}
-          </div>
-          <h1 className="font-display text-3xl font-semibold sm:text-4xl">{title}</h1>
-          <p className="mt-3 max-w-xl text-sm leading-7 text-muted-foreground">{description}</p>
-        </div>
-      </header>
+    <header className="page-intro">
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          {eyebrow}
+        </p>
+        {tool && <span className="workspace-badge">{tool.mode}</span>}
+      </div>
+      <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
+      <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">{description}</p>
       {tool && <ToolGuide tool={tool} />}
-    </>
+    </header>
   );
-}
-
-function ToolHeader({ tool }: { tool: Tool }) {
-  return <PageIntro eyebrow={tool.category} title={tool.name} description={tool.summary} />;
 }
 
 function ToolGuide({ tool }: { tool: Tool }) {
@@ -349,16 +341,16 @@ function ToolGuide({ tool }: { tool: Tool }) {
     <details className="tool-guide">
       <summary>
         <CircleHelp className="size-4" />
-        <span>Antes de começar</span>
+        <span>Como usar · o que você precisa e o que recebe</span>
       </summary>
       <div className="px-4 pb-5 pt-2 sm:px-5">
         <div className="grid gap-5 border-b border-border pb-5 md:grid-cols-2">
           <div>
-            <h2 className="text-xs font-semibold">O que você precisa</h2>
+            <h2 className="text-xs font-semibold">Você fornece</h2>
             <p className="mt-1 text-xs leading-6 text-muted-foreground">{tool.input}</p>
           </div>
           <div>
-            <h2 className="text-xs font-semibold">Resultado</h2>
+            <h2 className="text-xs font-semibold">Você recebe</h2>
             <p className="mt-1 text-xs leading-6 text-muted-foreground">{tool.output}</p>
           </div>
         </div>

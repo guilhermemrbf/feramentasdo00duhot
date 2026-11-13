@@ -1,20 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowRight, ArrowUpRight, Clock3, Search, Star, X } from "lucide-react";
-import { AppShell, TOOL_ICONS } from "@/components/AppShell";
+import { ArrowDown, ArrowRight, ArrowUpRight, Clock3, Search, Star, X } from "lucide-react";
+import { AppShell, Brand, TOOL_ICONS } from "@/components/AppShell";
 import { CATEGORIES, TOOL_CATALOG, normalizeSearch, searchTools } from "@/lib/tool-catalog";
 import { useToolPreferences } from "@/lib/tool-preferences";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { TOOL_VISUALS } from "@/lib/tool-visuals";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "MauseHot — sua operação digital" },
-      { property: "og:title", content: "MauseHot — sua operação digital" },
-      { property: "og:description", content: "Prepare arquivos, crie páginas e organize seus Reels com as ferramentas MauseHot." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { title: "MauseHot — seu centro de operação" },
       {
         name: "description",
         content:
@@ -43,17 +37,38 @@ function Home() {
     <AppShell>
       <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
         <section className="home-intro">
-          <img src="/brand/mark.png" alt="Mascote MauseHot" width={100} height={100} className="size-16 shrink-0 rounded-lg sm:size-24" />
-          <div className="min-w-0 flex-1">
-            <p className="mb-2 text-xs font-semibold text-primary">VISÃO GERAL</p>
-            <h1 className="font-display text-3xl font-semibold sm:text-4xl">Sua operação. MauseHot.</h1>
-            <p className="mt-3 max-w-xl text-sm leading-7 text-muted-foreground">Do primeiro arquivo ao próximo Reel. Escolha o que você precisa fazer hoje.</p>
+          <div>
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-red/30 bg-brand-red/10 px-3 py-1 text-xs font-semibold text-brand-red">
+              <span className="size-1.5 rounded-full bg-brand-red" aria-hidden />
+              Workspace MauseHot
+            </p>
+            <h1 className="max-w-xl font-display text-3xl font-bold leading-tight tracking-tight sm:text-[46px]">
+              Sua operação digital <span className="text-primary">em um só lugar</span>
+            </h1>
+            <p className="mt-4 max-w-lg text-sm leading-7 text-muted-foreground sm:text-base">
+              Prepare conteúdo, organize seus fluxos e acompanhe o que está agendado. Comece pela
+              ferramenta que você precisa agora.
+            </p>
+            <a
+              href="#tools-title"
+              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:bg-[#f5ce90]"
+            >
+              Explorar ferramentas <ArrowDown className="size-4" aria-hidden />
+            </a>
           </div>
-          <span className="hidden text-xs text-muted-foreground xl:block">{TOOL_CATALOG.length} ferramentas<br /><span className="mt-1 block text-gold">Uma operação conectada</span></span>
+          <div className="home-mark hidden shrink-0 p-2 sm:block">
+            <img
+              src="/brand/mark.png"
+              alt="Mascote MauseHot: rato de óculos com corrente dourada"
+              width={176}
+              height={176}
+              className="size-32 rounded-2xl object-contain xl:size-44"
+            />
+          </div>
         </section>
         <section aria-labelledby="quick-tools-title" className="mb-9">
           <h2 id="quick-tools-title" className="mb-3 text-sm font-semibold">
-            Comece por aqui
+            Acesso rápido
           </h2>
           <div className="grid gap-3 xl:grid-cols-3">
             {shortcuts.map((tool) => {
@@ -131,9 +146,9 @@ function Home() {
               />
             </div>
           </div>
-          <div className="catalog-filter-bar mb-5 flex flex-wrap items-center gap-2">
+          <div className="mb-5 flex flex-wrap items-center gap-2">
             {catalogCategories.map((value) => (
-              <Button variant="ghost"
+              <button
                 key={value}
                 aria-pressed={category === value}
                 onClick={() => setCategory(value)}
@@ -141,9 +156,9 @@ function Home() {
                 className="filter-chip"
               >
                 {value}
-              </Button>
+              </button>
             ))}
-            <Button variant="ghost"
+            <button
               type="button"
               onClick={() => setOnlyFavorites(!onlyFavorites)}
               aria-pressed={onlyFavorites}
@@ -151,7 +166,7 @@ function Home() {
             >
               <Star className={cn("size-3.5", onlyFavorites && "fill-current")} />
               Favoritas ({favorites.length})
-            </Button>
+            </button>
           </div>
           <p className="sr-only" role="status">
             {results.length} ferramentas encontradas.
@@ -162,24 +177,41 @@ function Home() {
                 favorite = favorites.includes(tool.id);
               return (
                 <article key={tool.id} className="tool-card">
-                  <Link to={tool.path} tabIndex={-1} aria-hidden="true">
-                    <img src={TOOL_VISUALS[tool.id].image} alt={TOOL_VISUALS[tool.id].alt} loading="lazy" width={1536} height={1024} className="tool-card-photo" />
-                  </Link>
-                  <div className="tool-card-body">
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <span className="tool-tone inline-flex items-center gap-2 text-xs font-medium" data-tone={normalizeSearch(tool.category)}><Icon className="size-4" />{tool.category}</span>
-                      <Button variant="ghost" size="icon" onClick={() => toggle(tool.id)} aria-pressed={favorite} title={favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"} aria-label={`${favorite ? "Remover" : "Adicionar"} ${tool.name} ${favorite ? "dos" : "aos"} favoritos`} className="text-muted-foreground aria-pressed:text-gold">
-                        <Star className={cn("size-4", favorite && "fill-current")} />
-                      </Button>
-                    </div>
-                    <h3 className="text-base font-semibold">{tool.name}</h3>
-                    <p className="mb-5 mt-2 text-sm leading-6 text-muted-foreground">{tool.summary}</p>
-                    <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
-                      <span className="text-[11px] text-muted-foreground">{tool.mode}</span>
-                      <Button asChild variant="ghost" size="sm" className="shrink-0 text-primary">
-                        <Link to={tool.path} aria-label={`Abrir ${tool.name}`}>{TOOL_VISUALS[tool.id].action}<ArrowUpRight className="size-4" /></Link>
-                      </Button>
-                    </div>
+                  <div className="mb-6 flex items-center justify-between">
+                    <span
+                      className="tool-tone tool-icon flex size-11 items-center justify-center rounded-lg"
+                      data-tone={normalizeSearch(tool.category)}
+                    >
+                      <Icon className="size-[18px]" />
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggle(tool.id)}
+                      aria-pressed={favorite}
+                      aria-label={`${favorite ? "Remover" : "Adicionar"} ${tool.name} ${favorite ? "dos" : "aos"} favoritos`}
+                      className="grid size-10 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:border-primary hover:text-primary aria-pressed:border-primary/70 aria-pressed:bg-primary/10"
+                    >
+                      <Star className={cn("size-4", favorite && "fill-primary text-primary")} />
+                    </button>
+                  </div>
+                  <p
+                    className="tool-tone mb-2 text-xs font-medium"
+                    data-tone={normalizeSearch(tool.category)}
+                  >
+                    {tool.category}
+                  </p>
+                  <h3 className="text-[17px] font-semibold tracking-tight">{tool.name}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{tool.summary}</p>
+                  <div className="mt-6 flex items-center justify-between gap-2 border-t border-border pt-4">
+                    <span className="text-xs text-muted-foreground">{tool.mode}</span>
+                    <Link
+                      to={tool.path}
+                      className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-2 text-xs font-semibold text-primary hover:border-primary hover:bg-primary/15"
+                      aria-label={`Abrir ${tool.name}`}
+                    >
+                      Abrir ferramenta
+                      <ArrowRight className="size-3.5" />
+                    </Link>
                   </div>
                 </article>
               );
@@ -192,7 +224,7 @@ function Home() {
               <p className="mt-2 text-xs leading-6 text-muted-foreground">
                 Tente outro termo ou remova os filtros para ver todas as opções.
               </p>
-              <Button variant="ghost"
+              <button
                 onClick={() => {
                   setQuery("");
                   setCategory("Todas");
@@ -202,11 +234,18 @@ function Home() {
               >
                 <X className="size-3" />
                 Limpar filtros
-              </Button>
+              </button>
             </div>
           )}
         </section>
-
+        <section className="mt-10 flex flex-wrap items-center gap-5 rounded-lg border border-border bg-card p-5">
+          <Brand compact />
+          <p className="flex-1 text-xs leading-6 text-muted-foreground">
+            Cada ferramenta explica os dados de entrada, o resultado e os requisitos. O
+            processamento local permanece no seu dispositivo; integrações externas são identificadas
+            em cada área.
+          </p>
+        </section>
       </main>
     </AppShell>
   );
