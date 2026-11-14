@@ -6,6 +6,7 @@ export function outputName(original: string, prefix: string, mime: string) {
     "image/avif": "avif",
     "video/webm": "webm",
     "video/mp4": "mp4",
+    "video/quicktime": "mov",
     "text/plain": "txt",
     "application/json": "json",
   };

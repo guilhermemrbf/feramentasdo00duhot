@@ -1,10 +1,10 @@
-export const ACCEPT = '.jpg,.jpeg,.png,.webp,.mp4,.mov';
+export const ACCEPT = '.jpg,.jpeg,.png,.webp,.mp4,.mov,.webm';
 export const IMAGE_LIMIT = 64 * 1024 * 1024;
 export const VIDEO_LIMIT = 256 * 1024 * 1024;
 export const MEMORY_ZIP_LIMIT = 512 * 1024 * 1024;
 export function mediaKind(name: string) {
   if (/\.(jpe?g|png|webp)$/i.test(name)) return 'image';
-  if (/\.(mp4|mov)$/i.test(name)) return 'video';
+  if (/\.(mp4|mov|webm)$/i.test(name)) return 'video';
   return null;
 }
 export function uniquePath(path: string, used: Set<string>) {

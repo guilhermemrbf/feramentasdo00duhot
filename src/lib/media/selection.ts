@@ -6,7 +6,8 @@ export function selectMediaFiles<
   const accepted: T[] = [];
   let rejected = 0;
   for (const file of files) {
-    if (!types.includes(file.type) || file.size <= 0 || seen.has(key(file))) {
+    const extension = file.name.match(/\.[^.]+$/)?.[0].toLowerCase();
+    if ((!types.includes(file.type) && !(extension && types.includes(extension))) || file.size <= 0 || seen.has(key(file))) {
       rejected++;
       continue;
     }
