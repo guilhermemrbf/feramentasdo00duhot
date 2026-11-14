@@ -174,7 +174,7 @@ try {
   await page.getByText("1 de 2 perfis processados").waitFor();
   await page.setViewportSize({ width: 360, height: 800 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-  await page.goto(web + "/instagram-intelligence?modo=revisao");
+  await page.getByRole("link", { name: "Importar métricas ou abrir revisão" }).click();
   await page.getByText("Cole os links dos perfis").waitFor();
   await page.getByLabel("Arquivo de métricas autorizadas").waitFor();
   await page.getByRole("button", { name: "@perfil_teste", exact: true }).click();

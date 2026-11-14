@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getIntelligenceResults } from "@/lib/instagram-intelligence-data";
 import {
@@ -58,6 +59,9 @@ export function ScoringModel() {
         Modelo de pontuação
       </h2>
       <ScoreBars />
+      <p className="text-sm text-neutral-300">
+        Nota mínima de 30/100 para novas avaliações, com dados suficientes, conformidade e revisão concluída.
+      </p>
     </section>
   );
 }
@@ -76,13 +80,20 @@ function explanation(row: ResultRow) {
 
 function ProfileCard({ row, approved }: { row: ResultRow; approved: boolean }) {
   const report = row.state === "done" ? row : null;
+  const status = approved
+    ? "Aprovado"
+    : row.state === "awaiting_source"
+      ? "Aguardando dados"
+      : row.state === "failed"
+        ? "Falha de processamento"
+        : row.decision === "review" ? "Em análise" : "Não aprovado";
   return (
     <li className="min-w-0 space-y-3 rounded-lg border border-[#262626] bg-[#0b0b0b] p-3 text-sm">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="break-all font-semibold">@{row.username}</h3>
-          <p className={approved ? "text-[#4ade80]" : "text-[#f87171]"}>
-            {approved ? "Aprovado" : "Não aprovado"}
+          <p className={approved ? "text-[#4ade80]" : status === "Não aprovado" ? "text-[#f87171]" : "text-amber-300"}>
+            {status}
           </p>
         </div>
         <p className="font-semibold tabular-nums">
@@ -185,6 +196,17 @@ export function IntelligenceResults({
                   ]
                     .filter(Boolean)
                     .join(" · ")}
+                </p>
+              )}
+              {(missing > 0 || notApproved.some((row) => row.state === "done" && row.decision === "review")) && (
+                <p>
+                  <Link
+                    to="/instagram-intelligence"
+                    search={{ modo: "revisao" }}
+                    className="font-medium text-brand-red underline underline-offset-4"
+                  >
+                    Importar métricas ou abrir revisão
+                  </Link>
                 </p>
               )}
             </>

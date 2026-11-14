@@ -83,6 +83,7 @@ try {
   for (const name of [
     "20261112235500_instagram_intelligence_import.sql",
     "20261113130000_instagram_intelligence_processing.sql",
+    "20261114124500_instagram_intelligence_approval_threshold.sql",
   ])
     await db.exec(
       await readFile(new URL("../supabase/migrations/" + name, import.meta.url), "utf8"),
@@ -94,6 +95,27 @@ try {
   assert.equal(a.decision, "approved");
   assert.equal(a.metrics.medianViews, 1000);
   assert.equal(a.metrics.interactionRate, 6);
+  // Regularity, relative views and interaction rate yield 25.05 performance.
+  const lowViews = seedReels(20, { views: 1, likes: 0, comments: 0 });
+  const boundary = { ...review(lowViews), potential: 0, safety: 80, quality: 0 };
+  const below = await score(metrics(lowViews), { ...boundary, safety: 0 });
+  assert.equal(below.reason, "below_approval_threshold");
+  const relaxed = await score(metrics(lowViews), boundary);
+  assert.equal(relaxed.score, 32.8);
+  assert.equal(relaxed.decision, "approved");
+  assert.equal(relaxed.criteriaVersion, "2");
+  assert.equal(relaxed.approvalThreshold, 30);
+  const thresholdReels = lowViews.map((reel, index) => ({ ...reel, views: index < 6 ? 0 : 1 }));
+  const minimum = await score(metrics(thresholdReels), { ...boundary, potential: 24 });
+  const nearMinimum = await score(metrics(thresholdReels), { ...boundary, potential: 23.5 });
+  assert.deepEqual([minimum.score, minimum.decision], [30, "approved"]);
+  assert.deepEqual([nearMinimum.score, nearMinimum.decision], [29.9, "rejected"]);
+  assert.equal((await score(metrics(lowViews), { ...boundary, recommendation: "moderate" })).reason, "safety_review");
+  assert.equal((await score(metrics(lowViews), { ...boundary, finalReview: false })).reason, "final_review");
+  assert.equal((await score(metrics(lowViews), { ...boundary, accountStatus: "restricted" })).reason, "account_restricted");
+  const partlyInspected = { ...boundary, inspected: boundary.inspected.map((item) => ({ ...item, coverage: "thumbnail" })) };
+  assert.equal((await score(metrics(lowViews), partlyInspected)).reason, "limited_coverage");
+
   assert.equal(
     a.score,
     Math.round((a.notes.performance * 0.35 + 95 * 0.25 + 95 * 0.3 + 95 * 0.1) * 10) / 10,
@@ -152,12 +174,12 @@ try {
     (
       await score(metrics(seedReels(20, { views: 1, likes: 0, comments: 0 })), {
         ...complete,
-        potential: 30,
-        safety: 75,
-        quality: 30,
+        potential: 0,
+        safety: 60,
+        quality: 0,
       })
     ).reason,
-    "low_potential",
+    "below_approval_threshold",
   );
   assert.equal((await score(metrics([], null), null)).metrics.medianViews, null);
   assert.equal((await score(metrics(seedReels(5)), complete)).decision, "review");
