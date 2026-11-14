@@ -74,7 +74,8 @@ export function crc32(b: Uint8Array) {
   return (c ^ 0xffffffff) >>> 0;
 }
 function png(b: Uint8Array) {
-  if (text(b.slice(0,8)) !== '\x89PNG\r\n\x1a\n') return invalid();
+  const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (signature.some((byte, index) => b[index] !== byte)) return invalid();
   const keep = new Set(['IHDR','PLTE','IDAT','IEND','tRNS','cHRM','gAMA','iCCP','sRGB','sBIT','acTL','fcTL','fdAT','cICP','mDCV','cLLI']);
   const parts = [b.slice(0,8)]; let p=8, header=false, pixels=false, ended=false;
   const v = new DataView(b.buffer,b.byteOffset,b.byteLength);

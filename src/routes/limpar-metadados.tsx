@@ -12,7 +12,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { selectMediaFiles } from "@/lib/media/selection";
-import { renderLocalVideo } from "@/lib/media/render";
+import type { VideoCleaner } from "@/lib/metadata/videos";
 import {
   downloadBlob,
   outputName,
@@ -59,12 +59,13 @@ interface Item {
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
-const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime", ".mp4", ".webm", ".mov"];
 
 function LimparMetadados() {
   const [type, setType] = useState<MediaType | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [busy, setBusy] = useState(false);
+  const [batchBusy, setBatchBusy] = useState(false);
   const [selectionNotice, setSelectionNotice] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const operation = useRef<AbortController | null>(null);
@@ -85,7 +86,7 @@ function LimparMetadados() {
   };
 
   const add = (files: FileList | null) => {
-    if (busy || !files || !type) return;
+    if (batchBusy || busy || !files || !type) return;
 
     const accepted = type === "photos" ? IMAGE_TYPES : VIDEO_TYPES;
     const selection = selectMediaFiles(
@@ -146,45 +147,44 @@ function LimparMetadados() {
     }
   };
 
-  const cleanVideo = async (item: Item) => {
-    const output = await renderLocalVideo(
-      item.file,
-      (context, video, width, height) => context.drawImage(video, 0, 0, width, height),
-      operation.current!.signal,
-    );
-    patch(item.id, { status: "done", output });
-  };
-
   const cleanAll = async () => {
-    if (!items.length || !type) return;
+    if (!items.length || !type || busy || batchBusy || operation.current) return;
 
-    if (busy) return;
-    operation.current = new AbortController();
+    const controller = new AbortController();
+    const { signal } = controller;
+    operation.current = controller;
     setBusy(true);
+    let video: VideoCleaner | undefined;
 
-    for (const item of queueCandidates(items)) {
-      if (operation.current.signal.aborted) break;
-      patch(item.id, { status: "processing", error: null });
-
-      try {
-        if (type === "photos") {
-          await cleanPhoto(item);
-        } else {
-          await cleanVideo(item);
+    try {
+      for (const item of queueCandidates(items)) {
+        if (signal.aborted) break;
+        patch(item.id, { status: "processing", error: null });
+        try {
+          if (type === "photos") {
+            await cleanPhoto(item);
+          } else {
+            video ??= new (await import("@/lib/metadata/videos")).VideoCleaner();
+            const output = await video.clean(item.file, signal);
+            throwIfAborted(signal);
+            patch(item.id, { status: "done", output });
+          }
+        } catch (error) {
+          if (isAbort(error)) {
+            patch(item.id, { status: "waiting", error: null });
+            break;
+          }
+          patch(item.id, {
+            status: "error",
+            error: error instanceof Error ? error.message : "Não foi possível limpar este arquivo.",
+          });
         }
-      } catch (error) {
-        if (isAbort(error)) {
-          patch(item.id, { status: "waiting", error: null });
-          break;
-        }
-        patch(item.id, {
-          status: "error",
-          error: error instanceof Error ? error.message : "Não foi possível limpar este arquivo.",
-        });
       }
+    } finally {
+      video?.dispose();
+      operation.current = null;
+      setBusy(false);
     }
-
-    setBusy(false);
   };
 
   return (
@@ -207,7 +207,7 @@ function LimparMetadados() {
             <Choice
               icon={FileVideo}
               title="Vídeos"
-              text="Regrave o vídeo em um novo contêiner WEBM, removendo os metadados do arquivo original."
+              text="Remova os metadados de MP4, MOV ou WEBM preservando o vídeo e o áudio originais."
               onClick={() => select("videos")}
             />
           </section>
@@ -283,7 +283,7 @@ function LimparMetadados() {
                     {items.filter((item) => item.status === "done").length}/{items.length} limpos
                   </span>
                   <button
-                    disabled={busy}
+                    disabled={busy || batchBusy}
                     onClick={cleanAll}
                     className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
                   >
@@ -355,11 +355,11 @@ function LimparMetadados() {
             <p className="text-xs text-muted-foreground">
               A ferramenta cobre formatos de foto e vídeo suportados pelo navegador. Arquivos que
               não puderem ser decodificados localmente são recusados em vez de serem entregues como
-              se estivessem limpos. Vídeos são entregues em WEBM.
+              se estivessem limpos. Vídeos de até 256 MB são entregues no formato original.
             </p>
           </section>
         )}
-        <BatchCleaner />
+        <BatchCleaner individualBusy={busy} onBusyChange={setBatchBusy} />
       </main>
     </AppShell>
   );
