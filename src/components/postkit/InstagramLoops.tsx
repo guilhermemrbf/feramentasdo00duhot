@@ -201,7 +201,7 @@ export function InstagramLoops({
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
         <div>
           <h2 className="flex items-center gap-2 font-semibold">
-            <Repeat2 className="size-5 text-primary" /> Uma sequência que se publica sozinha
+            <Repeat2 className="size-5 text-brand-red" /> Uma sequência que se publica sozinha
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Escolha os vídeos e a frequência. Cada conta avança na lista e o loop termina quando ela
@@ -221,7 +221,7 @@ export function InstagramLoops({
           <button
             type="button"
             onClick={onAccounts}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-brand-red"
           >
             Conectar conta <ArrowRight className="size-4" />
           </button>
@@ -230,7 +230,7 @@ export function InstagramLoops({
           <button
             type="button"
             onClick={onLibrary}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-brand-red"
           >
             Adicionar vídeos <ArrowRight className="size-4" />
           </button>
@@ -326,7 +326,7 @@ export function InstagramLoops({
               {accountId && !accountVideos.length && (
                 <button
                   type="button"
-                  className="text-sm font-semibold text-primary"
+                  className="text-sm font-semibold text-brand-red"
                   onClick={onLibrary}
                 >
                   Adicione vídeos para esta conta na Biblioteca

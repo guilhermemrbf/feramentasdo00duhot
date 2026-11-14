@@ -725,7 +725,7 @@ export function InstagramStories({
         )}
         {loadError && <p className="mt-3 text-sm text-amber-500">{loadError}</p>}
         {notice && (
-          <p className="mt-3 text-sm text-primary" role="status">
+          <p className="mt-3 text-sm text-brand-red" role="status">
             {notice}
           </p>
         )}
@@ -1039,7 +1039,7 @@ export function InstagramStories({
                         button +
                         " flex-col items-start gap-1 text-left " +
                         (choice === currentAudience
-                          ? " border-primary bg-primary/10 text-primary"
+                          ? " border-primary bg-primary/10 text-brand-red"
                           : "")
                       }
                       aria-pressed={choice === currentAudience}
@@ -1074,7 +1074,7 @@ export function InstagramStories({
                   tabIndex={-1}
                   className="flex scroll-mt-6 items-center gap-2 text-sm font-semibold"
                 >
-                  <CalendarDays className="size-4 text-primary" /> 3. Quando quer postar?
+                  <CalendarDays className="size-4 text-brand-red" /> 3. Quando quer postar?
                 </h3>
                 <p className="text-xs text-muted-foreground">
                   Um Story por horário. Por exemplo, 9h e 18h geram até dois lembretes por dia até o

@@ -271,11 +271,11 @@ export function CloudWorkspace() {
         <WorkspaceMode mode="cloud" />
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex gap-3">
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-brand-red">
               <MonitorSmartphone className="size-6" />
             </span>
             <div>
-              <p className="mb-1 text-xs font-bold tracking-widest text-primary">
+              <p className="mb-1 text-xs font-bold tracking-widest text-brand-red">
                 SEU ESPAÇO NA NUVEM
               </p>
               <h1 className="font-display text-2xl font-bold sm:text-3xl">Hot Profiles</h1>
@@ -318,7 +318,7 @@ export function CloudWorkspace() {
         <section className="overflow-hidden rounded-2xl border border-primary/20 bg-card p-5 sm:p-6">
           <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-center">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-brand-red">
                 <Cloud className="size-3.5" />
                 Execução na nuvem
               </div>
@@ -360,14 +360,14 @@ export function CloudWorkspace() {
         {(missing || !account) && (
           <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
             <div className="flex min-w-0 items-start gap-2.5">
-              <Info className="mt-0.5 size-4 shrink-0 text-primary" />
+              <Info className="mt-0.5 size-4 shrink-0 text-brand-red" />
               <p className="text-sm leading-6 text-muted-foreground">
                 {!account ? "Entre para salvar seus perfis e proxies na sua conta. " : ""}
                 {missing ? "A execução ainda aguarda a configuração dos serviços de nuvem." : ""}
               </p>
             </div>
             <button
-              className="text-sm font-semibold text-primary hover:underline"
+              className="text-sm font-semibold text-brand-red hover:underline"
               onClick={() => setSettings(true)}
             >
               Ver configuração
@@ -414,7 +414,7 @@ export function CloudWorkspace() {
               key={item.label}
               className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4"
             >
-              <item.Icon className="size-5 shrink-0 text-primary" />
+              <item.Icon className="size-5 shrink-0 text-brand-red" />
               <div>
                 <p className="text-2xl font-bold">{account && loaded ? item.count : "—"}</p>
                 <p className="text-xs leading-5 text-muted-foreground">{item.label}</p>
@@ -440,7 +440,7 @@ export function CloudWorkspace() {
                   key={item.value}
                   role="tab"
                   aria-selected={tab === item.value}
-                  className={`min-h-11 rounded-xl px-4 text-sm font-semibold ${tab === item.value ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}
+                  className={`min-h-11 rounded-xl px-4 text-sm font-semibold ${tab === item.value ? "bg-primary/10 text-brand-red" : "text-muted-foreground hover:bg-secondary"}`}
                   onClick={() => {
                     setTab(item.value);
                     setSearch("");
@@ -536,7 +536,7 @@ export function CloudWorkspace() {
                     >
                       <div className="flex min-w-0 flex-1 items-start gap-3">
                         <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary">
-                          <Icon className="size-5 text-primary" />
+                          <Icon className="size-5 text-brand-red" />
                         </span>
                         <div className="min-w-0">
                           <h3 className="break-words font-bold">{profile.name}</h3>
@@ -686,7 +686,7 @@ export function CloudWorkspace() {
                           {proxy.protocol.toUpperCase()} · {proxy.host}:{proxy.port}
                         </p>
                       </div>
-                      <ShieldCheck className="size-5 shrink-0 text-primary" />
+                      <ShieldCheck className="size-5 shrink-0 text-brand-red" />
                     </div>
                     <p className="mt-3 break-all text-xs leading-6 text-muted-foreground">
                       {proxy.username ? `Usuário: ${proxy.username}` : "Sem usuário"} ·{" "}
@@ -739,7 +739,7 @@ export function CloudWorkspace() {
                 {sessions.map((session) => (
                   <button
                     key={session.id}
-                    className={`min-h-11 shrink-0 rounded-xl border px-4 text-sm font-semibold ${selectedId === session.id ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                    className={`min-h-11 shrink-0 rounded-xl border px-4 text-sm font-semibold ${selectedId === session.id ? "border-primary bg-primary/10 text-brand-red" : "border-border text-muted-foreground"}`}
                     onClick={() => setSelected(session.id)}
                   >
                     {workspace.profiles.find((p) => p.id === session.profile_id)?.name ??
@@ -991,7 +991,7 @@ function Empty({
   return (
     <div className="flex flex-col items-center px-5 py-14 text-center">
       <span className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-secondary">
-        <Icon className="size-7 text-primary" />
+        <Icon className="size-7 text-brand-red" />
       </span>
       <h3 className="font-display text-lg font-bold">{title}</h3>
       <p className="mb-5 mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{detail}</p>

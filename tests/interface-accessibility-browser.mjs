@@ -53,6 +53,9 @@ async function colors(locator) {
 try {
   await page.goto("http://127.0.0.1:4386/tests/fixtures/interface.html");
   await page.getByRole("button", { name: "Salvar", exact: true }).waitFor();
+  const accent=await colors(page.getByTestId("accent-text"));
+  const bodyBg=await page.locator("body").evaluate(el=>getComputedStyle(el).backgroundColor.match(/[\d.]+/g).map(Number));
+  assert(contrast(accent.fg,bodyBg)>=4.5,"Texto vermelho deve atender AA sobre fundo escuro");
   const primary = await colors(page.getByRole("button", { name: "Salvar", exact: true }));
   assert(
     primary.bg[0] > primary.bg[1] * 2 && primary.bg[0] > primary.bg[2] * 2,

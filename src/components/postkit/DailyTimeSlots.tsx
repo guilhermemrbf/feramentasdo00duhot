@@ -15,7 +15,7 @@ export function ScheduleDate({
   const today = calendarDateInZone(timezone, 0, now);
   const tomorrow = calendarDateInZone(timezone, 1, now);
   return (
-    <div className="space-y-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3">
+    <div className="space-y-2 rounded-xl border border-border bg-card p-3">
       <div className="text-sm font-semibold">
         Quando começa?
         <WorkspaceDate
@@ -73,7 +73,7 @@ export function DailyTimeSlots({
           : undefined
       }
     >
-      <legend className="text-sm font-semibold">Horários de cada dia</legend>
+      <legend className="text-sm font-semibold">A que horas cada vídeo será publicado?</legend>
       <ol
         className={
           reelLabels ? "mt-2 space-y-2" : "mt-2 grid gap-2 min-[440px]:grid-cols-2 xl:grid-cols-3"
@@ -85,7 +85,7 @@ export function DailyTimeSlots({
             className={`flex gap-3 rounded-lg border border-border bg-card p-2.5 ${reelLabels ? "items-center" : "items-end"}`}
           >
             {reelLabels && (
-              <span className="shrink-0 rounded-lg bg-sky-400/15 px-2.5 py-1.5 text-sm font-semibold text-sky-200">
+              <span className="shrink-0 rounded-lg bg-primary/15 px-2.5 py-1.5 text-sm font-semibold text-foreground">
                 Reel {index + 1}
               </span>
             )}

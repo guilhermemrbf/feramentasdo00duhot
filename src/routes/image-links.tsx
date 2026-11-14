@@ -297,14 +297,14 @@ function ImageLinks() {
                   <button
                     disabled={!done}
                     onClick={copyAll}
-                    className="text-xs text-primary disabled:opacity-40"
+                    className="text-xs text-brand-red disabled:opacity-40"
                   >
                     Copiar todos
                   </button>
                   <button
                     disabled={!done}
                     onClick={exportLinks}
-                    className="text-xs text-primary disabled:opacity-40"
+                    className="text-xs text-brand-red disabled:opacity-40"
                   >
                     Baixar links
                   </button>
@@ -360,7 +360,7 @@ function ImageLinks() {
                             style={{ width: `${item.progress}%` }}
                           />
                         </div>
-                        <p className="flex items-center gap-1.5 text-xs text-primary">
+                        <p className="flex items-center gap-1.5 text-xs text-brand-red">
                           <Loader2 className="size-3 animate-spin" />{" "}
                           {activeId === item.id ? `Enviando · ${item.progress}%` : "Na fila"}
                         </p>
@@ -376,7 +376,7 @@ function ImageLinks() {
                     {item.error && !busy && (
                       <button
                         onClick={() => void run([item])}
-                        className="text-left text-xs text-primary"
+                        className="text-left text-xs text-brand-red"
                       >
                         Enviar novamente
                       </button>

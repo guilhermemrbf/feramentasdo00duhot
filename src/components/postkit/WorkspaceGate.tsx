@@ -218,7 +218,7 @@ export function WorkspaceGate({ children }: { children: (ws: Workspace) => React
             </>
           ) : (
             <>
-              <Loader2 className="mx-auto size-6 animate-spin text-primary" />
+              <Loader2 className="mx-auto size-6 animate-spin text-brand-red" />
               <p className="mt-3 text-sm">Abrindo sua operação…</p>
             </>
           )}

@@ -19,14 +19,14 @@ export function WorkspaceMode({ mode }: { mode: "local" | "cloud" }) {
           <a
             href="/hot-profiles?mode=local"
             aria-current={mode === "local" ? "page" : undefined}
-            className={`rounded-md border px-3 py-2 text-sm ${mode === "local" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
+            className={`rounded-md border px-3 py-2 text-sm ${mode === "local" ? "border-primary text-brand-red" : "border-border text-muted-foreground"}`}
           >
             Meu computador
           </a>
           <a
             href="/hot-profiles?mode=cloud"
             aria-current={mode === "cloud" ? "page" : undefined}
-            className={`rounded-md border px-3 py-2 text-sm ${mode === "cloud" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
+            className={`rounded-md border px-3 py-2 text-sm ${mode === "cloud" ? "border-primary text-brand-red" : "border-border text-muted-foreground"}`}
           >
             Nuvem
           </a>

@@ -574,9 +574,6 @@
 }
 
 /* Dark red is reserved for filled actions; the lighter red keeps text readable. */
-@utility text-primary {
-  color: var(--brand-red);
-}
 
 @layer base {
   ::selection { background: #821b2f; color: #fff; }

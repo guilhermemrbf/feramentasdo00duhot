@@ -190,7 +190,7 @@ export function InstagramHistory({
               : "Nenhuma publicação encontrada neste filtro."}
           </p>
           {mode === "queue" && !account && filter === "all" && (
-            <button type="button" className="mt-3 font-semibold text-primary" onClick={onSchedule}>
+            <button type="button" className="mt-3 font-semibold text-brand-red" onClick={onSchedule}>
               Agendar um Reel
             </button>
           )}

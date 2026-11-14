@@ -15,6 +15,7 @@ function Fixture() {
   return (
     <main style={{ maxWidth: 900, margin: "auto", padding: 16 }}>
       <h1>Controles de teste</h1>
+      <p className="text-brand-red" data-testid="accent-text">Texto de destaque</p>
       <Button>Salvar</Button>
       <Button size="sm">Pequeno</Button>
       <Button size="lg">Grande</Button>

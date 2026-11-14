@@ -943,7 +943,7 @@ function FunilPage() {
           aria-busy="true"
           className="flex min-h-[70vh] items-center justify-center gap-3 text-sm text-muted-foreground"
         >
-          <GitBranch className="size-5 text-primary" />
+          <GitBranch className="size-5 text-brand-red" />
           Carregando seus funis…
         </main>
       </AppShell>
@@ -973,11 +973,11 @@ function FunilPage() {
             <>
               <header className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="flex size-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+                  <span className="flex size-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-brand-red">
                     <GitBranch className="size-5" />
                   </span>
                   <div>
-                    <p className="text-[10px] font-bold tracking-[0.16em] text-primary">
+                    <p className="text-[10px] font-bold tracking-[0.16em] text-brand-red">
                       ESPAÇO DE TRABALHO
                     </p>
                     <h1 className="font-display text-2xl font-bold tracking-tight">Meus funis</h1>
@@ -1047,7 +1047,7 @@ function FunilPage() {
                       <div className="p-5">
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <p className="text-[10px] font-bold tracking-[0.14em] text-primary">
+                            <p className="text-[10px] font-bold tracking-[0.14em] text-brand-red">
                               FLUXO {String(index + 1).padStart(2, "0")}
                             </p>
                             <h2 className="mt-1 font-display text-lg font-bold">{funnel.name}</h2>
@@ -1092,12 +1092,12 @@ function FunilPage() {
                   onClick={createFunnel}
                   className="flex min-h-[300px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card/25 text-sm font-semibold text-muted-foreground transition hover:border-primary/35 hover:bg-primary/5 hover:text-foreground"
                 >
-                  <CirclePlus className="size-7 text-primary" />
+                  <CirclePlus className="size-7 text-brand-red" />
                   Novo projeto de funil
                 </button>
               </section>
               <div className="mt-6 flex items-start gap-3 rounded-xl border border-border/70 bg-card/35 p-4 text-xs leading-5 text-muted-foreground">
-                <MousePointer2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                <MousePointer2 className="mt-0.5 size-4 shrink-0 text-brand-red" />
                 <p>
                   Abra um funil para mover elementos, conectar etapas e editar o conteúdo. Os
                   projetos são salvos automaticamente neste navegador.
@@ -1119,7 +1119,7 @@ function FunilPage() {
                   >
                     <ArrowLeft className="size-4" />
                   </button>
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-brand-red">
                     <GitBranch className="size-4" />
                   </span>
                   <div className="min-w-0">
@@ -1247,7 +1247,7 @@ function FunilPage() {
                       onClick={() => addNode(kind, defaultTitle)}
                       className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background/70 px-3.5 py-2.5 text-sm font-semibold transition hover:border-primary/50 hover:bg-primary/10"
                     >
-                      <Icon className="size-5 text-primary" />
+                      <Icon className="size-5 text-brand-red" />
                       {label}
                     </button>
                   ))}
@@ -1970,7 +1970,7 @@ function FunnelDetailsDialog({
       >
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[10px] font-bold tracking-[0.15em] text-primary">
+            <p className="text-[10px] font-bold tracking-[0.15em] text-brand-red">
               DETALHES DO PROJETO
             </p>
             <h2 id="funnel-details-title" className="mt-1 font-display text-xl font-bold">

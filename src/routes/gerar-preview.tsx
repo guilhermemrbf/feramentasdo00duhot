@@ -25,7 +25,10 @@ export const Route = createFileRoute("/gerar-preview")({
   head: () => ({
     meta: [
       { property: "og:title", content: "Gerar Preview — MauseHot" },
-      { property: "og:description", content: "Crie prévias de fotos e vídeos com desfoque ou pixelização." },
+      {
+        property: "og:description",
+        content: "Crie prévias de fotos e vídeos com desfoque ou pixelização.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { title: "Gerar Preview — MauseHot" },
@@ -169,20 +172,20 @@ function GerarPreview() {
         <PageIntro
           eyebrow="Preview"
           title="Gerar Preview"
-          description="Crie versões completas de fotos e vídeos com blur ou pixelização, controlando o nível de intensidade antes de exportar."
+          description="Escolha uma foto ou vídeo, ajuste o desfoque e baixe uma prévia. Você pode conferir o efeito antes de salvar."
         />
 
         {!type ? (
           <section className="mt-8 grid gap-4 sm:grid-cols-2">
             <Choice
               icon={ImageIcon}
-              title="Preview de foto"
+              title="Prévia de foto"
               text="Escolha a imagem, defina o efeito e gere uma nova versão pronta para usar como preview."
               onClick={() => setType("image")}
             />
             <Choice
               icon={PlaySquare}
-              title="Preview de vídeo"
+              title="Prévia de vídeo"
               text="Processe o vídeo inteiro, do primeiro ao último frame, mantendo o áudio quando disponível."
               onClick={() => setType("video")}
             />
@@ -210,7 +213,7 @@ function GerarPreview() {
               onDragOver={(event) => event.preventDefault()}
               className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center hover:border-primary/60"
             >
-              <UploadCloud className="mb-4 size-6 text-primary" />
+              <UploadCloud className="mb-4 size-6 text-brand-red" />
               <p className="text-sm font-semibold">
                 Arraste os arquivos aqui ou clique para selecionar
               </p>
@@ -231,7 +234,7 @@ function GerarPreview() {
             <div className="grid gap-4 rounded-lg border border-border bg-card p-5 md:grid-cols-2">
               <div>
                 <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Scan className="size-4 text-primary" />
+                  <Scan className="size-4 text-brand-red" />
                   Tipo de efeito
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
@@ -321,7 +324,7 @@ function GerarPreview() {
                   {items.map((item) => (
                     <article key={item.id} className="rounded-lg border border-border bg-card p-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary">
+                        <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-brand-red">
                           {type === "image" ? (
                             <ImageIcon className="size-5" />
                           ) : (
@@ -335,7 +338,7 @@ function GerarPreview() {
                           </p>
                         </div>
                         {item.status === "processing" && (
-                          <Loader2 className="size-4 animate-spin text-primary" />
+                          <Loader2 className="size-4 animate-spin text-brand-red" />
                         )}
                         {item.status === "done" && (
                           <>
@@ -423,7 +426,7 @@ function optionClass(active: boolean) {
   return (
     "rounded-md border px-3 py-2 text-xs transition-colors " +
     (active
-      ? "border-primary bg-primary/10 text-primary"
+      ? "border-primary bg-primary/10 text-brand-red"
       : "border-border text-muted-foreground hover:border-primary/50")
   );
 }
@@ -454,7 +457,7 @@ function Choice({
       onClick={onClick}
       className="rounded-lg border border-border bg-card p-6 text-left transition-colors hover:border-primary/60"
     >
-      <span className="flex size-11 items-center justify-center rounded-md bg-secondary text-primary">
+      <span className="flex size-11 items-center justify-center rounded-md bg-secondary text-brand-red">
         <Icon className="size-5" />
       </span>
       <h2 className="mt-4 font-display text-lg font-semibold">{title}</h2>

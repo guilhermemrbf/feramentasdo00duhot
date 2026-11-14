@@ -445,7 +445,7 @@ export function IntelligenceBatch({
                     <td className="py-2">
                       {row.jobId ? (
                         <button
-                          className="font-medium text-primary underline"
+                          className="font-medium text-brand-red underline"
                           type="button"
                           aria-pressed={selected === row.jobId}
                           onClick={() => setSelected(row.jobId)}
@@ -456,7 +456,7 @@ export function IntelligenceBatch({
                         <span>@{row.username}</span>
                       )}
                       <a
-                        className="ml-2 text-xs text-primary underline"
+                        className="ml-2 text-xs text-brand-red underline"
                         href={instagramProfileUrl(row.username)}
                         target="_blank"
                         rel="noreferrer"

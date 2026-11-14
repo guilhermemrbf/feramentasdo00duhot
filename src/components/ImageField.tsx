@@ -49,7 +49,7 @@ export function ImageField({ label, step, hint, value, onChange }: ImageFieldPro
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-secondary text-xs text-primary">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-secondary text-xs text-brand-red">
             {step}
           </span>
           {label}
@@ -98,7 +98,7 @@ export function ImageField({ label, step, hint, value, onChange }: ImageFieldPro
               />
             </div>
           )}
-          {uploading && <p className="mt-2 flex items-center gap-1.5 text-xs text-primary"><Loader2 className="h-3 w-3 animate-spin" /> Processando imagem · {progress}%</p>}
+          {uploading && <p className="mt-2 flex items-center gap-1.5 text-xs text-brand-red"><Loader2 className="h-3 w-3 animate-spin" /> Processando imagem · {progress}%</p>}
           {error && (
             <p className="mt-2 flex items-center gap-1.5 text-xs text-destructive">
               <AlertCircle className="h-3 w-3" /> {error}

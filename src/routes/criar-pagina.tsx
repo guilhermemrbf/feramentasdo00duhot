@@ -134,7 +134,7 @@ function CriarPagina() {
         <PageIntro
           eyebrow="Ferramenta"
           title="Criar Tela Privacy"
-          description="Monte sua Tela Privacy com os dados do seu perfil e gere o prompt completo para acelerar sua operação digital."
+          description="Preencha seu perfil e escolha as fotos. Você recebe um texto de instruções pronto para criar sua página em uma ferramenta de IA."
         />
 
         <div className="mt-5 flex flex-wrap gap-3 text-xs">
@@ -238,7 +238,7 @@ function CriarPagina() {
 
           {stage === "processing" && (
             <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card py-20">
-              <Loader2 className="size-6 animate-spin text-primary" />
+              <Loader2 className="size-6 animate-spin text-brand-red" />
               <p className="text-sm text-muted-foreground">Processando informações...</p>
             </div>
           )}
@@ -293,7 +293,7 @@ function CriarPagina() {
               <section className="space-y-3 rounded-lg border-2 border-primary/50 bg-primary/5 p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-primary">
+                    <p className="text-xs font-bold uppercase tracking-wide text-brand-red">
                       Etapa 2
                     </p>
                     <h2 className="mt-1 text-base font-bold text-foreground">Prompt 2 — Revisão</h2>
@@ -343,7 +343,7 @@ function Field({
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-        <span className="inline-flex size-6 items-center justify-center rounded-md bg-secondary text-xs text-primary">
+        <span className="inline-flex size-6 items-center justify-center rounded-md bg-secondary text-xs text-brand-red">
           {step}
         </span>
         {label}

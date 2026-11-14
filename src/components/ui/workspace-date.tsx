@@ -51,7 +51,7 @@ export function WorkspaceDate({
             className,
           )}
         >
-          <CalendarDays className="size-4 shrink-0 text-primary" aria-hidden />
+          <CalendarDays className="size-4 shrink-0 text-brand-red" aria-hidden />
           <span className="flex-1">{display}</span>
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </button>

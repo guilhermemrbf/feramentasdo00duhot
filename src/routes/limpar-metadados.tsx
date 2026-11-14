@@ -193,7 +193,7 @@ function LimparMetadados() {
         <PageIntro
           eyebrow="Privacidade"
           title="Limpar Metadados"
-          description="Reprocesse fotos e vídeos localmente para remover os metadados incorporados no arquivo final."
+          description="Remova informações extras guardadas em fotos e vídeos. Escolha seus arquivos, faça a limpeza e baixe as novas versões no seu computador."
         />
 
         {!type ? (
@@ -234,7 +234,7 @@ function LimparMetadados() {
               onDragOver={(event) => event.preventDefault()}
               className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center hover:border-primary/60"
             >
-              <UploadCloud className="mb-4 size-6 text-primary" />
+              <UploadCloud className="mb-4 size-6 text-brand-red" />
               <p className="text-sm font-semibold">
                 Arraste os arquivos aqui ou clique para selecionar
               </p>
@@ -302,7 +302,7 @@ function LimparMetadados() {
                       key={item.id}
                       className="flex items-center gap-3 rounded-lg border border-border bg-card p-4"
                     >
-                      <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary">
+                      <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-brand-red">
                         {type === "photos" ? (
                           <FileImage className="size-5" />
                         ) : (
@@ -321,7 +321,7 @@ function LimparMetadados() {
                       </div>
 
                       {item.status === "processing" && (
-                        <Loader2 className="size-4 animate-spin text-primary" />
+                        <Loader2 className="size-4 animate-spin text-brand-red" />
                       )}
 
                       {item.status === "done" && item.output && (
@@ -383,7 +383,7 @@ function Choice({
         "rounded-lg border border-border bg-card p-6 text-left transition-colors hover:border-primary/60",
       )}
     >
-      <span className="flex size-11 items-center justify-center rounded-md bg-secondary text-primary">
+      <span className="flex size-11 items-center justify-center rounded-md bg-secondary text-brand-red">
         <Icon className="size-5" />
       </span>
       <h2 className="mt-4 font-display text-lg font-semibold">{title}</h2>

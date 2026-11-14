@@ -261,7 +261,7 @@ export function IntelligenceDetail({
         <>
           <div className="space-y-1 text-sm">
             <a
-              className="text-primary underline"
+              className="text-brand-red underline"
               href={"https://www.instagram.com/" + item.username + "/"}
               target="_blank"
               rel="noreferrer"
@@ -341,7 +341,7 @@ export function IntelligenceDetail({
                     href={reel.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-primary underline"
+                    className="text-brand-red underline"
                   >
                     {show(reel.views)} views
                   </a>
@@ -407,7 +407,7 @@ export function IntelligenceDetail({
                       {finding.confirmed ? "Confirmado pelo operador" : "Suspeita"}
                     </p>
                     <a
-                      className="text-primary underline"
+                      className="text-brand-red underline"
                       href={finding.url}
                       target="_blank"
                       rel="noreferrer"
@@ -423,7 +423,7 @@ export function IntelligenceDetail({
                       {confidenceLabels[finding.confidence]}
                     </p>
                     <a
-                      className="text-primary underline"
+                      className="text-brand-red underline"
                       href={finding.policyUrl}
                       target="_blank"
                       rel="noreferrer"
@@ -449,7 +449,7 @@ export function IntelligenceDetail({
                 return (
                   <li key={reel.url} className="rounded-md border border-border p-2">
                     <a
-                      className="text-primary underline"
+                      className="text-brand-red underline"
                       href={reel.url}
                       target="_blank"
                       rel="noreferrer"
@@ -494,7 +494,7 @@ export function IntelligenceDetail({
                   <li key={past.id}>
                     <button
                       type="button"
-                      className="text-primary underline"
+                      className="text-brand-red underline"
                       onClick={() => openReport(past.id)}
                     >
                       {date(past.date)} · {past.sourceLabel}

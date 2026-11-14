@@ -202,7 +202,7 @@ export function HotSessionView({
     return (
       <div className="flex min-h-96 flex-col items-center justify-center rounded-2xl border border-border bg-card px-6 py-12 text-center">
         {session.status === "starting" || session.status === "stopping" ? (
-          <LoaderCircle className="mb-4 size-10 animate-spin text-primary" />
+          <LoaderCircle className="mb-4 size-10 animate-spin text-brand-red" />
         ) : session.kind === "android" ? (
           <Smartphone className="mb-4 size-10 text-muted-foreground" />
         ) : (
@@ -275,7 +275,7 @@ export function HotSessionView({
           {session.kind === "android" ? (
             <Smartphone className="size-4 text-success" />
           ) : (
-            <Monitor className="size-4 text-primary" />
+            <Monitor className="size-4 text-brand-red" />
           )}
           <h3 className="truncate text-sm font-bold">{session.name}</h3>
           <span className="flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-1 text-xs font-semibold text-success">
@@ -348,7 +348,7 @@ export function HotSessionView({
           {frame?.tabs.map((tab) => (
             <div
               key={tab.id}
-              className={`flex shrink-0 items-center rounded-lg border text-xs ${tab.active ? "border-primary/30 bg-primary/10 text-primary" : "border-transparent text-muted-foreground"}`}
+              className={`flex shrink-0 items-center rounded-lg border text-xs ${tab.active ? "border-primary/30 bg-primary/10 text-brand-red" : "border-transparent text-muted-foreground"}`}
             >
               <button
                 role="tab"
@@ -644,7 +644,7 @@ export function HotSessionView({
                 );
                 if (canvas) event.currentTarget.href = canvas.toDataURL("image/png");
               }}
-              className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-primary"
+              className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-brand-red"
             >
               <Download className="size-3.5" />
               Salvar captura

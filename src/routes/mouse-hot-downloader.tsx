@@ -51,7 +51,7 @@ function MouseHotDownloader() {
           className="flex flex-col gap-5 rounded-2xl border border-primary/30 bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7"
         >
           <div className="flex items-start gap-4">
-            <Chrome className="size-7 shrink-0 text-primary" aria-hidden />
+            <Chrome className="size-7 shrink-0 text-brand-red" aria-hidden />
             <div>
               <h2 className="text-lg font-semibold">Instalar a extensão</h2>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -73,7 +73,7 @@ function MouseHotDownloader() {
           <ol className="grid gap-3 sm:grid-cols-3">
             {steps.map(({ icon: Icon, title, text }, index) => (
               <li key={title} className="rounded-xl border border-border bg-card p-4">
-                <Icon className="mb-3 size-5 text-primary" aria-hidden />
+                <Icon className="mb-3 size-5 text-brand-red" aria-hidden />
                 <h3 className="text-sm font-semibold">
                   {index + 1}. {title}
                 </h3>

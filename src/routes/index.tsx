@@ -43,7 +43,7 @@ function Home() {
               Bem-vindo ao MauseHot
             </p>
             <h1 className="max-w-xl font-display text-3xl font-bold leading-tight tracking-tight sm:text-[46px]">
-              O que você quer <span className="text-primary">fazer hoje?</span>
+              O que você quer <span className="text-brand-red">fazer hoje?</span>
             </h1>
             <p className="mt-4 max-w-lg text-sm leading-7 text-muted-foreground sm:text-base">
               Escolha uma ferramenta abaixo. Cada uma mostra o que você precisa e orienta você,
@@ -87,7 +87,7 @@ function Home() {
                       {tool.summary}
                     </span>
                   </span>
-                  <ArrowUpRight className="size-4 shrink-0 text-primary" aria-hidden />
+                  <ArrowUpRight className="size-4 shrink-0 text-brand-red" aria-hidden />
                 </Link>
               );
             })}
@@ -189,9 +189,9 @@ function Home() {
                       onClick={() => toggle(tool.id)}
                       aria-pressed={favorite}
                       aria-label={`${favorite ? "Remover" : "Adicionar"} ${tool.name} ${favorite ? "dos" : "aos"} favoritos`}
-                      className="grid size-11 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:border-primary hover:text-primary aria-pressed:border-primary/70 aria-pressed:bg-primary/10"
+                      className="grid size-11 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:border-primary hover:text-brand-red aria-pressed:border-primary/70 aria-pressed:bg-primary/10"
                     >
-                      <Star className={cn("size-4", favorite && "fill-primary text-primary")} />
+                      <Star className={cn("size-4", favorite && "fill-primary text-brand-red")} />
                     </button>
                   </div>
                   <p
@@ -230,7 +230,7 @@ function Home() {
                   setCategory("Todas");
                   setOnlyFavorites(false);
                 }}
-                className="mt-5 inline-flex items-center gap-2 text-xs text-primary"
+                className="mt-5 inline-flex items-center gap-2 text-xs text-brand-red"
               >
                 <X className="size-3" />
                 Limpar filtros

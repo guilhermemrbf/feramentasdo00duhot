@@ -227,7 +227,7 @@ const FunnelNode = memo(function FunnelNode({ data, selected, id }: NodeProps<Ca
             event.stopPropagation();
             data.onNext(id);
           }}
-          className="nodrag nopan flex items-center gap-2 rounded-xl border border-primary/40 bg-card px-3 py-2 text-sm font-semibold text-primary shadow-lg"
+          className="nodrag nopan flex items-center gap-2 rounded-xl border border-primary/40 bg-card px-3 py-2 text-sm font-semibold text-brand-red shadow-lg"
         >
           <Plus className="size-4" />
           Próximo bloco
