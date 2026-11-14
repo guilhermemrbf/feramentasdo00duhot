@@ -274,6 +274,7 @@ export const reasons: Record<string, string> = {
   account_unverified: "Falta evidência autorizada do Status da Conta.",
   low_potential: "O índice de potencial ficou abaixo de 60.",
   score_review: "O índice ficou entre 60 e 79,9.",
+  below_approval_threshold: "O índice de potencial ficou abaixo de 30/100.",
   limited_coverage: "A aprovação exige confiança alta e pelo menos 20 Reels completos revisados.",
   safety_review: "A conformidade ainda não atende aos requisitos de aprovação.",
   final_review: "Falta concluir a revisão final.",

@@ -52,3 +52,9 @@ A lista de resultados tem filtros com totais por decisão e mostra o motivo disp
 A rota /instagram-intelligence usa a entrada validada, a fila e os resultados privados existentes. Os dois grupos exibem somente o lote mais recente. Perfis sem fonte ou com falha ficam em Não aprovados com a causa explícita. O progresso contabiliza somente tarefas processadas e informa as outras condições separadamente. Uma tarefa na fila não reutiliza a nota anterior. A lista de fichas tem altura limitada para manter o modelo acessível em lotes grandes.
 
 Para continuar importando dados autorizados, exportando relatórios ou registrando revisão humana, abra /instagram-intelligence?modo=revisao. É a mesma rota com o painel preexistente montado para o lote mais recente. O acesso continua privado. Lotes anteriores continuam persistidos, mas a tela direta carrega somente o mais recente. O caminho automático para Business Discovery e análise audiovisual por lote permanece pendente.
+
+## Corte operacional de aprovação
+
+A versão 2 do critério usa nota final mínima de 30/100. Os pesos da nota, as faixas do índice e os requisitos de cobertura, conformidade, Status da Conta e revisão continuam aplicados. Relatórios anteriores mantêm a versão original. Uma nova revisão sobre uma captura disponível usa o critério atual.
+
+O botão **Analisar** usa as métricas disponíveis das contas conectadas. Se o perfil estiver aguardando dados, use **Importar métricas ou abrir revisão** para adicionar uma exportação autorizada ao lote atual. Links sozinhos ainda não fornecem dados de perfis externos. O adaptador de Business Discovery não está ligado à fila de produção e o fluxo audiovisual atual exige material autorizado e revisão do operador.
