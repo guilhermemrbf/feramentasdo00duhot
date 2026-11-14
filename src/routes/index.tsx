@@ -40,20 +40,20 @@ function Home() {
           <div>
             <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-red/30 bg-brand-red/10 px-3 py-1 text-xs font-semibold text-brand-red">
               <span className="size-1.5 rounded-full bg-brand-red" aria-hidden />
-              Workspace MauseHot
+              Bem-vindo ao MauseHot
             </p>
             <h1 className="max-w-xl font-display text-3xl font-bold leading-tight tracking-tight sm:text-[46px]">
-              Sua operação digital <span className="text-primary">em um só lugar</span>
+              O que você quer <span className="text-brand-red">fazer hoje?</span>
             </h1>
             <p className="mt-4 max-w-lg text-sm leading-7 text-muted-foreground sm:text-base">
-              Prepare conteúdo, organize seus fluxos e acompanhe o que está agendado. Comece pela
-              ferramenta que você precisa agora.
+              Escolha uma ferramenta abaixo. Cada uma mostra o que você precisa e orienta você,
+              passo a passo.
             </p>
             <a
               href="#tools-title"
-              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:bg-[#f5ce90]"
+              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90"
             >
-              Explorar ferramentas <ArrowDown className="size-4" aria-hidden />
+              Ver todas as ferramentas <ArrowDown className="size-4" aria-hidden />
             </a>
           </div>
           <div className="home-mark hidden shrink-0 p-2 sm:block">
@@ -68,7 +68,7 @@ function Home() {
         </section>
         <section aria-labelledby="quick-tools-title" className="mb-9">
           <h2 id="quick-tools-title" className="mb-3 text-sm font-semibold">
-            Acesso rápido
+            Comece por aqui
           </h2>
           <div className="grid gap-3 xl:grid-cols-3">
             {shortcuts.map((tool) => {
@@ -82,12 +82,12 @@ function Home() {
                     <Icon className="size-5" aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <strong className="block text-sm font-semibold">{tool.name}</strong>
+                    <strong className="block text-sm font-semibold">{tool.action}</strong>
                     <span className="mt-1 block text-xs leading-5 text-muted-foreground">
                       {tool.summary}
                     </span>
                   </span>
-                  <ArrowUpRight className="size-4 shrink-0 text-primary" aria-hidden />
+                  <ArrowUpRight className="size-4 shrink-0 text-brand-red" aria-hidden />
                 </Link>
               );
             })}
@@ -189,9 +189,9 @@ function Home() {
                       onClick={() => toggle(tool.id)}
                       aria-pressed={favorite}
                       aria-label={`${favorite ? "Remover" : "Adicionar"} ${tool.name} ${favorite ? "dos" : "aos"} favoritos`}
-                      className="grid size-10 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:border-primary hover:text-primary aria-pressed:border-primary/70 aria-pressed:bg-primary/10"
+                      className="grid size-11 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:border-primary hover:text-brand-red aria-pressed:border-primary/70 aria-pressed:bg-primary/10"
                     >
-                      <Star className={cn("size-4", favorite && "fill-primary text-primary")} />
+                      <Star className={cn("size-4", favorite && "fill-primary text-brand-red")} />
                     </button>
                   </div>
                   <p
@@ -202,14 +202,14 @@ function Home() {
                   </p>
                   <h3 className="text-[17px] font-semibold tracking-tight">{tool.name}</h3>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{tool.summary}</p>
-                  <div className="mt-6 flex items-center justify-between gap-2 border-t border-border pt-4">
+                  <div className="mt-6 flex flex-col items-start gap-3 border-t border-border pt-4">
                     <span className="text-xs text-muted-foreground">{tool.mode}</span>
                     <Link
                       to={tool.path}
-                      className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-2 text-xs font-semibold text-primary hover:border-primary hover:bg-primary/15"
-                      aria-label={`Abrir ${tool.name}`}
+                      className="tool-action"
+                      aria-label={`${tool.action} — ${tool.name}`}
                     >
-                      Abrir ferramenta
+                      {tool.action}
                       <ArrowRight className="size-3.5" />
                     </Link>
                   </div>
@@ -230,7 +230,7 @@ function Home() {
                   setCategory("Todas");
                   setOnlyFavorites(false);
                 }}
-                className="mt-5 inline-flex items-center gap-2 text-xs text-primary"
+                className="mt-5 inline-flex items-center gap-2 text-xs text-brand-red"
               >
                 <X className="size-3" />
                 Limpar filtros
@@ -241,9 +241,9 @@ function Home() {
         <section className="mt-10 flex flex-wrap items-center gap-5 rounded-lg border border-border bg-card p-5">
           <Brand compact />
           <p className="flex-1 text-xs leading-6 text-muted-foreground">
-            Cada ferramenta explica os dados de entrada, o resultado e os requisitos. O
-            processamento local permanece no seu dispositivo; integrações externas são identificadas
-            em cada área.
+            Não sabe por onde começar? Use a busca para escrever o que deseja fazer, como
+            “programar” ou “baixar vídeos”. Dentro de cada ferramenta você encontra um passo a
+            passo.
           </p>
         </section>
       </main>

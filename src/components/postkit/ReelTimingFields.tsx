@@ -35,9 +35,9 @@ export function ReelTimingFields({
   );
 
   return (
-    <div className="space-y-4 rounded-xl border border-sky-400/20 bg-sky-400/5 p-3 sm:p-4">
+    <div className="space-y-4 rounded-xl border border-border bg-card p-3 sm:p-4">
       <div className="space-y-1.5">
-        <label className="block w-full max-w-60 text-sm font-semibold text-sky-200">
+        <label className="block w-full max-w-60 text-sm font-semibold text-foreground">
           Quantos Reels por dia?
           <WorkspaceSelect
             label="Quantos Reels por dia?"
@@ -48,7 +48,7 @@ export function ReelTimingFields({
           />
         </label>
         <p className="text-xs text-muted-foreground">
-          Ao mudar a quantidade por conta, sugerimos novos horários. Você pode editar cada um.
+          Escolha de 1 a 10 vídeos por dia. Depois, ajuste abaixo a hora de cada Reel.
         </p>
       </div>
 
@@ -64,12 +64,14 @@ export function ReelTimingFields({
       {!hasEmpty && !hasDuplicate && firstConflict >= 0 && (
         <p className="rounded-lg bg-amber-400/10 p-3 text-sm text-amber-200">
           {slots[firstConflict - 1]} e {slots[firstConflict]} ficam a menos de {intervalMinutes}{" "}
-          minutos de distância. Separe os horários ou ajuste o intervalo em Mais opções.
+          minutos de distância. Separe os horários ou ajuste o intervalo entre publicações.
         </p>
       )}
 
-      <details className="rounded-lg border border-sky-400/15 bg-card/70 p-3">
-        <summary className="cursor-pointer text-sm font-semibold">Mais opções</summary>
+      <details className="rounded-lg border border-border bg-card/70 p-3">
+        <summary className="cursor-pointer text-sm font-semibold">
+          Ajustar intervalo entre publicações
+        </summary>
         {children && <div className="mt-3 space-y-3">{children}</div>}
         <label className="mt-3 block max-w-56 text-sm font-medium">
           Intervalo mínimo (minutos)

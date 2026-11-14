@@ -378,7 +378,7 @@ export function InstagramProfileDrafts({
           </div>
         </details>
         {notice && (
-          <p role="status" className="mt-3 text-sm text-primary">
+          <p role="status" className="mt-3 text-sm text-brand-red">
             {notice}
           </p>
         )}

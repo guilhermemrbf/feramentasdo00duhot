@@ -69,7 +69,7 @@ export function BatchCleaner() {
     <input ref={input} type="file" multiple className="hidden" aria-label="Arquivos para limpeza em massa" onChange={e=>{if(e.target.files)add(selectedFiles(e.target.files));e.target.value='';}} />
     <input ref={folder} type="file" multiple {...{webkitdirectory:'',directory:''}} className="hidden" aria-label="Pasta para limpeza em massa" onChange={e=>{if(e.target.files)add(selectedFiles(e.target.files));e.target.value='';}} />
     <div onDragOver={e=>e.preventDefault()} onDrop={async e=>{e.preventDefault();if(busy||reading)return;setReading(true);try{add(await droppedFiles(e.dataTransfer));}catch{setError('Não foi possível ler esta pasta. Use Selecionar pasta completa.');}finally{setReading(false);}}} className="mt-4 flex min-h-32 flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card p-5 text-center">
-      <UploadCloud className="size-6 text-primary"/><p className="mt-3 text-sm">{reading?'Lendo pasta...':'Arraste arquivos ou pastas aqui'}</p>
+      <UploadCloud className="size-6 text-brand-red"/><p className="mt-3 text-sm">{reading?'Lendo pasta...':'Arraste arquivos ou pastas aqui'}</p>
       <p className="mt-1 text-xs text-muted-foreground">JPG, JPEG, PNG, WEBP · MP4, MOV</p>
     </div>
     <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm"><span>Arquivos selecionados: <strong>{items.length.toLocaleString('pt-BR')}</strong></span><span>Tamanho total: <strong>{sizeLabel(total)}</strong></span></div>

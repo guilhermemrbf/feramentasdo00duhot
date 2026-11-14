@@ -190,7 +190,7 @@ export function CloudProfileForm({
                 onChange={() => setKind(item.value)}
               />
               <span className="flex items-center gap-2 text-sm font-bold">
-                <item.Icon className="size-5 text-primary" />
+                <item.Icon className="size-5 text-brand-red" />
                 {item.label}
                 {kind === item.value && <Check className="ml-auto size-4" />}
               </span>

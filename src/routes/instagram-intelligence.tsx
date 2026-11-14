@@ -1,3 +1,4 @@
+import { ScanSearch } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
@@ -86,9 +87,17 @@ function InstagramIntelligence() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-[#ededed]">
+    <div className="min-h-screen bg-background text-foreground">
       <main className="mx-auto max-w-[1000px] space-y-6 px-4 py-6 sm:px-5">
-        <h1 className="text-2xl font-semibold">Instagram Intelligence</h1>
+        <h1 className="flex items-center gap-3 text-2xl font-semibold">
+          <span
+            className="tool-tone tool-icon grid size-12 shrink-0 place-items-center"
+            aria-hidden
+          >
+            <ScanSearch className="size-6" />
+          </span>
+          Instagram Intelligence
+        </h1>
         {session === undefined ? (
           <p role="status">Verificando acesso…</p>
         ) : session ? (
@@ -151,7 +160,7 @@ function PrivateBatches({ userId, reviewMode }: { userId: string; reviewMode: bo
   return (
     <>
       <form
-        className="space-y-3 rounded-[10px] border border-[#282828] bg-[#080808] p-[15px]"
+        className="space-y-3 rounded-[10px] border border-border bg-card p-[15px]"
         onSubmit={(event) => {
           event.preventDefault();
           void analyze();
@@ -161,7 +170,7 @@ function PrivateBatches({ userId, reviewMode }: { userId: string; reviewMode: bo
           Cole os links dos perfis
         </h2>
         <textarea
-          className="block w-full resize-y rounded-md bg-black px-3 py-3 text-base text-white placeholder:text-neutral-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b8904f]"
+          className="block w-full resize-y rounded-md border border-input bg-background px-3 py-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           aria-labelledby="intelligence-input-title"
           aria-describedby="intelligence-import-help"
           rows={4}
@@ -194,7 +203,7 @@ function PrivateBatches({ userId, reviewMode }: { userId: string; reviewMode: bo
         </div>
         <Button
           type="submit"
-          className="h-16 w-full rounded-[10px] bg-[#b8904f] text-xl font-semibold text-black hover:bg-[#c59b56] focus-visible:ring-[#d8ae68]"
+          className="h-16 w-full rounded-[10px] bg-primary text-xl font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring"
           disabled={
             busy || !parsed.usernames.length || !!parsed.error || !!parsed.invalidLines.length
           }

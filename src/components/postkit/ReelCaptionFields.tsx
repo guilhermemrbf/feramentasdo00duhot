@@ -18,12 +18,12 @@ export function ReelCaptionFields({
   return (
     <>
       <div className="grid gap-3 lg:grid-cols-2">
-        <label className="min-w-0 rounded-xl border border-violet-400/25 bg-violet-400/5 p-3">
+        <label className="min-w-0 rounded-xl border border-border bg-card p-3">
           <span className="flex items-center gap-2 text-sm font-semibold">
-            <FileText className="size-4 text-violet-300" aria-hidden /> Legenda (opcional)
+            <FileText className="size-4 text-brand-red" aria-hidden /> Legenda (opcional)
           </span>
           <span className="mt-1 block text-xs text-muted-foreground">
-            Escreva a descrição que você quer usar em cada Reel.
+            Esta legenda será adicionada a todos os Reels desta programação.
           </span>
           <textarea
             className="field mt-2 min-h-24"
@@ -33,13 +33,13 @@ export function ReelCaptionFields({
             onChange={(event) => onCaptionChange(event.target.value)}
           />
         </label>
-        <div className="min-w-0 rounded-xl border border-fuchsia-400/25 bg-fuchsia-400/5 p-3">
+        <div className="min-w-0 rounded-xl border border-border bg-card p-3">
           <label className="block">
             <span className="flex items-center gap-2 text-sm font-semibold">
-              <Hash className="size-4 text-fuchsia-300" aria-hidden /> Hashtags (opcional)
+              <Hash className="size-4 text-brand-red" aria-hidden /> Hashtags (opcional)
             </span>
             <span className="mt-1 block text-xs text-muted-foreground">
-              Ex.: #moda #lookdodia. Elas entram no fim da legenda.
+              As mesmas hashtags entram no fim da legenda de todos os Reels.
             </span>
             <textarea
               className="field mt-2 min-h-24"
@@ -54,7 +54,7 @@ export function ReelCaptionFields({
               {tags.map((tag, index) => (
                 <li
                   key={index}
-                  className="max-w-full break-all rounded-full bg-fuchsia-400/15 px-2.5 py-1 text-xs text-fuchsia-200"
+                  className="max-w-full break-all rounded-full bg-primary/15 px-2.5 py-1 text-xs text-foreground"
                 >
                   {tag}
                 </li>

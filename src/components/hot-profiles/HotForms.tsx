@@ -66,7 +66,7 @@ export function ConnectComputer({
     >
       <ol className="mb-6 space-y-4 text-sm">
         <li className="flex gap-3">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 font-bold text-primary">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 font-bold text-brand-red">
             1
           </span>
           <div>
@@ -89,7 +89,7 @@ export function ConnectComputer({
           </div>
         </li>
         <li className="flex gap-3">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 font-bold text-primary">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 font-bold text-brand-red">
             2
           </span>
           <div>
@@ -101,7 +101,7 @@ export function ConnectComputer({
           </div>
         </li>
         <li className="flex gap-3">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 font-bold text-primary">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 font-bold text-brand-red">
             3
           </span>
           <div>
@@ -296,9 +296,9 @@ export function ProfileForm({
                 className="sr-only"
               />
               <span className="flex items-center gap-2 text-sm font-bold">
-                <item.Icon className="size-5 text-primary" />
+                <item.Icon className="size-5 text-brand-red" />
                 {item.label}
-                {kind === item.value && <Check className="ml-auto size-4 text-primary" />}
+                {kind === item.value && <Check className="ml-auto size-4 text-brand-red" />}
               </span>
               <span className="mt-2 block text-xs leading-5 text-muted-foreground">
                 {item.detail}
@@ -389,7 +389,7 @@ export function ProfileForm({
               <h3 className="text-sm font-bold">Celular Android</h3>
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-red"
                 onClick={() => void action(onRefresh)}
               >
                 <RefreshCw className="size-3.5" />

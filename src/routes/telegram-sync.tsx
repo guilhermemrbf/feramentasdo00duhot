@@ -24,12 +24,12 @@ function TelegramSync() {
         />
         <section className="rounded-2xl border border-primary/25 bg-card p-6 sm:p-8">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-            <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-brand-red">
               <Laptop className="size-7" />
             </span>
             <div className="flex-1 space-y-4">
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="rounded-full bg-primary/10 px-3 py-1 text-primary">
+                <span className="rounded-full bg-primary/10 px-3 py-1 text-brand-red">
                   Windows 10 / 11 · 64 bits
                 </span>
                 <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
@@ -83,7 +83,7 @@ function TelegramSync() {
             },
           ].map(({ icon: Icon, title, text }) => (
             <article key={title} className="space-y-3 rounded-2xl border border-border bg-card p-5">
-              <Icon className="size-5 text-primary" />
+              <Icon className="size-5 text-brand-red" />
               <h3 className="font-semibold">{title}</h3>
               <p className="text-sm leading-6 text-muted-foreground">{text}</p>
             </article>
@@ -108,7 +108,7 @@ function TelegramSync() {
               ],
             ].map(([title, text], index) => (
               <li key={title} className="flex gap-3">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-brand-red">
                   {index + 1}
                 </span>
                 <div>
@@ -122,7 +122,7 @@ function TelegramSync() {
             href="https://my.telegram.org"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-primary underline underline-offset-4"
+            className="inline-flex items-center gap-2 text-sm text-brand-red underline underline-offset-4"
           >
             Abrir portal oficial do Telegram <ArrowRight className="size-4" />
           </a>

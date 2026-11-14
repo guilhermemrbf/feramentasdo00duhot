@@ -223,7 +223,7 @@ export function InstagramDashboard({
                   <button
                     type="button"
                     onClick={run}
-                    className="rounded-md px-2 py-1.5 text-sm font-semibold text-primary hover:bg-primary/10"
+                    className="rounded-md px-2 py-1.5 text-sm font-semibold text-brand-red hover:bg-primary/10"
                   >
                     {action}
                   </button>
@@ -264,7 +264,7 @@ export function InstagramDashboard({
               key={label}
               className="min-w-0 rounded-xl border border-border bg-card p-3 sm:p-4"
             >
-              <Icon className="mb-2 size-4 text-primary" aria-hidden />
+              <Icon className="mb-2 size-4 text-brand-red" aria-hidden />
               <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
               <p className="mt-1 font-display text-2xl font-semibold">{value ?? "—"}</p>
               <p className="mt-1 text-xs text-muted-foreground">{note}</p>
@@ -292,12 +292,12 @@ export function InstagramDashboard({
         <section className="rounded-xl border border-border bg-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 font-semibold">
-              <CalendarDays className="size-4 text-primary" /> Próximas publicações
+              <CalendarDays className="size-4 text-brand-red" /> Próximas publicações
             </h2>
             <button
               type="button"
               onClick={onQueue}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-primary"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-brand-red"
             >
               Ver fila <ArrowRight className="size-3.5" />
             </button>
@@ -341,7 +341,7 @@ export function InstagramDashboard({
           <button
             type="button"
             onClick={onHistory}
-            className="mt-3 text-sm font-semibold text-primary"
+            className="mt-3 text-sm font-semibold text-brand-red"
           >
             Abrir histórico
           </button>

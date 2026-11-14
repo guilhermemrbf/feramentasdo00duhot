@@ -315,7 +315,7 @@ export function InstagramAnalytics({
         </p>
       )}
       {data && !accounts.length && (
-        <button type="button" onClick={onConnect} className="font-semibold text-primary">
+        <button type="button" onClick={onConnect} className="font-semibold text-brand-red">
           Conectar uma conta do Instagram
         </button>
       )}

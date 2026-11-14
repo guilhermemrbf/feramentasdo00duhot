@@ -26,7 +26,10 @@ export const Route = createFileRoute("/otimizar-criativos")({
   head: () => ({
     meta: [
       { property: "og:title", content: "Otimizar Criativos — MauseHot" },
-      { property: "og:description", content: "Prepare imagens e vídeos com sua marca e exporte novas versões localmente." },
+      {
+        property: "og:description",
+        content: "Prepare imagens e vídeos com sua marca e exporte novas versões localmente.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { title: "Otimizar Criativos — MauseHot" },
@@ -197,20 +200,20 @@ function OtimizarCriativos() {
         <PageIntro
           eyebrow="Criativos"
           title="Otimizar Criativos"
-          description="Reexporte seus criativos localmente, aplique um overlay visual de marca e gere arquivos prontos para diferentes operações de mídia."
+          description="Adicione seu nome ou sua marca a fotos e vídeos. Escolha a posição, confira o resultado e baixe os arquivos."
         />
 
         {!type ? (
           <section className="mt-8 grid gap-4 sm:grid-cols-2">
             <Choice
               icon={ImageIcon}
-              title="Criativo de imagem"
+              title="Personalizar foto"
               text="Reexporte imagens em WEBP, removendo dados incorporados do arquivo processado e aplicando seu overlay."
               onClick={() => setType("image")}
             />
             <Choice
               icon={PlaySquare}
-              title="Criativo de vídeo"
+              title="Personalizar vídeo"
               text="Regrave vídeos em WEBM, preserve o áudio quando disponível e aplique o overlay em todos os frames."
               onClick={() => setType("video")}
             />
@@ -238,7 +241,7 @@ function OtimizarCriativos() {
               onDragOver={(event) => event.preventDefault()}
               className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center hover:border-primary/60"
             >
-              <UploadCloud className="mb-4 size-6 text-primary" />
+              <UploadCloud className="mb-4 size-6 text-brand-red" />
               <p className="text-sm font-semibold">
                 Arraste os criativos aqui ou clique para selecionar
               </p>
@@ -263,7 +266,7 @@ function OtimizarCriativos() {
             <div className="grid gap-4 rounded-lg border border-border bg-card p-5 md:grid-cols-2">
               <div>
                 <div className="flex items-center gap-2 text-sm font-semibold">
-                  <ImageIcon className="size-4 text-primary" />
+                  <ImageIcon className="size-4 text-brand-red" />
                   Overlay visual
                 </div>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -284,7 +287,7 @@ function OtimizarCriativos() {
 
               <div>
                 <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Type className="size-4 text-primary" />
+                  <Type className="size-4 text-brand-red" />
                   Texto de marca
                 </div>
                 <input
@@ -300,7 +303,7 @@ function OtimizarCriativos() {
                       key={value}
                       disabled={busy}
                       onClick={() => setPosition(value)}
-                      className={`rounded-md border px-3 py-2 text-xs capitalize ${position === value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                      className={`rounded-md border px-3 py-2 text-xs capitalize ${position === value ? "border-primary bg-primary/10 text-brand-red" : "border-border text-muted-foreground"}`}
                     >
                       {value === "top" ? "Topo" : value === "center" ? "Centro" : "Base"}
                     </button>
@@ -372,7 +375,7 @@ function OtimizarCriativos() {
                       key={item.id}
                       className="flex items-center gap-3 rounded-lg border border-border bg-card p-4"
                     >
-                      <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary">
+                      <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-brand-red">
                         {type === "image" ? (
                           <ImageIcon className="size-5" />
                         ) : (
@@ -389,7 +392,7 @@ function OtimizarCriativos() {
                         )}
                       </div>
                       {item.status === "processing" && (
-                        <Loader2 className="size-4 animate-spin text-primary" />
+                        <Loader2 className="size-4 animate-spin text-brand-red" />
                       )}
                       {item.status === "done" && (
                         <>
@@ -516,7 +519,7 @@ function Choice({
       onClick={onClick}
       className="rounded-lg border border-border bg-card p-6 text-left transition-colors hover:border-primary/60"
     >
-      <span className="flex size-11 items-center justify-center rounded-md bg-secondary text-primary">
+      <span className="flex size-11 items-center justify-center rounded-md bg-secondary text-brand-red">
         <Icon className="size-5" />
       </span>
       <h2 className="mt-4 font-display text-lg font-semibold">{title}</h2>

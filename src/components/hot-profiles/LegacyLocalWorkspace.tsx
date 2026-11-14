@@ -269,11 +269,11 @@ export function LegacyLocalWorkspace({
         {!standalone && <WorkspaceMode mode="local" />}
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="flex size-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+            <span className="flex size-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-brand-red">
               <MonitorSmartphone className="size-6" />
             </span>
             <div>
-              <p className="mb-1 text-xs font-bold tracking-widest text-primary">
+              <p className="mb-1 text-xs font-bold tracking-widest text-brand-red">
                 SEUS AMBIENTES, SEU CONTROLE
               </p>
               <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
@@ -303,7 +303,7 @@ export function LegacyLocalWorkspace({
         {!online && (
           <section className="flex flex-col justify-between gap-5 rounded-2xl border border-primary/25 bg-primary/5 p-5 sm:flex-row sm:items-center">
             <div className="flex gap-3">
-              <Cable className="mt-1 size-5 shrink-0 text-primary" />
+              <Cable className="mt-1 size-5 shrink-0 text-brand-red" />
               <div>
                 <h2 className="font-semibold">
                   {connection
@@ -456,7 +456,7 @@ export function LegacyLocalWorkspace({
             <div key={metric.title} className="rounded-2xl border border-border bg-card/70 p-4">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-medium text-muted-foreground">{metric.title}</p>
-                <metric.Icon className="size-4 text-primary" />
+                <metric.Icon className="size-4 text-brand-red" />
               </div>
               <p className="mt-3 font-display text-3xl font-bold">{metric.count}</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">{metric.detail}</p>
@@ -479,7 +479,7 @@ export function LegacyLocalWorkspace({
                   setTab(item.id);
                   setSearch("");
                 }}
-                className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition ${tab === item.id ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
+                className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition ${tab === item.id ? "bg-primary/15 text-brand-red" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
               >
                 <item.Icon className="size-4" />
                 {item.title}
@@ -573,7 +573,7 @@ export function LegacyLocalWorkspace({
                     >
                       <div className="flex min-w-0 gap-3 xl:col-span-4">
                         <span
-                          className={`mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl ${profile.kind === "android" ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}
+                          className={`mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl ${profile.kind === "android" ? "bg-success/10 text-success" : "bg-primary/10 text-brand-red"}`}
                         >
                           {profile.kind === "android" ? (
                             <Smartphone className="size-5" />
@@ -649,7 +649,7 @@ export function LegacyLocalWorkspace({
                               : void act(profile.id, () => start(profile))
                           }
                           disabled={!online || !!busy || session?.status === "stopping"}
-                          className={`${hotButton} ${active ? "border-primary/30 text-primary" : "bg-primary/10 text-primary"}`}
+                          className={`${hotButton} ${active ? "border-primary/30 text-brand-red" : "bg-primary/10 text-brand-red"}`}
                         >
                           {busy === profile.id ? (
                             <LoaderCircle className="size-4 animate-spin" />
@@ -717,7 +717,7 @@ export function LegacyLocalWorkspace({
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-border bg-card/40 p-8 text-center sm:p-12">
-                <Layers3 className="mx-auto mb-4 size-10 text-primary/70" />
+                <Layers3 className="mx-auto mb-4 size-10 text-brand-red/70" />
                 <h2 className="font-display text-xl font-bold">
                   {search
                     ? "Nenhum perfil encontrado"
@@ -744,7 +744,7 @@ export function LegacyLocalWorkspace({
             )}
             <div className="grid gap-3 md:grid-cols-2">
               <div className="flex gap-3 rounded-xl border border-border bg-card/40 p-4">
-                <LockKeyhole className="mt-1 size-5 shrink-0 text-primary" />
+                <LockKeyhole className="mt-1 size-5 shrink-0 text-brand-red" />
                 <div>
                   <h3 className="text-sm font-semibold">Um espaço para cada perfil</h3>
                   <p className="mt-1 text-xs leading-6 text-muted-foreground">
@@ -754,7 +754,7 @@ export function LegacyLocalWorkspace({
                 </div>
               </div>
               <div className="flex gap-3 rounded-xl border border-border bg-card/40 p-4">
-                <MonitorSmartphone className="mt-1 size-5 shrink-0 text-primary" />
+                <MonitorSmartphone className="mt-1 size-5 shrink-0 text-brand-red" />
                 <div>
                   <h3 className="text-sm font-semibold">Organize aqui, trabalhe nas sessões</h3>
                   <p className="mt-1 text-xs leading-6 text-muted-foreground">
@@ -814,7 +814,7 @@ export function LegacyLocalWorkspace({
                   <article key={proxy.id} className="rounded-2xl border border-border bg-card p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-brand-red">
                           <Globe2 className="size-5" />
                         </span>
                         <div className="min-w-0">
@@ -907,7 +907,7 @@ export function LegacyLocalWorkspace({
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-border bg-card/40 p-10 text-center">
-                <Globe2 className="mx-auto mb-4 size-10 text-primary/70" />
+                <Globe2 className="mx-auto mb-4 size-10 text-brand-red/70" />
                 <h2 className="text-xl font-bold">
                   {search
                     ? "Nenhum proxy encontrado"
@@ -939,7 +939,7 @@ export function LegacyLocalWorkspace({
                     role="tab"
                     aria-selected={selectedSession?.profileId === session.profileId}
                     onClick={() => setSessionId(session.profileId)}
-                    className={`${hotButton} max-w-xs shrink-0 ${selectedSession?.profileId === session.profileId ? "border-primary/40 bg-primary/10 text-primary" : ""}`}
+                    className={`${hotButton} max-w-xs shrink-0 ${selectedSession?.profileId === session.profileId ? "border-primary/40 bg-primary/10 text-brand-red" : ""}`}
                   >
                     {session.kind === "android" ? (
                       <Smartphone className="size-4 shrink-0" />
@@ -966,7 +966,7 @@ export function LegacyLocalWorkspace({
               />
             ) : (
               <div className="rounded-2xl border border-dashed border-border bg-card/40 p-10 text-center">
-                <MonitorSmartphone className="mx-auto mb-4 size-10 text-primary/70" />
+                <MonitorSmartphone className="mx-auto mb-4 size-10 text-brand-red/70" />
                 <h2 className="text-xl font-bold">
                   {online ? "Seu espaço de trabalho ao vivo" : "Conecte para acessar suas sessões"}
                 </h2>

@@ -138,9 +138,9 @@ const tabGroups = [
   {
     label: "Geral",
     items: [
-      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { id: "analytics", label: "Analytics", icon: BarChart3 },
-      { id: "top-posts", label: "Top posts", icon: Trophy },
+      { id: "dashboard", label: "Visão geral", icon: LayoutDashboard },
+      { id: "analytics", label: "Resultados", icon: BarChart3 },
+      { id: "top-posts", label: "Melhores publicações", icon: Trophy },
     ],
   },
   {
@@ -148,7 +148,7 @@ const tabGroups = [
     items: [
       { id: "fila", label: "Agendar Reels", icon: CalendarDays },
       { id: "stories", label: "Stories", icon: Instagram },
-      { id: "loops", label: "Loops de Reels", icon: Repeat2 },
+      { id: "loops", label: "Repetir programação", icon: Repeat2 },
     ],
   },
   {
@@ -156,7 +156,7 @@ const tabGroups = [
     items: [
       { id: "biblioteca", label: "Biblioteca", icon: Library },
       { id: "contas", label: "Contas do Instagram", icon: Users },
-      { id: "perfis", label: "Novos perfis", icon: Plus },
+      { id: "perfis", label: "Preparar novos perfis", icon: Plus },
       { id: "conteudo", label: "Legendas e hashtags", icon: FileText },
     ],
   },
@@ -180,28 +180,28 @@ const quickActions = [
     title: "Gerenciar contas",
     text: "Veja seus perfis do Instagram e adicione outros.",
     icon: Users,
-    tone: "bg-sky-500/10 text-sky-300",
+    tone: "bg-primary/10 text-brand-red",
   },
   {
     tab: "fila",
     title: "Agendar Reels",
     text: "Escolha seus vídeos e quando eles devem ser publicados.",
     icon: CalendarDays,
-    tone: "bg-primary/10 text-primary",
+    tone: "bg-primary/10 text-brand-red",
   },
   {
     tab: "stories",
     title: "Preparar Stories",
     text: "Monte a prévia com figurinhas e receba um lembrete para postar.",
     icon: Instagram,
-    tone: "bg-fuchsia-500/10 text-fuchsia-300",
+    tone: "bg-primary/10 text-brand-red",
   },
   {
     tab: "perfis",
     title: "Planejar um novo perfil",
     text: "Deixe nome, foto e bio prontos para criar o perfil no Instagram.",
     icon: Plus,
-    tone: "bg-emerald-500/10 text-emerald-300",
+    tone: "bg-primary/10 text-brand-red",
   },
 ] as const;
 
@@ -1154,7 +1154,7 @@ function InstagramWorkspacePage({
                       setTab(item.target as Tab);
                     }
                   }}
-                  className={`rounded-lg border p-3 text-left ${item.ready ? "border-emerald-400/30 bg-emerald-400/5" : "border-border bg-background/40 hover:border-sky-400/50"}`}
+                  className={`rounded-lg border p-3 text-left ${item.ready ? "border-emerald-400/30 bg-emerald-400/5" : "border-border bg-background/40 hover:border-primary/70"}`}
                 >
                   <strong className="block text-sm">
                     {item.ready ? "✓ " : ""}
@@ -1225,7 +1225,7 @@ function InstagramWorkspacePage({
                     </span>
                     <span className="mt-3 flex items-center justify-between gap-2 text-sm font-semibold">
                       {title}
-                      <ArrowRight className="size-4 shrink-0 text-muted-foreground group-hover:text-primary" />
+                      <ArrowRight className="size-4 shrink-0 text-muted-foreground group-hover:text-brand-red" />
                     </span>
                     <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
                       {text}
@@ -1432,7 +1432,7 @@ function InstagramWorkspacePage({
               {!!readyAccounts.length && (
                 <button
                   type="button"
-                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary"
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand-red"
                   onClick={() => setTab("fila")}
                 >
                   Ir para o agendamento de Reels <ArrowRight className="size-4" />
@@ -1478,7 +1478,7 @@ function InstagramWorkspacePage({
                                   " · Reconexão pendente"}
                               </span>
                             </span>
-                            <ArrowRight className="size-4 shrink-0 text-primary" aria-hidden />
+                            <ArrowRight className="size-4 shrink-0 text-brand-red" aria-hidden />
                           </button>
                         </li>
                       );
@@ -1487,7 +1487,7 @@ function InstagramWorkspacePage({
                 ) : accountsLoaded ? (
                   <button
                     type="button"
-                    className="text-sm font-semibold text-primary"
+                    className="text-sm font-semibold text-brand-red"
                     onClick={() => setTab("contas")}
                   >
                     Conectar conta do Instagram
@@ -1501,7 +1501,7 @@ function InstagramWorkspacePage({
                 <button
                   type="button"
                   onClick={() => setLibraryOpen(false)}
-                  className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold text-primary hover:bg-primary/10"
+                  className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold text-brand-red hover:bg-primary/10"
                 >
                   <ArrowLeft className="size-4" aria-hidden /> Todas as bibliotecas
                 </button>
@@ -1565,7 +1565,7 @@ function InstagramWorkspacePage({
                         }}
                         className="w-full rounded-lg border border-dashed border-border bg-secondary/20 px-6 py-10 text-center transition-colors hover:border-primary/60"
                       >
-                        <Upload className="mx-auto size-7 text-primary" />
+                        <Upload className="mx-auto size-7 text-brand-red" />
                         <p className="mt-3 text-sm font-semibold" role="status">
                           {uploading ? uploadProgress : "Selecione ou arraste seus vídeos"}
                         </p>
@@ -1650,7 +1650,7 @@ function InstagramWorkspacePage({
                           key={video.id}
                           className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-3 hover:bg-secondary/40"
                         >
-                          <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary">
+                          <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-brand-red">
                             <Video className="size-4" />
                           </div>
                           <div className="min-w-0 flex-1">
@@ -1760,7 +1760,7 @@ function InstagramWorkspacePage({
                 {!readyAccounts.length && (
                   <button
                     type="button"
-                    className="py-1 text-sm font-semibold text-primary underline"
+                    className="py-1 text-sm font-semibold text-brand-red underline"
                     onClick={() => setTab("contas")}
                   >
                     Conectar minha primeira conta
@@ -1869,7 +1869,7 @@ function InstagramWorkspacePage({
                           />
                           <button
                             type="button"
-                            className="text-xs font-semibold text-primary"
+                            className="text-xs font-semibold text-brand-red"
                             onClick={() => setCover(undefined)}
                           >
                             Remover capa
@@ -2077,7 +2077,7 @@ function InstagramWorkspacePage({
                           <span className="w-10 text-xs font-semibold text-muted-foreground">
                             #{reviewPage * reviewPageSize + index + 1}
                           </span>
-                          <Video className="size-4 shrink-0 text-primary" />
+                          <Video className="size-4 shrink-0 text-brand-red" />
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium">
                               {post.video} · @{post.accountName}
@@ -2091,7 +2091,7 @@ function InstagramWorkspacePage({
                             </p>
                             {!queueSaved && !previewOutdated && (
                               <details className="mt-2 text-xs">
-                                <summary className="cursor-pointer font-semibold text-primary">
+                                <summary className="cursor-pointer font-semibold text-brand-red">
                                   Editar só esta legenda
                                 </summary>
                                 <label className="mt-2 block">

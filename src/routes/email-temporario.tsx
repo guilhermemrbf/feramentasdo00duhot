@@ -18,7 +18,7 @@ function TemporaryEmail() {
       <main className="mx-auto max-w-4xl px-5 py-10 sm:px-8">
         <section className="home-intro">
           <div>
-            <p className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-primary">
+            <p className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-brand-red">
               <Mail className="size-4" aria-hidden /> Recebimento de e-mails
             </p>
             <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
