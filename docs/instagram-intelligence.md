@@ -46,3 +46,9 @@ Verificação do incremento: 137 testes da suíte, TypeScript, build de produç�
 
 
 A lista de resultados tem filtros com totais por decisão e mostra o motivo disponível em cada perfil. Durante reanálise ou falha, o filtro e o CSV tratam a decisão atual como pendente. A ficha histórica permanece disponível com indicação na lista. A validação no Chrome com PostgreSQL local conferiu a troca de filtros, o motivo e as exportações. TypeScript também passou.
+
+## Tela única — 14/11/2026
+
+A rota /instagram-intelligence usa a entrada validada, a fila e os resultados privados existentes. Os dois grupos exibem somente o lote mais recente. Perfis sem fonte ou com falha ficam em Não aprovados com a causa explícita. O progresso contabiliza somente tarefas processadas e informa as outras condições separadamente. Uma tarefa na fila não reutiliza a nota anterior. A lista de fichas tem altura limitada para manter o modelo acessível em lotes grandes.
+
+Para continuar importando dados autorizados, exportando relatórios ou registrando revisão humana, abra /instagram-intelligence?modo=revisao. É a mesma rota com o painel preexistente montado para o lote mais recente. O acesso continua privado. Lotes anteriores continuam persistidos, mas a tela direta carrega somente o mais recente. O caminho automático para Business Discovery e análise audiovisual por lote permanece pendente.

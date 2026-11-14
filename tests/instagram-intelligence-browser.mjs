@@ -4,7 +4,6 @@ import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { once } from "node:events";
-import { spawnSync } from "node:child_process";
 
 const require = createRequire(
   resolve(process.env.INTELLIGENCE_PG_TEST_DEPS || ".", "package.json"),
@@ -109,6 +108,14 @@ try {
       await readFile(new URL("../supabase/migrations/" + file, import.meta.url), "utf8"),
     );
   }
+  await db.query("insert into public.workspaces values ($1,$2,'Equipe')", [
+    "9a5f7332-eb29-467b-8d14-39917443b095",
+    uid,
+  ]);
+  await db.query(
+    "insert into public.instagram_accounts values (gen_random_uuid(),$1,'perfil_teste','connected')",
+    ["9a5f7332-eb29-467b-8d14-39917443b095"],
+  );
   api.listen(4383, "127.0.0.1");
   await once(api, "listening");
   browser = await chromium.launch({ executablePath: chrome, headless: true });
@@ -139,122 +146,42 @@ try {
     { uid, token, now },
   );
   await page.goto(web + "/instagram-intelligence");
-  await page
-    .getByLabel("Links de perfil ou @usuários")
-    .fill(
-      [
-        "https://www.instagram.com/perfil_teste/?igsh=fixture",
-        "https://www.instagram.com/segundo_perfil/",
-        "@Perfil_Teste",
-      ].join("\n"),
-    );
-  await page.getByRole("button", { name: "Analisar" }).click();
-  await page.getByText(/2 perfil\(is\) sem fonte automática disponível/).waitFor();
-  await page.getByLabel("Abrir @segundo_perfil no Instagram").waitFor();
-  const approved = page.getByRole("button", { name: "Aprovados: 0", exact: true });
-  const pending = page.getByRole("button", { name: "Pendentes: 2" });
-  await approved.click();
-  await page.getByText("Nenhum perfil neste filtro.").waitFor();
-  assert.equal(await approved.getAttribute("aria-pressed"), "true");
-  await pending.click();
-  await page.getByLabel("Abrir @segundo_perfil no Instagram").waitFor();
-  const [links] = await Promise.all([
-    page.waitForEvent("download"),
-    page.getByRole("button", { name: "Baixar todos os links (.txt)" }).click(),
-  ]);
-  assert.equal(
-    await readFile(await links.path(), "utf8"),
-    [
-      "https://www.instagram.com/perfil_teste/",
-      "https://www.instagram.com/segundo_perfil/",
-      "",
-    ].join("\n"),
-  );
-  const publishedAt = new Date(Date.now() - 24 * 3600000).toISOString();
-  await page.getByLabel("Arquivo de métricas autorizadas").setInputFiles({
-    name: "metricas-autorizadas.json",
-    mimeType: "application/json",
-    buffer: Buffer.from(
-      JSON.stringify([
-        {
-          username: "perfil_teste",
-          snapshot: {
-            capturedAt: new Date().toISOString(),
-            followers: 500,
-            reels: [{ publishedAt, url: "https://www.instagram.com/reel/exemplo01/", views: 1234 }],
-          },
-        },
-      ]),
-    ),
-  });
-  await page.getByLabel("Tenho autorização para usar os dados deste arquivo.").check();
-  await page.getByRole("button", { name: "Importar e analisar" }).click();
-  await page
-    .getByText("Aguardando revisão de conteúdo e do Status da Conta.", { exact: true })
-    .waitFor();
-  await page.getByRole("button", { name: "@perfil_teste" }).click();
-  await page.getByText("Fichas por Reel (1)").click();
-  await page.getByText("1.234 views", { exact: false }).last().waitFor();
-  const [csv] = await Promise.all([
-    page.waitForEvent("download"),
-    page.getByRole("button", { name: "Exportar seleção do filtro" }).click(),
-  ]);
-  assert.match(await readFile(await csv.path(), "utf8"), /perfil_teste.*1234/);
-  const [pdf] = await Promise.all([
-    page.waitForEvent("download"),
-    page.getByRole("button", { name: "Baixar relatório em PDF" }).click(),
-  ]);
-  assert.match((await readFile(await pdf.path())).subarray(0, 8).toString(), /^%PDF-/);
-
-  await page.getByRole("button", { name: "Registrar revisão", exact: true }).click();
-  await page
-    .getByLabel("Reel para revisar", { exact: false })
-    .selectOption("https://www.instagram.com/reel/exemplo01/");
-  const media = spawnSync("ffmpeg", [
-    "-hide_banner",
-    "-loglevel",
-    "error",
-    "-f",
-    "lavfi",
-    "-i",
-    "testsrc2=size=240x320:rate=24",
-    "-t",
-    "3",
-    "-c:v",
-    "libx264",
-    "-movflags",
-    "frag_keyframe+empty_moov",
-    "-f",
-    "mp4",
-    "pipe:1",
-  ]);
-  assert.equal(media.status, 0, media.stderr?.toString());
-  await page.getByLabel("Vídeo local para ", { exact: false }).setInputFiles({
-    name: "fixture.mp4",
-    mimeType: "video/mp4",
-    buffer: media.stdout,
-  });
-  await page.getByRole("button", { name: "Extrair frames" }).click();
-  await page.getByAltText("Frame em 0 segundos", { exact: true }).waitFor();
-  assert((await page.getByAltText(/^Frame em /).count()) > 3);
-  if (process.env.INTELLIGENCE_TEST_OLLAMA === "1") {
-    const attach = page.getByRole("button", { name: "Anexar sugestões à ficha" });
-    const alerts = page.getByRole("alert");
-    await page.getByRole("button", { name: "Sugerir observações com IA local" }).click();
-    await attach.or(alerts).first().waitFor({ timeout: 100000 });
-    assert(await attach.isVisible(), await alerts.allTextContents());
-    await attach.click();
+  await page.getByRole("heading", { name: "Cole os links dos perfis" }).waitFor({ timeout: 6000 });
+  const input = page.getByRole("textbox", { name: "Cole os links dos perfis" });
+  const action = page.getByRole("button", { name: "ANALISAR", exact: true });
+  await input.fill("https://example.org/conta");
+  await page.getByRole("alert").filter({ hasText: "Corrija" }).waitFor();
+  assert.equal(await action.isEnabled(), false);
+  await input.fill("https://www.instagram.com/perfil_teste/\n@Perfil_Teste\n@segundo_perfil");
+  await page.getByText(/1 duplicidade removida/).waitFor();
+  await action.click();
+  await page.getByText("0 de 2 perfis processados").waitFor();
+  await page.getByText("Sem uma fonte de dados autorizada para este perfil.").waitFor();
+  await db.query("select private.process_instagram_intelligence_jobs(25)");
+  await page.getByText("1 de 2 perfis processados").waitFor();
+  await page.getByRole("heading", { name: "@perfil_teste" }).waitFor();
+  await page.getByText("Aguardando revisão de conteúdo e do Status da Conta.").waitFor();
+  const result = page.getByRole("region", { name: "Não aprovados", exact: true });
+  assert.match(await result.innerText(), /^2\n/);
+  assert.equal(await result.getByText("Sem nota final", { exact: true }).count(), 2);
+  assert.equal(await page.getByRole("button").count(), 1);
+  assert.equal(await page.getByRole("navigation").count(), 0);
+  const model = page.getByRole("region", { name: "Modelo de pontuação" });
+  for (const weight of [35, 25, 30, 10]) {
+    await model.getByText(weight + "%", { exact: true }).waitFor();
   }
-  await page.getByLabel("Observação da revisão").fill("Frames sintéticos revisados no navegador.");
-  await page.getByRole("button", { name: "Salvar revisão" }).click();
-  await page.getByText("Histórico de revisões", { exact: true }).waitFor();
-  if (process.env.INTELLIGENCE_TEST_OLLAMA === "1") {
-    await page.getByText("Sugestões registradas de qwen3.5:0.8b.", { exact: false }).waitFor();
-    console.log("Ollama: inferência visual real e registro das observações confirmados.");
-  }
-  assert.equal(runtimeErrors.length, 0, runtimeErrors.join("\n"));
+  await page.reload();
+  await page.getByText("1 de 2 perfis processados").waitFor();
+  await page.setViewportSize({ width: 360, height: 800 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.goto(web + "/instagram-intelligence?modo=revisao");
+  await page.getByText("Cole os links dos perfis").waitFor();
+  await page.getByLabel("Arquivo de métricas autorizadas").waitFor();
+  await page.getByRole("button", { name: "@perfil_teste", exact: true }).click();
+  await page.getByRole("button", { name: "Registrar revisão", exact: true }).waitFor();
+  assert.deepEqual(runtimeErrors, []);
   console.log(
-    "Chrome + PostgreSQL: cadastro, upload JSON, processamento, ranking, relatório, CSV, PDF, vídeo local e revisão.",
+    "Chrome + PostgreSQL: entrada, progresso automático, zero pontuações inventadas, pesos, retomada e celular.",
   );
 } finally {
   await browser?.close();
