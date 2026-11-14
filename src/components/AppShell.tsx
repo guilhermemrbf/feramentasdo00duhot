@@ -8,7 +8,8 @@ import {
   GitBranch,
   Home,
   Image,
-  Layers3,
+  Instagram,
+  ScanSearch,
   Mail,
   Menu,
   MonitorSmartphone,
@@ -36,12 +37,12 @@ export const TOOL_ICONS = {
   telegram: Send,
   images: Image,
   downloader: Download,
-  intelligence: Search,
+  intelligence: ScanSearch,
   pages: PanelTop,
   metadata: FileKey,
   creatives: ShieldCheck,
   preview: Scan,
-  social: Layers3,
+  social: Instagram,
   funnels: GitBranch,
   profiles: MonitorSmartphone,
   tempMail: Mail,
@@ -59,8 +60,8 @@ export function Brand({ compact = false }: { compact?: boolean }) {
       <span>
         <strong className="block text-[17px] font-semibold tracking-tight">MauseHot</strong>
         {!compact && (
-          <span className="mt-0.5 block text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-            Operação digital
+          <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">
+            Suas ferramentas, sem complicação
           </span>
         )}
       </span>
@@ -149,13 +150,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             className={cn("tool-nav-link mb-5", pathname === "/" && "is-active")}
           >
             <Home className="size-[17px]" />
-            Visão geral
+            Todas as ferramentas
           </Link>
           {CATEGORIES.filter((category) =>
             TOOL_CATALOG.some((tool) => tool.category === category),
           ).map((category) => (
             <div key={category} className="mb-5">
-              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {category}
               </p>
               {TOOL_CATALOG.filter((tool) => tool.category === category).map(nav)}
@@ -164,7 +165,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </div>
       <div className="border-t border-border px-5 py-4 text-xs leading-5 text-muted-foreground">
-        <span className="block font-medium text-foreground">Seu centro de operação</span>Conteúdo,
+        <span className="block font-medium text-foreground">Tudo em um só lugar</span>Conteúdo,
         preparação e automação.
       </div>
     </>
@@ -217,7 +218,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               Início
             </Link>
             <span className="hidden text-muted-foreground/40 sm:block">/</span>
-            <span className="truncate text-sm font-semibold">{current?.name || "Visão geral"}</span>
+            <span className="truncate text-sm font-semibold">
+              {current?.name || "Todas as ferramentas"}
+            </span>
           </div>
           <button
             onClick={openSearch}
@@ -237,7 +240,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </div>
         <footer className="workspace-footer">
-          <span>MauseHot · Operação digital</span>
+          <span>MauseHot · Suas ferramentas, sem complicação</span>
           <span>Suas ferramentas. Seu ritmo.</span>
         </footer>
       </div>
@@ -252,7 +255,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="border-b border-border p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 id="tool-search-title" className="font-semibold">
-              Encontrar ferramenta
+              O que você quer fazer?
             </h2>
             <button
               type="button"
@@ -322,15 +325,21 @@ export function PageIntro({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const tool = findTool(pathname);
+  const Icon = tool ? TOOL_ICONS[tool.id] : PanelTop;
   return (
     <header className="page-intro">
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {eyebrow}
         </p>
         {tool && <span className="workspace-badge">{tool.mode}</span>}
       </div>
-      <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
+      <div className="flex items-center gap-4">
+        <span className="tool-tone tool-icon grid size-14 shrink-0 place-items-center" aria-hidden>
+          <Icon className="size-7" />
+        </span>
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+      </div>
       <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">{description}</p>
       {tool && <ToolGuide tool={tool} />}
     </header>
@@ -339,36 +348,45 @@ export function PageIntro({
 
 function ToolGuide({ tool }: { tool: Tool }) {
   return (
-    <details className="tool-guide">
-      <summary>
-        <CircleHelp className="size-4" />
-        <span>Como usar · o que você precisa e o que recebe</span>
-      </summary>
-      <div className="px-4 pb-5 pt-2 sm:px-5">
-        <div className="grid gap-5 border-b border-border pb-5 md:grid-cols-2">
-          <div>
-            <h2 className="text-xs font-semibold">Você fornece</h2>
-            <p className="mt-1 text-xs leading-6 text-muted-foreground">{tool.input}</p>
+    <div className="mt-6">
+      <p className="mb-3 text-sm font-semibold">Como começar</p>
+      <ol className="grid gap-3 md:grid-cols-3">
+        {tool.steps.map((step, index) => (
+          <li
+            key={step}
+            className="flex items-start gap-3 rounded-xl border border-border bg-background/60 p-3 text-sm leading-6"
+          >
+            <span
+              className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground"
+              aria-hidden
+            >
+              {index + 1}
+            </span>
+            <span>{step}</span>
+          </li>
+        ))}
+      </ol>
+      <details className="tool-guide">
+        <summary>
+          <CircleHelp className="size-4" aria-hidden />
+          <span>O que preciso para usar?</span>
+        </summary>
+        <div className="space-y-4 px-4 pb-5 pt-2 sm:px-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <h2 className="text-sm font-semibold">Antes de começar</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">{tool.input}</p>
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold">Seu resultado</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">{tool.output}</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xs font-semibold">Você recebe</h2>
-            <p className="mt-1 text-xs leading-6 text-muted-foreground">{tool.output}</p>
-          </div>
+          <p className="rounded-lg bg-background px-3 py-3 text-sm leading-6 text-muted-foreground">
+            {tool.requirement}
+          </p>
         </div>
-        <ol className="my-5 grid gap-4 md:grid-cols-3">
-          {tool.steps.map((step, index) => (
-            <li key={step} className="flex items-start gap-2 text-xs leading-6">
-              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border border-border text-[10px] text-primary">
-                {index + 1}
-              </span>
-              <span>{step}</span>
-            </li>
-          ))}
-        </ol>
-        <p className="rounded-md bg-background px-3 py-2 text-xs leading-6 text-muted-foreground">
-          {tool.requirement}
-        </p>
-      </div>
-    </details>
+      </details>
+    </div>
   );
 }

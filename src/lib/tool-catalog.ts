@@ -18,6 +18,7 @@ export const TEMP_MAIL_URL = publicMailUrl(import.meta.env?.VITE_TEMP_MAIL_URL);
 const ALL_TOOLS = [
   {
     id: "tempMail",
+    action: "Abrir caixa de entrada",
     path: "/email-temporario",
     name: "Correio Temporário",
     category: "Ambientes",
@@ -34,6 +35,7 @@ const ALL_TOOLS = [
   },
   {
     id: "telegram",
+    action: "Trocar links do canal",
     path: "/telegram-sync",
     name: "Telegram Sync",
     category: "Conteúdo",
@@ -51,6 +53,7 @@ const ALL_TOOLS = [
   },
   {
     id: "downloader",
+    action: "Baixar a extensão",
     path: "/mouse-hot-downloader",
     name: "Mouse Hot Downloader",
     category: "Conteúdo",
@@ -67,6 +70,7 @@ const ALL_TOOLS = [
   },
   {
     id: "images",
+    action: "Criar links dos arquivos",
     path: "/image-links",
     name: "Image Links",
     category: "Conteúdo",
@@ -83,6 +87,7 @@ const ALL_TOOLS = [
   },
   {
     id: "pages",
+    action: "Preparar minha página",
     path: "/criar-pagina",
     name: "Criar Tela Privacy",
     category: "Conteúdo",
@@ -100,6 +105,7 @@ const ALL_TOOLS = [
   },
   {
     id: "metadata",
+    action: "Limpar meus arquivos",
     path: "/limpar-metadados",
     name: "Limpar Metadados",
     category: "Preparação",
@@ -117,13 +123,14 @@ const ALL_TOOLS = [
   },
   {
     id: "creatives",
+    action: "Personalizar meus materiais",
     path: "/otimizar-criativos",
     name: "Otimizar Criativos",
     category: "Preparação",
     mode: "No navegador",
-    summary: "Reexporte materiais e aplique sua marca em imagens e vídeos.",
+    summary: "Adicione sua marca a fotos e vídeos e baixe novas versões.",
     input: "Criativos e, se desejar, uma imagem ou texto de marca.",
-    output: "Imagens WEBP e vídeos WEBM com o overlay configurado.",
+    output: "Imagens WEBP e vídeos WEBM com sua marca aplicada.",
     steps: [
       "Escolha os criativos e personalize a marca.",
       "Defina posição e opacidade antes de processar.",
@@ -133,6 +140,7 @@ const ALL_TOOLS = [
   },
   {
     id: "preview",
+    action: "Criar uma prévia",
     path: "/gerar-preview",
     name: "Gerar Preview",
     category: "Preparação",
@@ -150,6 +158,7 @@ const ALL_TOOLS = [
   },
   {
     id: "social",
+    action: "Programar no Instagram",
     path: "/automacao-instagram",
     name: "Automatic Post · Instagram",
     category: "Automação",
@@ -168,6 +177,7 @@ const ALL_TOOLS = [
   },
   {
     id: "intelligence",
+    action: "Analisar perfis",
     path: "/instagram-intelligence",
     name: "Instagram Intelligence",
     category: "Planejamento",
@@ -175,17 +185,18 @@ const ALL_TOOLS = [
     summary:
       "Analise lotes privados de até 1.000 perfis e compare potencial, desempenho e conformidade.",
     input: "Perfis do Instagram e métricas de fontes autorizadas.",
-    output: "Ranking, fichas por Reel e relatórios com evidências.",
+    output: "Perfis aprovados e não aprovados, com notas e justificativas disponíveis.",
     steps: [
-      "Entre com Google e crie um lote.",
-      "Selecione contas conectadas ou importe métricas autorizadas.",
-      "Revise as evidências e exporte os resultados.",
+      "Entre com Google e cole os links ou @usuários.",
+      "Clique em Analisar e acompanhe o progresso.",
+      "Confira as notas e os motivos de cada resultado.",
     ],
     requirement:
       "A análise depende de métricas disponíveis e de revisão autorizada para classificar conteúdo e conformidade.",
   },
   {
     id: "funnels",
+    action: "Organizar meu funil",
     path: "/funil",
     name: "Funil",
     category: "Planejamento",
@@ -203,6 +214,7 @@ const ALL_TOOLS = [
   },
   {
     id: "profiles",
+    action: "Preparar um perfil",
     path: "/hot-profiles",
     name: "Hot Profiles",
     category: "Automação",
@@ -249,7 +261,7 @@ export function searchTools(query: string, category = "Todas") {
       (category === "Todas" || tool.category === category) &&
       terms.every((term) =>
         normalizeSearch(
-          `${tool.name} ${tool.summary} ${tool.category} ${tool.mode} ${tool.input} ${tool.output} ${tool.requirement}`,
+          `${tool.name} ${tool.action} ${tool.summary} ${tool.category} ${tool.mode} ${tool.input} ${tool.output} ${tool.requirement}`,
         ).includes(term),
       ),
   );

@@ -81,21 +81,30 @@ test("profile reference URLs require HTTPS without credentials", () => {
 });
 test("catalog finds Automatic Post and Hot Profiles through their Instagram features", () => {
   assert.equal(TOOL_CATALOG.find((tool) => tool.id === "social")?.path, "/automacao-instagram");
-  assert.deepEqual(searchTools("Automatic Post").map((tool) => tool.path), ["/automacao-instagram"]);
-  assert.deepEqual(searchTools("Instagram").map((tool) => tool.path), [
-    "/mouse-hot-downloader",
-    "/automacao-instagram",
-    "/instagram-intelligence",
-  ]);
-  assert.deepEqual(searchTools("Reels").map((tool) => tool.path), [
-    "/mouse-hot-downloader",
-    "/automacao-instagram",
-  ]);
-  assert.deepEqual(searchTools("Hot Profiles").map((tool) => tool.path), ["/automacao-instagram"]);
-  assert.deepEqual(searchTools("TikTok").map((tool) => tool.path), ["/mouse-hot-downloader"]);
+  assert.deepEqual(
+    searchTools("Automatic Post").map((tool) => tool.path),
+    ["/automacao-instagram"],
+  );
+  assert.deepEqual(
+    searchTools("Instagram").map((tool) => tool.path),
+    ["/mouse-hot-downloader", "/automacao-instagram", "/instagram-intelligence"],
+  );
+  assert.deepEqual(
+    searchTools("Reels").map((tool) => tool.path),
+    ["/mouse-hot-downloader", "/automacao-instagram"],
+  );
+  assert.deepEqual(
+    searchTools("Hot Profiles").map((tool) => tool.path),
+    ["/automacao-instagram"],
+  );
+  assert.deepEqual(
+    searchTools("TikTok").map((tool) => tool.path),
+    ["/mouse-hot-downloader"],
+  );
   assert.equal(findTool("/automacao-tiktok"), undefined);
   assert.deepEqual(cleanPreferences({ favorites: ["social"], recent: ["social"] }), {
-    favorites: ["social"], recent: ["social"],
+    favorites: ["social"],
+    recent: ["social"],
   });
 });
 
@@ -131,4 +140,13 @@ test("media IDs remain valid in local HTTP previews without randomUUID", async (
     if (saved) Object.defineProperty(crypto, "randomUUID", saved);
     else delete crypto.randomUUID;
   }
+});
+
+test("every tool offers a clear task action without losing its existing route", () => {
+  for (const tool of TOOL_CATALOG) {
+    assert.equal(typeof tool.action, "string");
+    assert(tool.action.length >= 6 && tool.action.length <= 35);
+  }
+  assert.equal(findTool("/automacao-instagram").action, "Programar no Instagram");
+  assert.equal(findTool("/criar-pagina").action, "Preparar minha página");
 });
