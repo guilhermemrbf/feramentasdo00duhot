@@ -15,6 +15,7 @@ import {
   metricsFileLimit,
   parseMetricsFile,
   rankingCsv,
+  reasons,
   risks,
   statuses,
   type Decision,
@@ -33,6 +34,20 @@ const sortable = {
   medianViews: "Mediana de views",
   confidence: "Confiança",
 };
+
+const outcomeLabels = {
+  approved: "Aprovados",
+  rejected: "Não aprovados",
+  review: "Pendentes",
+} satisfies Record<Decision, string>;
+
+function currentDecision(row: ResultRow): Decision {
+  return row.state === "done" ? row.decision : "review";
+}
+
+function currentResult(row: ResultRow): ResultRow {
+  return row.state === "done" ? row : { ...row, decision: "review", reason: null };
+}
 
 function sortValue(row: ResultRow, key: string) {
   switch (key) {
@@ -96,7 +111,7 @@ export function IntelligenceBatch({
     return (results.data ?? [])
       .filter(
         (row) =>
-          (!decision || row.decision === decision) &&
+          (!decision || currentDecision(row) === decision) &&
           (!query ||
             [row.niche, row.subniche].some((value) =>
               value?.toLocaleLowerCase("pt-BR").includes(query),
@@ -115,6 +130,14 @@ export function IntelligenceBatch({
     (total, row) => ({ ...total, [row.state]: total[row.state] + 1 }),
     { awaiting_source: 0, queued: 0, done: 0, failed: 0 },
   );
+
+  const outcomes = { approved: 0, rejected: 0, review: 0 };
+  for (const row of results.data ?? []) outcomes[currentDecision(row)]++;
+
+  function filterByDecision(next: Decision | "") {
+    setDecision(next);
+    setPage(0);
+  }
 
   async function enqueue(source: "connected" | "file") {
     if (lock.current) return;
@@ -265,7 +288,30 @@ export function IntelligenceBatch({
         )}
         {results.isPending && <p role="status">Carregando resultados…</p>}
         {results.isError && <p role="alert">{results.error.message}</p>}
-        <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
+        {results.data && (
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por resultado">
+            <Button
+              variant={decision === "" ? "default" : "outline"}
+              size="sm"
+              aria-pressed={decision === ""}
+              onClick={() => filterByDecision("")}
+            >
+              Todos: {results.data.length}
+            </Button>
+            {(Object.keys(outcomeLabels) as Decision[]).map((key) => (
+              <Button
+                key={key}
+                variant={decision === key ? "default" : "outline"}
+                size="sm"
+                aria-pressed={decision === key}
+                onClick={() => filterByDecision(key)}
+              >
+                {outcomeLabels[key]}: {outcomes[key]}
+              </Button>
+            ))}
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-3">
           <label>
             Ordenar por
             <select
@@ -277,24 +323,6 @@ export function IntelligenceBatch({
               }}
             >
               {Object.entries(sortable).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Decisão
-            <select
-              className={field}
-              value={decision}
-              onChange={(event) => {
-                setDecision(event.target.value as Decision | "");
-                setPage(0);
-              }}
-            >
-              <option value="">Todas</option>
-              {Object.entries(decisions).map(([key, label]) => (
                 <option key={key} value={key}>
                   {label}
                 </option>
@@ -353,7 +381,7 @@ export function IntelligenceBatch({
             disabled={!rows.length}
             onClick={() =>
               downloadFile(
-                "\uFEFF" + rankingCsv(rows),
+                "\uFEFF" + rankingCsv(rows.map(currentResult)),
                 "text/csv;charset=utf-8",
                 "ranking-instagram.csv",
               )
@@ -369,7 +397,9 @@ export function IntelligenceBatch({
               downloadFile(
                 "\uFEFF" +
                   rankingCsv(
-                    (results.data ?? []).filter((row) => comparison.includes(row.username)),
+                    (results.data ?? [])
+                      .filter((row) => comparison.includes(row.username))
+                      .map(currentResult),
                   ),
                 "text/csv;charset=utf-8",
                 "comparacao-instagram.csv",
@@ -450,7 +480,15 @@ export function IntelligenceBatch({
                     <td>{row.score == null ? "—" : numberFormat.format(row.score)}</td>
                     <td>{row.medianViews == null ? "—" : numberFormat.format(row.medianViews)}</td>
                     <td>
-                      {decisions[row.decision]}
+                      {row.state === "done" ? decisions[row.decision] : "Pendente"}
+                      {row.state === "done" && row.reason && reasons[row.reason] && (
+                        <small className="block text-muted-foreground">{reasons[row.reason]}</small>
+                      )}
+                      {row.state !== "done" && row.jobId && (
+                        <small className="block text-muted-foreground">
+                          A ficha disponível é da análise anterior.
+                        </small>
+                      )}
                       {row.confidence && (
                         <small className="block text-muted-foreground">
                           Confiança {confidenceLabels[row.confidence].toLowerCase()}

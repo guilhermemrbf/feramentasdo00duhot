@@ -43,9 +43,9 @@ type IntelligenceDatabase = {
         Returns: unknown;
       };
 
-      create_instagram_intelligence_batch: {
-        Args: { p_name: string; p_usernames: string[] };
-        Returns: string;
+      analyze_instagram_intelligence_batch: {
+        Args: { p_usernames: string[] };
+        Returns: { id: string; name: string; queued: number; awaiting_source: number }[];
       };
     };
   };
@@ -81,11 +81,10 @@ export async function getIntelligenceBatches(page: number, signal: AbortSignal) 
   return { items: data.slice(0, PAGE_SIZE), hasMore: data.length > PAGE_SIZE };
 }
 
-export async function createIntelligenceBatch(name: string, usernames: string[]) {
-  const { data, error } = await client().rpc("create_instagram_intelligence_batch", {
-    p_name: name,
-    p_usernames: usernames,
-  });
+export async function analyzeIntelligenceBatch(usernames: string[]) {
+  const { data, error } = await client()
+    .rpc("analyze_instagram_intelligence_batch", { p_usernames: usernames })
+    .single();
   if (error) throw serviceError(error);
   return data;
 }

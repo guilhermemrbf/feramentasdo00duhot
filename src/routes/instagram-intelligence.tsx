@@ -2,28 +2,43 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AppShell, PageIntro } from "@/components/AppShell";
+import {
+  IntelligenceResults,
+  ScoringModel,
+} from "@/components/instagram-intelligence/IntelligenceResults";
 import { IntelligenceBatch } from "@/components/instagram-intelligence/IntelligenceBatch";
 import { Button } from "@/components/ui/button";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
-import { createIntelligenceBatch, getIntelligenceBatches } from "@/lib/instagram-intelligence-data";
+import {
+  analyzeIntelligenceBatch,
+  getIntelligenceBatches,
+} from "@/lib/instagram-intelligence-data";
 import {
   IMPORT_LIMIT,
   PROFILE_LIMIT,
   parseInstagramProfiles,
 } from "@/lib/instagram-intelligence-import";
+import { recordTool } from "@/lib/tool-preferences";
 import { getPostkitSession } from "@/lib/postkit-access";
 
 export const Route = createFileRoute("/instagram-intelligence")({
   head: () => ({ meta: [{ title: "Instagram Intelligence — MauseHot" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    modo: search.modo === "revisao" ? ("revisao" as const) : undefined,
+  }),
   component: InstagramIntelligence,
 });
 
 function InstagramIntelligence() {
+  const { modo } = Route.useSearch();
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [error, setError] = useState("");
   const [signingIn, setSigningIn] = useState(false);
+
+  useEffect(() => {
+    recordTool("intelligence");
+  }, []);
 
   useEffect(() => {
     let disposed = false;
@@ -59,7 +74,8 @@ function InstagramIntelligence() {
     setError("");
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + "/instagram-intelligence",
+        redirect_uri:
+          window.location.origin + "/instagram-intelligence" + (modo ? "?modo=revisao" : ""),
       });
       if (result.error) throw result.error;
     } catch {
@@ -70,17 +86,17 @@ function InstagramIntelligence() {
   }
 
   return (
-    <AppShell>
-      <main className="mx-auto max-w-5xl space-y-6 p-5 sm:p-8">
-        <PageIntro
-          eyebrow="LOTES PRIVADOS"
-          title="Instagram Intelligence"
-          description="Analise até 1.000 perfis por lote usando dados autorizados e revise as evidências antes de decidir."
-        />
+    <div className="min-h-screen bg-black text-[#ededed]">
+      <main className="mx-auto max-w-[1000px] space-y-6 px-4 py-6 sm:px-5">
+        <h1 className="text-2xl font-semibold">Instagram Intelligence</h1>
         {session === undefined ? (
           <p role="status">Verificando acesso…</p>
         ) : session ? (
-          <PrivateBatches key={session.user.id} userId={session.user.id} />
+          <PrivateBatches
+            key={session.user.id}
+            userId={session.user.id}
+            reviewMode={modo === "revisao"}
+          />
         ) : (
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
             <h2 className="text-lg font-semibold">Entre para acessar seus lotes</h2>
@@ -91,58 +107,41 @@ function InstagramIntelligence() {
             {error && <p role="alert">{error}</p>}
           </section>
         )}
+        <ScoringModel />
       </main>
-    </AppShell>
+    </div>
   );
 }
 
-const dateLabel = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "short",
-  timeZone: "America/Sao_Paulo",
-});
-const inputClass = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
-
-function PrivateBatches({ userId }: { userId: string }) {
-  const [name, setName] = useState("");
+function PrivateBatches({ userId, reviewMode }: { userId: string; reviewMode: boolean }) {
   const [text, setText] = useState("");
-  const [batchPage, setBatchPage] = useState(0);
-  const [batch, setBatch] = useState<{ id: string; name: string }>();
-  const [feedback, setFeedback] = useState<{ message: string; error?: boolean }>();
+  const [submitted, setSubmitted] = useState<{ id: string; count: number; name: string }>();
+  const [error, setError] = useState("");
   const saving = useRef(false);
   const [busy, setBusy] = useState(false);
   const parsed = useMemo(() => parseInstagramProfiles(text), [text]);
-  const batches = useQuery({
-    queryKey: ["intelligence-batches", userId, batchPage],
-    queryFn: ({ signal }) => getIntelligenceBatches(batchPage, signal),
+  const latest = useQuery({
+    queryKey: ["intelligence-latest-batch", userId],
+    queryFn: async ({ signal }) => (await getIntelligenceBatches(0, signal)).items[0] ?? null,
     gcTime: 0,
-    retry: false,
   });
+  const current =
+    submitted ??
+    (latest.data
+      ? { id: latest.data.id, count: latest.data.profile_count, name: latest.data.name }
+      : undefined);
 
-  async function save() {
-    if (
-      saving.current ||
-      !name.trim() ||
-      !parsed.usernames.length ||
-      parsed.invalidLines.length ||
-      parsed.error
-    )
+  async function analyze() {
+    if (saving.current || !parsed.usernames.length || parsed.invalidLines.length || parsed.error)
       return;
     saving.current = true;
     setBusy(true);
-    setFeedback(undefined);
+    setError("");
     try {
-      const id = await createIntelligenceBatch(name.trim(), parsed.usernames);
-      setBatch({ id, name: name.trim() });
-      if (batchPage === 0) void batches.refetch();
-      else setBatchPage(0);
-      setName("");
-      setText("");
-      setFeedback({ message: `Lote salvo com ${parsed.usernames.length} perfil(is).` });
-    } catch (error) {
-      setFeedback({
-        message: error instanceof Error ? error.message : "Não foi possível salvar.",
-        error: true,
-      });
+      const { id, name } = await analyzeIntelligenceBatch(parsed.usernames);
+      setSubmitted({ id, name, count: parsed.usernames.length });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível iniciar a análise.");
     } finally {
       saving.current = false;
       setBusy(false);
@@ -152,46 +151,33 @@ function PrivateBatches({ userId }: { userId: string }) {
   return (
     <>
       <form
-        className="space-y-4 rounded-xl border border-border bg-card p-5"
+        className="space-y-3 rounded-[10px] border border-[#282828] bg-[#080808] p-[15px]"
         onSubmit={(event) => {
           event.preventDefault();
-          void save();
+          void analyze();
         }}
       >
-        <h2 className="text-lg font-semibold">Novo lote</h2>
-        <label className="block space-y-1 text-sm">
-          <span>Nome do lote</span>
-          <input
-            className={inputClass}
-            value={name}
-            maxLength={80}
-            disabled={busy}
-            required
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
-        <label className="block space-y-1 text-sm">
-          <span>Links de perfil ou @usuários</span>
-          <textarea
-            className={inputClass}
-            rows={7}
-            value={text}
-            maxLength={IMPORT_LIMIT + 1}
-            disabled={busy}
-            placeholder={"https://www.instagram.com/perfil1/\nhttps://www.instagram.com/perfil2/"}
-            aria-describedby="intelligence-import-help"
-            onChange={(e) => setText(e.target.value)}
-          />
-        </label>
-        <div id="intelligence-import-help" className="space-y-1 text-sm text-muted-foreground">
-          <p>Cole a lista em texto, com um link por linha. Até 1.000 perfis distintos por lote.</p>
-          {parsed.error === "size" && (
-            <p role="alert">A lista é longa demais. Divida a entrada em lotes menores.</p>
-          )}
+        <h2 id="intelligence-input-title" className="text-xl font-semibold">
+          Cole os links dos perfis
+        </h2>
+        <textarea
+          className="block w-full resize-y rounded-md bg-black px-3 py-3 text-base text-white placeholder:text-neutral-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b8904f]"
+          aria-labelledby="intelligence-input-title"
+          aria-describedby="intelligence-import-help"
+          rows={4}
+          value={text}
+          maxLength={IMPORT_LIMIT + 1}
+          disabled={busy}
+          spellCheck={false}
+          autoCapitalize="none"
+          placeholder={"https://instagram.com/perfil1/\n@perfil2"}
+          onChange={(event) => setText(event.target.value)}
+        />
+        <div id="intelligence-import-help" className="space-y-1 text-sm text-neutral-300">
+          <p>Um perfil por linha. Até 1.000 perfis por análise. Use links ou @usuários.</p>
+          {parsed.error === "size" && <p role="alert">A lista é longa demais.</p>}
           {parsed.error === "limit" && (
-            <p role="alert">
-              A lista passa do limite de {PROFILE_LIMIT.toLocaleString("pt-BR")} perfis distintos.
-            </p>
+            <p role="alert">Limite de {PROFILE_LIMIT.toLocaleString("pt-BR")} perfis distintos.</p>
           )}
           {parsed.invalidLines.length > 0 && (
             <p role="alert">
@@ -199,106 +185,30 @@ function PrivateBatches({ userId }: { userId: string }) {
               {parsed.invalidLines.length > 12 ? " e outras." : "."}
             </p>
           )}
-          {!parsed.error && parsed.usernames.length > 0 && (
+          {parsed.duplicateCount > 0 && (
             <p>
-              {parsed.usernames.length} perfil(is) para cadastrar · {parsed.duplicateCount}{" "}
-              repetição(ões) removida(s). Prévia:{" "}
-              {parsed.usernames
-                .slice(0, 5)
-                .map((value) => "@" + value)
-                .join(", ")}
-              {parsed.usernames.length > 5 ? "…" : ""}
+              {parsed.duplicateCount}{" "}
+              {parsed.duplicateCount === 1 ? "duplicidade removida" : "duplicidades removidas"}.
             </p>
           )}
         </div>
         <Button
           type="submit"
+          className="h-16 w-full rounded-[10px] bg-[#b8904f] text-xl font-semibold text-black hover:bg-[#c59b56] focus-visible:ring-[#d8ae68]"
           disabled={
-            busy ||
-            !name.trim() ||
-            !parsed.usernames.length ||
-            !!parsed.error ||
-            !!parsed.invalidLines.length
+            busy || !parsed.usernames.length || !!parsed.error || !!parsed.invalidLines.length
           }
         >
-          {busy ? "Salvando…" : "Salvar lote"}
+          {busy ? "INICIANDO…" : "ANALISAR"}
         </Button>
-        {feedback && <p role={feedback.error ? "alert" : "status"}>{feedback.message}</p>}
+        {error && <p role="alert">{error}</p>}
       </form>
-
-      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-        <h2 className="text-lg font-semibold">Meus lotes</h2>
-        {batches.isPending && <p role="status">Carregando lotes…</p>}
-        {batches.isError && (
-          <QueryError error={batches.error} retry={() => void batches.refetch()} />
-        )}
-        {batches.data?.items.length === 0 && (
-          <p className="text-sm text-muted-foreground">Nenhum lote nesta página.</p>
-        )}
-        <ul className="space-y-2">
-          {batches.data?.items.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                className="w-full rounded-lg border border-border p-3 text-left text-sm hover:bg-accent aria-pressed:border-primary"
-                aria-pressed={item.id === batch?.id}
-                onClick={() => {
-                  setBatch(item);
-                }}
-              >
-                <span className="block break-words font-semibold">{item.name}</span>
-                <span className="text-muted-foreground">
-                  {item.profile_count} perfil(is) · {dateLabel.format(new Date(item.created_at))}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-        <Pagination
-          label="lotes"
-          page={batchPage}
-          hasMore={!!batches.data?.hasMore}
-          select={setBatchPage}
-        />
-      </section>
-
-      {batch && <IntelligenceBatch key={batch.id} userId={userId} batch={batch} />}
+      {!current && latest.isError && <p role="alert">{latest.error.message}</p>}
+      {reviewMode && current ? (
+        <IntelligenceBatch key={current.id} userId={userId} batch={current} />
+      ) : (
+        <IntelligenceResults key={current?.id ?? "empty"} userId={userId} batch={current} />
+      )}
     </>
-  );
-}
-
-function Pagination({
-  label,
-  page,
-  hasMore,
-  select,
-}: {
-  label: string;
-  page: number;
-  hasMore: boolean;
-  select: (page: number) => void;
-}) {
-  if (!page && !hasMore) return null;
-  return (
-    <nav className="flex flex-wrap items-center gap-2" aria-label={`Paginação de ${label}`}>
-      <Button variant="outline" disabled={!page} onClick={() => select(page - 1)}>
-        Anterior
-      </Button>
-      <span className="text-sm">Página {page + 1}</span>
-      <Button variant="outline" disabled={!hasMore} onClick={() => select(page + 1)}>
-        Próxima
-      </Button>
-    </nav>
-  );
-}
-
-function QueryError({ error, retry }: { error: Error; retry: () => void }) {
-  return (
-    <div className="space-y-2">
-      <p role="alert">{error.message}</p>
-      <Button variant="outline" onClick={retry}>
-        Tentar novamente
-      </Button>
-    </div>
   );
 }
