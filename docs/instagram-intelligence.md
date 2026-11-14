@@ -43,3 +43,6 @@ Para o diagnóstico real, configure no ambiente do servidor `META_GRAPH_API_VERS
 Próxima etapa: integrar a fonte externa à fila com lease e retentativas, validar os campos efetivamente retornados pela Meta, persistir a origem dos dados e integrar o worker FFmpeg e o modelo multimodal. O motor atual continua usando revisão explícita para aprovação. Não aplicar a migration de Analisar a um frontend de produção antes de coordenar a publicação do incremento.
 
 Verificação do incremento: 137 testes da suíte, TypeScript, build de produção, dois testes integrados no PostgreSQL e fluxo em Chrome com dados sintéticos passaram. O diagnóstico real interrompeu antes da chamada à Meta porque as variáveis de origem não estavam configuradas. Incremento mantido em branch para continuidade.
+
+
+A lista de resultados tem filtros com totais por decisão e mostra o motivo disponível em cada perfil. Durante reanálise ou falha, o filtro e o CSV tratam a decisão atual como pendente. A ficha histórica permanece disponível com indicação na lista. A validação no Chrome com PostgreSQL local conferiu a troca de filtros, o motivo e as exportações. TypeScript também passou.

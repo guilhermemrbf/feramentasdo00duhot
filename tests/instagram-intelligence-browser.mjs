@@ -151,6 +151,13 @@ try {
   await page.getByRole("button", { name: "Analisar" }).click();
   await page.getByText(/2 perfil\(is\) sem fonte automática disponível/).waitFor();
   await page.getByLabel("Abrir @segundo_perfil no Instagram").waitFor();
+  const approved = page.getByRole("button", { name: "Aprovados: 0", exact: true });
+  const pending = page.getByRole("button", { name: "Pendentes: 2" });
+  await approved.click();
+  await page.getByText("Nenhum perfil neste filtro.").waitFor();
+  assert.equal(await approved.getAttribute("aria-pressed"), "true");
+  await pending.click();
+  await page.getByLabel("Abrir @segundo_perfil no Instagram").waitFor();
   const [links] = await Promise.all([
     page.waitForEvent("download"),
     page.getByRole("button", { name: "Baixar todos os links (.txt)" }).click(),
@@ -182,6 +189,9 @@ try {
   });
   await page.getByLabel("Tenho autorização para usar os dados deste arquivo.").check();
   await page.getByRole("button", { name: "Importar e analisar" }).click();
+  await page
+    .getByText("Aguardando revisão de conteúdo e do Status da Conta.", { exact: true })
+    .waitFor();
   await page.getByRole("button", { name: "@perfil_teste" }).click();
   await page.getByText("Fichas por Reel (1)").click();
   await page.getByText("1.234 views", { exact: false }).last().waitFor();
