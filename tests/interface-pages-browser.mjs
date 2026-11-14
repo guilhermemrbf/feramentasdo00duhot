@@ -13,7 +13,7 @@ const errors=[];page.on("pageerror",e=>{errors.push(e.message);console.error("PA
 const url=web;
 const out=".superpowers/sdd/2026-11-14-interface-acessivel";
 try {
- await page.goto(url);await page.getByRole("heading",{name:"O que você quer fazer hoje?"}).waitFor();
+ await page.goto(url);await page.getByRole("heading",{name:"Sua operação digital em um só lugar"}).waitFor();
  await page.waitForFunction(()=>Object.keys(document.getElementById("catalog-search")||{}).some(k=>k.startsWith("__reactProps")));
  await page.getByLabel("Buscar ferramentas por nome ou objetivo").fill("programar");
  await page.waitForFunction(()=>document.querySelectorAll("article").length<5);

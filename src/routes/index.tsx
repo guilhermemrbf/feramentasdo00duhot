@@ -43,7 +43,7 @@ function Home() {
               Bem-vindo ao MauseHot
             </p>
             <h1 className="max-w-xl font-display text-3xl font-bold leading-tight tracking-tight sm:text-[46px]">
-              O que você quer <span className="text-brand-red">fazer hoje?</span>
+              Sua operação digital <span className="text-brand-red">em um só lugar</span>
             </h1>
             <p className="mt-4 max-w-lg text-sm leading-7 text-muted-foreground sm:text-base">
               Escolha uma ferramenta abaixo. Cada uma mostra o que você precisa e orienta você,
