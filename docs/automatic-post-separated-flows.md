@@ -35,3 +35,9 @@ Checkout `C:/Users/User/AppData/Local/Temp/00duhot-mouse-hot-v3`, branch `fix/au
 O conector Lovable não está disponível nesta sessão. Após integrar o código ao GitHub, verificar a sincronização do preview e realizar a publicação pelo painel Lovable; não enviar comandos pelo chat Lovable. O deploy de produção e uma nova autorização Meta precisam de verificação nesse ambiente autenticado. Nunca declarar deploy ou postagem confirmados com base nos serviços locais de teste.
 
 Principais arquivos: `src/routes/automacao-instagram.tsx`, `src/lib/instagram-connect.ts`, `src/components/postkit/StoryLibrary.tsx`, `src/lib/story-library.ts`, `src/components/postkit/InstagramStories.tsx`, `src/components/postkit/InstagramAutomationReview.tsx`, `src/components/postkit/ReelTimingFields.tsx`. Nenhum outro módulo foi alterado.
+
+## Entrega no GitHub
+
+Código integrado diretamente em `main` no commit `756ee2d15bc69585d2a4c9bc2390a20fa0e69722`, confirmado com `git ls-remote`. O teste final de navegador também iniciou com o processador desativado e comprovou a ativação pelo botão dentro da revisão antes de salvar a fila.
+
+A tentativa de abrir o projeto Lovable no navegador interno retornou `queued` para este chat. A janela disponível do Codex não expôs o painel do projeto para controle. O único Chrome externo estava em outro site e não foi utilizado. O deploy no Lovable e os testes autenticados com Meta/Storage de produção permanecem pendentes. Próximo agente deve usar o commit já integrado; não refazer a implementação nem aplicar migrations.
