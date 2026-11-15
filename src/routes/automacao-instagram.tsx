@@ -38,6 +38,7 @@ import { InstagramLocalLogin } from "@/components/postkit/InstagramLocalLogin";
 import { InstagramAutomationReview } from "@/components/postkit/InstagramAutomationReview";
 import { reviewAutomation, type StoriesChoice } from "@/lib/instagram-automation-review";
 import { bridgeRequest, HOT_CONNECTION_KEY, type HotConnection } from "@/lib/hot-profiles";
+import { openInstagramAuthorization } from "@/lib/instagram-connect";
 import { startInstagramOAuth } from "@/lib/api/instagram-oauth.functions";
 import type { InstagramAuthMode } from "@/lib/instagram-oauth.server";
 import {
@@ -72,8 +73,16 @@ import {
 const postkit = supabase as unknown as SupabaseClient<PostkitDatabase>;
 
 export const Route = createFileRoute("/automacao-instagram")({
-  validateSearch: (search: Record<string, unknown>): { tab?: "perfis" | "contas" } => ({
-    tab: search.tab === "perfis" || search.tab === "contas" ? search.tab : undefined,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: "perfis" | "contas" | "nova-conta" | "stories" } => ({
+    tab:
+      search.tab === "perfis" ||
+      search.tab === "contas" ||
+      search.tab === "nova-conta" ||
+      search.tab === "stories"
+        ? search.tab
+        : undefined,
   }),
   head: () => ({
     meta: [
@@ -100,6 +109,7 @@ type Tab =
   | "top-posts"
   | "dashboard"
   | "perfis"
+  | "nova-conta"
   | "contas"
   | "biblioteca"
   | "fila"
@@ -154,8 +164,9 @@ const tabGroups = [
   {
     label: "Organizar",
     items: [
-      { id: "biblioteca", label: "Biblioteca", icon: Library },
-      { id: "contas", label: "Contas do Instagram", icon: Users },
+      { id: "biblioteca", label: "Biblioteca de Reels", icon: Library },
+      { id: "contas", label: "Contas conectadas", icon: Users },
+      { id: "nova-conta", label: "Conectar nova conta", icon: Plus },
       { id: "perfis", label: "Preparar novos perfis", icon: Plus },
       { id: "conteudo", label: "Legendas e hashtags", icon: FileText },
     ],
@@ -224,8 +235,18 @@ function InstagramWorkspacePage({
   initialTab?: Tab;
 }) {
   const [tab, setActiveTab] = useState<Tab>(initialTab ?? "dashboard");
+  const [guidedSetup, setGuidedSetup] = useState(initialTab === "nova-conta");
+  const [isolatedLogin, setIsolatedLogin] = useState(false);
+  const [connectionTarget, setConnectionTarget] = useState<"reels" | "stories">("reels");
+  const loginAccountIds = useRef<string[]>([]);
   const [libraryOpen, setLibraryOpen] = useState(false);
-  const setTab = (next: Tab) => {
+  const setTab = (next: Tab, target: "reels" | "stories" = "reels") => {
+    if (next === "nova-conta") {
+      setGuidedSetup(target === "reels");
+      setConnectionTarget(target);
+    }
+    if (["contas", "dashboard", "stories", "analytics", "historico"].includes(next))
+      setGuidedSetup(false);
     if (next === "biblioteca") setLibraryOpen(false);
     setActiveTab(next);
   };
@@ -269,8 +290,8 @@ function InstagramWorkspacePage({
   );
   const [accountRefresh, setAccountRefresh] = useState(0);
   const [loginWaiting, setLoginWaiting] = useState(false);
-  const [storiesChoice, setStoriesChoice] = useState<StoriesChoice>("");
-  const [storyReviewCount, setStoryReviewCount] = useState(0);
+  const storiesChoice: StoriesChoice = "skip";
+  const storyReviewCount = 0;
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   useEffect(() => {
     if (!loginWaiting) return;
@@ -311,6 +332,22 @@ function InstagramWorkspacePage({
         else {
           setAccountsLoaded(true);
           setConnectedAccounts(data ?? []);
+          if (loginWaiting) {
+            const added = data?.find(
+              (a) => a.connection_status === "connected" && !loginAccountIds.current.includes(a.id),
+            );
+            if (added) {
+              setLoginWaiting(false);
+              setSelectedAccountId(added.id);
+              setQueue([]);
+              setQueueSaved(false);
+              if (connectionTarget === "stories") {
+                setStoryAccount({ id: added.id, request: crypto.randomUUID(), productUrl: null });
+                setActiveTab("stories");
+              }
+              setNotice(`@${added.username} conectada. Continue para a biblioteca desta conta.`);
+            }
+          }
           setSelectedAccountId(
             (current) =>
               current ||
@@ -319,7 +356,7 @@ function InstagramWorkspacePage({
           );
         }
       });
-  }, [workspace.id, accountRefresh]);
+  }, [workspace.id, accountRefresh, loginWaiting, connectionTarget]);
 
   useEffect(() => {
     let active = true;
@@ -438,30 +475,39 @@ function InstagramWorkspacePage({
   const connectInstagram = async (mode: InstagramAuthMode, analytics = false) => {
     setConnecting(mode);
     setNotice("");
+    loginAccountIds.current = connectedAccounts
+      .filter((a) => a.connection_status === "connected")
+      .map((a) => a.id);
     try {
       setPendingLogin({ mode, analytics });
-      const saved = sessionStorage.getItem(HOT_CONNECTION_KEY);
-      if (!saved) {
-        setShowLocalLogin(true);
-        return;
+      const authorize = () =>
+        startInstagramOAuth({ data: { workspaceId: workspace.id, mode, analytics } });
+      if (isolatedLogin) {
+        const saved = sessionStorage.getItem(HOT_CONNECTION_KEY);
+        if (!saved) {
+          setShowLocalLogin(true);
+          setNotice(
+            "Pareie o conector abaixo ou desmarque a sessão isolada para conectar neste navegador.",
+          );
+          return;
+        }
+        const connection = JSON.parse(saved) as HotConnection;
+        await bridgeRequest(connection, "/v1/instagram-login", await authorize());
+      } else {
+        await openInstagramAuthorization(() => window.open("about:blank", "_blank"), authorize);
       }
-      const connection = JSON.parse(saved) as HotConnection;
-      const authorization = await startInstagramOAuth({
-        data: { workspaceId: workspace.id, mode, analytics },
-      });
-      await bridgeRequest(connection, "/v1/instagram-login", authorization);
       setShowLocalLogin(false);
       setLoginWaiting(true);
       setNotice(
-        "Uma janela nova foi aberta. Entre no Instagram e autorize o acesso. As contas serão atualizadas aqui; feche a janela de login antes de conectar a próxima conta.",
+        "Autorização aberta. Entre no perfil desejado e confirme o acesso na Meta. Esta lista será atualizada automaticamente.",
       );
     } catch (error) {
-      setShowLocalLogin(true);
       setNotice(
         error instanceof Error
           ? error.message
-          : "Não foi possível abrir o navegador isolado. Confira o conector atualizado.",
+          : "Não foi possível abrir a autorização. Tente novamente.",
       );
+      if (isolatedLogin) setShowLocalLogin(true);
     } finally {
       setConnecting(null);
     }
@@ -679,8 +725,6 @@ function InstagramWorkspacePage({
   const chooseReelAccount = (id: string) => {
     if (id === selectedAccountId || libraryBusy) return;
     setSelectedAccountId(id);
-    setStoriesChoice("");
-    setStoryReviewCount(0);
     setReviewConfirmed(false);
     setSourceFolder("");
     setSelectedVideoIds(null);
@@ -1084,7 +1128,7 @@ function InstagramWorkspacePage({
             onClose={() => setShowLocalLogin(false)}
           />
         )}
-        {(["dashboard", "contas", "biblioteca", "fila", "stories"] as Tab[]).includes(tab) && (
+        {guidedSetup && (["nova-conta", "biblioteca", "fila"] as Tab[]).includes(tab) && (
           <section
             className="mt-4 rounded-xl border border-sky-400/20 bg-card p-4"
             aria-label="Passo a passo por conta"
@@ -1103,12 +1147,12 @@ function InstagramWorkspacePage({
                 onValueChange={chooseReelAccount}
               />
             </div>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               {[
                 {
                   title: "1. Conectar conta",
-                  text: "Abrir um login novo e isolado",
-                  target: "contas",
+                  text: "Autorizar o perfil na Meta",
+                  target: "nova-conta",
                   ready: !!reelAccount,
                 },
                 {
@@ -1124,15 +1168,7 @@ function InstagramWorkspacePage({
                   ready: queue.length > 0 && !previewOutdated,
                 },
                 {
-                  title: "4. Revisar Stories",
-                  text: "Preparar biblioteca ou continuar sem",
-                  target: "stories",
-                  ready:
-                    storiesChoice === "skip" ||
-                    (storiesChoice === "planned" && storyReviewCount > 0),
-                },
-                {
-                  title: "5. Revisar e ativar",
+                  title: "4. Revisar e ativar",
                   text: queueSaved ? "Programação salva" : "Conferir tudo antes de publicar",
                   target: "fila",
                   ready: queueSaved,
@@ -1292,7 +1328,7 @@ function InstagramWorkspacePage({
             workspaceId={workspace.id}
             timezone={workspace.timezone}
             accounts={readyAccounts}
-            onConnect={() => setTab("contas")}
+            onConnect={() => setTab("nova-conta", "stories")}
             profileAccount={storyAccount}
           />
         </div>
@@ -1322,62 +1358,112 @@ function InstagramWorkspacePage({
           )}
         </div>
 
-        {tab === "contas" && (
+        {(tab === "contas" || tab === "nova-conta") && (
           <section className="mt-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <Panel title="Conectar uma conta">
-              <p className="text-sm text-muted-foreground">
-                Na tela da Meta, escolha <strong>Continuar com Instagram</strong>, selecione o
-                perfil profissional e autorize o acesso.
-              </p>
-              <button
-                type="button"
-                onClick={() => void connectInstagram("instagram_unified_login")}
-                disabled={!!connecting}
-                className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            {tab === "nova-conta" && (
+              <Panel
+                title={
+                  connectionTarget === "stories"
+                    ? "Conectar conta para Stories"
+                    : "Conectar uma conta"
+                }
               >
-                <Instagram aria-hidden="true" className="size-4" />
-                {connecting === "instagram_unified_login"
-                  ? "Abrindo autorização…"
-                  : "Conectar Conta"}
-              </button>
-              <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">
-                <summary className="cursor-pointer font-medium">Ajuda para conectar</summary>
-                <p className="mt-2 text-muted-foreground">
-                  Se aparecer outro perfil, escolha <strong>Trocar de conta</strong>. Se a Meta
-                  mostrar <strong>App not active</strong>, confira o convite de teste.
+                <p className="text-sm text-muted-foreground">
+                  Na tela da Meta, escolha <strong>Continuar com Instagram</strong>, selecione o
+                  perfil profissional e autorize o acesso.
                 </p>
-                <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-muted-foreground">
-                  <li>
-                    Em{" "}
-                    <a
-                      className="font-medium text-foreground underline underline-offset-2"
-                      href="https://developers.facebook.com/apps/2201393490722211/roles/roles/"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Funções do app na Meta
-                    </a>
-                    , o administrador adiciona o perfil como <strong>Testador do Instagram</strong>.
-                  </li>
-                  <li>
-                    No perfil convidado, abra{" "}
-                    <a
-                      className="font-medium text-foreground underline underline-offset-2"
-                      href="https://www.instagram.com/accounts/manage_access/"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Apps e sites do Instagram
-                    </a>{" "}
-                    e aceite o convite em <strong>Convites do testador</strong>.
-                  </li>
-                  <li>
-                    Volte aqui e clique em <strong>Conectar Conta</strong>.
-                  </li>
-                </ol>
-              </details>
-            </Panel>
-            <Panel title="Suas contas">
+                <button
+                  type="button"
+                  onClick={() => void connectInstagram("instagram_unified_login")}
+                  disabled={!!connecting}
+                  className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                >
+                  <Instagram aria-hidden="true" className="size-4" />
+                  {connecting === "instagram_unified_login"
+                    ? "Abrindo autorização…"
+                    : "Conectar Conta"}
+                </button>
+                <label className="mt-4 flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={isolatedLogin}
+                    onChange={(e) => setIsolatedLogin(e.target.checked)}
+                  />
+                  Usar uma sessão nova do Chrome (requer conector local)
+                </label>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  No login da Meta, use Trocar de conta para autorizar outro Instagram.
+                </p>
+                <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">
+                  <summary className="cursor-pointer font-medium">Ajuda para conectar</summary>
+                  <p className="mt-2 text-muted-foreground">
+                    Se aparecer outro perfil, escolha <strong>Trocar de conta</strong>. Se a Meta
+                    mostrar <strong>App not active</strong>, confira o convite de teste.
+                  </p>
+                  <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-muted-foreground">
+                    <li>
+                      Em{" "}
+                      <a
+                        className="font-medium text-foreground underline underline-offset-2"
+                        href="https://developers.facebook.com/apps/2201393490722211/roles/roles/"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Funções do app na Meta
+                      </a>
+                      , o administrador adiciona o perfil como{" "}
+                      <strong>Testador do Instagram</strong>.
+                    </li>
+                    <li>
+                      No perfil convidado, abra{" "}
+                      <a
+                        className="font-medium text-foreground underline underline-offset-2"
+                        href="https://www.instagram.com/accounts/manage_access/"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Apps e sites do Instagram
+                      </a>{" "}
+                      e aceite o convite em <strong>Convites do testador</strong>.
+                    </li>
+                    <li>
+                      Volte aqui e clique em <strong>Conectar Conta</strong>.
+                    </li>
+                  </ol>
+                </details>
+                {connectionTarget === "stories" && reelAccount && (
+                  <button
+                    type="button"
+                    className="mt-4 block rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                    onClick={() => {
+                      setStoryAccount({
+                        id: reelAccount.id,
+                        request: crypto.randomUUID(),
+                        productUrl: null,
+                      });
+                      setTab("stories");
+                    }}
+                  >
+                    Próximo: biblioteca de Stories
+                  </button>
+                )}
+              </Panel>
+            )}
+            <Panel
+              title={tab === "nova-conta" ? "Escolha a conta recém-conectada" : "Contas conectadas"}
+            >
+              {tab === "contas" && (
+                <button
+                  type="button"
+                  className="mb-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                  onClick={() => {
+                    setConnectionTarget("reels");
+                    setTab("nova-conta");
+                  }}
+                >
+                  Conectar nova conta
+                </button>
+              )}
               <p className="mb-3 text-sm text-muted-foreground">
                 Quando aparecer como conectada, a conta já pode ser escolhida ao preparar uma
                 publicação.
@@ -1410,8 +1496,37 @@ function InstagramWorkspacePage({
                             className="rounded-md border border-border px-3 py-1 text-xs font-semibold disabled:opacity-50"
                             onClick={() => openAccountLibrary(account.id)}
                           >
-                            Abrir biblioteca
+                            Biblioteca de Reels
                           </button>
+                          {ready && (
+                            <>
+                              <button
+                                type="button"
+                                className="rounded-md border border-border px-3 py-1 text-xs font-semibold"
+                                onClick={() => {
+                                  chooseReelAccount(account.id);
+                                  setReelMode("batch");
+                                  setTab("fila");
+                                }}
+                              >
+                                Configurar Reels
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-md border border-border px-3 py-1 text-xs font-semibold"
+                                onClick={() => {
+                                  setStoryAccount({
+                                    id: account.id,
+                                    request: crypto.randomUUID(),
+                                    productUrl: null,
+                                  });
+                                  setTab("stories");
+                                }}
+                              >
+                                Configurar Stories
+                              </button>
+                            </>
+                          )}
                           <span
                             className={`rounded-full px-3 py-1 text-xs font-semibold ${ready ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}
                           >
@@ -1962,23 +2077,31 @@ function InstagramWorkspacePage({
                           className="field"
                         />
                       </Field>
-                      <Field label="Ordem dos vídeos">
-                        <WorkspaceSelect
-                          label="Ordem dos vídeos"
-                          value={batchOrder}
-                          onValueChange={(value) => setBatchOrder(value as ReelOrder)}
-                          options={[
-                            {
-                              value: "selection",
-                              label: useFolderOrder
-                                ? "Ordem da pasta importada"
-                                : "Ordem da biblioteca",
-                            },
-                            { value: "numeric", label: "Ordem numérica pelo nome (1, 2, 10…)" },
-                            { value: "random", label: "Ordem aleatória na prévia" },
-                          ]}
-                        />
-                      </Field>
+                      <div className="space-y-2">
+                        <div
+                          role="group"
+                          aria-label="Escolher ordem dos Reels"
+                          className="flex flex-wrap gap-2"
+                        >
+                          {(
+                            [
+                              ["selection", "Na ordem da biblioteca"],
+                              ["numeric", "Ordem numérica"],
+                              ["random", "Ordem aleatória"],
+                            ] as const
+                          ).map(([value, label]) => (
+                            <button
+                              type="button"
+                              key={value}
+                              aria-pressed={batchOrder === value}
+                              className="filter-chip"
+                              onClick={() => setBatchOrder(value)}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <label className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm">
                         <input
                           type="checkbox"
@@ -2147,24 +2270,24 @@ function InstagramWorkspacePage({
                     </div>
                   )}
                   <InstagramAutomationReview
-                    workspaceId={workspace.id}
-                    accountId={selectedAccountId}
                     username={reelAccount?.username ?? ""}
-                    choice={storiesChoice}
-                    onChoice={setStoriesChoice}
-                    onStoryCount={setStoryReviewCount}
                     confirmed={reviewConfirmed}
                     onConfirm={setReviewConfirmed}
                     disabled={savingQueue || queueSaved}
-                    onStories={() => {
-                      setStoryAccount({
-                        id: selectedAccountId,
-                        request: crypto.randomUUID(),
-                        productUrl: null,
-                      });
-                      setTab("stories");
-                    }}
                   />
+                  {workerActive === false && !queueSaved && (
+                    <div className="mt-3 rounded-lg border border-amber-500/30 p-3 text-sm">
+                      <p>Ative o processador para publicar os Reels nos horários agendados.</p>
+                      <button
+                        type="button"
+                        className="mt-2 rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50"
+                        disabled={activatingWorker}
+                        onClick={() => void activateWorker()}
+                      >
+                        {activatingWorker ? "Ativando…" : "Ativar publicação automática"}
+                      </button>
+                    </div>
+                  )}
                   {!queueSaved && activationErrors.length > 0 && (
                     <ul className="mt-3 space-y-1 text-xs text-amber-200">
                       {activationErrors.map((error) => (
@@ -2313,6 +2436,55 @@ function InstagramWorkspacePage({
               </div>
             </Panel>
           </section>
+        )}
+        {guidedSetup && ["nova-conta", "biblioteca", "fila"].includes(tab) && (
+          <footer
+            className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4"
+            aria-label="Etapas da nova conta"
+          >
+            <p className="text-sm text-muted-foreground">
+              {tab === "nova-conta"
+                ? "1. Conecte e selecione a conta acima."
+                : tab === "biblioteca"
+                  ? "2. Envie os vídeos exclusivos desta conta."
+                  : queueSaved
+                    ? "Programação ativada. Acompanhe cada publicação na fila."
+                    : "3. Confira legendas, ordem e horários. Depois revise e ative."}
+            </p>
+            <button
+              type="button"
+              className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50"
+              disabled={
+                tab === "nova-conta"
+                  ? !reelAccount
+                  : tab === "biblioteca"
+                    ? !libraryVideos.length || uploading
+                    : false
+              }
+              onClick={() => {
+                if (tab === "nova-conta") openAccountLibrary(selectedAccountId);
+                else if (tab === "biblioteca") {
+                  setReelMode("batch");
+                  setTab("fila");
+                } else if (queueSaved) {
+                  setGuidedSetup(false);
+                  setTab("publicacoes");
+                } else if (!queue.length || previewOutdated) generatePreview();
+                else reviewHeading.current?.focus();
+              }}
+            >
+              {tab === "nova-conta"
+                ? "Próximo: biblioteca de Reels"
+                : tab === "biblioteca"
+                  ? "Próximo: configurar Reels"
+                  : queueSaved
+                    ? "Finalizar e acompanhar"
+                    : queue.length && !previewOutdated
+                      ? "Próximo: revisar e ativar"
+                      : "Próximo: ver prévia"}{" "}
+              <ArrowRight className="ml-2 inline size-4" />
+            </button>
+          </footer>
         )}
       </main>
     </div>

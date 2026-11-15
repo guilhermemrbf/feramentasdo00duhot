@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { StoryLibrary } from "@/components/postkit/StoryLibrary";
+import type { StoryLibraryItem } from "@/lib/story-library";
 import { WorkspaceDate } from "@/components/ui/workspace-date";
 import { WorkspaceSelect } from "@/components/ui/workspace-select";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,7 +36,7 @@ import {
 
 type Account = { id: string; username: string };
 type MediaType = "image/jpeg" | "image/png" | "video/mp4" | "video/quicktime" | "video/webm";
-type Media = { id: string; file: File; url: string; mime: MediaType };
+type Media = { id: string; file: File; url: string; mime: MediaType; storagePath?: string };
 type Planned = { media: Media; date: string; time: string };
 const stickerIcons = { link: Link2, mention: UserRound, hashtag: Hash, text: CaseSensitive };
 const stickerHelp = {
@@ -370,7 +372,8 @@ export function InstagramStories({
   const [browserAlerts, setBrowserAlerts] = useState(false);
   const urls = useRef(new Set<string>());
   const notified = useRef(new Set<string>());
-  const pendingDue = saved.filter(
+  const accountSaved = saved.filter((row) => row.instagram_account_id === account?.id);
+  const pendingDue = accountSaved.filter(
     (row) => row.state === "pending" && Date.parse(row.scheduled_at) <= now,
   );
   const current = media.find((item) => item.id === selectedId) ?? media[0];
@@ -495,6 +498,38 @@ export function InstagramStories({
     );
   }
 
+  async function useLibrary(items: StoryLibraryItem[]) {
+    if (busy || !account || media.length || !canEdit) return;
+    const targetId = account.id;
+    setBusy(true);
+    setNotice("");
+    try {
+      const additions: Media[] = [];
+      for (const item of items.slice(0, storyBatchLimit)) {
+        const { data, error } = await storyClient.storage
+          .from(mediaBucket)
+          .createSignedUrl(item.path, 3600);
+        if (error || !data)
+          throw new Error("Não foi possível abrir a mídia da biblioteca. Tente novamente.");
+        additions.push({
+          id: crypto.randomUUID(),
+          file: new File([], item.filename, { type: item.mime }),
+          url: data.signedUrl,
+          mime: item.mime,
+          storagePath: item.path,
+        });
+      }
+      setAccountId(targetId);
+      setMedia(additions);
+      setPlan([]);
+      setNotice("Mídia carregada. Configure os links, a quantidade por dia e os horários.");
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Falha ao abrir biblioteca.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function moveMedia(index: number, delta: number) {
     const next = [...media];
     const item = next[index];
@@ -601,9 +636,13 @@ export function InstagramStories({
         if (uploaded.current.has(row.storage_path)) continue;
         const item = plan.find((entry) => entry.media.id === row.id)?.media;
         if (!item) throw new Error("Selecione novamente a mídia.");
-        const { error } = await storyClient.storage
-          .from(mediaBucket)
-          .upload(row.storage_path, item.file, { contentType: item.mime, upsert: true });
+        const bucket = storyClient.storage.from(mediaBucket);
+        const { error } = item.storagePath
+          ? await bucket.copy(item.storagePath, row.storage_path)
+          : await bucket.upload(row.storage_path, item.file, {
+              contentType: item.mime,
+              upsert: true,
+            });
         if (error)
           throw new Error("Falha ao salvar " + row.filename + ". Você pode tentar de novo.");
         uploaded.current.add(row.storage_path);
@@ -729,6 +768,11 @@ export function InstagramStories({
             {notice}
           </p>
         )}
+        {!!accounts.length && (
+          <button type="button" className={primary + " mt-3"} onClick={onConnect}>
+            Conectar outra conta para Stories
+          </button>
+        )}
         {!accounts.length && (
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <p className="text-sm text-muted-foreground">
@@ -741,6 +785,16 @@ export function InstagramStories({
         )}
       </div>
 
+      {canEdit && account && (
+        <StoryLibrary
+          key={`${workspaceId}:${account.id}`}
+          workspaceId={workspaceId}
+          accountId={account.id}
+          username={account.username}
+          disabled={busy || !!media.length}
+          onChoose={(items) => void useLibrary(items)}
+        />
+      )}
       {canEdit && !!accounts.length && (
         <fieldset disabled={busy || !account || !!loadError} className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(280px,0.85fr)_minmax(0,1fr)]">
@@ -756,7 +810,7 @@ export function InstagramStories({
                   value={account?.id ?? ""}
                   placeholder="Selecione uma conta conectada"
                   options={accounts.map((item) => ({ value: item.id, label: `@${item.username}` }))}
-                  disabled={!accounts.length}
+                  disabled={!accounts.length || !!media.length}
                   onValueChange={(value) => {
                     setAccountId(value);
                     setPlan([]);
@@ -1201,7 +1255,9 @@ export function InstagramStories({
                 </div>
               ))}
               <button type="button" className={primary} onClick={() => void savePlan()}>
-                {busy ? uploadProgress || "Salvando…" : "Salvar " + plan.length + " lembretes"}
+                {busy
+                  ? uploadProgress || "Salvando…"
+                  : "Ativar " + plan.length + " lembretes de Stories"}
               </button>
             </div>
           )}
@@ -1226,9 +1282,11 @@ export function InstagramStories({
               type="button"
               className={button}
               disabled={
-                !saved.some((row) => row.state === "pending" && Date.parse(row.scheduled_at) > now)
+                !accountSaved.some(
+                  (row) => row.state === "pending" && Date.parse(row.scheduled_at) > now,
+                )
               }
-              onClick={() => exportCalendar(saved, accounts)}
+              onClick={() => exportCalendar(accountSaved, accounts)}
             >
               Baixar para meu calendário
             </button>
@@ -1238,12 +1296,12 @@ export function InstagramStories({
           Os avisos do navegador funcionam com o site aberto. Importe o arquivo no seu calendário
           para receber avisos com o site fechado.
         </p>
-        {!saved.length && (
+        {!accountSaved.length && (
           <p className="text-sm text-muted-foreground">
             Os Stories aparecem aqui quando você salva os lembretes.
           </p>
         )}
-        {saved.map((row) => (
+        {accountSaved.map((row) => (
           <div
             key={row.id}
             className="flex flex-wrap items-center gap-2 border-t border-border py-3"

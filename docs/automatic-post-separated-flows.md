@@ -1,0 +1,37 @@
+# Automatic Post — Reels e Stories separados
+
+Atualizado em 15/11/2026.
+
+## Fluxos implementados
+
+- **Conectar nova conta** abre a autorização oficial da Meta em uma aba reservada durante o clique. A criação da janela acontece antes da chamada assíncrona para evitar bloqueio de pop-up. Erros de pop-up, acesso ao workspace e configuração ficam visíveis. O conector local é opcional e continua disponível para uma sessão isolada do Chrome.
+- **Nova conta de Reels** segue conexão → biblioteca exclusiva → configuração de legenda, hashtags, capa, ordem e 1–10 horários diários → revisão e ativação. Há um botão Próximo ao final. A ativação agenda o lote validado pelo RPC existente.
+- **Contas conectadas** oferece atalhos independentes para Biblioteca de Reels, Configurar Reels e Configurar Stories. O assistente inicial não aparece nesse fluxo.
+- **Stories** mantém conta selecionada, biblioteca, links, figurinhas e agenda próprios. Conectar outra conta para Stories abre o mesmo OAuth com retorno ao fluxo de Stories, sem o assistente de Reels.
+- A ordem de Reels possui botões visíveis de ordem da biblioteca, numérica e aleatória. A sequência gerada fica congelada na prévia; alterações exigem uma nova prévia antes de ativar.
+
+## Persistência e limites
+
+A biblioteca de Stories usa o bucket privado existente `postkit-media`, em `<workspace>/stories/<account>/<uuid>--<filename>`. Não cria registros em `media_assets`, portanto os arquivos não entram na biblioteca nem na fila de Reels. As políticas existentes exigem membro/editor do workspace e protegem o bucket. Dentro de um workspace, os membros autorizados da equipe continuam compartilhando acesso; a separação por conta organiza a mídia, não cria uma nova fronteira de autorização entre colegas.
+
+Uploads validam tamanho (até 50 MB), extensão e assinatura de contêiner. O lote contém até 45 Stories. A biblioteca permanece salva após recarregar. Ao agendar, o objeto é copiado no servidor Storage para o caminho exigido por `instagram_story_reminders`; a cópia mantém a biblioteca reutilizável. A agenda e o calendário exibem somente a conta selecionada. A troca de conta é bloqueada enquanto houver mídia em edição. Nenhuma migration nem mudança de RLS é necessária.
+
+**Stories com links continuam sendo preparo e lembretes para publicação manual no Instagram.** O botão Ativar lembretes não publica o adesivo de link automaticamente. O worker de Reels não lê a tabela de lembretes e sua ativação usa `p_stories=skip` para preservar o contrato existente sem exigir Stories.
+
+## Validação
+
+- `npm test`: 142 testes unitários.
+- `node node_modules/typescript/lib/tsc.js --noEmit`.
+- `npm run build`.
+- `$env:INTELLIGENCE_PG_TEST_DEPS='C:/Users/User/AppData/Local/Temp/mausehot-pg-intelligence'` e `node tests/instagram-reviewed-schedule-postgres.mjs`: PostgreSQL embarcado PGlite, isolamento por conta/mídia, permissão, datas, limite diário e idempotência.
+- `node tests/instagram-guided-browser.mjs`: Chrome real com serviços locais de teste. Exercita clique e OAuth server function até URL oficial (navegação Meta interceptada pelo teste), conector opcional, fluxo Próximo, seleção aleatória de 20 Reels em duas contas, revisão, RPC, responsividade, biblioteca de Stories com upload/reabertura/cópia/ativação de lembretes e conexão independente de Stories.
+
+Os serviços locais usam dados sintéticos exclusivamente nos testes. Não validam credenciais de produção, autorização real da Meta, gravação no bucket de produção nem postagem pública. A revisão não publicou mídia real.
+
+## Continuidade operacional
+
+Checkout `C:/Users/User/AppData/Local/Temp/00duhot-mouse-hot-v3`, branch `fix/automatic-post-fluxos`, base `e2c56fc`. O repositório é `guilhermemrbf/feramentasdo00duhot` e o projeto Lovable é `03560931-5f6a-41e1-a222-0510d1828a23`.
+
+O conector Lovable não está disponível nesta sessão. Após integrar o código ao GitHub, verificar a sincronização do preview e realizar a publicação pelo painel Lovable; não enviar comandos pelo chat Lovable. O deploy de produção e uma nova autorização Meta precisam de verificação nesse ambiente autenticado. Nunca declarar deploy ou postagem confirmados com base nos serviços locais de teste.
+
+Principais arquivos: `src/routes/automacao-instagram.tsx`, `src/lib/instagram-connect.ts`, `src/components/postkit/StoryLibrary.tsx`, `src/lib/story-library.ts`, `src/components/postkit/InstagramStories.tsx`, `src/components/postkit/InstagramAutomationReview.tsx`, `src/components/postkit/ReelTimingFields.tsx`. Nenhum outro módulo foi alterado.

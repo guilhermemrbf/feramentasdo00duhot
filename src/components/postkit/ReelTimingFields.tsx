@@ -68,11 +68,11 @@ export function ReelTimingFields({
         </p>
       )}
 
+      {children && <div className="space-y-3">{children}</div>}
       <details className="rounded-lg border border-border bg-card/70 p-3">
         <summary className="cursor-pointer text-sm font-semibold">
           Ajustar intervalo entre publicações
         </summary>
-        {children && <div className="mt-3 space-y-3">{children}</div>}
         <label className="mt-3 block max-w-56 text-sm font-medium">
           Intervalo mínimo (minutos)
           <input
