@@ -37,6 +37,7 @@
           "*.mjs",
           "!package.mjs",
           "!verify-android.mjs",
+          "!verify-signup.mjs",
           "!verify-runtime.mjs"
         ]
       }

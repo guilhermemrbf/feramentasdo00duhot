@@ -13,6 +13,8 @@ test("distributed connector contains exact source bytes and all its local import
     "proxy.mjs",
     "browser.mjs",
     "instagram-login.mjs",
+    "instagram-signup.mjs",
+    "signup-page.mjs",
     "android.mjs",
     "android-runtime.mjs",
     "android-settings.mjs",

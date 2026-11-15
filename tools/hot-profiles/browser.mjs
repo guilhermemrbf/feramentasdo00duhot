@@ -3,6 +3,7 @@ import { access, mkdir } from "node:fs/promises";
 import path from "node:path";
 import net from "node:net";
 import { fail, webUrl } from "./storage.mjs";
+import { signupPage } from "./signup-page.mjs";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export async function findBrowser() {
@@ -167,6 +168,20 @@ export async function startBrowser(profile, directory, gateway, onClose, signal,
     return pages.get(tab.id);
   }
   const session = {
+    async signupStep(input, signal) {
+      const connection = await page();
+      for (let attempt = 0; attempt < 30 && !signal?.aborted; attempt++) {
+        const result = await connection.send("Runtime.evaluate", {
+          expression: `(${signupPage.toString()})(${JSON.stringify(input)})`,
+          returnByValue: true,
+        });
+        if (result.exceptionDetails) return { status: "manual" };
+        const value = result.result?.value;
+        if (value?.status !== "waiting") return value || { status: "manual" };
+        await delay(250);
+      }
+      return { status: "manual" };
+    },
     async tabs() {
       return (await tabs()).map((tab) => ({
         id: tab.id,

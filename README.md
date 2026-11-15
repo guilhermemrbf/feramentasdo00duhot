@@ -57,6 +57,13 @@ npm i
 npm run dev
 ```
 
+## InstaStart
+
+Cadastro acompanhado do Instagram em `/criar-conta-instagram`, com formulário local,
+navegador visível, cancelamento e histórico de tentativas. Requer o conector atualizado
+disponível nessa página e participação nas verificações do Instagram.
+[Uso, pesquisa e limites de validação](docs/instastart.md).
+
 ## Hot Profiles
 
 Área em `/hot-profiles`: **Meu computador** é o modo padrão, com conector local, navegadores e instâncias Android existentes. O seletor **Nuvem** preserva a implementação Supabase/Browserbase/Genymotion e seus cadastros separados; não há migração automática.

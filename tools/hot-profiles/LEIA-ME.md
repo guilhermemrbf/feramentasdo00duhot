@@ -9,6 +9,14 @@ O conector escuta somente 127.0.0.1:47900. Nunca abra essa porta na internet. O 
 
 ## Navegadores
 
+### InstaStart
+
+No MauseHot, abra **InstaStart** para iniciar um cadastro acompanhado do Instagram.
+Use o ZIP atualizado disponível nessa tela. O navegador abre visível, preenche o
+formulário reconhecido e aguarda as verificações feitas por você. O histórico
+registra tentativas e resultados informados, sem senhas ou códigos. Cancelar fecha
+o navegador do cadastro; não há garantia de aceitação de contas pelo Instagram.
+
 Chrome ou Edge precisa estar instalado. Cada perfil usa uma pasta própria, sem importar seu navegador pessoal. Cookies, logins e armazenamento daquele perfil permanecem para a próxima abertura. A tela é transmitida ao painel; clique, role e use Enviar texto ou o teclado após clicar na tela. Abas são independentes dentro do mesmo perfil.
 
 O recurso não altera fingerprints do sistema. O navegador é executado em modo headless. Uploads/downloads de arquivos dentro de sites, áudio, câmera, microfone e aceleração de vídeo não fazem parte desta primeira base. Use os ambientes para suas contas e projetos autorizados.

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AutomacaoInstagramRouteImport } from './routes/automacao-instagram'
 import { Route as AutomacaoTiktokRouteImport } from './routes/automacao-tiktok'
+import { Route as CriarContaInstagramRouteImport } from './routes/criar-conta-instagram'
 import { Route as CriarPaginaRouteImport } from './routes/criar-pagina'
 import { Route as EmailTemporarioRouteImport } from './routes/email-temporario'
 import { Route as FunilRouteImport } from './routes/funil'
@@ -39,6 +40,11 @@ const AutomacaoInstagramRoute = AutomacaoInstagramRouteImport.update({
 const AutomacaoTiktokRoute = AutomacaoTiktokRouteImport.update({
   id: '/automacao-tiktok',
   path: '/automacao-tiktok',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CriarContaInstagramRoute = CriarContaInstagramRouteImport.update({
+  id: '/criar-conta-instagram',
+  path: '/criar-conta-instagram',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CriarPaginaRoute = CriarPaginaRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
+  '/criar-conta-instagram': typeof CriarContaInstagramRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/email-temporario': typeof EmailTemporarioRoute
   '/funil': typeof FunilRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
+  '/criar-conta-instagram': typeof CriarContaInstagramRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/email-temporario': typeof EmailTemporarioRoute
   '/funil': typeof FunilRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
+  '/criar-conta-instagram': typeof CriarContaInstagramRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/email-temporario': typeof EmailTemporarioRoute
   '/funil': typeof FunilRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/'
     | '/automacao-instagram'
     | '/automacao-tiktok'
+    | '/criar-conta-instagram'
     | '/criar-pagina'
     | '/email-temporario'
     | '/funil'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/'
     | '/automacao-instagram'
     | '/automacao-tiktok'
+    | '/criar-conta-instagram'
     | '/criar-pagina'
     | '/email-temporario'
     | '/funil'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/'
     | '/automacao-instagram'
     | '/automacao-tiktok'
+    | '/criar-conta-instagram'
     | '/criar-pagina'
     | '/email-temporario'
     | '/funil'
@@ -224,6 +236,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AutomacaoInstagramRoute: typeof AutomacaoInstagramRoute
   AutomacaoTiktokRoute: typeof AutomacaoTiktokRoute
+  CriarContaInstagramRoute: typeof CriarContaInstagramRoute
   CriarPaginaRoute: typeof CriarPaginaRoute
   EmailTemporarioRoute: typeof EmailTemporarioRoute
   FunilRoute: typeof FunilRoute
@@ -260,6 +273,13 @@ declare module '@tanstack/react-router' {
       path: '/automacao-tiktok'
       fullPath: '/automacao-tiktok'
       preLoaderRoute: typeof AutomacaoTiktokRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/criar-conta-instagram': {
+      id: '/criar-conta-instagram'
+      path: '/criar-conta-instagram'
+      fullPath: '/criar-conta-instagram'
+      preLoaderRoute: typeof CriarContaInstagramRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/criar-pagina': {
@@ -360,6 +380,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AutomacaoInstagramRoute: AutomacaoInstagramRoute,
   AutomacaoTiktokRoute: AutomacaoTiktokRoute,
+  CriarContaInstagramRoute: CriarContaInstagramRoute,
   CriarPaginaRoute: CriarPaginaRoute,
   EmailTemporarioRoute: EmailTemporarioRoute,
   FunilRoute: FunilRoute,

@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export const TOOL_ICONS = {
+  instagramSignup: Instagram,
   telegram: Send,
   images: Image,
   downloader: Download,

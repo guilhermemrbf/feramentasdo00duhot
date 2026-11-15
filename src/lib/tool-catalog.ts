@@ -17,6 +17,24 @@ export const TEMP_MAIL_URL = publicMailUrl(import.meta.env?.VITE_TEMP_MAIL_URL);
 
 const ALL_TOOLS = [
   {
+    id: "instagramSignup",
+    action: "Iniciar cadastro",
+    path: "/criar-conta-instagram",
+    name: "InstaStart",
+    category: "Automação",
+    mode: "Cadastro acompanhado",
+    summary: "Abra e preencha o cadastro do Instagram pelo computador, com acompanhamento local.",
+    input: "Nome, usuário, senha e um contato que você controla.",
+    output: "Formulário enviado e histórico local de tentativas e resultados informados.",
+    steps: [
+      "Conecte o computador com o conector atualizado.",
+      "Informe os dados e inicie o cadastro.",
+      "Conclua as verificações no Instagram e registre o resultado.",
+    ],
+    requirement:
+      "Chrome ou Edge, Node.js 22+ e conector local. Verificações exigem sua participação.",
+  },
+  {
     id: "tempMail",
     action: "Abrir caixa de entrada",
     path: "/email-temporario",
