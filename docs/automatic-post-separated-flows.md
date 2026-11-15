@@ -52,3 +52,22 @@ A tentativa de abrir o projeto Lovable no navegador interno retornou `queued` pa
 - Teste `tests/instagram-worker-origin-postgres.mjs` comprova origem do ativador, correção dos dois cronjobs, preservação de agendas/referências de autorização/outros jobs e idempotência. Nenhum registro da fila foi cancelado, apagado ou remarcado.
 
 Pendências: completar login/consentimento real de uma nova conta; confirmar URI novo na configuração do app Meta caso a Meta rejeite; acompanhar a retomada dos 2 posts vencidos até confirmação de mídia ou erro objetivo. A ausência de login/consentimento não pode ser tratada como conexão concluída. Não publicar novos lotes de teste sobre os 158 já agendados.
+
+## Publicações reais confirmadas e nova conta
+
+Após corrigir o cron, os dois agendamentos vencidos foram processados pela Meta e confirmados na tabela de produção, sem erros:
+
+| Arquivo | Conta | Confirmação Meta | Publicação UTC |
+| --- | --- | --- | --- |
+| REELS (75).mp4 | @_melissaconteudo | 18033466910688967 | 2026-11-15 23:35:13.301032+00 |
+| REELS (12).mp4 | @_melissaconteudo | 18123001862074768 | 2026-11-15 23:36:11.249225+00 |
+
+Ambos chegaram a `status=published`, `publish_phase=done`, com `last_error_message=null`. Eram itens da fila existente; nenhum lote novo foi criado. Os horários de Brasília foram 20h35 e 20h36. O Reel (38) de 09/11 já estava publicado e não foi republicado durante esta validação.
+
+No Meta Developers, a configuração MauseHot Instagram (`2579077412515904`, app `2201393490722211`) mostrava somente o callback antigo. Registrado `https://mausehot.lovable.app/api/instagram/oauth/callback` e conferido o alerta `URL de redirecionamento salvo`, o seletor e a URL gerada no domínio novo. O operador já autenticou Facebook/Meta e o novo perfil Instagram @morenacoletora, inclusive a verificação por email, diretamente nas telas oficiais. Não registrar senhas, códigos, cookies ou URLs completas de OAuth no relatório.
+
+O novo perfil encontrou `App not active` durante a autorização. O app continua não publicado/em desenvolvimento. As contas anteriores são Testadores do Instagram e @morenacoletora ainda não constava. Convite preparado em Funções do app → Adicionar pessoas → Testador do Instagram, com a opção exata `morenacoletora` selecionada. Pedido de autorização para enviar o convite apresentado ao operador; até este registro não houve confirmação recebida nem envio. Depois do envio, abrir a seção Apps e sites do perfil já autenticado, aceitar o convite com confirmação de qualquer termo/acesso exigido, repetir Conectar Conta a partir da produção e confirmar a TERCEIRA conta na lista e no banco. Não confundir o login de Instagram ou um aviso da interface com persistência de uma nova conexão.
+
+Abas IAB no navegador ID 2: Lovable 1, produção 2, Developers/configuração 6, Instagram autenticado 7, OAuth com App not active 8, Developers/funções com convite preparado 9. Reutilizar apenas após listar e conferir os IDs, pois o operador também pode fechar/navegar as abas. A função `setupBrowserRuntime()` retorna `agent`; `agent.browsers.get('2')` seleciona a sessão interna. A consulta de abas deve sempre remover query e fragmento antes de exibir URLs, pois o retorno de login pode conter credenciais transitórias.
+
+A observação de produção identificou uma questão menor para revisão futura: se Conectar Conta for acionado antes da primeira carga das contas, a lista inicial vazia pode causar um aviso de conta antiga tratada como recém-conectada. O banco continuou com 2 contas e nenhum novo vínculo foi inferido desse aviso. A tentativa seguinte foi iniciada com a lista carregada. Este comportamento não foi alterado, pois o ajuste em andamento foi limitado aos domínios, conforme orientação do operador.
