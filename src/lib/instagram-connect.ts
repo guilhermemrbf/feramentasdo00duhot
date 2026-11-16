@@ -5,6 +5,31 @@ type LoginWindow = {
   close: () => void;
 };
 
+export const INSTAGRAM_CONNECTION_CHANNEL = "mausehot-instagram-connection";
+
+export type InstagramConnectionAccount = {
+  id: string;
+  connection_status: string;
+  last_verified_at?: string | null;
+};
+
+/** A successful login must be reflected in the authenticated account query. */
+export function findUpdatedInstagramAccount<T extends InstagramConnectionAccount>(
+  current: readonly T[],
+  before: readonly InstagramConnectionAccount[],
+): T | undefined {
+  const previous = new Map(before.map((account) => [account.id, account]));
+  return current.find((account) => {
+    if (account.connection_status !== "connected") return false;
+    const old = previous.get(account.id);
+    return (
+      !old ||
+      old.connection_status !== "connected" ||
+      (!!account.last_verified_at && account.last_verified_at !== old.last_verified_at)
+    );
+  });
+}
+
 export async function openInstagramAuthorization(
   open: () => LoginWindow | null,
   authorize: () => Promise<{ authorizationUrl: string }>,
@@ -13,7 +38,7 @@ export async function openInstagramAuthorization(
   const popup = open();
   if (!popup)
     throw new Error(
-      "O navegador bloqueou a janela. Permita pop-ups deste site e clique em Conectar Conta novamente.",
+      "O navegador bloqueou a janela. Permita pop-ups deste site e clique em Conectar Instagram novamente.",
     );
   popup.opener = null;
   try {
@@ -25,8 +50,9 @@ export async function openInstagramAuthorization(
     )
       throw new Error("A autorização retornou um endereço inválido.");
     if (popup.closed)
-      throw new Error("A janela foi fechada. Clique em Conectar Conta para tentar novamente.");
+      throw new Error("A janela foi fechada. Clique em Conectar Instagram para tentar novamente.");
     popup.location.href = url.href;
+    return popup;
   } catch (error) {
     popup.close();
     throw error;

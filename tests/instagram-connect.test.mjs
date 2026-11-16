@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { openInstagramAuthorization } from "../src/lib/instagram-connect.ts";
+import {
+  findUpdatedInstagramAccount,
+  openInstagramAuthorization,
+} from "../src/lib/instagram-connect.ts";
 
 test("Instagram window is opened synchronously before authorization, without the local connector", async () => {
   const calls = [];
@@ -28,6 +31,38 @@ test("Instagram window is opened synchronously before authorization, without the
   await action;
   assert.match(popup.location.href, /facebook.com/);
 });
+test("connection results require a new or refreshed connected record from the backend", () => {
+  const before = [
+    { id: "old", connection_status: "connected", last_verified_at: "2026-11-15T00:00:00Z" },
+  ];
+  assert.equal(findUpdatedInstagramAccount(before, before), undefined);
+  assert.equal(
+    findUpdatedInstagramAccount([{ ...before[0], connection_status: "error" }], before),
+    undefined,
+  );
+  assert.equal(
+    findUpdatedInstagramAccount([{ id: "new", connection_status: "pending" }], before),
+    undefined,
+  );
+  const added = {
+    id: "new",
+    connection_status: "connected",
+    last_verified_at: "2026-11-16T00:00:00Z",
+  };
+  assert.equal(findUpdatedInstagramAccount([...before, added], before), added);
+  const refreshed = { ...before[0], last_verified_at: "2026-11-16T00:00:00Z" };
+  assert.equal(findUpdatedInstagramAccount([refreshed], before), refreshed);
+  assert.equal(
+    findUpdatedInstagramAccount([{ ...before[0], last_verified_at: null }], before),
+    undefined,
+  );
+  assert.equal(
+    findUpdatedInstagramAccount(before, [{ ...before[0], connection_status: "expired" }]),
+    before[0],
+  );
+  assert.equal(before[0].last_verified_at, "2026-11-15T00:00:00Z");
+});
+
 test("blocked popups, denied server access and untrusted redirects fail visibly and clean up", async () => {
   let called = false;
   await assert.rejects(

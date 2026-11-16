@@ -3,6 +3,7 @@ import http from "node:http";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
+import { instagramOAuthResult } from "../src/lib/instagram-oauth-result.ts";
 const require = createRequire(
   resolve(process.env.INTELLIGENCE_PG_TEST_DEPS || ".", "package.json"),
 );
@@ -29,6 +30,10 @@ const saved = [];
 const calls = [];
 let stories = 0;
 let workerActive = false;
+let accountVerifiedAt = "2026-11-15T00:00:00Z";
+let firstAccountRead = true;
+let releaseInitialAccounts;
+const initialAccountsGate = new Promise((resolve) => { releaseInitialAccounts = resolve; });
 const library = new Map();
 const copies = [];
 const storyRows = [];
@@ -78,18 +83,24 @@ const api = http.createServer(async (req, res) => {
   if (name === "has_workspace_role") body = true;
   if (name === "instagram_worker_is_active") body = workerActive;
   if (name === "enable_instagram_worker") { workerActive = true; body = true; }
+  if (name === "instagram_accounts" && firstAccountRead) {
+    firstAccountRead = false;
+    await initialAccountsGate;
+  }
   if (name === "instagram_accounts")
     body = [
       {
         id: id(2),
         username: "conta_fixture_a",
         connection_status: "connected",
+        last_verified_at: accountVerifiedAt,
         account_type: "BUSINESS",
       },
       {
         id: id(3),
         username: "conta_fixture_b",
         connection_status: "connected",
+        last_verified_at: "2026-11-15T00:00:00Z",
         account_type: "BUSINESS",
       },
     ];
@@ -139,7 +150,7 @@ const env = {
 };
 const vite = spawn(
   process.execPath,
-  ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "4384"],
+  ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "4384", "--strictPort"],
   { env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true },
 );
 let output = "";
@@ -176,8 +187,12 @@ try {
   );
   await page.goto(web + "/automacao-instagram?tab=nova-conta");
   await page.getByRole("region", { name: "Passo a passo por conta" }).waitFor({ timeout: 60000 });
+  assert.equal(await page.getByRole("button", { name: "Carregando suas contas…", exact: true }).isDisabled(), true);
+  releaseInitialAccounts();
+  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).waitFor();
+  await page.getByText("Opções de navegador", { exact: true }).click();
   await page.getByRole("checkbox", { name: /Usar uma sess/ }).check();
-  await page.getByRole("button", { name: "Conectar Conta", exact: true }).first().click();
+  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).first().click();
   await page.getByRole("region", { name: "Conectar navegador local" }).waitFor();
   await page.getByRole("button", { name: "Cancelar", exact: true }).first().click();
   await page.getByRole("checkbox", { name: /Usar uma sess/ }).uncheck();
@@ -190,7 +205,7 @@ try {
       }),
     );
   const popupEvent = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Conectar Conta", exact: true }).first().click();
+  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).first().click();
   const popup = await popupEvent;
   // Local fixture stops external navigation; this proves the real button reaches OAuth.
   await page
@@ -200,8 +215,28 @@ try {
   assert.equal(await page.getByRole("region", { name: "Conectar navegador local" }).count(), 0);
   await popup.waitForURL("https://www.facebook.com/**");
   assert.equal(await popup.evaluate(() => window.opener === null), true);
-  await popup.close();
-  await page.getByRole("button", { name: "Próximo: biblioteca de Reels", exact: true }).click();
+  // A callback notification alone cannot manufacture a connected account.
+  const rechecked = page.waitForResponse((response) => response.url().includes("/rest/v1/instagram_accounts"));
+  await page.evaluate(() => {
+    const channel = new BroadcastChannel("mausehot-instagram-connection");
+    channel.postMessage({ type: "oauth-result", id: crypto.randomUUID(), success: true });
+    channel.close();
+  });
+  await rechecked;
+  await page.getByRole("button", { name: "Cancelar esta tentativa", exact: true }).waitFor();
+  assert.equal(await page.getByRole("status").filter({ hasText: /@conta_fixture_a conectada/ }).count(), 0);
+  accountVerifiedAt = "2026-11-16T00:00:00Z";
+  await page.context().route(web + "/api/instagram/oauth/callback?fixture=success", async (route) => {
+    const result = instagramOAuthResult("connected");
+    await route.fulfill({ status: result.status, headers: Object.fromEntries(result.headers), body: await result.text() });
+  });
+  const closed = popup.waitForEvent("close");
+  await popup.goto(web + "/api/instagram/oauth/callback?fixture=success").catch((error) => {
+    if (!/closed/i.test(error.message)) throw error;
+  });
+  await closed;
+  await page.getByRole("status").filter({ hasText: /@conta_fixture_a conectada/ }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Cancelar esta tentativa", exact: true }).count(), 0);
   await page.getByRole("button", { name: "Próximo: configurar Reels", exact: true }).click();
   await page.getByRole("button", { name: "Ordem aleatória", exact: true }).click();
   await page.getByRole("button", { name: /Ver pr.* dos Reels/ }).click();
@@ -209,6 +244,7 @@ try {
   await activate.waitFor();
   assert.equal(await activate.isDisabled(), true);
   await page.getByRole("button", { name: "Ativar publicação automática", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: /Processamento autom.*ativado/ }).waitFor();
   assert.equal(workerActive, true);
   assert.equal(await page.getByLabel("Vou preparar Stories", { exact: false }).count(), 0);
   await page.getByLabel("Conferi a conta, os vídeos", { exact: false }).check();
@@ -294,11 +330,12 @@ try {
     "PASS: native OAuth popup and optional connector, new-account steps, existing-account flow, persistent Stories library upload/reload/copy and reminder activation, independent connection, random 20 Reels at 10/day, confirmed RPC, responsive layout; fixtures only",
   );
 } catch (e) {
-  console.error(e.message);
+  console.error(e.stack || e.message);
   console.error("API calls:", [...new Set(calls)].join(","));
   console.error(output.slice(-1500));
   process.exitCode = 1;
 } finally {
+  releaseInitialAccounts();
   await browser?.close();
   vite.kill();
   api.closeAllConnections();

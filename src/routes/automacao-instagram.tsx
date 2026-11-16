@@ -38,7 +38,12 @@ import { InstagramLocalLogin } from "@/components/postkit/InstagramLocalLogin";
 import { InstagramAutomationReview } from "@/components/postkit/InstagramAutomationReview";
 import { reviewAutomation, type StoriesChoice } from "@/lib/instagram-automation-review";
 import { bridgeRequest, HOT_CONNECTION_KEY, type HotConnection } from "@/lib/hot-profiles";
-import { openInstagramAuthorization } from "@/lib/instagram-connect";
+import {
+  findUpdatedInstagramAccount,
+  INSTAGRAM_CONNECTION_CHANNEL,
+  openInstagramAuthorization,
+  type InstagramConnectionAccount,
+} from "@/lib/instagram-connect";
 import { startInstagramOAuth } from "@/lib/api/instagram-oauth.functions";
 import type { InstagramAuthMode } from "@/lib/instagram-oauth.server";
 import {
@@ -238,7 +243,9 @@ function InstagramWorkspacePage({
   const [guidedSetup, setGuidedSetup] = useState(initialTab === "nova-conta");
   const [isolatedLogin, setIsolatedLogin] = useState(false);
   const [connectionTarget, setConnectionTarget] = useState<"reels" | "stories">("reels");
-  const loginAccountIds = useRef<string[]>([]);
+  const loginAccountsBefore = useRef<InstagramConnectionAccount[]>([]);
+  const loginLock = useRef(false);
+  const loginPopup = useRef<Awaited<ReturnType<typeof openInstagramAuthorization>> | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const setTab = (next: Tab, target: "reels" | "stories" = "reels") => {
     if (next === "nova-conta") {
@@ -277,7 +284,13 @@ function InstagramWorkspacePage({
   const [intervalMinutes, setIntervalMinutes] = useState(120);
   const [notice, setNotice] = useState("");
   const [connectedAccounts, setConnectedAccounts] = useState<
-    Array<{ id: string; username: string; account_type: string | null; connection_status: string }>
+    Array<{
+      id: string;
+      username: string;
+      account_type: string | null;
+      connection_status: string;
+      last_verified_at: string | null;
+    }>
   >([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [queueSaved, setQueueSaved] = useState(false);
@@ -296,10 +309,40 @@ function InstagramWorkspacePage({
   useEffect(() => {
     if (!loginWaiting) return;
     const interval = window.setInterval(() => setAccountRefresh((value) => value + 1), 5000);
-    const timeout = window.setTimeout(() => setLoginWaiting(false), 600000);
+    const refresh = () => setAccountRefresh((value) => value + 1);
+    window.addEventListener("focus", refresh);
+    const channel =
+      typeof window.BroadcastChannel === "undefined"
+        ? null
+        : new window.BroadcastChannel(INSTAGRAM_CONNECTION_CHANNEL);
+    if (channel) {
+      channel.onmessage = ({ data }) => {
+        if (
+          data?.type !== "oauth-result" ||
+          typeof data.id !== "string" ||
+          !/^[\da-f-]{36}$/i.test(data.id) ||
+          typeof data.success !== "boolean"
+        )
+          return;
+        refresh();
+        if (!data.success) {
+          setLoginWaiting(false);
+          setNotice(
+            "A conexão não foi concluída. Confira a ajuda para conectar e tente novamente.",
+          );
+        }
+        channel.postMessage({ type: "ack", id: data.id });
+      };
+    }
+    const timeout = window.setTimeout(() => {
+      setLoginWaiting(false);
+      setNotice("O tempo de conexão terminou. Clique em Conectar Instagram para tentar novamente.");
+    }, 600000);
     return () => {
       window.clearInterval(interval);
       window.clearTimeout(timeout);
+      window.removeEventListener("focus", refresh);
+      channel?.close();
     };
   }, [loginWaiting]);
   const [connecting, setConnecting] = useState<InstagramAuthMode | null>(null);
@@ -314,28 +357,28 @@ function InstagramWorkspacePage({
   const [uploadProgress, setUploadProgress] = useState("");
   const [historyRefresh, setHistoryRefresh] = useState(0);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
+  const [accountsLoadError, setAccountsLoadError] = useState("");
   const [videosLoaded, setVideosLoaded] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
+    let active = true;
     void supabase
       .from("instagram_accounts")
-      .select("id,username,account_type,connection_status")
+      .select("id,username,account_type,connection_status,last_verified_at")
       .eq("workspace_id", workspace.id)
       .then(({ data, error }) => {
-        if (error)
-          setNotice(
-            "Não foi possível carregar suas contas do Instagram. Atualize a página para tentar novamente.",
-          );
-        else {
+        if (!active) return;
+        if (error) {
+          setAccountsLoadError("Não foi possível carregar suas contas do Instagram.");
+        } else {
+          setAccountsLoadError("");
           setAccountsLoaded(true);
           setConnectedAccounts(data ?? []);
           if (loginWaiting) {
-            const added = data?.find(
-              (a) => a.connection_status === "connected" && !loginAccountIds.current.includes(a.id),
-            );
+            const added = findUpdatedInstagramAccount(data ?? [], loginAccountsBefore.current);
             if (added) {
               setLoginWaiting(false);
               setSelectedAccountId(added.id);
@@ -344,6 +387,9 @@ function InstagramWorkspacePage({
               if (connectionTarget === "stories") {
                 setStoryAccount({ id: added.id, request: crypto.randomUUID(), productUrl: null });
                 setActiveTab("stories");
+              } else if (guidedSetup) {
+                setLibraryOpen(false);
+                setActiveTab("biblioteca");
               }
               setNotice(`@${added.username} conectada. Continue para a biblioteca desta conta.`);
             }
@@ -356,7 +402,10 @@ function InstagramWorkspacePage({
           );
         }
       });
-  }, [workspace.id, accountRefresh, loginWaiting, connectionTarget]);
+    return () => {
+      active = false;
+    };
+  }, [workspace.id, accountRefresh, loginWaiting, connectionTarget, guidedSetup]);
 
   useEffect(() => {
     let active = true;
@@ -468,16 +517,16 @@ function InstagramWorkspacePage({
       const detail = reason
         ? (reasonLabels[reason] ?? "uma etapa não identificada")
         : "uma etapa não identificada";
-      setNotice(`A conexão parou em ${detail}. Clique em Conectar Conta para tentar de novo.`);
+      setNotice(`A conexão parou em ${detail}. Clique em Conectar Instagram para tentar de novo.`);
     }
   }, []);
 
   const connectInstagram = async (mode: InstagramAuthMode, analytics = false) => {
+    if (loginLock.current || loginWaiting || !accountsLoaded || accountsLoadError) return;
+    loginLock.current = true;
     setConnecting(mode);
     setNotice("");
-    loginAccountIds.current = connectedAccounts
-      .filter((a) => a.connection_status === "connected")
-      .map((a) => a.id);
+    loginAccountsBefore.current = connectedAccounts.map((account) => ({ ...account }));
     try {
       setPendingLogin({ mode, analytics });
       const authorize = () =>
@@ -494,7 +543,10 @@ function InstagramWorkspacePage({
         const connection = JSON.parse(saved) as HotConnection;
         await bridgeRequest(connection, "/v1/instagram-login", await authorize());
       } else {
-        await openInstagramAuthorization(() => window.open("about:blank", "_blank"), authorize);
+        loginPopup.current = await openInstagramAuthorization(
+          () => window.open("about:blank", "_blank"),
+          authorize,
+        );
       }
       setShowLocalLogin(false);
       setLoginWaiting(true);
@@ -509,6 +561,7 @@ function InstagramWorkspacePage({
       );
       if (isolatedLogin) setShowLocalLogin(true);
     } finally {
+      loginLock.current = false;
       setConnecting(null);
     }
   };
@@ -1365,35 +1418,84 @@ function InstagramWorkspacePage({
                 title={
                   connectionTarget === "stories"
                     ? "Conectar conta para Stories"
-                    : "Conectar uma conta"
+                    : "Conectar Instagram"
                 }
               >
                 <p className="text-sm text-muted-foreground">
-                  Na tela da Meta, escolha <strong>Continuar com Instagram</strong>, selecione o
-                  perfil profissional e autorize o acesso.
+                  O aplicativo de conexão já está configurado nesta instalação. Entre no Instagram,
+                  escolha o perfil profissional e confirme as permissões. A conta aparecerá aqui
+                  automaticamente, com sua própria biblioteca.
                 </p>
                 <button
                   type="button"
                   onClick={() => void connectInstagram("instagram_unified_login")}
-                  disabled={!!connecting}
-                  className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                  disabled={!!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError}
+                  className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-base font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                 >
                   <Instagram aria-hidden="true" className="size-4" />
                   {connecting === "instagram_unified_login"
                     ? "Abrindo autorização…"
-                    : "Conectar Conta"}
+                    : loginWaiting
+                      ? "Aguardando seu Instagram…"
+                      : !accountsLoaded && !accountsLoadError
+                        ? "Carregando suas contas…"
+                        : "Conectar Instagram"}
                 </button>
-                <label className="mt-4 flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={isolatedLogin}
-                    onChange={(e) => setIsolatedLogin(e.target.checked)}
-                  />
-                  Usar uma sessão nova do Chrome (requer conector local)
-                </label>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  No login da Meta, use Trocar de conta para autorizar outro Instagram.
+                {accountsLoadError && (
+                  <p role="alert" className="mt-3 text-sm text-amber-200">
+                    {accountsLoadError}{" "}
+                    <button
+                      type="button"
+                      className="underline underline-offset-4"
+                      onClick={() => {
+                        setAccountsLoadError("");
+                        setAccountRefresh((value) => value + 1);
+                      }}
+                    >
+                      Tentar carregar novamente
+                    </button>
+                  </p>
+                )}
+                {loginWaiting && (
+                  <div className="mt-3 rounded-lg border border-sky-400/30 bg-sky-400/5 p-3 text-sm">
+                    <p>
+                      Conclua o login na janela do Instagram. Ao autorizar, você continuará pela
+                      biblioteca da conta.
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-2 font-medium underline underline-offset-4"
+                      onClick={() => {
+                        setLoginWaiting(false);
+                        loginPopup.current?.close();
+                        loginPopup.current = null;
+                        setNotice("Tentativa encerrada. Você pode conectar outro Instagram.");
+                      }}
+                    >
+                      Cancelar esta tentativa
+                    </button>
+                  </div>
+                )}
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Para conectar outro perfil, use <strong>Trocar de conta</strong> na tela da Meta.
+                  Seus vídeos e agendamentos ficam separados por conta.
                 </p>
+                <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">
+                  <summary className="cursor-pointer font-medium">Opções de navegador</summary>
+                  <label className="mt-3 flex items-start gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={isolatedLogin}
+                      disabled={loginWaiting || !!connecting}
+                      onChange={(e) => setIsolatedLogin(e.target.checked)}
+                    />
+                    Usar uma sessão nova do Chrome (requer conector local)
+                  </label>
+                  <p className="mt-2 text-muted-foreground">
+                    Use esta opção apenas se quiser uma janela independente. A conexão padrão usa
+                    este navegador.
+                  </p>
+                </details>
                 <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">
                   <summary className="cursor-pointer font-medium">Ajuda para conectar</summary>
                   <p className="mt-2 text-muted-foreground">
@@ -1427,7 +1529,7 @@ function InstagramWorkspacePage({
                       e aceite o convite em <strong>Convites do testador</strong>.
                     </li>
                     <li>
-                      Volte aqui e clique em <strong>Conectar Conta</strong>.
+                      Volte aqui e clique em <strong>Conectar Instagram</strong>.
                     </li>
                   </ol>
                 </details>
@@ -1455,13 +1557,15 @@ function InstagramWorkspacePage({
               {tab === "contas" && (
                 <button
                   type="button"
-                  className="mb-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                  disabled={!!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError}
+                  className="mb-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
                   onClick={() => {
                     setConnectionTarget("reels");
                     setTab("nova-conta");
+                    void connectInstagram("instagram_unified_login");
                   }}
                 >
-                  Conectar nova conta
+                  Conectar Instagram
                 </button>
               )}
               <p className="mb-3 text-sm text-muted-foreground">
