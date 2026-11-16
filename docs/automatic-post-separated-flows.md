@@ -71,3 +71,23 @@ O novo perfil encontrou `App not active` durante a autorização. O app continua
 Abas IAB no navegador ID 2: Lovable 1, produção 2, Developers/configuração 6, Instagram autenticado 7, OAuth com App not active 8, Developers/funções com convite preparado 9. Reutilizar apenas após listar e conferir os IDs, pois o operador também pode fechar/navegar as abas. A função `setupBrowserRuntime()` retorna `agent`; `agent.browsers.get('2')` seleciona a sessão interna. A consulta de abas deve sempre remover query e fragmento antes de exibir URLs, pois o retorno de login pode conter credenciais transitórias.
 
 A observação de produção identificou uma questão menor para revisão futura: se Conectar Conta for acionado antes da primeira carga das contas, a lista inicial vazia pode causar um aviso de conta antiga tratada como recém-conectada. O banco continuou com 2 contas e nenhum novo vínculo foi inferido desse aviso. A tentativa seguinte foi iniciada com a lista carregada. Este comportamento não foi alterado, pois o ajuste em andamento foi limitado aos domínios, conforme orientação do operador.
+
+## Continuidade do convite autorizado
+
+O operador confirmou explicitamente **Sim, adicionar como testador** para @morenacoletora no app 00duHot Publisher. Não pedir novamente essa autorização para o mesmo destinatário e função. O envio permanece pendente: o navegador interno retornou `transport closed before response`, inclusive após reinicialização do runtime e reset do kernel Node. Solicitada reabertura do painel interno. Retomar conferindo a tela de Funções e clicar Adicionar no convite preparado; depois aceitar o convite na conta Instagram e repetir OAuth. Confirmar terceira conta persistida. As duas publicações reais anteriores e o deploy continuam confirmados.
+
+## Retomada pelo Unified Computer Use
+
+Controle interno restabelecido pelo novo `mcp__cua_repl`. Página real de Funções mostrou @morenacoletora já incluída como Testador do Instagram com status Pendente; não foi enviado convite duplicado. Aberta a página Apps e sites na sessão Instagram autenticada de morenacoletora e selecionada a aba Convites do testador. O convite 00duHot Publisher-IG está visível com botão Aceitar. A tela informa aceite dos Termos da Plataforma e Políticas do Desenvolvedor e declaração de vínculo de teste com a equipe. Solicitada confirmação específica desse aceite; ainda não executado nesta retomada. A autorização anterior para adicionar o testador permanece registrada e não deve ser pedida novamente.
+
+Produção aberta em nova aba autenticada; lista ainda contém somente Melissa e Jane. Próximo passo é aceitar o convite após a resposta correspondente e clicar Conectar Conta na produção. As abas atuais devem ser redescobertas no IAB, sem reutilizar IDs de sessões anteriores. Captura do convite: C:/Users/User/AppData/Local/Temp/mausehot-convite-testador.png.
+
+## Conclusão da conexão real — 16/11/2026
+
+As pendências descritas nas seções anteriores foram concluídas. Após autorização explícita do operador, aceito o convite 00duHot Publisher-IG na sessão de @morenacoletora. Instagram exibiu Autorizado para você em 15 de novembro de 2026. Iniciada nova tentativa pelo botão Conectar Conta da produção, selecionado Continuar com Instagram e Entrar como morenacoletora, preservando o aceite de termos já autorizado.
+
+Na retomada após o retorno OAuth, a página autenticada de produção carregou três contas como Conectada: @_melissaconteudo, @jane.coroa e @morenacoletora. Esse resultado confirmou o novo vínculo na lista carregada do backend. Selecionada morenacoletora, o assistente mostrou 0 vídeos desta conta. Abrir biblioteca de @morenacoletora apresentou Biblioteca de @morenacoletora e biblioteca vazia, com upload de pasta/avulsos e Próximo desabilitado até adicionar mídia. Os 158 vídeos da Melissa não foram atribuídos à nova conta.
+
+A aba da biblioteca foi preservada como entrega no navegador interno. Captura: C:/Users/User/AppData/Local/Temp/mausehot-morenacoletora-conectada.png. Não foi criado agendamento nem publicado vídeo na nova conta, porque sua biblioteca está vazia. A validação de publicação real permanece a dos dois agendamentos da Melissa, já confirmados com IDs e horários acima. O próximo uso normal é importar os vídeos exclusivos do novo perfil, configurar e revisar antes de ativar. Stories continuam no fluxo separado de biblioteca e lembretes.
+
+O ciclo solicitado de deploy, reparo dos domínios, conexão real de uma nova conta e comprovação da publicação real de Reels foi concluído. Nenhuma outra publicação foi criada nesta retomada e nenhuma credencial foi salva na documentação.
