@@ -245,6 +245,7 @@ function InstagramWorkspacePage({
   const [connectionTarget, setConnectionTarget] = useState<"reels" | "stories">("reels");
   const loginAccountsBefore = useRef<InstagramConnectionAccount[]>([]);
   const loginLock = useRef(false);
+  const confirmedInstagramIds = useRef<string[]>([]);
   const loginPopup = useRef<Awaited<ReturnType<typeof openInstagramAuthorization>> | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const setTab = (next: Tab, target: "reels" | "stories" = "reels") => {
@@ -290,6 +291,7 @@ function InstagramWorkspacePage({
       account_type: string | null;
       connection_status: string;
       last_verified_at: string | null;
+      instagram_user_id: string;
     }>
   >([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
@@ -324,6 +326,14 @@ function InstagramWorkspacePage({
           typeof data.success !== "boolean"
         )
           return;
+        if (
+          data.connection?.workspaceId === workspace.id &&
+          Array.isArray(data.connection.instagramAccountIds)
+        ) {
+          confirmedInstagramIds.current = data.connection.instagramAccountIds.filter(
+            (id: unknown): id is string => typeof id === "string" && /^\d+$/.test(id),
+          );
+        }
         refresh();
         if (!data.success) {
           setLoginWaiting(false);
@@ -344,7 +354,7 @@ function InstagramWorkspacePage({
       window.removeEventListener("focus", refresh);
       channel?.close();
     };
-  }, [loginWaiting]);
+  }, [loginWaiting, workspace.id]);
   const [connecting, setConnecting] = useState<InstagramAuthMode | null>(null);
   const [workerActive, setWorkerActive] = useState<boolean | null>(null);
   const [activatingWorker, setActivatingWorker] = useState(false);
@@ -367,7 +377,7 @@ function InstagramWorkspacePage({
     let active = true;
     void supabase
       .from("instagram_accounts")
-      .select("id,username,account_type,connection_status,last_verified_at")
+      .select("id,username,account_type,connection_status,last_verified_at,instagram_user_id")
       .eq("workspace_id", workspace.id)
       .then(({ data, error }) => {
         if (!active) return;
@@ -378,7 +388,11 @@ function InstagramWorkspacePage({
           setAccountsLoaded(true);
           setConnectedAccounts(data ?? []);
           if (loginWaiting) {
-            const added = findUpdatedInstagramAccount(data ?? [], loginAccountsBefore.current);
+            const added = findUpdatedInstagramAccount(
+              data ?? [],
+              loginAccountsBefore.current,
+              confirmedInstagramIds.current,
+            );
             if (added) {
               setLoginWaiting(false);
               setSelectedAccountId(added.id);
@@ -527,6 +541,7 @@ function InstagramWorkspacePage({
     setConnecting(mode);
     setNotice("");
     loginAccountsBefore.current = connectedAccounts.map((account) => ({ ...account }));
+    confirmedInstagramIds.current = [];
     try {
       setPendingLogin({ mode, analytics });
       const authorize = () =>

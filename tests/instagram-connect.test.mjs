@@ -33,7 +33,12 @@ test("Instagram window is opened synchronously before authorization, without the
 });
 test("connection results require a new or refreshed connected record from the backend", () => {
   const before = [
-    { id: "old", connection_status: "connected", last_verified_at: "2026-11-15T00:00:00Z" },
+    {
+      id: "old",
+      connection_status: "connected",
+      last_verified_at: "2026-11-15T00:00:00Z",
+      instagram_user_id: "123",
+    },
   ];
   assert.equal(findUpdatedInstagramAccount(before, before), undefined);
   assert.equal(
@@ -51,7 +56,9 @@ test("connection results require a new or refreshed connected record from the ba
   };
   assert.equal(findUpdatedInstagramAccount([...before, added], before), added);
   const refreshed = { ...before[0], last_verified_at: "2026-11-16T00:00:00Z" };
-  assert.equal(findUpdatedInstagramAccount([refreshed], before), refreshed);
+  assert.equal(findUpdatedInstagramAccount([refreshed], before), undefined);
+  assert.equal(findUpdatedInstagramAccount([refreshed], before, ["123"]), refreshed);
+  assert.equal(findUpdatedInstagramAccount([refreshed], before, ["999"]), undefined);
   assert.equal(
     findUpdatedInstagramAccount([{ ...before[0], last_verified_at: null }], before),
     undefined,

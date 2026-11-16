@@ -1,4 +1,7 @@
-import { instagramOAuthResult } from "@/lib/instagram-oauth-result";
+import {
+  instagramOAuthResult,
+  type InstagramConnectionNotification,
+} from "@/lib/instagram-oauth-result";
 import { createFileRoute } from "@tanstack/react-router";
 import { deleteCookie, getCookie } from "@tanstack/react-start/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -24,8 +27,13 @@ type FacebookPagesResponse = {
   }>;
 };
 
-function redirectToApp(_baseUrl: URL, result: string, reason?: string) {
-  return instagramOAuthResult(result, reason);
+function redirectToApp(
+  _baseUrl: URL,
+  result: string,
+  reason?: string,
+  connection?: InstagramConnectionNotification,
+) {
+  return instagramOAuthResult(result, reason, connection);
 }
 
 function oauthFailureReason(error: unknown): string {
@@ -128,7 +136,10 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
               p_expires_at: grant.expiry,
             });
             if (error) throw new Error("Instagram account could not be saved.");
-            return redirectToApp(config.appBaseUrl, "connected");
+            return redirectToApp(config.appBaseUrl, "connected", undefined, {
+              workspaceId,
+              instagramAccountIds: grant.accounts.map((account) => account.id),
+            });
           }
           const tokenResponse = await fetch("https://api.instagram.com/oauth/access_token", {
             method: "POST",

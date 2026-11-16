@@ -2,7 +2,16 @@
 // Never reflect OAuth code, state, tokens or arbitrary provider error descriptions.
 import { INSTAGRAM_CONNECTION_CHANNEL } from "./instagram-connect.ts";
 
-export function instagramOAuthResult(result: string, reason?: string) {
+export type InstagramConnectionNotification = {
+  workspaceId: string;
+  instagramAccountIds: string[];
+};
+
+export function instagramOAuthResult(
+  result: string,
+  reason?: string,
+  connection?: InstagramConnectionNotification,
+) {
   const success = result === "connected" || result === "insights_not_granted";
   const details: Record<string, string> = {
     state_validation:
@@ -23,6 +32,13 @@ export function instagramOAuthResult(result: string, reason?: string) {
   };
   const title = success ? "Conta conectada" : "Não foi possível conectar";
   const nonce = crypto.randomUUID();
+  const accountContext =
+    connection && /^[\da-f-]{36}$/i.test(connection.workspaceId)
+      ? {
+          workspaceId: connection.workspaceId,
+          instagramAccountIds: connection.instagramAccountIds.filter((id) => /^\d+$/.test(id)),
+        }
+      : null;
   // The channel is only a refresh hint. The original tab rechecks its own
   // workspace through the authenticated API before displaying success.
   const notification = `(() => {
@@ -36,7 +52,7 @@ export function instagramOAuthResult(result: string, reason?: string) {
           window.close();
         }
       };
-      channel.postMessage({ type: 'oauth-result', id, success: ${success} });
+      channel.postMessage({ type: 'oauth-result', id, success: ${success}, connection: ${JSON.stringify(accountContext)} });
       setTimeout(() => channel.close(), 5000);
     } catch { /* Isolated browsers keep the manual return instructions. */ }
   })();`;

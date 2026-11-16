@@ -37,4 +37,10 @@ test("OAuth failure and missing insights explain recovery without reflecting pro
   ).text();
   assert.doesNotMatch(malicious, /alert\(1\)|onerror|evil\(\)/);
   assert.equal((malicious.match(/<script /g) ?? []).length, 1);
+  const scoped = await instagramOAuthResult("connected", undefined, {
+    workspaceId: "00000000-0000-4000-8000-000000000001",
+    instagramAccountIds: ["123", "</script><script>alert(1)</script>"],
+  }).text();
+  assert.match(scoped, /instagramAccountIds.*123/);
+  assert.doesNotMatch(scoped, /alert\(1\)/);
 });

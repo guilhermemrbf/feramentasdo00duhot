@@ -11,21 +11,30 @@ export type InstagramConnectionAccount = {
   id: string;
   connection_status: string;
   last_verified_at?: string | null;
+  instagram_user_id?: string;
 };
 
 /** A successful login must be reflected in the authenticated account query. */
 export function findUpdatedInstagramAccount<T extends InstagramConnectionAccount>(
   current: readonly T[],
   before: readonly InstagramConnectionAccount[],
+  confirmedInstagramIds: readonly string[] = [],
 ): T | undefined {
   const previous = new Map(before.map((account) => [account.id, account]));
   return current.find((account) => {
     if (account.connection_status !== "connected") return false;
+    if (
+      confirmedInstagramIds.length &&
+      !confirmedInstagramIds.includes(account.instagram_user_id ?? "")
+    )
+      return false;
     const old = previous.get(account.id);
     return (
       !old ||
       old.connection_status !== "connected" ||
-      (!!account.last_verified_at && account.last_verified_at !== old.last_verified_at)
+      (!!account.last_verified_at &&
+        account.last_verified_at !== old.last_verified_at &&
+        confirmedInstagramIds.includes(account.instagram_user_id ?? ""))
     );
   });
 }
