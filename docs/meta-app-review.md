@@ -2,6 +2,55 @@
 
 Atualizado em 16/11/2026. Este documento é o ponto de retomada da liberação para clientes externos. **Rascunho preparado; não enviado nem aprovado.** Não confundir o deploy do site com publicação/aprovação do app na Meta.
 
+## Retomada atual — conexão pública sem convites de testador
+
+O operador voltou a autorizar a preparação da liberação pública do app central. Não implementar apps Meta por cliente nem alterar o fluxo de navegador nesta etapa. As alterações locais iniciadas para tornar o conector obrigatório foram canceladas pelo operador e desfeitas integralmente; nenhuma delas foi publicada. O código funcional permanece nos commits `d6e858e` e `6bb1ccf`.
+
+### Concluído e verificado nesta retomada
+
+- Consultadas as exigências oficiais de App Review e do portfólio proprietário. O rascunho continua solicitando apenas `instagram_basic` e `instagram_content_publish`, com **Enviar para análise desabilitado** e app **Não publicado**.
+- Revalidadas sem autenticação as páginas `https://mausehot.lovable.app/privacidade` e `https://mausehot.lovable.app/exclusao-de-dados`: ambas HTTP 200, com o contato público autorizado e sem exigir entrada Google.
+- Registrados e salvos esses dois endereços em Configurações do app → Básico na Meta. A exclusão usa a opção **URL de instruções de exclusão de dados**. Exibida a confirmação **As alterações foram salvas**; os dois valores persistiram após recarregar. O alerta anterior de URL de privacidade ausente desapareceu dessa tela.
+- Preservados nome, ícone, categoria, permissões, segredos e proprietário existentes. Nenhuma migration, mudança de RLS, publicação de Reel, revogação de conta ou novo deploy realizado nesta retomada.
+- Formulário de tratamento de dados revisado: controlador Guilherme Machado Rocha, Brasil, existência de operadores Sim, ausência de pedidos de autoridade Não e procedimentos formais Nenhuma. Mantidas as respostas factuais já fornecidas pelo operador; lista de operadores ainda vazia.
+- Evidência local das URLs salvas: `C:/Users/User/AppData/Local/Temp/mousehot-meta-politicas-salvas.jpg`.
+
+### Bloqueio empresarial confirmado no formulário atual
+
+- O portfólio correto `00dohot` está **Qualificado para verificação**, mas **Não verificado**. Qualificação permite iniciar o processo; não significa aprovação.
+- Percorrido novamente o caminho Brasil → Empresa individual → Ainda não tem registro. A própria opção descreve operação sem registro ou representada por indivíduo.
+- Na etapa Adicionar dados da empresa, preencher apenas o nome real autorizado não habilita **Avançar**. O campo **Identificação Fiscal da Empresa/Número de Registro da Empresa** continua vazio e a ajuda recomenda CNPJ/NIRE/IE/IM. Nenhum número foi criado, inferido ou solicitado em chat.
+- A ajuda oficial [documentos para verificação](https://business.facebook.com/business/help/159334372093366) informa que a comprovação usa documentos oficiais de registro. Lista certificado/contrato social, inscrição/licença, documento fiscal governamental e extrato bancário empresarial, conforme os requisitos aplicáveis. Não presumir que um CPF ou documento pessoal substitui um registro empresarial aceito neste fluxo.
+- O operador informou que ainda não possui empresa registrada. Esta dependência não pode ser resolvida com uma mudança de interface. Dados fiscais e documentos reais devem ser inseridos pelo titular diretamente na Meta; não usar documentos de terceiros nem trocar o portfólio do app para esconder a pendência.
+- Nenhum documento enviado e nenhuma verificação submetida. Formulário deixado aberto sem identificador fiscal. Evidência: `C:/Users/User/AppData/Local/Temp/mousehot-meta-verificacao-pendente.jpg`.
+
+### Operadores — evidências novas e informação ainda necessária
+
+- O formulário Meta exige nome do operador, categorias de serviço e **todos os países de processamento e acesso remoto**. Consultado o modal real; cancelado sem salvar dados incompletos.
+- O [DPA da Lovable](https://lovable.dev/data-processing-agreement) identifica Lovable Labs Incorporated como operador. O endereço da sede, por si só, não define os países em que os dados do projeto são processados.
+- A [lista oficial](https://lovable.dev/subprocessors) remete ao [Trust Center](https://trust.lovable.dev/subprocessors), que foi aberto com sucesso no navegador interno. A lista contém, entre outros: Google Cloud Platform (Países Baixos/europe-west4), AWS (Londres para armazenamento/cache/segredos e Oregon para Bedrock), Supabase (UE por padrão), Cloudflare (global) e Modal (global).
+- Esses registros descrevem serviços diferentes. Não declarar que todos recebem os Dados da Plataforma deste projeto, nem incluir inferência de IA no fluxo OAuth/publicação sem rastreá-la no código. A lista agora fornece evidência de Supabase como suboperador da Lovable, mas não comprova a região efetiva desta instância.
+- Ainda falta confirmar com a documentação contratual/configuração aplicável à conta os países efetivos, inclusive suporte remoto, dos serviços que recebem os dados Meta. As expressões global e UE por padrão não foram convertidas em uma lista arbitrária de países no formulário.
+- Pergunta preparada para o fornecedor, **não enviada**: para o projeto Cloud `fzptbxfyhwypmpfrjlko`, quais entidades jurídicas e países de hospedagem, armazenamento, logs e acesso remoto de suporte processam os dados da aplicação, inclusive os identificadores e tokens Meta? Qual documentação contratual comprova essa lista?
+
+### Estado do teste de conta nova
+
+- `_melissaconteudo`, `jane.coroa` e `morenacoletora` continuam sendo as três contas conectadas observadas no MouseHot.
+- `jane.caliente` foi localizada na Meta e aparece com convite de Testador do Instagram **Pendente**. Não consta como conectada ao MouseHot, e o convite ainda não foi aceito.
+- O teste dessa conta parou na entrada do Instagram com mensagem de informações de login incorretas. O operador relatou que as credenciais funcionam em outro navegador e depois informou dificuldade para acessar o perfil. A causa da recusa **não foi identificada**; não a atribuir de forma conclusiva à senha, ao navegador interno, à função de testadora ou ao backend.
+- Não repetir tentativas automaticamente, alterar senhas ou chamar a conexão de perfis novos de validada. A reconexão real da Morena comprova somente o fluxo de uma conta previamente autorizada; não comprova onboarding público sem função no app.
+
+### Próxima retomada
+
+1. Preservar o app `2201393490722211`, a configuração `2579077412515904`, o portfólio `1498873732174939`, os agendamentos e os tokens existentes.
+2. Concluir a verificação de `00dohot` com registro/documentação reais aceitos pela Meta. Essa etapa depende do titular; não declarar envio ou aprovação apenas por abrir o formulário.
+3. Confirmar entidades/países de processamento da hospedagem e finalizar a lista de operadores com informações verificadas.
+4. Conferir acesso real do revisor por conta Google própria e workspace separado; completar as gravações reais exigidas e as declarações de uso permitido. Não fabricar vídeo do fluxo nem publicar conteúdo adicional sem escopo autorizado para a conta/mídia.
+5. Submeter apenas quando as etapas estiverem completas e os aceites necessários forem obtidos. Registrar confirmação/protocolo de envio; depois acompanhar a decisão externa.
+6. Somente após Advanced Access e modo Live, testar uma conta profissional sem função de testador para comprovar o objetivo de conexão pública autônoma.
+
+As notas históricas abaixo permanecem para continuidade; os endereços de privacidade/exclusão já publicados e cadastrados nesta retomada prevalecem sobre suas antigas pendências.
+
 ## Retomada mais recente — administrador, políticas e decisão de arquitetura
 
 - Sessão correta confirmada em Business Suite: portfólio `00dohot`, usuário administrador com acesso total. O bloqueio de sessão descrito no histórico abaixo foi resolvido.
