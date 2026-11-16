@@ -14,6 +14,7 @@ import { Route as AutomacaoInstagramRouteImport } from './routes/automacao-insta
 import { Route as AutomacaoTiktokRouteImport } from './routes/automacao-tiktok'
 import { Route as CriarPaginaRouteImport } from './routes/criar-pagina'
 import { Route as EmailTemporarioRouteImport } from './routes/email-temporario'
+import { Route as ExclusaoDeDadosRouteImport } from './routes/exclusao-de-dados'
 import { Route as FunilRouteImport } from './routes/funil'
 import { Route as GerarPreviewRouteImport } from './routes/gerar-preview'
 import { Route as HotProfilesRouteImport } from './routes/hot-profiles'
@@ -22,6 +23,7 @@ import { Route as InstagramIntelligenceRouteImport } from './routes/instagram-in
 import { Route as LimparMetadadosRouteImport } from './routes/limpar-metadados'
 import { Route as MouseHotDownloaderRouteImport } from './routes/mouse-hot-downloader'
 import { Route as OtimizarCriativosRouteImport } from './routes/otimizar-criativos'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as TelegramSyncRouteImport } from './routes/telegram-sync'
 import { Route as ApiInstagramWorkerRouteImport } from './routes/api.instagram.worker'
 import { Route as ApiInstagramOauthCallbackRouteImport } from './routes/api.instagram.oauth.callback'
@@ -49,6 +51,11 @@ const CriarPaginaRoute = CriarPaginaRouteImport.update({
 const EmailTemporarioRoute = EmailTemporarioRouteImport.update({
   id: '/email-temporario',
   path: '/email-temporario',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExclusaoDeDadosRoute = ExclusaoDeDadosRouteImport.update({
+  id: '/exclusao-de-dados',
+  path: '/exclusao-de-dados',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FunilRoute = FunilRouteImport.update({
@@ -91,6 +98,11 @@ const OtimizarCriativosRoute = OtimizarCriativosRouteImport.update({
   path: '/otimizar-criativos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TelegramSyncRoute = TelegramSyncRouteImport.update({
   id: '/telegram-sync',
   path: '/telegram-sync',
@@ -114,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/email-temporario': typeof EmailTemporarioRoute
+  '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
@@ -122,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/mouse-hot-downloader': typeof MouseHotDownloaderRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
@@ -132,6 +146,7 @@ export interface FileRoutesByTo {
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/email-temporario': typeof EmailTemporarioRoute
+  '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
@@ -140,6 +155,7 @@ export interface FileRoutesByTo {
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/mouse-hot-downloader': typeof MouseHotDownloaderRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
@@ -151,6 +167,7 @@ export interface FileRoutesById {
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/email-temporario': typeof EmailTemporarioRoute
+  '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
@@ -159,6 +176,7 @@ export interface FileRoutesById {
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/mouse-hot-downloader': typeof MouseHotDownloaderRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
@@ -171,6 +189,7 @@ export interface FileRouteTypes {
     | '/automacao-tiktok'
     | '/criar-pagina'
     | '/email-temporario'
+    | '/exclusao-de-dados'
     | '/funil'
     | '/gerar-preview'
     | '/hot-profiles'
@@ -179,6 +198,7 @@ export interface FileRouteTypes {
     | '/limpar-metadados'
     | '/mouse-hot-downloader'
     | '/otimizar-criativos'
+    | '/privacidade'
     | '/telegram-sync'
     | '/api/instagram/worker'
     | '/api/instagram/oauth/callback'
@@ -189,6 +209,7 @@ export interface FileRouteTypes {
     | '/automacao-tiktok'
     | '/criar-pagina'
     | '/email-temporario'
+    | '/exclusao-de-dados'
     | '/funil'
     | '/gerar-preview'
     | '/hot-profiles'
@@ -197,6 +218,7 @@ export interface FileRouteTypes {
     | '/limpar-metadados'
     | '/mouse-hot-downloader'
     | '/otimizar-criativos'
+    | '/privacidade'
     | '/telegram-sync'
     | '/api/instagram/worker'
     | '/api/instagram/oauth/callback'
@@ -207,6 +229,7 @@ export interface FileRouteTypes {
     | '/automacao-tiktok'
     | '/criar-pagina'
     | '/email-temporario'
+    | '/exclusao-de-dados'
     | '/funil'
     | '/gerar-preview'
     | '/hot-profiles'
@@ -215,6 +238,7 @@ export interface FileRouteTypes {
     | '/limpar-metadados'
     | '/mouse-hot-downloader'
     | '/otimizar-criativos'
+    | '/privacidade'
     | '/telegram-sync'
     | '/api/instagram/worker'
     | '/api/instagram/oauth/callback'
@@ -226,6 +250,7 @@ export interface RootRouteChildren {
   AutomacaoTiktokRoute: typeof AutomacaoTiktokRoute
   CriarPaginaRoute: typeof CriarPaginaRoute
   EmailTemporarioRoute: typeof EmailTemporarioRoute
+  ExclusaoDeDadosRoute: typeof ExclusaoDeDadosRoute
   FunilRoute: typeof FunilRoute
   GerarPreviewRoute: typeof GerarPreviewRoute
   HotProfilesRoute: typeof HotProfilesRoute
@@ -234,6 +259,7 @@ export interface RootRouteChildren {
   LimparMetadadosRoute: typeof LimparMetadadosRoute
   MouseHotDownloaderRoute: typeof MouseHotDownloaderRoute
   OtimizarCriativosRoute: typeof OtimizarCriativosRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
   TelegramSyncRoute: typeof TelegramSyncRoute
   ApiInstagramWorkerRoute: typeof ApiInstagramWorkerRoute
   ApiInstagramOauthCallbackRoute: typeof ApiInstagramOauthCallbackRoute
@@ -274,6 +300,13 @@ declare module '@tanstack/react-router' {
       path: '/email-temporario'
       fullPath: '/email-temporario'
       preLoaderRoute: typeof EmailTemporarioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exclusao-de-dados': {
+      id: '/exclusao-de-dados'
+      path: '/exclusao-de-dados'
+      fullPath: '/exclusao-de-dados'
+      preLoaderRoute: typeof ExclusaoDeDadosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/funil': {
@@ -332,6 +365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OtimizarCriativosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/telegram-sync': {
       id: '/telegram-sync'
       path: '/telegram-sync'
@@ -362,6 +402,7 @@ const rootRouteChildren: RootRouteChildren = {
   AutomacaoTiktokRoute: AutomacaoTiktokRoute,
   CriarPaginaRoute: CriarPaginaRoute,
   EmailTemporarioRoute: EmailTemporarioRoute,
+  ExclusaoDeDadosRoute: ExclusaoDeDadosRoute,
   FunilRoute: FunilRoute,
   GerarPreviewRoute: GerarPreviewRoute,
   HotProfilesRoute: HotProfilesRoute,
@@ -370,6 +411,7 @@ const rootRouteChildren: RootRouteChildren = {
   LimparMetadadosRoute: LimparMetadadosRoute,
   MouseHotDownloaderRoute: MouseHotDownloaderRoute,
   OtimizarCriativosRoute: OtimizarCriativosRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
   TelegramSyncRoute: TelegramSyncRoute,
   ApiInstagramWorkerRoute: ApiInstagramWorkerRoute,
   ApiInstagramOauthCallbackRoute: ApiInstagramOauthCallbackRoute,

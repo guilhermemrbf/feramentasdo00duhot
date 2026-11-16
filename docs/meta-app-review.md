@@ -2,6 +2,23 @@
 
 Atualizado em 16/11/2026. Este documento é o ponto de retomada da liberação para clientes externos. **Rascunho preparado; não enviado nem aprovado.** Não confundir o deploy do site com publicação/aprovação do app na Meta.
 
+## Retomada mais recente — administrador, políticas e decisão de arquitetura
+
+- Sessão correta confirmada em Business Suite: portfólio `00dohot`, usuário administrador com acesso total. O bloqueio de sessão descrito no histórico abaixo foi resolvido.
+- Operador confirmou que continua **sem empresa registrada**. Percorrido o formulário oficial Brasil → Empresa individual → Ainda não tem registro. A etapa seguinte exige identificação fiscal/registro, sugere CNPJ/NIRE/IE/IM e mantém Avançar desabilitado com o campo vazio. A ajuda lista documentos empresariais oficiais. Foram preenchidos apenas nome real e nome comercial; nenhum número foi inventado e nenhuma verificação foi enviada.
+- Verificação de acesso/Tech Provider também consultada: Iniciar verificação desabilitado até conectar o app a empresa verificada. O painel mostra prazo de 15/01/2027 para essa etapa. Não remover ou transferir o app para mudar essa condição.
+- Nome público, país e email de privacidade foram fornecidos/autorizados pelo operador. Implementadas páginas sem autenticação `/privacidade` e `/exclusao-de-dados`, com atendimento manual, contato público e limites reais da exclusão; links incluídos no rodapé do AppShell. Não são um callback automático de exclusão nem alegam retenção automática.
+- Código das páginas: `src/routes/privacidade.tsx`, `src/routes/exclusao-de-dados.tsx`. TanStack regenerou `src/routeTree.gen.ts` automaticamente. Nenhuma migration ou mudança de autenticação/RLS.
+- `npm test`: 142/142; `npm run build`: sucesso; `tsc --noEmit`: sucesso. Páginas ainda precisam de inspeção no navegador e deploy Lovable; não cadastrar seus URLs na Meta como publicados antes da validação HTTP real.
+- Em Tratamento de dados do rascunho Meta: nome do controlador e Brasil preenchidos, existência de operadores marcada Sim, procedimentos formais para autoridades marcada Nenhuma conforme resposta. A resposta sobre autoridades foi esclarecida pelo operador: apenas ele usa a ferramenta, **não houve pedido de autoridade**. Selecionado Não, sem registrar o clique anterior ambíguo como compartilhamento real.
+- Cadastro de operadores permanece pendente: é necessário confirmar nomes contratuais e países de processamento/suporte da hospedagem antes de salvar uma lista completa. Não inferir país de processamento pela sede da empresa nem declarar Supabase Inc. como operador só por usar a base tecnológica open-source.
+- Instruções para o analista confirmadas em 100% no formulário; demais seções continuam pendentes. Não foram aceitos novos termos nem marcada conformidade com permissões sem confirmação exigida.
+- O operador propôs **aplicativo Meta próprio para cada cliente** e pediu avaliação. Isso não foi implementado: o backend atual usa configuração global e não suporta ainda credenciais Meta por workspace. A proposta exige projeto de armazenamento cifrado, seleção de app/configuração por workspace, estado OAuth vinculando a configuração e testes de isolamento; não colocar App Secret no frontend ou usar email como autorização.
+- A recomendação técnica deve diferenciar uso do próprio negócio com Standard Access de SaaS atendendo negócios de terceiros. Apps em desenvolvimento continuam exigindo funções/convites apropriados. No SaaS central aprovado, clientes consentem no OAuth sem receber acesso ao Developers; obrigar todos a criar app próprio aumenta o trabalho de configuração.
+- Verificação preservada no navegador interno e não enviada. Captura local: `C:/Users/User/AppData/Local/Temp/mousehot-meta-registro-individual.jpg`. Servidor local de QA iniciado em `http://127.0.0.1:5187` (processo desta tarefa), para inspeção das páginas antes de publicar.
+
+Os itens abaixo preservam o histórico anterior; este estado mais recente prevalece quando houver uma pendência já resolvida.
+
 ## Identificação e escopo
 
 - App: `00duHot Publisher`, ID público `2201393490722211`.

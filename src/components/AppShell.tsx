@@ -167,6 +167,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="border-t border-border px-5 py-4 text-xs leading-5 text-muted-foreground">
         <span className="block font-medium text-foreground">Tudo em um só lugar</span>Conteúdo,
         preparação e automação.
+        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
+          <a href="/privacidade" className="underline underline-offset-4 hover:text-foreground">
+            Privacidade
+          </a>
+          <a
+            href="/exclusao-de-dados"
+            className="underline underline-offset-4 hover:text-foreground"
+          >
+            Exclusão de dados
+          </a>
+        </div>
       </div>
     </>
   );
