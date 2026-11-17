@@ -94,6 +94,17 @@ Próxima ação: se o proprietário confirmar os termos, aceitar o convite na ab
 
 **Correção de direção mais recente:** ao pedir o aceite dos termos de Guimr, o proprietário respondeu **“vamos tentar com outra conta”**. Portanto, **não aceitar o convite de Guimr**; ele permanece pendente, apenas enviado com a autorização anterior. As abas antigas 24–27 foram fechadas pelo ambiente; só a aplicação 23 permaneceu. Foi aberta uma nova aba interna do Instagram e acionado **Mais → Trocar de conta**, mostrando o formulário oficial de login. O proprietário foi orientado a entrar com o outro perfil diretamente nessa tela, sem enviar credenciais. Aguardar essa entrada, identificar o @ real e consultar a função de teste desse perfil antes de reiniciar OAuth. Não presumir que ele escolheu Morena, Jane ou Guimr.
 
+### Novo perfil identificado: @teresalisbomm
+
+Após o proprietário informar que entrou no outro perfil, a aba 28 confirmou **teresalisbomm**. A Meta não tinha esse perfil nas funções do app. As configurações oficiais do Instagram exibiram **Tipo de perfil e ferramentas → Trocar para perfil profissional**, comprovando que o perfil ainda era pessoal.
+
+Foram preparadas, **sem enviar/concluir**, duas ações:
+
+- Aba 28: assistente de conversão do Instagram → **Criador de conteúdo** → categoria **Criador de conteúdo digital** selecionada; **Mostrar categoria no perfil** desmarcado; botão **Concluir** ainda não clicado.
+- Nova aba Meta (descobrir ID pelo inventário): função exata **Testador do Instagram**, resultado exato **teresalisbomm** selecionado no dropdown; botão **Adicionar** ainda não clicado.
+
+Foi solicitada autorização específica para converter esse perfil em profissional de Criador, público, com categoria oculta, e enviar o convite de teste. **Aguardar a resposta antes dessas ações.** Não presumir aceite dos Termos da Plataforma/Políticas do Desenvolvedor do convite — serão apresentados após o envio. Não iniciar OAuth enquanto o perfil ainda estiver pessoal e sem convite aceito, para evitar repetir o mesmo bloqueio.
+
 Quando o proprietário voltar à aplicação, comprovar a alteração de `connected_at`, `client_business_id` e `login_config_id` da autorização real, consultar novamente o perfil e recarregar. Se a Meta negar um campo, investigar o erro estável sem imprimir tokens, códigos OAuth, cookies ou URLs completas de autorização.
 
 Antes de testar desconexão real, confirmar novamente que esta conta está sem posts em processamento/agendados, loops e Stories pendentes; não tocar em Melissa. Depois testar remoção local do grant e nova autorização pela interface, observando as confirmações exigidas pelo navegador. Se aparecer CAPTCHA, verificação, termos ou novos escopos, solicitar a ação específica do proprietário e deixar a aba interna aberta. Jamais usar recuperação de senha como parte deste fluxo.
