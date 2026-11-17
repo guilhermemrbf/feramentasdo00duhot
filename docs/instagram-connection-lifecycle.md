@@ -49,7 +49,17 @@ Já executados nesta etapa:
 
 - `npm run build`: passou, gerando cliente e servidor Nitro/Cloudflare.
 
-Pendente no momento deste registro: commit/push, publicar no Lovable e executar OAuth real + verificação + recarga. **Não declarar a missão validada apenas com estes testes locais.**
+## Resultado na produção
+
+- Código commit `882a756`, enviado ao `main`; Lovable confirmou **Seu site foi atualizado**.
+- A versão publicada exibiu os três perfis existentes e os novos controles.
+- Em **16/11/2026 às 22:52 (America/Sao_Paulo)**, o botão **Verificar acesso** de `@morenacoletora` consultou a API oficial com seu grant real. Retornou nome `Noemi santos`, foto e identificador `17841457368026440`, e a interface mostrou **Acesso confirmado pela API oficial da Meta**.
+- Após recarregar a aplicação, nome, foto e horário de verificação permaneceram salvos. Não foi necessário copiar tokens, usar terminal ou iniciar o conector.
+- Evidência local: `C:/Users/User/AppData/Local/Temp/mausehot-instagram-api-verificada-20261116.jpg` (captura da aplicação publicada, não fixture).
+- O botão **Reconectar Instagram** abriu uma nova aba oficial da Meta → **Continuar com o Instagram** → formulário de login do Instagram. Falta o proprietário entrar para concluir **este novo teste OAuth**. Nenhum login foi inventado e nenhuma senha foi alterada.
+- A conta real não foi desconectada antes de validar a nova autorização; seu grant existente foi preservado. O ciclo de desconexão/reconexão foi validado com fixtures locais e migrations reais, ainda não repetido integralmente na produção.
+
+**Status da missão completa: AGUARDANDO AÇÃO EXTERNA — NÃO VALIDADO.** A consulta real de perfil e a persistência passaram; o novo teste de autorização e o ciclo completo ao vivo ainda estão pendentes. Não confundir isso com aprovação pública do app pela Meta.
 
 O ambiente local tinha o pacote `@radix-ui/react-alert-dialog@1.1.15` com manifest mas sem `dist`; restaurado do pacote oficial npm, sem alteração de dependências/lock. O compilador funciona via `node node_modules/typescript/bin/tsc`, embora `npx tsc` nesta instalação tenha resolvido um pacote npm homônimo incorreto.
 
@@ -68,6 +78,10 @@ npm run build
 
 O diretório auxiliar deve ter `@electric-sql/pglite` e `playwright-core`; o teste de navegador usa Chrome instalado no caminho indicado no script. Executar navegador e build sequencialmente (compartilham artefatos do Vite/Nitro). Os testes de navegador usam API e dados sintéticos locais, não comprovam autorização da Meta.
 
-## Próximo passo obrigatório
+## Próximo passo obrigatório / handoff
 
-Após testes e build, confirmar as permissões da RPC em produção, publicar o código pelo GitHub/Lovable, abrir o botão real e tentar uma conta já autorizada sem fila ativa (confirmar novamente). Comprovar consulta real do perfil e persistência após recarregar. Se houver login, código, CAPTCHA, termos ou novos escopos que exigirem participação, deixar a aba interna aberta e informar precisamente a ação externa, sem solicitar segredos no chat. Guardar evidência sem tokens em URL, logs ou imagem.
+O navegador interno está aberto: aba 23 aplicação publicada, aba 25 login oficial do Instagram (handoff ao proprietário), aba 24 Lovable. Foi solicitada a entrada de `@morenacoletora` diretamente no Instagram, sem enviar senha/código ao chat. A tentativa OAuth expira em dez minutos; se necessário, cancelar a tentativa antiga pela interface e iniciar novamente, aproveitando a sessão autenticada do Instagram.
+
+Quando o proprietário voltar à aplicação, comprovar a alteração de `connected_at`, `client_business_id` e `login_config_id` da autorização real, consultar novamente o perfil e recarregar. Se a Meta negar um campo, investigar o erro estável sem imprimir tokens, códigos OAuth, cookies ou URLs completas de autorização.
+
+Antes de testar desconexão real, confirmar novamente que esta conta está sem posts em processamento/agendados, loops e Stories pendentes; não tocar em Melissa. Depois testar remoção local do grant e nova autorização pela interface, observando as confirmações exigidas pelo navegador. Se aparecer CAPTCHA, verificação, termos ou novos escopos, solicitar a ação específica do proprietário e deixar a aba interna aberta. Jamais usar recuperação de senha como parte deste fluxo.
