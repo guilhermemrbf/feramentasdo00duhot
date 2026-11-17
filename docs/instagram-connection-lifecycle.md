@@ -1,110 +1,130 @@
-# Instagram: conexão, verificação e desconexão
+# Instagram — relatório final e contexto de continuidade
 
-## Contexto para continuidade — 16/11/2026
+## Estado em 16/11/2026
 
-Checkout: `C:/Users/User/AppData/Local/Temp/00duhot-mouse-hot-v3`.
-Produção: https://mausehot.lovable.app/automacao-instagram.
-Lovable: projeto `03560931-5f6a-41e1-a222-0510d1828a23`, banco `fzptbxfyhwypmpfrjlko`.
+**Ciclo oficial com conta autorizada: CONCLUÍDO E VALIDADO.**
 
-A missão atual é comprovar o ciclo oficial de conexão. Não alterar outros módulos, recuperar senhas ou publicar Reels apenas para testar login. A conta `_melissaconteudo` tem uma fila ativa que deve ser preservada. Na pré-verificação de produção desta etapa, `morenacoletora` e `jane.coroa` tinham zero posts pendentes/em processamento.
+A conta nova **@teresalisbomm** foi conectada pela interface publicada, consultada pela API oficial, desconectada e reconectada pela interface. Os dados permaneceram salvos após recarregar. O servidor confirmou a remoção do token na desconexão e uma nova credencial criptografada após a reconexão.
 
-## Método e limites
+**Onboarding público sem convite de testador: AGUARDANDO AÇÃO EXTERNA — NÃO VALIDADO.** O app continua não publicado, sem Advanced Access/App Review aprovado. Este teste não libera clientes externos nem elimina as exigências da Meta para novos perfis enquanto o app estiver em desenvolvimento. Ver `meta-app-review.md`.
 
-O botão principal usa **Instagram API with Unified Login**, já configurado nesta instalação. Abre a autorização oficial em popup; o conector local é opcional. Contas suportadas: profissionais Business/Creator. O fluxo usa um portfólio empresarial e não exige uma Página do Facebook. Documentação oficial:
+## Ambiente e versão
+
+- Checkout: `C:/Users/User/AppData/Local/Temp/00duhot-mouse-hot-v3`.
+- Produção: https://mausehot.lovable.app/automacao-instagram?tab=contas
+- Lovable: projeto `03560931-5f6a-41e1-a222-0510d1828a23`.
+- Banco Lovable Cloud/Supabase: `fzptbxfyhwypmpfrjlko`.
+- Código de produção: **882a756**, enviado ao `main` e publicado pelo Lovable; resposta observada **Seu site foi atualizado**.
+- Commits posteriores a esse código registram documentação; não introduzem outra mudança de runtime.
+- Preservar os outros módulos, bibliotecas e a fila ativa de `_melissaconteudo`. Nenhum novo Reel foi publicado como parte deste teste de conexão.
+
+## Método oficial e tipos de conta
+
+O botão principal usa **Instagram API with Unified Login**, já configurado nesta instalação. Abre a autorização oficial em popup; o conector local é opcional. São suportadas contas profissionais **Business/Creator**. O fluxo usa um portfólio empresarial e não exige uma Página do Facebook. Não usar endpoints privados, cookies extraídos ou senhas coletadas pela aplicação.
+
+Fontes oficiais consultadas:
 
 - https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-unified-login/
 - https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-unified-login/authentication
+- https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/business-login
 
-O app atual `2201393490722211`, configuração `2579077412515904`, solicita `instagram_basic` e `instagram_content_publish`. Callback: `https://mausehot.lovable.app/api/instagram/oauth/callback`.
+App: `00duHot Publisher`, ID `2201393490722211`, configuração `2579077412515904`.
+Callback: `https://mausehot.lovable.app/api/instagram/oauth/callback`.
+Permissões de publicação validadas no grant real: **instagram_basic**, **instagram_content_publish**; o grant também incluiu `public_profile`. Não foram solicitadas permissões adicionais de comentários/insights nesta etapa.
 
-Configuração administrativa do backend (nenhum visitante deve preencher estes campos): `APP_BASE_URL`, `META_APP_ID`, `META_APP_SECRET`, `META_GRAPH_API_VERSION`, `META_INSTAGRAM_LOGIN_CONFIG_ID`, `INSTAGRAM_OAUTH_STATE_SECRET`, `INSTAGRAM_TOKEN_ENCRYPTION_KEY` (32 bytes em base64), `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Os valores secretos pertencem ao armazenamento de secrets do servidor; não publicar em `VITE_*`, código ou logs. O ID de configuração tem fallback somente para o app já conhecido desta instalação.
+## Implementação
 
-O app ainda não tem aprovação pública/Advanced Access. A conexão de uma conta de teste autorizada não comprova onboarding público de clientes SaaS. Ver `meta-app-review.md`. A tentativa com `jane.caliente` não foi concluída: convite pendente e login recusado pelo Instagram; a causa exata não está comprovada. Não repetir recuperação de senha, expressamente cancelada pelo proprietário.
-
-## Implementação desta etapa
-
-- `src/lib/api/instagram-connection.functions.ts`: funções POST autenticadas, autorização por operação e conta. A verificação consulta o perfil na Graph API pelo backend. Token inválido/expirado pede reconexão; falha de rede não é apresentada como revogação.
-- `src/lib/instagram-connection-profile.ts`: resposta de identidade validada, foto HTTPS de CDN Meta, erro sanitizado. Consulta limitada a dez segundos; uma única tentativa adicional com campos básicos quando os opcionais forem indisponíveis.
-- `src/components/postkit/InstagramConnectionDetails.tsx`: nome/foto quando fornecidos, ID, permissões, datas, verificar, reconectar e desconectar com confirmação.
-- `src/routes/automacao-instagram.tsx`: integra os controles às contas existentes sem substituir bibliotecas ou fluxos de Stories/Reels.
-- `src/lib/instagram-unified-login.server.ts` e callback: preservam validação de state, identidade do app e permissões; registram `client_business_id` e configuração usados no grant.
-- Tokens permanecem AES-GCM no servidor. Unified Login não é enviado ao endpoint de refresh do Instagram Login. A expiração informada pela Meta exige nova autorização quando não existir renovação suportada.
+- `src/lib/api/instagram-connection.functions.ts`: POST autenticado, autorização por operação/conta, consulta real de perfil e desconexão pela RPC. Token inválido/expirado exige reconexão; falha de rede não é apresentada como revogação.
+- `src/lib/instagram-connection-profile.ts`: identidade validada, nome/foto quando disponibilizados, foto HTTPS restrita a hosts Meta. Timeout de dez segundos; uma tentativa adicional com campos básicos quando os opcionais forem indisponíveis. Erros não expõem a resposta bruta nem tokens.
+- `src/components/postkit/InstagramConnectionDetails.tsx`: ID, permissões, datas, verificar, reconectar e desconectar com confirmação.
+- `src/routes/automacao-instagram.tsx`: integra os controles às contas sem substituir bibliotecas ou fluxos de Stories/Reels.
+- `src/lib/instagram-unified-login.server.ts` e `src/routes/api.instagram.oauth.callback.ts`: preservam validação de state/identidade do app/permissões, troca segura de código, persistência atômica e notificação da janela original. Registram `client_business_id` e configuração do grant.
+- `src/lib/instagram-oauth.server.ts`: só disponibiliza token de conta marcada como conectada. Tokens permanecem AES-GCM no backend. Unified Login não é enviado ao endpoint de refresh do Instagram Login; expiração/revogação exige nova autorização quando não houver renovação suportada.
+- `src/lib/postkit-database.ts`: tipos aditivos, sem editar arquivos gerados do Supabase.
 
 ### Banco
 
-`supabase/migrations/20261116235000_instagram_connection_lifecycle.sql` foi **aplicada pelo SQL editor do Lovable Cloud**, com resposta `Query succeeded` nesta etapa. Acrescenta cinco campos de metadados e a RPC `disconnect_instagram_account`.
+`supabase/migrations/20261116235000_instagram_connection_lifecycle.sql` foi aplicada no SQL editor do Lovable Cloud e verificada em produção. Adiciona cinco campos de metadados e a RPC `disconnect_instagram_account`.
 
-A RPC desconecta apenas a conta e operação autorizadas: apaga seu token local, marca revogada, cancela posts agendados e lembretes pendentes de Stories, pausa loops, preserva mídia/histórico e outras contas. Recusa a operação se existir post em processamento. Reconectar não restaura automaticamente agendamentos cancelados. Não revoga globalmente um grant da Meta compartilhado por outras contas.
+A RPC apaga o token local somente da conta/operação autorizadas, marca revogada, cancela Reels agendados e lembretes pendentes de Stories, pausa loops e preserva mídia/histórico. Recusa desconexão com post em processamento. Reconectar não restaura agendamentos cancelados. Não revoga globalmente um grant Meta compartilhado com outras contas.
 
-## Verificações
+Produção: cinco colunas confirmadas; desconexão negada ao papel anônimo; autenticados passam por verificação interna de owner/admin/editor; clientes autenticados não podem executar o salvamento de tokens. RLS da tabela de tokens continua sem política de leitura para clientes.
 
-Já executados nesta etapa:
+## Evidências do teste real
 
-- `node --experimental-strip-types --test tests/*.test.mjs`: **152 passaram**, repetidos após a alteração de texto de erro e guarda SQL de expiração.
-- `node node_modules/typescript/bin/tsc --noEmit`: passou.
-- `tests/instagram-connection-lifecycle-postgres.mjs`: passou com PGlite usando migrations reais de foundation/RLS, auth mode, Unified Login, Stories, loops e lifecycle. Cobre papéis, isolamento, tokens, rollback de publicação em andamento, cancelamento, preservação, idempotência, reconexão e rejeição de grant expirado. Catálogo storage e registros são exclusivamente fixtures.
+| Etapa | Resultado observado |
+|---|---|
+| Perfil existente, 22:52 | API confirmou @morenacoletora, nome Noemi santos, foto e ID; nome/foto persistiram após reload. |
+| Diagnóstico de App not active | A sessão estava em @guimr__, ausente das funções de teste. Convite enviado com autorização específica; permaneceu pendente porque o proprietário escolheu outra conta. |
+| Nova conta | Sessão identificada como @teresalisbomm. As configurações mostraram que era pessoal. O proprietário concluiu a conversão para profissional e o aceite do convite de teste diretamente nas telas oficiais. |
+| OAuth novo, 23:17 | Clique na plataforma abriu Meta; Instagram reconheceu teresalisbomm. Após o aceite do proprietário, a janela retornou/fechou e MouseHot exibiu a conta nova na biblioteca própria, com zero vídeos. |
+| API, 23:18 | Verificar acesso retornou nome teresa e ID **17841455323323892**. A interface mostrou Acesso confirmado pela API oficial da Meta. Não foi fornecida foto nesse retorno. |
+| Persistência | Nova navegação/reload manteve conta, nome, ID, permissões, data e estado conectado. |
+| Banco antes da desconexão | `client_business_id` salvo, configuração 2579077412515904, token criptografado presente; zero Reels pendentes/em processamento, zero Stories pendentes e zero loops ativos dessa conta. Nenhum valor de token foi lido/exibido. |
+| Desconexão real, 23:21 | Confirmação pela interface; servidor mostrou revoked, disconnected_at preenchido e ausência do token. As outras três contas permaneceram conectadas. |
+| Reconexão real, 23:24 | Botão Reconectar Instagram iniciou autorização nova; proprietário confirmou na Meta. Callback restaurou a mesma conta, com nova data de conexão, disconnected_at nulo e novo token criptografado presente. |
+| Verificação final | Após nova navegação, Verificar acesso consultou a API usando a nova autorização e confirmou o perfil novamente. |
 
-- `tests/instagram-guided-browser.mjs`: passou, incluindo autorização oficial interceptada apenas no teste, retorno correlacionado, verificação sem token sem falso sucesso, confirmação/cancelamento da desconexão e persistência após reload. Preservou testes de bibliotecas, Stories, Reels e responsividade.
-- Banco de produção: cinco colunas confirmadas; RPC de desconexão negada ao papel anônimo, permitida ao autenticado com validação interna; salvamento de tokens não permitido ao cliente autenticado.
+Horários em America/Sao_Paulo; o banco registra UTC (17/11 às 02:17, 02:21 e 02:24 correspondem a 16/11 no Brasil).
 
-- `npm run build`: passou, gerando cliente e servidor Nitro/Cloudflare.
+Evidências locais reais, não fixtures:
 
-## Resultado na produção
+- `C:/Users/User/AppData/Local/Temp/mausehot-instagram-conexao-validada-final-20261116.jpg`.
+- `C:/Users/User/AppData/Local/Temp/mausehot-teresa-api-confirmada-20261116.jpg`.
+- `C:/Users/User/AppData/Local/Temp/mausehot-teresa-desconexao-validada-20261116.jpg`.
+- `C:/Users/User/AppData/Local/Temp/mausehot-instagram-api-verificada-20261116.jpg`.
 
-- Código commit `882a756`, enviado ao `main`; Lovable confirmou **Seu site foi atualizado**.
-- A versão publicada exibiu os três perfis existentes e os novos controles.
-- Em **16/11/2026 às 22:52 (America/Sao_Paulo)**, o botão **Verificar acesso** de `@morenacoletora` consultou a API oficial com seu grant real. Retornou nome `Noemi santos`, foto e identificador `17841457368026440`, e a interface mostrou **Acesso confirmado pela API oficial da Meta**.
-- Após recarregar a aplicação, nome, foto e horário de verificação permaneceram salvos. Não foi necessário copiar tokens, usar terminal ou iniciar o conector.
-- Evidência local: `C:/Users/User/AppData/Local/Temp/mausehot-instagram-api-verificada-20261116.jpg` (captura da aplicação publicada, não fixture).
-- O botão **Reconectar Instagram** abriu uma nova aba oficial da Meta → **Continuar com o Instagram** → formulário de login do Instagram. Falta o proprietário entrar para concluir **este novo teste OAuth**. Nenhum login foi inventado e nenhuma senha foi alterada.
-- A conta real não foi desconectada antes de validar a nova autorização; seu grant existente foi preservado. O ciclo de desconexão/reconexão foi validado com fixtures locais e migrations reais, ainda não repetido integralmente na produção.
+## Testes e verificações locais
 
-**Status da missão completa: AGUARDANDO AÇÃO EXTERNA — NÃO VALIDADO.** A consulta real de perfil e a persistência passaram; o novo teste de autorização e o ciclo completo ao vivo ainda estão pendentes. Não confundir isso com aprovação pública do app pela Meta.
+- **152 testes unitários passaram**: state/assinatura/expiração, cifra, grants, permissões, paginação, identidade, campos opcionais, URL de foto, erros e outras regressões existentes.
+- **TypeScript passou**: `node node_modules/typescript/bin/tsc --noEmit`.
+- **Build passou**: `npm run build`, cliente e servidor Nitro/Cloudflare.
+- **PostgreSQL/PGlite passou**: `tests/instagram-connection-lifecycle-postgres.mjs` usa migrations reais de foundation/RLS, auth mode, Unified Login, Stories, loops e lifecycle. Verifica papéis, isolamento, tokens, rollback com publicação em andamento, cancelamentos, preservação, idempotência, reconexão e grants expirados. Dados e catálogo storage são fixtures locais. Não comprova concorrência de múltiplos servidores de produção.
+- **Navegador local passou**: `tests/instagram-guided-browser.mjs`, OAuth interceptado apenas no teste, retorno correlacionado, verificação sem token sem falso sucesso, confirmação/cancelamento da desconexão e persistência após reload. Também preservou testes de bibliotecas, Stories, Reels e responsividade. Não confundir com as evidências reais acima.
+- O build público não continha os identificadores de configuração de segredos `INSTAGRAM_TOKEN_ENCRYPTION_KEY`, `META_APP_SECRET` ou `SUPABASE_SERVICE_ROLE_KEY`.
 
-O ambiente local tinha o pacote `@radix-ui/react-alert-dialog@1.1.15` com manifest mas sem `dist`; restaurado do pacote oficial npm, sem alteração de dependências/lock. O compilador funciona via `node node_modules/typescript/bin/tsc`, embora `npx tsc` nesta instalação tenha resolvido um pacote npm homônimo incorreto.
+O pacote local `@radix-ui/react-alert-dialog@1.1.15` tinha manifest mas não dist; foi restaurado do pacote oficial npm sem mudar dependências/lock. Nesta instalação `npx tsc` resolveu um pacote homônimo incorreto; usar o compilador local pelo comando acima.
 
-Comandos PowerShell:
+## Execução em ambiente limpo
 
 ```powershell
 Set-Location 'C:/Users/User/AppData/Local/Temp/00duhot-mouse-hot-v3'
 npm ci
 node node_modules/typescript/bin/tsc --noEmit
 npm test
+npm run dev
+```
+
+Para integração local, instalar dependências auxiliares e executar navegador e build sequencialmente (compartilham artefatos Vite/Nitro):
+
+```powershell
+npm install --prefix C:/Users/User/AppData/Local/Temp/mausehot-pg-intelligence @electric-sql/pglite playwright-core
 $env:INTELLIGENCE_PG_TEST_DEPS='C:/Users/User/AppData/Local/Temp/mausehot-pg-intelligence'
 node tests/instagram-connection-lifecycle-postgres.mjs
 node --experimental-strip-types tests/instagram-guided-browser.mjs
 npm run build
 ```
 
-O diretório auxiliar deve ter `@electric-sql/pglite` e `playwright-core`; o teste de navegador usa Chrome instalado no caminho indicado no script. Executar navegador e build sequencialmente (compartilham artefatos do Vite/Nitro). Os testes de navegador usam API e dados sintéticos locais, não comprovam autorização da Meta.
+O teste de navegador usa Chrome no caminho indicado no script. A execução local precisa das configurações públicas do Supabase; consultas reais precisam dos secrets abaixo. Não copiar tokens de produção para fixtures.
 
-## Próximo passo obrigatório / handoff
+## Configuração administrativa
 
-O navegador interno está aberto: aba 23 aplicação publicada, aba 25 login oficial do Instagram (handoff ao proprietário), aba 24 Lovable. Foi solicitada a entrada de `@morenacoletora` diretamente no Instagram, sem enviar senha/código ao chat. A tentativa OAuth expira em dez minutos; se necessário, cancelar a tentativa antiga pela interface e iniciar novamente, aproveitando a sessão autenticada do Instagram.
+Backend: `APP_BASE_URL`, `META_APP_ID`, `META_APP_SECRET`, `META_GRAPH_API_VERSION`, `META_INSTAGRAM_LOGIN_CONFIG_ID`, `INSTAGRAM_OAUTH_STATE_SECRET`, `INSTAGRAM_TOKEN_ENCRYPTION_KEY` (32 bytes em base64), `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Secrets ficam no servidor; nunca em `VITE_*`, código ou logs. O ID de configuração possui fallback somente para o app conhecido desta instalação.
 
-### Continuidade após a captura “App not active”
+Nenhuma configuração adicional de secret foi necessária neste teste real. O usuário final não copia token ou usa terminal. Para novos perfis fora das funções do app, a aprovação pública da Meta continua sendo uma dependência externa.
 
-O proprietário voltou com esse erro da Meta. A inspeção das configurações do Instagram identificou que a sessão real está em **`@guimr__`**, não em Morena. O app estava “Não publicado”; a lista tinha Melissa, Jane Coroa e Morena aceitas, Jane Caliente pendente, e não tinha Guimr. Isso identifica um bloqueio de autorização de teste concreto, sem atribuir o erro a senha.
+## Como conectar e contexto para outro agente
 
-O proprietário autorizou explicitamente enviar convite de **Testador do Instagram** a `@guimr__`. Convite enviado e confirmado como **Pendente** no painel Meta. O perfil foi selecionado pelo resultado exato do dropdown (ID Instagram `17841405776396790`); não houve convite a perfis semelhantes. A primeira tentativa do formulário rejeitou um identificador não resolvido e não criou acesso. Foi corrigida a seleção e confirmada a função específica de Instagram.
+1. Abrir a produção → Conectar nova conta → Conectar Instagram.
+2. Escolher Continuar com Instagram, conferir o @ e autorizar na Meta.
+3. Aguardar retorno e seguir para a biblioteca exclusiva da conta.
+4. Em Contas conectadas → Detalhes e acesso da conta, verificar acesso, reconectar ou desconectar.
 
-Na aba interna **27**, `https://www.instagram.com/accounts/manage_access/` → **Convites do testador**, o convite **00duHot Publisher-IG** já está visível para Guimr. Foi solicitada confirmação de aceite dos Termos da Plataforma/Políticas do Desenvolvedor antes de clicar **Aceitar** (exigência da política do navegador). A aba **26** mostra funções do app; **25** conserva o erro OAuth antigo. **Não repetir a URL OAuth antiga**: o state tem TTL dez minutos; iniciar uma tentativa nova pela aplicação após aceitar o convite.
+O ciclo desta missão está validado com **teresalisbomm**, que terminou **conectada**. A página de contas ficou aberta no navegador interno como resultado. Não pedir login novamente apenas por retomar o chat e não reiniciar testes já concluídos sem novo defeito.
 
-Próxima ação: se o proprietário confirmar os termos, aceitar o convite na aba 27, verificar que passou a aceito no app, cancelar a tentativa antiga no MouseHot se ainda estiver aguardando e clicar **Conectar Instagram** novamente. Concluir o fluxo oficial para Guimr, com confirmações exigidas em novos escopos/termos, e comprovar callback, metadata e persistência. A conta profissional pode precisar compartilhar seu portfólio na tela oficial; não inventar autorizações nem registro empresarial.
+Permanecem fora do resultado validado:
 
-**Correção de direção mais recente:** ao pedir o aceite dos termos de Guimr, o proprietário respondeu **“vamos tentar com outra conta”**. Portanto, **não aceitar o convite de Guimr**; ele permanece pendente, apenas enviado com a autorização anterior. As abas antigas 24–27 foram fechadas pelo ambiente; só a aplicação 23 permaneceu. Foi aberta uma nova aba interna do Instagram e acionado **Mais → Trocar de conta**, mostrando o formulário oficial de login. O proprietário foi orientado a entrar com o outro perfil diretamente nessa tela, sem enviar credenciais. Aguardar essa entrada, identificar o @ real e consultar a função de teste desse perfil antes de reiniciar OAuth. Não presumir que ele escolheu Morena, Jane ou Guimr.
-
-### Novo perfil identificado: @teresalisbomm
-
-Após o proprietário informar que entrou no outro perfil, a aba 28 confirmou **teresalisbomm**. A Meta não tinha esse perfil nas funções do app. As configurações oficiais do Instagram exibiram **Tipo de perfil e ferramentas → Trocar para perfil profissional**, comprovando que o perfil ainda era pessoal.
-
-Foram preparadas, **sem enviar/concluir**, duas ações:
-
-- Aba 28: assistente de conversão do Instagram → **Criador de conteúdo** → categoria **Criador de conteúdo digital** selecionada; **Mostrar categoria no perfil** desmarcado; botão **Concluir** ainda não clicado.
-- Nova aba Meta (descobrir ID pelo inventário): função exata **Testador do Instagram**, resultado exato **teresalisbomm** selecionado no dropdown; botão **Adicionar** ainda não clicado.
-
-Foi solicitada autorização específica para converter esse perfil em profissional de Criador, público, com categoria oculta, e enviar o convite de teste. **Aguardar a resposta antes dessas ações.** Não presumir aceite dos Termos da Plataforma/Políticas do Desenvolvedor do convite — serão apresentados após o envio. Não iniciar OAuth enquanto o perfil ainda estiver pessoal e sem convite aceito, para evitar repetir o mesmo bloqueio.
-
-Quando o proprietário voltar à aplicação, comprovar a alteração de `connected_at`, `client_business_id` e `login_config_id` da autorização real, consultar novamente o perfil e recarregar. Se a Meta negar um campo, investigar o erro estável sem imprimir tokens, códigos OAuth, cookies ou URLs completas de autorização.
-
-Antes de testar desconexão real, confirmar novamente que esta conta está sem posts em processamento/agendados, loops e Stories pendentes; não tocar em Melissa. Depois testar remoção local do grant e nova autorização pela interface, observando as confirmações exigidas pelo navegador. Se aparecer CAPTCHA, verificação, termos ou novos escopos, solicitar a ação específica do proprietário e deixar a aba interna aberta. Jamais usar recuperação de senha como parte deste fluxo.
+- Liberação pública/App Review/Advanced Access e eventual verificação empresarial. O proprietário não tem empresa registrada; não inventar CNPJ, documentos ou garantias de aprovação.
+- `guimr__`: convite enviado e pendente, **não aceitar** sem nova autorização específica; o proprietário preferiu outro perfil.
+- `jane.caliente`: convite pendente, conexão não concluída. Não atribuir a causa a senha sem prova e nunca abrir recuperação de senha como parte deste fluxo.
+- Publicação de mídia da Teresa: não testada nesta missão, biblioteca ainda vazia. O teste realizado foi conexão/leitura/desconexão/reconexão.
