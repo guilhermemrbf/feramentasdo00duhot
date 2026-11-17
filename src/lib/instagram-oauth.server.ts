@@ -178,10 +178,11 @@ export async function getInstagramAccountAccessToken(accountId: string): Promise
 
   const { data: accountRow, error: accountLookupError } = await supabaseAdmin
     .from("instagram_accounts")
-    .select("auth_mode")
+    .select("auth_mode,connection_status")
     .eq("id", accountId)
     .maybeSingle();
-  if (accountLookupError || !accountRow) throw new Error("Instagram account is unavailable.");
+  if (accountLookupError || !accountRow || accountRow.connection_status !== "connected")
+    throw new Error("Instagram account is unavailable.");
   const mode = accountRow.auth_mode;
   const expiresAt = data.token_expires_at ? Date.parse(data.token_expires_at) : null;
   if (expiresAt !== null && (!Number.isFinite(expiresAt) || expiresAt <= Date.now())) {

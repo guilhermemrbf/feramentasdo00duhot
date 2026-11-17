@@ -41,7 +41,17 @@ export type InstagramReelLoop = {
 /** Additive migration contract; generated Supabase types remain untouched. */
 export type PostkitDatabase = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Tables" | "Functions"> & {
-    Tables: Omit<Tables, "posts" | "media_assets" | "instagram_tokens"> & {
+    Tables: Omit<Tables, "posts" | "media_assets" | "instagram_tokens" | "instagram_accounts"> & {
+      instagram_accounts: TableWithDetails<
+        Tables["instagram_accounts"],
+        {
+          profile_picture_url: string | null;
+          client_business_id: string | null;
+          login_config_id: string | null;
+          connected_at: string | null;
+          disconnected_at: string | null;
+        }
+      >;
       instagram_tokens: TableWithDetails<
         Tables["instagram_tokens"],
         {
@@ -71,6 +81,10 @@ export type PostkitDatabase = Omit<Database, "public"> & {
       Database["public"]["Functions"],
       "save_instagram_unified_accounts" | "get_instagram_analytics" | "get_instagram_top_posts"
     > & {
+      disconnect_instagram_account: {
+        Args: { p_account_id: string };
+        Returns: Json;
+      };
       schedule_reviewed_instagram_reels: {
         Args: {
           p_workspace_id: string;

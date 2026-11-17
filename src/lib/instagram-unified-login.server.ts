@@ -5,14 +5,19 @@ const publisherAppId = "2201393490722211";
 const publisherConfigId = "2579077412515904";
 const requiredScopes = ["instagram_basic", "instagram_content_publish"];
 
-export function instagramUnifiedAuthorizationUrl(
-  state: string,
-  { appId, callbackUrl }: Pick<OAuthConfig, "appId" | "callbackUrl">,
-): string {
+export function getInstagramUnifiedConfigId(appId: string): string {
   const configId =
     process.env.META_INSTAGRAM_LOGIN_CONFIG_ID?.trim() ||
     (appId === publisherAppId ? publisherConfigId : "");
   if (!/^\d+$/.test(configId)) throw new Error("Instagram Unified Login is not configured.");
+  return configId;
+}
+
+export function instagramUnifiedAuthorizationUrl(
+  state: string,
+  { appId, callbackUrl }: Pick<OAuthConfig, "appId" | "callbackUrl">,
+): string {
+  const configId = getInstagramUnifiedConfigId(appId);
 
   const url = new URL("https://www.facebook.com/dialog/oauth");
   url.search = new URLSearchParams({
@@ -93,6 +98,16 @@ export async function readInstagramUnifiedGrant(
   const expiry = expirations.length ? Math.min(...expirations) * 1000 : null;
   if (expiry !== null && expiry <= Date.now()) throw new Error(grantFailure);
 
+  const businessUrl = new URL(facebookGraphBaseUrl + "/me");
+  businessUrl.searchParams.set("fields", "client_business_id");
+  const { client_business_id: businessId } = await readGraph<{ client_business_id?: string }>(
+    businessUrl,
+    "Instagram Unified Login business lookup failed.",
+    token,
+  );
+  if (typeof businessId !== "string" || !/^\d+$/.test(businessId))
+    throw new Error("Instagram Unified Login business lookup failed.");
+
   const accounts = new Map<string, Profile>();
   const cursors = new Set<string>();
   const url = new URL(facebookGraphBaseUrl + "/me/assigned_instagram_accounts");
@@ -119,6 +134,8 @@ export async function readInstagramUnifiedGrant(
   return {
     token,
     scopes,
+    businessId,
+    configId: getInstagramUnifiedConfigId(appId),
     expiry: expiry === null ? null : new Date(expiry).toISOString(),
     accounts: [...accounts.values()],
   };

@@ -50,6 +50,7 @@ function oauthFailureReason(error: unknown): string {
     "Instagram Unified Login grant is invalid.": "unified_grant",
     "Instagram Unified Login permissions were not granted.": "unified_permissions",
     "Instagram Unified Login account lookup failed.": "unified_account_lookup",
+    "Instagram Unified Login business lookup failed.": "unified_business_lookup",
     "No Instagram accounts were shared in Unified Login.": "unified_accounts_empty",
     "Facebook returned no accessible Pages.": "facebook_pages_empty",
     "Facebook Pages did not include Page access tokens.": "facebook_page_token_missing",
@@ -130,7 +131,11 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
             const { error } = await postkit.rpc("save_instagram_unified_accounts", {
               p_workspace_id: workspaceId,
               p_user_id: userId,
-              p_accounts: grant.accounts,
+              p_accounts: grant.accounts.map((account) => ({
+                ...account,
+                client_business_id: grant.businessId,
+                login_config_id: grant.configId,
+              })),
               p_scopes: grant.scopes,
               p_token_ciphertext: await encryptInstagramToken(grant.token),
               p_expires_at: grant.expiry,

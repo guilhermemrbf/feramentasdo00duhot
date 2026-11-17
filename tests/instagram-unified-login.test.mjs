@@ -49,6 +49,10 @@ test("Unified Login imports the assigned Instagram profiles across pages", async
         data: { app_id: config.appId, is_valid: true, expires_at: 0, scopes },
       });
     }
+    if (url.pathname.endsWith("/me")) {
+      assert.equal(url.searchParams.get("fields"), "client_business_id");
+      return Response.json({ client_business_id: "987" });
+    }
     assert.match(url.pathname, /\/me\/assigned_instagram_accounts$/);
     assert.equal(options.headers.Authorization, "Bearer test-grant");
     if (url.searchParams.get("after") === "cursor-1") {
@@ -66,7 +70,46 @@ test("Unified Login imports the assigned Instagram profiles across pages", async
     ["first", "second"],
   );
   assert.equal(grant.expiry, null);
+  assert.equal(grant.businessId, "987");
+  assert.match(grant.configId, /^\d+$/);
   assert.equal(getMetaGraphBaseUrl("instagram_unified_login"), config.facebookGraphBaseUrl);
+});
+
+test("Unified Login rejects expired, foreign, malformed or unavailable grants without inventing an account", async (t) => {
+  for (const debug of [
+    { app_id: config.appId, is_valid: false, expires_at: 0, scopes },
+    { app_id: "other-app", is_valid: true, expires_at: 0, scopes },
+    { app_id: config.appId, is_valid: true, expires_at: 1, scopes },
+    { app_id: config.appId, is_valid: true, expires_at: "unknown", scopes },
+  ]) {
+    t.mock.method(globalThis, "fetch", async (url) =>
+      url.pathname.endsWith("/oauth/access_token")
+        ? Response.json({ access_token: "fixture" })
+        : Response.json({ data: debug }),
+    );
+    await assert.rejects(readInstagramUnifiedGrant("fixture", config), /grant is invalid/);
+    t.mock.restoreAll();
+  }
+  t.mock.method(globalThis, "fetch", async () => {
+    throw new Error("secret-provider-details");
+  });
+  await assert.rejects(
+    readInstagramUnifiedGrant("fixture", config),
+    (e) => /code exchange failed/.test(e.message) && !e.message.includes("secret-provider"),
+  );
+});
+
+test("Unified Login requires a real client business ID before persisting the grant", async (t) => {
+  t.mock.method(globalThis, "fetch", async (url) => {
+    if (url.pathname.endsWith("/oauth/access_token"))
+      return Response.json({ access_token: "fixture" });
+    if (url.pathname.endsWith("/debug_token"))
+      return Response.json({
+        data: { app_id: config.appId, is_valid: true, expires_at: 0, scopes },
+      });
+    return Response.json({ id: "system-user-is-not-a-business" });
+  });
+  await assert.rejects(readInstagramUnifiedGrant("fixture", config), /business lookup failed/);
 });
 
 test("Unified Login rejects consent without the publishing permission", async (t) => {

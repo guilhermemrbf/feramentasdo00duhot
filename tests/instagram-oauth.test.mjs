@@ -33,6 +33,18 @@ test("Facebook OAuth state preserves the selected authentication mode", async ()
   assert.equal((await verifyInstagramOAuthState(state)).mode, "facebook_login");
 });
 
+test("expired OAuth state is rejected even with an intact signature", async (t) => {
+  const originalNow = Date.now();
+  t.mock.method(Date, "now", () => originalNow);
+  const state = await createInstagramOAuthState({
+    workspaceId: "workspace-1",
+    userId: "user-1",
+    mode: "instagram_unified_login",
+  });
+  t.mock.method(Date, "now", () => originalNow + 601000);
+  await assert.rejects(verifyInstagramOAuthState(state), /expired/i);
+});
+
 test("Instagram tokens are encrypted with unique AES-GCM nonces", async () => {
   const first = await encryptInstagramToken("sensitive-token");
   const second = await encryptInstagramToken("sensitive-token");

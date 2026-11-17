@@ -31,6 +31,8 @@ const calls = [];
 let stories = 0;
 let workerActive = false;
 let accountVerifiedAt = "2026-11-15T00:00:00Z";
+let accountBDisconnected = false;
+let disconnections = 0;
 let firstAccountRead = true;
 let releaseInitialAccounts;
 const initialAccountsGate = new Promise((resolve) => {
@@ -46,7 +48,7 @@ const api = http.createServer(async (req, res) => {
     "authorization,apikey,content-type,x-client-info,accept-profile,content-profile,prefer,range",
   );
   res.setHeader("Access-Control-Expose-Headers", "Content-Range");
-  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,POST,PATCH,OPTIONS");
   res.setHeader("Content-Type", "application/json");
   if (req.method === "OPTIONS") return res.writeHead(204).end();
   const url = new URL(req.url, apiUrl),
@@ -101,16 +103,30 @@ const api = http.createServer(async (req, res) => {
         connection_status: "connected",
         last_verified_at: accountVerifiedAt,
         account_type: "BUSINESS",
+        auth_mode: "instagram_unified_login",
+        scopes: ["instagram_basic", "instagram_content_publish"],
       },
       {
         id: id(3),
         username: "conta_fixture_b",
         instagram_user_id: "133",
-        connection_status: "connected",
+        connection_status: accountBDisconnected ? "revoked" : "connected",
         last_verified_at: "2026-11-15T00:00:00Z",
         account_type: "BUSINESS",
+        auth_mode: "instagram_unified_login",
+        scopes: accountBDisconnected ? [] : ["instagram_basic", "instagram_content_publish"],
       },
     ];
+  if (name === "instagram_accounts" && url.searchParams.has("id")) {
+    body = body.find((row) => row.id === url.searchParams.get("id").replace("eq.", "")) ?? null;
+  }
+  if (name === "instagram_tokens") body = null;
+  if (name === "disconnect_instagram_account") {
+    assert.equal(input.p_account_id, id(3));
+    accountBDisconnected = true;
+    disconnections++;
+    body = { disconnected: true, cancelledPosts: 0, cancelledStories: 0 };
+  }
   if (name === "media_assets")
     body = [2, 3].flatMap((a) =>
       Array.from({ length: 20 }, (_, i) => ({
@@ -312,6 +328,42 @@ try {
   await isolated.close();
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
+  const detailsB = page.locator('details[aria-label="Conexão de @conta_fixture_b"]');
+  await detailsB.locator("summary").click();
+  await detailsB.getByRole("button", { name: "Verificar acesso", exact: true }).click();
+  await detailsB
+    .getByRole("status")
+    .filter({ hasText: /Não foi possível verificar/ })
+    .waitFor();
+  assert.equal(accountBDisconnected, false); // A missing token fixture is never called verified.
+  await detailsB.getByRole("button", { name: "Desconectar desta operação", exact: true }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Manter conectada", exact: true })
+    .click();
+  assert.equal(disconnections, 0);
+  await detailsB.getByRole("button", { name: "Desconectar desta operação", exact: true }).click();
+  const disconnectedResponse = page.waitForResponse(
+    (response) => response.url().includes("/_serverFn/") && response.request().method() === "POST",
+  );
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Confirmar desconexão", exact: true })
+    .click();
+  await disconnectedResponse;
+  await page.getByRole("alertdialog").waitFor({ state: "detached" });
+  await detailsB
+    .getByRole("button", { name: "Desconectar desta operação", exact: true })
+    .waitFor({ state: "detached" });
+  assert.equal(disconnections, 1);
+  await page.reload();
+  await page.getByRole("button", { name: "Configurar Stories", exact: true }).first().waitFor();
+  await page.getByText("Conecte esta conta novamente", { exact: true }).waitFor();
+  assert.equal(
+    await detailsB.getByRole("button", { name: "Desconectar desta operação", exact: true }).count(),
+    0,
+  );
+  await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
   assert.equal(await page.getByRole("region", { name: "Passo a passo por conta" }).count(), 0);
   await page.getByRole("button", { name: "Configurar Stories", exact: true }).first().click();
   await page.getByRole("region", { name: "Biblioteca exclusiva de Stories" }).waitFor();
@@ -366,7 +418,7 @@ try {
 } catch (e) {
   console.error(e.stack || e.message);
   console.error("API calls:", [...new Set(calls)].join(","));
-  console.error(output.slice(-1500));
+  console.error(output.slice(-6500));
   process.exitCode = 1;
 } finally {
   releaseInitialAccounts();

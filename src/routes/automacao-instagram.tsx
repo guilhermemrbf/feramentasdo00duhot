@@ -35,6 +35,10 @@ import {
 import { WorkspaceGate, type Workspace } from "@/components/postkit/WorkspaceGate";
 import { supabase } from "@/integrations/supabase/client";
 import { InstagramLocalLogin } from "@/components/postkit/InstagramLocalLogin";
+import {
+  InstagramConnectionDetails,
+  type InstagramConnectionDetailsAccount,
+} from "@/components/postkit/InstagramConnectionDetails";
 import { InstagramAutomationReview } from "@/components/postkit/InstagramAutomationReview";
 import { reviewAutomation, type StoriesChoice } from "@/lib/instagram-automation-review";
 import { bridgeRequest, HOT_CONNECTION_KEY, type HotConnection } from "@/lib/hot-profiles";
@@ -284,16 +288,9 @@ function InstagramWorkspacePage({
   const [times, setTimes] = useState(() => dailyReelTimes(10));
   const [intervalMinutes, setIntervalMinutes] = useState(120);
   const [notice, setNotice] = useState("");
-  const [connectedAccounts, setConnectedAccounts] = useState<
-    Array<{
-      id: string;
-      username: string;
-      account_type: string | null;
-      connection_status: string;
-      last_verified_at: string | null;
-      instagram_user_id: string;
-    }>
-  >([]);
+  const [connectedAccounts, setConnectedAccounts] = useState<InstagramConnectionDetailsAccount[]>(
+    [],
+  );
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [queueSaved, setQueueSaved] = useState(false);
   const [previewSettings, setPreviewSettings] = useState("");
@@ -375,9 +372,11 @@ function InstagramWorkspacePage({
 
   useEffect(() => {
     let active = true;
-    void supabase
+    void postkit
       .from("instagram_accounts")
-      .select("id,username,account_type,connection_status,last_verified_at,instagram_user_id")
+      .select(
+        "id,username,display_name,account_type,connection_status,last_verified_at,instagram_user_id,scopes,token_expires_at,connected_at,created_at,profile_picture_url",
+      )
       .eq("workspace_id", workspace.id)
       .then(({ data, error }) => {
         if (!active) return;
@@ -522,6 +521,7 @@ function InstagramWorkspacePage({
         unified_grant: "a validação do acesso concedido pelo Instagram",
         unified_permissions: "a confirmação das permissões de perfil e publicação",
         unified_account_lookup: "a busca das contas compartilhadas pela Meta",
+        unified_business_lookup: "a identificação do portfólio autorizado na Meta",
         no_linked_account: "a busca por Instagram profissional vinculado a uma Página",
         account_save: "o salvamento da conta do Instagram",
         token_save: "o armazenamento seguro da autorização",
@@ -1596,17 +1596,18 @@ function InstagramWorkspacePage({
                         key={account.id}
                         className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-4 py-3"
                       >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <Instagram className="size-5 shrink-0 text-fuchsia-300" />
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold">@{account.username}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {ready
-                                ? "Pode ser usada em Reels e Stories"
-                                : "Conecte esta conta novamente"}
-                            </p>
-                          </div>
-                        </div>
+                        <InstagramConnectionDetails
+                          account={account}
+                          workspaceId={workspace.id}
+                          timeZone={workspace.timezone}
+                          disabled={!!connecting || loginWaiting}
+                          onChanged={() => setAccountRefresh((value) => value + 1)}
+                          onReconnect={() => {
+                            setSelectedAccountId(account.id);
+                            setTab("nova-conta");
+                            void connectInstagram("instagram_unified_login");
+                          }}
+                        />
                         <div className="flex flex-wrap items-center gap-2">
                           <button
                             type="button"

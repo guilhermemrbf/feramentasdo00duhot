@@ -23,6 +23,8 @@ export function instagramOAuthResult(
     workspace_access: "Seu acesso à operação mudou. Confira as permissões da equipe.",
     unified_permissions: "A Meta não concedeu as permissões necessárias para conectar e publicar.",
     unified_accounts_empty: "Nenhuma conta profissional foi compartilhada com o aplicativo.",
+    unified_business_lookup:
+      "A Meta não retornou o portfólio desta autorização. Confira a conta profissional e conecte novamente.",
     facebook_pages_empty: "Nenhuma Página acessível foi retornada pela Meta.",
     instagram_not_linked_to_page:
       "A Meta não encontrou o Instagram profissional nas Páginas autorizadas.",
