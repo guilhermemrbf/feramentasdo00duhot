@@ -1,6 +1,21 @@
 # Meta App Review — MouseHot
 
-Atualizado em 16/11/2026. Este documento é o ponto de retomada da liberação para clientes externos. **Rascunho preparado; não enviado nem aprovado.** Não confundir o deploy do site com publicação/aprovação do app na Meta.
+Atualizado em 17/11/2026. Este documento é o ponto de retomada da liberação para clientes externos. **Rascunho preparado; não enviado nem aprovado.** Não confundir o deploy do site com publicação/aprovação do app na Meta.
+
+## Retomada de 17/11 — preparação da aprovação e contas pessoais
+
+Esta seção prevalece sobre as pendências históricas abaixo. O ciclo real de conexão, desconexão e reconexão já foi validado com `@teresalisbomm`; ver `instagram-connection-lifecycle.md`.
+
+- Pedido `2206501010211459` continua não enviado. A Meta mantém **Enviar para análise** desabilitado. App não publicado, solicitando somente `instagram_basic` e `instagram_content_publish`.
+- A etapa Verificação exige **Conectar um portfólio empresarial verificado** e mostra `00dohot — Não verificado`. Não existe aprovação empresarial nesta execução. O operador havia informado que não possui empresa registrada; não inventar registro/documentos nem presumir aprovação como pessoa física.
+- A descrição de `instagram_basic` foi atualizada e salva no painel, com identificação do perfil, verificação server-side, isolamento por workspace, desconexão/reconexão e o teste real de Teresa. A chamada de teste aparece **Concluída**. Nenhuma gravação foi anexada e a declaração de uso permitido não foi marcada.
+- Ícone, política pública, categoria e contato do app permanecem cadastrados. As instruções para o analista estão salvas. Dados de operadores/países ainda precisam de confirmação factual e os dois screencasts reais continuam faltando.
+- O link de verificação abriu a Business Suite na sessão/portfólio `teresa`, não no proprietário `00dohot`; essa aba foi fechada sem alterações. Não verificar o portfólio errado nem transferir o app.
+- Foi implementado `InstagramProfessionalSetup.tsx`, integrado a Conectar nova conta: abre a configuração profissional oficial do Instagram, explica perfil público e permite retomar OAuth após a confirmação do operador. Não detecta nem converte uma conta pessoal sem autorização da Meta. Checkbox local nunca marca uma conexão como concluída.
+- Testes: 152 unitários passaram; TypeScript passou; teste de navegador ampliado passou; build cliente/servidor passou. O navegador verificou o link oficial, bloqueio antes da confirmação, início de OAuth e cancelamento, além das regressões existentes. Fixtures locais não são prova de aprovação da Meta.
+- Tentativa de gravação: OBS Studio instalado abriu o diálogo de falha anterior. Captura/leitura funcionaram, mas as ações de controle retornaram janela não utilizável/geometria indisponível; o operador informou que não vê a janela. Nenhuma gravação real foi produzida, nenhum relatório de falha foi enviado, nenhuma publicação adicional foi feita. Não substituir screencast por imagens montadas.
+
+Material pronto para a próxima etapa: `meta-app-review-submission-package.md`. A próxima ação de submissão depende de resolver verificação empresarial, confirmar operadores/países e anexar gravação real; não declarar o pedido enviado antes do protocolo da Meta.
 
 ## Retomada atual — conexão pública sem convites de testador
 

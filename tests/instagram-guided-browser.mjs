@@ -228,6 +228,40 @@ try {
       body: "<title>Meta authorization fixture</title>",
     }),
   );
+  await page.getByText("Minha conta ainda é pessoal", { exact: true }).click();
+  const professionalGuide = page.getByLabel("Preparar conta profissional", { exact: true });
+  assert.equal(
+    await professionalGuide
+      .getByRole("link", { name: "Abrir configuração no Instagram", exact: true })
+      .getAttribute("href"),
+    "https://www.instagram.com/accounts/convert_to_professional_account/",
+  );
+  const continueProfessional = professionalGuide.getByRole("button", {
+    name: "Continuar conexão do Instagram",
+    exact: true,
+  });
+  assert.equal(await continueProfessional.isDisabled(), true);
+  await professionalGuide
+    .getByRole("checkbox", {
+      name: "Concluí a configuração profissional no Instagram.",
+      exact: true,
+    })
+    .check();
+  assert.equal(await continueProfessional.isEnabled(), true);
+  const professionalPopupEvent = page.waitForEvent("popup");
+  await continueProfessional.click();
+  const professionalPopup = await professionalPopupEvent;
+  await professionalPopup.waitForURL("https://www.facebook.com/**");
+  assert.equal(await continueProfessional.isDisabled(), true);
+  await page.getByRole("button", { name: "Cancelar esta tentativa", exact: true }).click();
+  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).waitFor();
+  assert.equal(
+    await page.getByRole("button", { name: "Conectar Instagram", exact: true }).isEnabled(),
+    true,
+  );
+  // Cross-origin opener isolation can prevent the parent from closing Meta's tab.
+  // Cancellation must stop waiting; fixture cleanup closes any remaining tab.
+  await professionalPopup.close();
   const popupEvent = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Conectar Instagram", exact: true }).first().click();
   const popup = await popupEvent;

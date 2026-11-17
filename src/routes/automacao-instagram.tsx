@@ -35,6 +35,7 @@ import {
 import { WorkspaceGate, type Workspace } from "@/components/postkit/WorkspaceGate";
 import { supabase } from "@/integrations/supabase/client";
 import { InstagramLocalLogin } from "@/components/postkit/InstagramLocalLogin";
+import { InstagramProfessionalSetup } from "@/components/postkit/InstagramProfessionalSetup";
 import {
   InstagramConnectionDetails,
   type InstagramConnectionDetailsAccount,
@@ -1484,7 +1485,9 @@ function InstagramWorkspacePage({
                         setLoginWaiting(false);
                         loginPopup.current?.close();
                         loginPopup.current = null;
-                        setNotice("Tentativa encerrada. Você pode conectar outro Instagram.");
+                        setNotice(
+                          "Acompanhamento encerrado. Feche a janela da Meta se ela continuar aberta. Você pode iniciar outra conexão.",
+                        );
                       }}
                     >
                       Cancelar esta tentativa
@@ -1495,6 +1498,10 @@ function InstagramWorkspacePage({
                   Para conectar outro perfil, use <strong>Trocar de conta</strong> na tela da Meta.
                   Seus vídeos e agendamentos ficam separados por conta.
                 </p>
+                <InstagramProfessionalSetup
+                  disabled={!!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError}
+                  onConnect={() => void connectInstagram("instagram_unified_login")}
+                />
                 <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">
                   <summary className="cursor-pointer font-medium">Opções de navegador</summary>
                   <label className="mt-3 flex items-start gap-2 text-sm">
