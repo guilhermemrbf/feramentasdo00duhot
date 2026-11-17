@@ -19,6 +19,8 @@ App `2201393490722211`; rascunho `2206501010211459`; portfólio proprietário `0
 | Envio | Desabilitado, não enviado |
 | Contas sem função de teste | Aguardam Advanced Access e modo Live; não validadas |
 
+O guia está publicado no commit `269a18f`, com deploy confirmado em 17/11. Testes: 152 unitários, TypeScript, integração de navegador e build aprovados. Foi confirmado no domínio real que o link abre a configuração oficial. A sessão de Teresa já era profissional, portanto esse teste não repetiu uma conversão de conta pessoal nem alterou sua privacidade.
+
 ## Configuração a preservar
 
 - Site: https://mausehot.lovable.app/

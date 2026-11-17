@@ -1,6 +1,6 @@
 # Instagram — relatório final e contexto de continuidade
 
-## Estado em 16/11/2026
+## Estado em 17/11/2026
 
 **Ciclo oficial com conta autorizada: CONCLUÍDO E VALIDADO.**
 
@@ -14,8 +14,8 @@ A conta nova **@teresalisbomm** foi conectada pela interface publicada, consulta
 - Produção: https://mausehot.lovable.app/automacao-instagram?tab=contas
 - Lovable: projeto `03560931-5f6a-41e1-a222-0510d1828a23`.
 - Banco Lovable Cloud/Supabase: `fzptbxfyhwypmpfrjlko`.
-- Código de produção: **882a756**, enviado ao `main` e publicado pelo Lovable; resposta observada **Seu site foi atualizado**.
-- Commits posteriores a esse código registram documentação; não introduzem outra mudança de runtime.
+- Ciclo de conexão implementado e validado em produção no commit **882a756**, em 16/11.
+- Código atual de produção: **269a18f**, publicado em 17/11 com resposta Lovable **Seu site foi atualizado**. Acrescenta o guia de preparação de perfis pessoais e a continuação pelo mesmo OAuth oficial. Nenhuma migration ou mudança de tokens foi necessária nessa etapa.
 - Preservar os outros módulos, bibliotecas e a fila ativa de `_melissaconteudo`. Nenhum novo Reel foi publicado como parte deste teste de conexão.
 
 ## Método oficial e tipos de conta
@@ -37,6 +37,7 @@ Permissões de publicação validadas no grant real: **instagram_basic**, **inst
 - `src/lib/api/instagram-connection.functions.ts`: POST autenticado, autorização por operação/conta, consulta real de perfil e desconexão pela RPC. Token inválido/expirado exige reconexão; falha de rede não é apresentada como revogação.
 - `src/lib/instagram-connection-profile.ts`: identidade validada, nome/foto quando disponibilizados, foto HTTPS restrita a hosts Meta. Timeout de dez segundos; uma tentativa adicional com campos básicos quando os opcionais forem indisponíveis. Erros não expõem a resposta bruta nem tokens.
 - `src/components/postkit/InstagramConnectionDetails.tsx`: ID, permissões, datas, verificar, reconectar e desconectar com confirmação.
+- `src/components/postkit/InstagramProfessionalSetup.tsx`: passo a passo opcional para abrir a conversão oficial de perfil pessoal, confirmação do proprietário e retomada do OAuth; nunca simula conversão ou conexão. A mudança para perfil público é explicada antes da saída para o Instagram.
 - `src/routes/automacao-instagram.tsx`: integra os controles às contas sem substituir bibliotecas ou fluxos de Stories/Reels.
 - `src/lib/instagram-unified-login.server.ts` e `src/routes/api.instagram.oauth.callback.ts`: preservam validação de state/identidade do app/permissões, troca segura de código, persistência atômica e notificação da janela original. Registram `client_business_id` e configuração do grant.
 - `src/lib/instagram-oauth.server.ts`: só disponibiliza token de conta marcada como conectada. Tokens permanecem AES-GCM no backend. Unified Login não é enviado ao endpoint de refresh do Instagram Login; expiração/revogação exige nova autorização quando não houver renovação suportada.
@@ -121,6 +122,8 @@ Nenhuma configuração adicional de secret foi necessária neste teste real. O u
 4. Em Contas conectadas → Detalhes e acesso da conta, verificar acesso, reconectar ou desconectar.
 
 O ciclo desta missão está validado com **teresalisbomm**, que terminou **conectada**. A página de contas ficou aberta no navegador interno como resultado. Não pedir login novamente apenas por retomar o chat e não reiniciar testes já concluídos sem novo defeito.
+
+Na retomada de 17/11, o guia de perfil pessoal foi testado localmente, publicado e inspecionado no domínio real. O link abriu o Instagram e as quatro contas permaneceram na lista. A preparação para aprovação foi atualizada em `meta-app-review.md` e `meta-app-review-submission-package.md`; o pedido **não foi enviado**, por verificação empresarial, vídeos reais e informações de operadores ainda pendentes.
 
 Permanecem fora do resultado validado:
 
