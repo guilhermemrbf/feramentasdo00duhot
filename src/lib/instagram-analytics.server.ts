@@ -24,6 +24,8 @@ type Job = {
 type Result = {
   issue?: Issue;
   graph?: { status: number; code?: number };
+  catalogError?: "transport" | "response" | "pagination" | "graph";
+  profileGraph?: { status: number; code?: number };
   discovered?: boolean;
   restart?: boolean;
   after?: string;
@@ -39,6 +41,12 @@ class GraphError extends Error {
     readonly code?: number,
   ) {
     super("Instagram analytics request failed.");
+  }
+}
+
+class CatalogError extends Error {
+  constructor(readonly reason: "response" | "pagination") {
+    super("Instagram catalog response is invalid.");
   }
 }
 
@@ -114,7 +122,7 @@ async function readPage(base: string, token: string, job: Job, result: Result) {
       return read({ ...query, fields: baseFields });
     throw error;
   });
-  if (!Array.isArray(page.data)) throw new Error("Instagram media response is missing its list.");
+  if (!Array.isArray(page.data)) throw new CatalogError("response");
   const items = new Map<string, Media>();
   for (const item of page.data) {
     const kind =
@@ -136,9 +144,18 @@ async function readPage(base: string, token: string, job: Job, result: Result) {
       comments: metricCount(item.comments_count) ?? null,
     });
   }
-  const next = page.paging?.next ? page.paging.cursors?.after : undefined;
-  if (page.paging?.next && (!next || next === job.after))
-    throw new Error("Instagram media pagination did not advance.");
+  // Rebuild each request on the configured Graph endpoint. A paging URL may
+  // carry a token or omit cursors.after; only accept the cursor parameter.
+  let next: string | undefined;
+  if (page.paging?.next) {
+    const pagingUrl = URL.canParse(page.paging.next) ? new URL(page.paging.next) : undefined;
+    next = page.paging.cursors?.after ?? pagingUrl?.searchParams.get("after") ?? undefined;
+    if (!next || next === job.after || next.length > 4096) {
+      // Persist this page even if the following page cannot be fetched.
+      result.catalog = [...items.values()];
+      throw new CatalogError("pagination");
+    }
+  }
   result.discovered = true;
   result.after = next;
   result.catalog = [...items.values()];
@@ -154,6 +171,9 @@ async function collect(job: Job, token: string) {
     } catch (error) {
       if (error instanceof GraphError) {
         result.graph = { status: error.status, code: error.code };
+        result.catalogError = "graph";
+      } else {
+        result.catalogError = error instanceof CatalogError ? error.reason : "transport";
       }
       if (
         job.edge === "stories" &&
@@ -175,7 +195,11 @@ async function collect(job: Job, token: string) {
       encodeURIComponent(job.instagram_user_id),
       { fields: "followers_count,follows_count" },
       token,
-    ).catch(() => undefined);
+    ).catch((error) => {
+      if (error instanceof GraphError)
+        result.profileGraph = { status: error.status, code: error.code };
+      return undefined;
+    });
     result.followers = metricCount(data?.followers_count);
     result.following = metricCount(data?.follows_count);
   };
@@ -196,8 +220,10 @@ async function collect(job: Job, token: string) {
             views: metricCount(views?.values?.[0]?.value ?? views?.total_value?.value) ?? null,
           };
         } catch (error) {
+          const issue = classify(error);
+          if (issue === "permission") return { id, views: null, issue };
           if (error instanceof GraphError && error.code === 100) return { id, views: null };
-          return { issue: classify(error) };
+          return { issue };
         }
       }),
     );
@@ -228,8 +254,9 @@ export async function runInstagramAnalytics(client: SupabaseClient<PostkitDataba
       result = await collect(job, authorization.token);
       if (
         !authorization.insightsGranted &&
-        (result.issue ||
-          (result.measurements?.length && result.measurements.every((m) => m.views === null)))
+        !result.issue &&
+        result.measurements?.length &&
+        result.measurements.every((m) => m.views === null)
       ) {
         result.issue = "permission";
       }
@@ -250,6 +277,8 @@ export async function runInstagramAnalytics(client: SupabaseClient<PostkitDataba
     measured: result.measurements?.filter((m) => m.views !== null).length ?? 0,
     issue: result.issue,
     graph: result.graph,
+    catalogError: result.catalogError,
+    profileGraph: result.profileGraph,
   });
 }
 

@@ -137,16 +137,20 @@ export function InstagramAnalytics({
   workspaceId,
   timezone,
   connecting,
+  initialAccountId = "",
+  connectedAccounts,
   onAuthorize,
   onConnect,
 }: {
   workspaceId: string;
   timezone: string;
   connecting: boolean;
+  initialAccountId?: string;
+  connectedAccounts: Array<{ id: string; scopes: string[] }>;
   onAuthorize: (mode: Account["auth_mode"]) => void;
   onConnect: () => void;
 }) {
-  const [account, setAccount] = useState("");
+  const [account, setAccount] = useState(initialAccountId);
   const [kind, setKind] = useState<Kind | "all">("all");
   const [range, setRange] = useState<Range>("30d");
   const [customStart, setCustomStart] = useState(() => calendarDateInZone(timezone, -29));
@@ -207,6 +211,10 @@ export function InstagramAnalytics({
   const measured = current?.reduce((sum, item) => sum + item.measured, 0) ?? 0;
   const views = totalKnown(current?.map((item) => item.views) ?? []);
   const profiles = data?.profiles ?? [];
+  const coverage = (key: "followers" | "following" | "reel_views") => {
+    const measured = profiles.filter((profile) => profile[key] != null).length;
+    return data ? `${measured} de ${profiles.length} contas com dados` : "Aguardando leitura";
+  };
   const reelCount = data?.totals.find((item) => item.kind === "reel")?.publications ?? 0;
   const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: timezone });
   const rangeText =
@@ -218,8 +226,15 @@ export function InstagramAnalytics({
     setPage(0);
     setError("");
   };
-  const authNeeded = profiles.some((profile) =>
-    ["permission", "reconnect"].includes(profile.issue ?? ""),
+  const unifiedMissingInsights = (profile: Profile) =>
+    profile.auth_mode === "instagram_unified_login" &&
+    connectedAccounts.some(
+      (account) =>
+        account.id === profile.id && !account.scopes.includes("instagram_manage_insights"),
+    );
+  const authNeeded = profiles.some(
+    (profile) =>
+      unifiedMissingInsights(profile) || ["permission", "reconnect"].includes(profile.issue ?? ""),
   );
 
   return (
@@ -406,19 +421,19 @@ export function InstagramAnalytics({
           label="Views de Reels das contas"
           tone="info"
           value={totalKnown(profiles.map((p) => p.reel_views))}
-          detail="Todo o histórico coletado"
+          detail={coverage("reel_views")}
         />
         <Metric
           label="Total de seguidores"
           tone="success"
           value={totalKnown(profiles.map((p) => p.followers))}
-          detail="Última leitura disponível"
+          detail={coverage("followers")}
         />
         <Metric
           label="Total seguindo"
           tone="violet"
           value={totalKnown(profiles.map((p) => p.following))}
-          detail="Última leitura disponível"
+          detail={coverage("following")}
         />
         <Metric label="Contas selecionadas" value={data ? profiles.length : null} tone="coral" />
       </div>
@@ -453,10 +468,15 @@ export function InstagramAnalytics({
                     seguindo
                   </p>
                   <p>{showNumber(profile.reel_views)} views de Reels no histórico</p>
-                  {profile.auth_mode === "instagram_unified_login" &&
-                    profile.issue === "permission" && (
-                      <p>Métricas ainda não liberadas pela Meta.</p>
-                    )}
+                  {unifiedMissingInsights(profile) ? (
+                    <p>
+                      Insights sem autorização. A configuração da Meta precisa incluir a permissão
+                      de métricas.
+                    </p>
+                  ) : profile.auth_mode === "instagram_unified_login" &&
+                    profile.issue === "permission" ? (
+                    <p>Métricas ainda não liberadas pela Meta.</p>
+                  ) : null}
                   {(profile.issue === "reconnect" ||
                     (profile.auth_mode !== "instagram_unified_login" &&
                       (profile.issue === "permission" ||

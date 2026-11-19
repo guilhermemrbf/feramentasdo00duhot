@@ -153,6 +153,64 @@ const api = http.createServer(async (req, res) => {
     saved.push(input);
     body = input.p_posts.length;
   }
+  if (name === "get_instagram_analytics" || name === "get_instagram_top_posts") {
+    const accounts = [2, ...(accountBDisconnected ? [] : [3])].map((key) => ({
+      id: id(key),
+      username: key === 2 ? "conta_fixture_a" : "conta_fixture_b",
+      auth_mode: "instagram_unified_login",
+      followers: key === 2 ? 120 : 80,
+      following: 12,
+      reel_views: key === 2 ? 800 : null,
+      reels: 1,
+      measured: key === 2 ? 1 : 0,
+      issue: null,
+      last_catalog_at: "2026-11-19T00:00:00Z",
+      last_measured_at: key === 2 ? "2026-11-19T00:00:00Z" : null,
+    }));
+    const profiles = accounts.filter(
+      (profile) => !input.p_account || profile.id === input.p_account,
+    );
+    const totals = profiles.map((profile) => ({
+      position: 1,
+      username: profile.username,
+      account_id: profile.id,
+      media_id: "media-" + profile.id,
+      published_at: "2026-11-18T00:00:00Z",
+      permalink: null,
+      views: profile.reel_views,
+      likes: profile.followers,
+      comments: 4,
+      interactions: profile.followers + 4,
+    }));
+    const measured = profiles.filter((profile) => profile.reel_views != null).length;
+    if (name === "get_instagram_analytics") {
+      body = {
+        accounts,
+        profiles,
+        reels: totals,
+        statuses: [],
+        totals: [
+          { kind: "reel", publications: profiles.length, measured, views: measured ? 800 : null },
+        ],
+      };
+    } else {
+      body = {
+        accounts,
+        ranking_basis: "engagement",
+        ranking: totals,
+        leader: null,
+        totals: {
+          reels: profiles.length,
+          measured,
+          views: measured ? 800 : null,
+          likes: profiles.reduce((sum, profile) => sum + profile.followers, 0),
+          comments: profiles.length * 4,
+          likes_measured: profiles.length,
+          comments_measured: profiles.length,
+        },
+      };
+    }
+  }
   if (name === "get_instagram_dashboard") body = {};
   res.end(JSON.stringify(body));
 });
@@ -319,8 +377,10 @@ try {
     0,
   );
   await page.getByRole("button", { name: "Próximo: configurar Reels", exact: true }).click();
+  await page.getByRole("button", { name: "Próximo: legenda e capa", exact: true }).click();
+  await page.getByRole("button", { name: "Próximo: dias e horários", exact: true }).click();
   await page.getByRole("button", { name: "Ordem aleatória", exact: true }).click();
-  await page.getByRole("button", { name: /Ver pr.* dos Reels/ }).click();
+  await page.getByRole("button", { name: "Próximo: revisar Reels", exact: true }).click();
   const activate = page.getByRole("button", { name: "Ativar esta programação", exact: true });
   await activate.waitFor();
   assert.equal(await activate.isDisabled(), true);
@@ -338,7 +398,7 @@ try {
       "Activation disabled: " + (await page.locator("main").innerText()).slice(-5000),
     );
   await activate.click();
-  await page.getByRole("button", { name: "Agendamento salvo", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Próximo: acompanhar na fila", exact: true }).waitFor();
   assert.equal(saved.length, 1);
   assert.equal(saved[0].p_stories, "skip");
   assert.equal(saved[0].p_posts.length, 20);
@@ -347,13 +407,21 @@ try {
       (p) => p.instagram_account_id === id(2) && Number(p.media_asset_id.slice(-12)) < 300,
     ),
   );
-  await page.screenshot({ path: ".superpowers/automatic-post-desktop.png", fullPage: true });
+  if (process.env.INSTAGRAM_BROWSER_SCREENSHOTS)
+    await page.screenshot({
+      path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "automatic-post-desktop.png"),
+      fullPage: true,
+    });
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     true,
   );
-  await page.screenshot({ path: ".superpowers/automatic-post-mobile.png", fullPage: true });
+  if (process.env.INSTAGRAM_BROWSER_SCREENSHOTS)
+    await page.screenshot({
+      path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "automatic-post-mobile.png"),
+      fullPage: true,
+    });
   const isolated = await browser.newContext();
   const resultPage = await isolated.newPage();
   await resultPage.goto(web + "/api/instagram/oauth/callback?error=access_denied");
@@ -362,6 +430,29 @@ try {
   await isolated.close();
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
+  assert.equal(
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: "Biblioteca de Reels", exact: true })
+      .count(),
+    0,
+  );
+  await page.getByRole("button", { name: "Abrir conta @conta_fixture_b", exact: true }).click();
+  const optionsB = page.getByRole("region", { name: "Opções de @conta_fixture_b" });
+  await optionsB.getByRole("button", { name: "Biblioteca de Reels", exact: true }).click();
+  await page.getByRole("heading", { name: /Biblioteca.*conta_fixture_b/ }).waitFor();
+  await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
+  await page.getByRole("button", { name: "Abrir conta @conta_fixture_b", exact: true }).click();
+  await page.getByRole("button", { name: "Ver resultados", exact: true }).click();
+  await page.getByText("80 seguidores · 12 seguindo").waitFor();
+  assert.equal(await page.getByText("120 seguidores · 12 seguindo").count(), 0);
+  await page.getByRole("button", { name: "Melhores publicações", exact: true }).click();
+  await page.getByRole("heading", { name: "Top 10 Reels por engajamento", exact: true }).waitFor();
+  const ranking = page.getByRole("list", { name: "Ranking de Reels" });
+  assert.match(await ranking.innerText(), /@conta_fixture_a/);
+  assert.match(await ranking.innerText(), /@conta_fixture_b/);
+  await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
+  await page.getByRole("button", { name: "Abrir conta @conta_fixture_b", exact: true }).click();
   const detailsB = page.locator('details[aria-label="Conexão de @conta_fixture_b"]');
   await detailsB.locator("summary").click();
   await detailsB.getByRole("button", { name: "Verificar acesso", exact: true }).click();
@@ -391,7 +482,9 @@ try {
     .waitFor({ state: "detached" });
   assert.equal(disconnections, 1);
   await page.reload();
-  await page.getByRole("button", { name: "Configurar Stories", exact: true }).first().waitFor();
+  await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
+  await page.getByRole("button", { name: "Abrir conta @conta_fixture_b", exact: true }).click();
+  await detailsB.locator("summary").click();
   await page.getByText("Conecte esta conta novamente", { exact: true }).waitFor();
   assert.equal(
     await detailsB.getByRole("button", { name: "Desconectar desta operação", exact: true }).count(),
@@ -399,7 +492,8 @@ try {
   );
   await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
   assert.equal(await page.getByRole("region", { name: "Passo a passo por conta" }).count(), 0);
-  await page.getByRole("button", { name: "Configurar Stories", exact: true }).first().click();
+  await page.getByRole("button", { name: "Abrir conta @conta_fixture_a", exact: true }).click();
+  await page.getByRole("button", { name: "Configurar Stories", exact: true }).click();
   await page.getByRole("region", { name: "Biblioteca exclusiva de Stories" }).waitFor();
   assert.equal(await page.getByRole("region", { name: "Passo a passo por conta" }).count(), 0);
   const upload = page.getByLabel("Enviar para a biblioteca de Stories", { exact: true });

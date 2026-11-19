@@ -57,6 +57,7 @@ import {
 } from "@/lib/api/instagram-worker.functions";
 import { calendarDateInZone } from "@/lib/scheduling";
 import { InstagramHistory } from "@/components/postkit/InstagramHistory";
+import { InstagramAccountCards } from "@/components/postkit/InstagramAccountCards";
 import { InstagramDashboard } from "@/components/postkit/InstagramDashboard";
 import { InstagramAnalytics } from "@/components/postkit/InstagramAnalytics";
 import { InstagramTopPosts } from "@/components/postkit/InstagramTopPosts";
@@ -129,6 +130,14 @@ type Tab =
   | "historico"
   | "publicacoes"
   | "loops";
+const reelSteps = [
+  { id: "videos", title: "Escolher vídeos" },
+  { id: "content", title: "Legenda e capa" },
+  { id: "timing", title: "Dias e horários" },
+  { id: "review", title: "Revisar e agendar" },
+] as const;
+type ReelStep = (typeof reelSteps)[number]["id"];
+
 type VideoItem = {
   id: string;
   name: string;
@@ -253,6 +262,16 @@ function InstagramWorkspacePage({
   const confirmedInstagramIds = useRef<string[]>([]);
   const loginPopup = useRef<Awaited<ReturnType<typeof openInstagramAuthorization>> | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [openedAccountId, setOpenedAccountId] = useState("");
+  const [analyticsAccountId, setAnalyticsAccountId] = useState("");
+  const [queueAccountId, setQueueAccountId] = useState("");
+  const [accountReelFlow, setAccountReelFlow] = useState(false);
+  const [reelStep, setReelStep] = useState<ReelStep>("videos");
+  const stepHeading = useRef<HTMLHeadingElement>(null);
+  const showReelStep = (step: ReelStep) => {
+    setReelStep(step);
+    requestAnimationFrame(() => stepHeading.current?.focus());
+  };
   const setTab = (next: Tab, target: "reels" | "stories" = "reels") => {
     if (next === "nova-conta") {
       setGuidedSetup(target === "reels");
@@ -261,6 +280,11 @@ function InstagramWorkspacePage({
     if (["contas", "dashboard", "stories", "analytics", "historico"].includes(next))
       setGuidedSetup(false);
     if (next === "biblioteca") setLibraryOpen(false);
+    if (next === "fila" && tab !== "fila") setReelStep("videos");
+    if (next === "analytics") setAnalyticsAccountId("");
+    if (next === "publicacoes") setQueueAccountId("");
+    if (next === "contas" || next === "dashboard" || next === "nova-conta")
+      setAccountReelFlow(false);
     setActiveTab(next);
   };
   const [storyAccount, setStoryAccount] = useState<{
@@ -395,14 +419,13 @@ function InstagramWorkspacePage({
             );
             if (added) {
               setLoginWaiting(false);
-              setSelectedAccountId(added.id);
-              setQueue([]);
-              setQueueSaved(false);
+              resetReelDraft(added.id);
               if (connectionTarget === "stories") {
                 setStoryAccount({ id: added.id, request: crypto.randomUUID(), productUrl: null });
                 setActiveTab("stories");
               } else if (guidedSetup) {
-                setLibraryOpen(false);
+                setAccountReelFlow(true);
+                setLibraryOpen(true);
                 setActiveTab("biblioteca");
               }
               setNotice(`@${added.username} conectada. Continue para a biblioteca desta conta.`);
@@ -701,6 +724,7 @@ function InstagramWorkspacePage({
   const libraryAccount = libraryOpen
     ? connectedAccounts.find((account) => account.id === selectedAccountId)
     : undefined;
+  const openedAccount = connectedAccounts.find((account) => account.id === openedAccountId);
   const libraryBusy = uploading || linkingVideos || savingQueue;
   const videosByAccount = useMemo(() => {
     const counts = new Map<string, number>();
@@ -793,8 +817,20 @@ function InstagramWorkspacePage({
 
   const chooseReelAccount = (id: string) => {
     if (id === selectedAccountId || libraryBusy) return;
+    resetReelDraft(id);
+  };
+
+  function resetReelDraft(id: string) {
     setSelectedAccountId(id);
     setReviewConfirmed(false);
+    setCaption("");
+    setHashtags("");
+    setCover(undefined);
+    setFirstComment("");
+    setStartDate(calendarDateInZone(workspace.timezone, 1));
+    setSingleTime("18:00");
+    setTimes(dailyReelTimes(10));
+    setIntervalMinutes(120);
     setSourceFolder("");
     setSelectedVideoIds(null);
     setSingleVideoId("");
@@ -804,11 +840,23 @@ function InstagramWorkspacePage({
     setQueue([]);
     setQueueSaved(false);
     setPreviewError("");
+  }
+
+  const openAccount = (id: string) => {
+    setOpenedAccountId(id);
+    setTab("contas");
+  };
+  const startAccountReels = (id: string) => {
+    chooseReelAccount(id);
+    setAccountReelFlow(true);
+    setReelMode("batch");
+    setTab("fila");
   };
 
   const openAccountLibrary = (id: string) => {
     if (libraryBusy) return;
     chooseReelAccount(id);
+    setAccountReelFlow(true);
     setLibraryOpen(true);
     setActiveTab("biblioteca");
   };
@@ -950,6 +998,7 @@ function InstagramWorkspacePage({
       setReviewPage(0);
       setPreviewSettings(currentSettings);
       setNotice("");
+      setReelStep("review");
       requestAnimationFrame(() => reviewHeading.current?.focus());
     } catch {
       setPreviewError("Confira se a data e os horários existem no fuso do espaço de trabalho.");
@@ -1197,78 +1246,15 @@ function InstagramWorkspacePage({
             onClose={() => setShowLocalLogin(false)}
           />
         )}
-        {guidedSetup && (["nova-conta", "biblioteca", "fila"] as Tab[]).includes(tab) && (
+        {guidedSetup && tab === "nova-conta" && (
           <section
-            className="mt-4 rounded-xl border border-sky-400/20 bg-card p-4"
+            className="mt-4 rounded-xl border border-border bg-card p-4"
             aria-label="Passo a passo por conta"
           >
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="font-semibold">Configure uma conta por vez</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Cada Instagram tem seus próprios vídeos e sua própria programação.
-                </p>
-              </div>
-              <WorkspaceSelect
-                label="Conta em configuração"
-                value={selectedAccountId}
-                options={readyAccounts.map((a) => ({ value: a.id, label: `@${a.username}` }))}
-                onValueChange={chooseReelAccount}
-              />
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              {[
-                {
-                  title: "1. Conectar conta",
-                  text: "Autorizar o perfil na Meta",
-                  target: "nova-conta",
-                  ready: !!reelAccount,
-                },
-                {
-                  title: "2. Biblioteca de Reels",
-                  text: `${libraryVideos.length} vídeos desta conta`,
-                  target: "biblioteca",
-                  ready: libraryVideos.length > 0,
-                },
-                {
-                  title: "3. Configurar Reels",
-                  text: "Legenda, hashtags, capa e 1–10 por dia",
-                  target: "fila",
-                  ready: queue.length > 0 && !previewOutdated,
-                },
-                {
-                  title: "4. Revisar e ativar",
-                  text: queueSaved ? "Programação salva" : "Conferir tudo antes de publicar",
-                  target: "fila",
-                  ready: queueSaved,
-                },
-              ].map((item) => (
-                <button
-                  key={item.title}
-                  type="button"
-                  onClick={() => {
-                    if (item.target === "biblioteca" && selectedAccountId)
-                      openAccountLibrary(selectedAccountId);
-                    else {
-                      if (item.target === "stories" && selectedAccountId)
-                        setStoryAccount({
-                          id: selectedAccountId,
-                          request: crypto.randomUUID(),
-                          productUrl: null,
-                        });
-                      setTab(item.target as Tab);
-                    }
-                  }}
-                  className={`rounded-lg border p-3 text-left ${item.ready ? "border-emerald-400/30 bg-emerald-400/5" : "border-border bg-background/40 hover:border-primary/70"}`}
-                >
-                  <strong className="block text-sm">
-                    {item.ready ? "✓ " : ""}
-                    {item.title}
-                  </strong>
-                  <span className="mt-1 block text-xs text-muted-foreground">{item.text}</span>
-                </button>
-              ))}
-            </div>
+            <h2 className="font-semibold">Conecte uma conta para começar</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Depois da conexão, avance para a biblioteca e prepare os Reels dessa conta.
+            </p>
           </section>
         )}
         {notice && (
@@ -1289,6 +1275,8 @@ function InstagramWorkspacePage({
             workspaceId={workspace.id}
             timezone={workspace.timezone}
             connecting={!!connecting}
+            initialAccountId={analyticsAccountId}
+            connectedAccounts={readyAccounts}
             onAuthorize={(mode) => void connectInstagram(mode, true)}
             onConnect={() => setTab("contas")}
           />
@@ -1309,6 +1297,9 @@ function InstagramWorkspacePage({
               timezone={workspace.timezone}
               accountCount={accountsLoaded ? readyAccounts.length : null}
               videoCount={videosLoaded ? videoCount : null}
+              accounts={readyAccounts}
+              videoCounts={videosLoaded ? videosByAccount : undefined}
+              onOpenAccount={openAccount}
               refreshKey={historyRefresh}
               onAccounts={() => setTab("contas")}
               onLibrary={() => setTab("biblioteca")}
@@ -1407,7 +1398,8 @@ function InstagramWorkspacePage({
             key={tab}
             mode={tab === "publicacoes" ? "queue" : "history"}
             accounts={connectedAccounts}
-            onSchedule={() => setTab("fila")}
+            initialAccountId={tab === "publicacoes" ? queueAccountId : ""}
+            onSchedule={(id) => (id ? startAccountReels(id) : setTab("fila"))}
             workspaceId={workspace.id}
             timezone={workspace.timezone}
             refreshKey={historyRefresh}
@@ -1590,95 +1582,95 @@ function InstagramWorkspacePage({
                   Conectar Instagram
                 </button>
               )}
-              <p className="mb-3 text-sm text-muted-foreground">
-                Quando aparecer como conectada, a conta já pode ser escolhida ao preparar uma
-                publicação.
-              </p>
-              {connectedAccounts.length ? (
-                <div className="space-y-2">
-                  {connectedAccounts.map((account) => {
-                    const ready = account.connection_status === "connected";
-                    return (
-                      <div
-                        key={account.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-4 py-3"
-                      >
-                        <InstagramConnectionDetails
-                          account={account}
-                          workspaceId={workspace.id}
-                          timeZone={workspace.timezone}
-                          disabled={!!connecting || loginWaiting}
-                          onChanged={() => setAccountRefresh((value) => value + 1)}
-                          onReconnect={() => {
-                            setSelectedAccountId(account.id);
-                            setTab("nova-conta");
-                            void connectInstagram("instagram_unified_login");
-                          }}
-                        />
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            disabled={libraryBusy}
-                            aria-label={`Abrir biblioteca de @${account.username}`}
-                            className="rounded-md border border-border px-3 py-1 text-xs font-semibold disabled:opacity-50"
-                            onClick={() => openAccountLibrary(account.id)}
-                          >
-                            Biblioteca de Reels
-                          </button>
-                          {ready && (
-                            <>
-                              <button
-                                type="button"
-                                className="rounded-md border border-border px-3 py-1 text-xs font-semibold"
-                                onClick={() => {
-                                  chooseReelAccount(account.id);
-                                  setReelMode("batch");
-                                  setTab("fila");
-                                }}
-                              >
-                                Configurar Reels
-                              </button>
-                              <button
-                                type="button"
-                                className="rounded-md border border-border px-3 py-1 text-xs font-semibold"
-                                onClick={() => {
-                                  setStoryAccount({
-                                    id: account.id,
-                                    request: crypto.randomUUID(),
-                                    productUrl: null,
-                                  });
-                                  setTab("stories");
-                                }}
-                              >
-                                Configurar Stories
-                              </button>
-                            </>
-                          )}
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${ready ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}
-                          >
-                            {ready ? "Conectada" : "Precisa de atenção"}
-                          </span>
-                        </div>
+              {accountsLoadError || !accountsLoaded ? (
+                <p role="status" className="text-sm text-muted-foreground">
+                  {accountsLoadError || "Carregando contas…"}
+                </p>
+              ) : connectedAccounts.length ? (
+                <>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    Abra um perfil para enviar vídeos, agendar Reels ou acompanhar os resultados
+                    dessa conta.
+                  </p>
+                  <InstagramAccountCards
+                    accounts={connectedAccounts}
+                    selected={tab === "contas" ? openedAccountId : selectedAccountId}
+                    videoCounts={videosLoaded ? videosByAccount : undefined}
+                    disabled={libraryBusy || loginWaiting}
+                    onSelect={tab === "contas" ? setOpenedAccountId : chooseReelAccount}
+                  />
+                  {tab === "contas" && openedAccount && (
+                    <section
+                      aria-label={`Opções de @${openedAccount.username}`}
+                      className="mt-5 space-y-4 rounded-xl border border-primary/30 bg-background/50 p-4 sm:p-5"
+                    >
+                      <InstagramConnectionDetails
+                        account={openedAccount}
+                        workspaceId={workspace.id}
+                        timeZone={workspace.timezone}
+                        disabled={!!connecting || loginWaiting}
+                        onChanged={() => setAccountRefresh((value) => value + 1)}
+                        onReconnect={() => {
+                          chooseReelAccount(openedAccount.id);
+                          setTab("nova-conta");
+                          void connectInstagram("instagram_unified_login");
+                        }}
+                      />
+                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                        <button
+                          type="button"
+                          disabled={libraryBusy}
+                          className="rounded-lg border border-border px-3 py-3 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
+                          onClick={() => openAccountLibrary(openedAccount.id)}
+                        >
+                          Biblioteca de Reels
+                        </button>
+                        {openedAccount.connection_status === "connected" && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={libraryBusy}
+                              className="rounded-lg bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                              onClick={() => startAccountReels(openedAccount.id)}
+                            >
+                              Agendar Reels
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-lg border border-border px-3 py-3 text-sm font-semibold hover:bg-secondary"
+                              onClick={() => {
+                                setStoryAccount({
+                                  id: openedAccount.id,
+                                  request: crypto.randomUUID(),
+                                  productUrl: null,
+                                });
+                                setTab("stories");
+                              }}
+                            >
+                              Configurar Stories
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-lg border border-border px-3 py-3 text-sm font-semibold hover:bg-secondary"
+                              onClick={() => {
+                                setTab("analytics");
+                                setAnalyticsAccountId(openedAccount.id);
+                              }}
+                            >
+                              Ver resultados
+                            </button>
+                          </>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                    </section>
+                  )}
+                </>
               ) : (
                 <Empty
                   icon={Instagram}
                   title="Nenhuma conta conectada"
                   text="Depois da autorização, o nome de usuário da conta aparece aqui."
                 />
-              )}
-              {!!readyAccounts.length && (
-                <button
-                  type="button"
-                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand-red"
-                  onClick={() => setTab("fila")}
-                >
-                  Ir para o agendamento de Reels <ArrowRight className="size-4" />
-                </button>
               )}
             </Panel>
           </section>
@@ -1941,7 +1933,7 @@ function InstagramWorkspacePage({
                           setTab("fila");
                         }}
                       >
-                        Ir para os dias e horários <ArrowRight className="size-4" />
+                        Próximo: configurar Reels <ArrowRight className="size-4" />
                       </button>
                     </div>
                   )}
@@ -1953,514 +1945,621 @@ function InstagramWorkspacePage({
 
         {tab === "fila" && (
           <section className="mt-6 space-y-4">
-            <Panel title="Agendar Reels">
-              <p className="mb-5 max-w-2xl text-sm text-muted-foreground">
-                Escolha a conta e os vídeos dela, prepare o texto e monte os horários. Confira tudo
-                na prévia antes de colocar os Reels na fila.
-              </p>
-              <div
-                role="group"
-                aria-label="Tipo de agendamento"
-                className="mb-4 grid gap-2 sm:grid-cols-2"
-              >
-                {(
-                  [
-                    { id: "single", title: "Um Reel", help: "Escolha um vídeo e um horário." },
-                    {
-                      id: "batch",
-                      title: "Vários Reels",
-                      help: "Monte uma programação com vários vídeos.",
-                    },
-                  ] as const
-                ).map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    aria-pressed={reelMode === option.id}
-                    onClick={() => setReelMode(option.id)}
-                    className="rounded-xl border border-border bg-card p-3 text-left hover:bg-secondary/40 aria-pressed:border-primary/60 aria-pressed:bg-primary/10"
+            <section aria-label="Etapas do agendamento de Reels" className="space-y-3">
+              <ol className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                {reelSteps.map((step, index) => (
+                  <li
+                    key={step.id}
+                    aria-current={reelStep === step.id ? "step" : undefined}
+                    className="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground aria-[current=step]:border-primary aria-[current=step]:bg-primary/10 aria-[current=step]:text-foreground sm:text-sm"
                   >
-                    <span className="block text-sm font-semibold">{option.title}</span>
-                    <span className="mt-1 block text-xs text-muted-foreground">{option.help}</span>
-                  </button>
+                    {index + 1}. {step.title}
+                  </li>
                 ))}
-              </div>
-              <fieldset className="mb-5 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-4">
-                <legend className="px-1 text-sm font-semibold text-cyan-200">
-                  1. Em qual conta você vai publicar?
-                </legend>
-                {!!readyAccounts.length && (
-                  <div className="max-w-sm">
-                    <ReelAccountSelect
-                      accounts={readyAccounts}
-                      value={reelAccount?.id ?? ""}
-                      onChange={chooseReelAccount}
-                      disabled={uploading || linkingVideos || savingQueue}
-                    />
-                  </div>
-                )}
-                {!readyAccounts.length && (
+              </ol>
+              {reelAccount && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card p-3 text-sm">
+                  <strong>Publicar em @{reelAccount.username}</strong>
                   <button
                     type="button"
-                    className="py-1 text-sm font-semibold text-brand-red underline"
-                    onClick={() => setTab("contas")}
-                  >
-                    Conectar minha primeira conta
-                  </button>
-                )}
-              </fieldset>
-              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-400/25 bg-violet-400/5 p-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-violet-200">
-                    {reelMode === "single" ? "2. Qual vídeo?" : "2. Quais vídeos?"}
-                  </h3>
-                  {reelMode === "single" && libraryVideos.length > 0 ? (
-                    <WorkspaceSelect
-                      label="Escolha o vídeo do Reel"
-                      className="mt-2"
-                      value={singleVideoId}
-                      options={[
-                        { value: "", label: "Selecione na biblioteca" },
-                        ...libraryVideos.map((video) => ({ value: video.id, label: video.name })),
-                      ]}
-                      onValueChange={setSingleVideoId}
-                    />
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {scheduleVideos.length === 1
-                        ? "1 vídeo escolhido"
-                        : scheduleVideos.length
-                          ? `${scheduleVideos.length} vídeos escolhidos`
-                          : "Abra a Biblioteca para escolher os vídeos desta conta."}
-                    </p>
-                  )}
-                  {folders.length > 0 && (
-                    <div className="mt-2">
-                      <Field label="Pasta desta conta">
-                        <WorkspaceSelect
-                          label="Pasta desta conta"
-                          value={sourceFolder}
-                          options={folderOptions}
-                          onValueChange={selectFolder}
-                        />
-                      </Field>
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  className="rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-secondary"
-                  disabled={libraryBusy}
-                  onClick={() =>
-                    reelAccount ? openAccountLibrary(reelAccount.id) : setTab("biblioteca")
-                  }
-                >
-                  {reelMode === "single"
-                    ? "Abrir biblioteca"
-                    : accountVideos.length
-                      ? "Escolher vídeos na Biblioteca"
-                      : "Adicionar vídeos na Biblioteca"}
-                </button>
-              </div>
-              <section className="mb-5 space-y-3 rounded-xl border border-fuchsia-400/25 bg-fuchsia-400/5 p-3 sm:p-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-fuchsia-200">3. Conteúdo dos Reels</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Se preencher, o texto vale para todos os Reels. Ajuste cada um na prévia.
-                  </p>
-                </div>
-                <ReelCaptionFields
-                  caption={caption}
-                  hashtags={hashtags}
-                  onCaptionChange={setCaption}
-                  onHashtagsChange={setHashtags}
-                />
-                <details className="rounded-lg border border-fuchsia-400/20 p-3">
-                  <summary className="cursor-pointer text-sm font-semibold">
-                    Capa e primeiro comentário (opcionais)
-                  </summary>
-                  <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                    <div className="space-y-2 rounded-xl border border-border bg-card p-3">
-                      <Field label="Foto de capa (opcional · JPEG, até 8 MB)">
-                        <input
-                          className="field"
-                          type="file"
-                          accept=".jpg,.jpeg,image/jpeg"
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            event.target.value = "";
-                            if (!file) return;
-                            if (
-                              !/\.jpe?g$/i.test(file.name) ||
-                              file.size > 8_000_000 ||
-                              !file.size
-                            ) {
-                              setNotice("Escolha uma imagem JPEG de até 8 MB para a capa.");
-                              return;
-                            }
-                            setCover(file);
-                          }}
-                        />
-                      </Field>
-                      {coverPreview && (
-                        <div className="flex items-center gap-3">
-                          <img
-                            className="h-24 w-14 rounded-md border border-border object-cover"
-                            src={coverPreview}
-                            alt="Prévia da capa do Reel"
-                          />
-                          <button
-                            type="button"
-                            className="text-xs font-semibold text-brand-red"
-                            onClick={() => setCover(undefined)}
-                          >
-                            Remover capa
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <div className="rounded-xl border border-border bg-card p-3">
-                      <Field label="Primeiro comentário (opcional)">
-                        <textarea
-                          className="field min-h-20"
-                          value={firstComment}
-                          maxLength={2200}
-                          placeholder="Texto ou hashtags para o primeiro comentário"
-                          onChange={(event) => setFirstComment(event.target.value)}
-                        />
-                      </Field>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Sai após a confirmação do Reel. A conta precisa autorizar comentários na
-                        Meta.
-                      </p>
-                    </div>
-                  </div>
-                </details>
-              </section>
-              <section className="space-y-4 rounded-xl border border-sky-400/25 bg-card p-3 sm:p-4">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <h3 className="text-sm font-semibold text-sky-200">4. Dias e horários</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {reelMode === "batch"
-                        ? "Os horários se repetem até acabarem os vídeos."
-                        : "Escolha a data e o horário em que o Reel deve sair."}
-                    </p>
-                  </div>
-                  <span className="rounded-full border border-sky-400/25 px-2.5 py-1 text-xs text-sky-200">
-                    {timezoneLabel}
-                  </span>
-                </div>
-                <div className={reelMode === "single" ? "grid gap-3 lg:grid-cols-2" : undefined}>
-                  <ScheduleDate
-                    value={startDate}
-                    timezone={workspace.timezone}
-                    onChange={setStartDate}
-                  />
-                  {reelMode === "single" ? (
-                    <div className="flex items-center gap-3 rounded-xl border border-sky-400/20 bg-sky-400/5 p-3">
-                      <span className="shrink-0 rounded-lg bg-sky-400/15 px-2.5 py-1.5 text-sm font-semibold text-sky-200">
-                        Reel 1
-                      </span>
-                      <Field label="Horário de publicação">
-                        <input
-                          type="time"
-                          aria-label="Horário de publicação do Reel 1"
-                          className="field text-base"
-                          value={singleTime}
-                          onChange={(event) => setSingleTime(event.target.value)}
-                        />
-                      </Field>
-                    </div>
-                  ) : null}
-                </div>
-                {pastTimeToday && (
-                  <p className="rounded-lg bg-amber-400/10 p-3 text-sm text-amber-200">
-                    O horário de {pastTimeToday} de hoje já passou. Escolha Amanhã ou edite o
-                    horário.
-                  </p>
-                )}
-                {reelMode === "batch" && (
-                  <ReelTimingFields
-                    value={times}
-                    slots={timeSlots}
-                    onChange={setTimes}
-                    intervalMinutes={intervalMinutes}
-                    onIntervalChange={setIntervalMinutes}
-                  >
-                    <div className="grid items-start gap-3 lg:grid-cols-2">
-                      <Field label="Total de Reels por conta (opcional)">
-                        <input
-                          type="number"
-                          min={1}
-                          max={maxReelsPerBatch}
-                          value={quantity ?? ""}
-                          placeholder="Usar os vídeos selecionados"
-                          onChange={(event) =>
-                            setQuantity(
-                              event.target.value === "" ? null : Number(event.target.value),
-                            )
-                          }
-                          className="field"
-                        />
-                      </Field>
-                      <div className="space-y-2">
-                        <div
-                          role="group"
-                          aria-label="Escolher ordem dos Reels"
-                          className="flex flex-wrap gap-2"
-                        >
-                          {(
-                            [
-                              ["selection", "Na ordem da biblioteca"],
-                              ["numeric", "Ordem numérica"],
-                              ["random", "Ordem aleatória"],
-                            ] as const
-                          ).map(([value, label]) => (
-                            <button
-                              type="button"
-                              key={value}
-                              aria-pressed={batchOrder === value}
-                              className="filter-chip"
-                              onClick={() => setBatchOrder(value)}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <label className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm">
-                        <input
-                          type="checkbox"
-                          className="mt-1"
-                          checked={repeatVideos}
-                          onChange={(event) => setRepeatVideos(event.target.checked)}
-                        />
-                        Repetir vídeos se a seleção for menor que o total do lote.
-                      </label>
-                    </div>
-                  </ReelTimingFields>
-                )}
-              </section>
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-4">
-                <div>
-                  <p className="text-sm font-semibold">5. Confira a programação</p>
-                  <p className="text-xs text-muted-foreground">
-                    {reelAccount && scheduleVideos.length && slotsPerDay
-                      ? `@${reelAccount.username} · ${reelsPerAccount} ${reelsPerAccount === 1 ? "Reel" : "Reels"} · ${daysInBatch} ${daysInBatch === 1 ? "dia" : "dias"} de programação.`
-                      : "Escolha a conta, os vídeos e os horários para ver a prévia."}
-                  </p>
-                </div>
-                <button
-                  onClick={generatePreview}
-                  disabled={savingQueue}
-                  className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
-                >
-                  <Sparkles className="size-3" /> Ver prévia dos Reels
-                </button>
-                {previewError && (
-                  <p role="alert" className="basis-full text-sm text-amber-300">
-                    {previewError}
-                  </p>
-                )}
-              </div>
-            </Panel>
-            <Panel
-              title={queueSaved ? "Reels agendados" : "Prévia da programação"}
-              headingRef={reviewHeading}
-              action={
-                queue.length > 0 && !queueSaved ? (
-                  <button
-                    onClick={clearQueue}
                     disabled={savingQueue}
-                    className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                    className="font-semibold text-brand-red hover:underline disabled:opacity-50"
+                    onClick={() => openAccount(reelAccount.id)}
                   >
-                    Limpar prévia
+                    Voltar à conta
                   </button>
-                ) : undefined
-              }
-            >
-              {queue.length ? (
-                <>
-                  <p className="text-xs text-muted-foreground">
-                    {queue.length === 1 ? "1 publicação" : `${queue.length} publicações`} · Confira
-                    os vídeos, contas e horários abaixo.
-                  </p>
-                  {previewOutdated && (
-                    <p
-                      role="status"
-                      className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200"
-                    >
-                      Você mudou a programação. Clique em “Ver prévia dos Reels” para revisar os
-                      novos dados.
-                    </p>
-                  )}
-                  {previewSettings === currentSettings && (coverPreview || firstComment.trim()) && (
-                    <div className="mt-3 flex flex-wrap items-start gap-3 rounded-lg border border-border p-3">
-                      {coverPreview && (
-                        <img
-                          className="h-20 w-12 rounded object-cover"
-                          src={coverPreview}
-                          alt="Capa compartilhada do agendamento"
-                        />
-                      )}
-                      <div className="min-w-0 text-sm">
-                        {coverPreview && (
-                          <p className="font-medium">Capa aplicada a todos os Reels</p>
-                        )}
-                        {firstComment.trim() && (
-                          <p className="break-words text-muted-foreground">
-                            Primeiro comentário: {firstComment.trim()}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  <div className="mt-4 max-h-[560px] overflow-auto">
-                    {queue
-                      .slice(reviewPage * reviewPageSize, (reviewPage + 1) * reviewPageSize)
-                      .map((post, index) => (
-                        <div
-                          key={post.id}
-                          className="flex items-center gap-3 border-b border-border py-3 last:border-0"
-                        >
-                          <span className="w-10 text-xs font-semibold text-muted-foreground">
-                            #{reviewPage * reviewPageSize + index + 1}
-                          </span>
-                          <Video className="size-4 shrink-0 text-brand-red" />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">
-                              {post.video} · @{post.accountName}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {post.date} · {post.time} ({workspace.timezone})
-                            </p>
-                            <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
-                              {captionWithHashtags(post.caption, post.hashtags) ||
-                                "Sem descrição ou hashtags"}
-                            </p>
-                            {!queueSaved && !previewOutdated && (
-                              <details className="mt-2 text-xs">
-                                <summary className="cursor-pointer font-semibold text-brand-red">
-                                  Editar só esta legenda
-                                </summary>
-                                <label className="mt-2 block">
-                                  Legenda deste Reel
-                                  <textarea
-                                    className="field mt-1 min-h-16"
-                                    value={post.caption}
-                                    maxLength={2200}
-                                    disabled={savingQueue}
-                                    onChange={(event) => {
-                                      const value = event.target.value;
-                                      setQueue((current) =>
-                                        current.map((item) =>
-                                          item.id === post.id ? { ...item, caption: value } : item,
-                                        ),
-                                      );
-                                    }}
-                                  />
-                                </label>
-                                <p className="mt-1 text-muted-foreground">
-                                  As hashtags do agendamento continuam ao final.
-                                </p>
-                              </details>
-                            )}
-                          </div>
-                          <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold">
-                            {queueSaved ? "Agendado" : "Prévia"}
-                          </span>
-                        </div>
-                      ))}
+                </div>
+              )}
+            </section>
+            <div hidden={reelStep === "review"}>
+              <Panel
+                title={reelSteps.find((step) => step.id === reelStep)?.title ?? "Agendar Reels"}
+                headingRef={stepHeading}
+              >
+                <div hidden={reelStep !== "videos"}>
+                  <div
+                    role="group"
+                    aria-label="Tipo de agendamento"
+                    className="mb-4 grid gap-2 sm:grid-cols-2"
+                  >
+                    {(
+                      [
+                        { id: "single", title: "Um Reel", help: "Escolha um vídeo e um horário." },
+                        {
+                          id: "batch",
+                          title: "Vários Reels",
+                          help: "Monte uma programação com vários vídeos.",
+                        },
+                      ] as const
+                    ).map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        aria-pressed={reelMode === option.id}
+                        onClick={() => setReelMode(option.id)}
+                        className="rounded-xl border border-border bg-card p-3 text-left hover:bg-secondary/40 aria-pressed:border-primary/60 aria-pressed:bg-primary/10"
+                      >
+                        <span className="block text-sm font-semibold">{option.title}</span>
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          {option.help}
+                        </span>
+                      </button>
+                    ))}
                   </div>
-                  {reviewPages > 1 && (
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
-                      <button
-                        type="button"
-                        className="rounded border border-border px-3 py-1.5 disabled:opacity-50"
-                        disabled={reviewPage === 0}
-                        onClick={() => setReviewPage((page) => page - 1)}
-                      >
-                        Anterior
-                      </button>
-                      <span aria-live="polite">
-                        Página {reviewPage + 1} de {reviewPages}
-                      </span>
-                      <button
-                        type="button"
-                        className="rounded border border-border px-3 py-1.5 disabled:opacity-50"
-                        disabled={reviewPage + 1 >= reviewPages}
-                        onClick={() => setReviewPage((page) => page + 1)}
-                      >
-                        Próxima
-                      </button>
+                  {!accountReelFlow && (
+                    <fieldset className="mb-5 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-4">
+                      <legend className="px-1 text-sm font-semibold text-cyan-200">
+                        1. Em qual conta você vai publicar?
+                      </legend>
+                      {!!readyAccounts.length && (
+                        <div className="max-w-sm">
+                          <ReelAccountSelect
+                            accounts={readyAccounts}
+                            value={reelAccount?.id ?? ""}
+                            onChange={chooseReelAccount}
+                            disabled={uploading || linkingVideos || savingQueue}
+                          />
+                        </div>
+                      )}
+                      {!readyAccounts.length && (
+                        <button
+                          type="button"
+                          className="py-1 text-sm font-semibold text-brand-red underline"
+                          onClick={() => setTab("contas")}
+                        >
+                          Conectar minha primeira conta
+                        </button>
+                      )}
+                    </fieldset>
+                  )}
+                  <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-400/25 bg-violet-400/5 p-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-violet-200">
+                        {reelMode === "single" ? "2. Qual vídeo?" : "2. Quais vídeos?"}
+                      </h3>
+                      {reelMode === "single" && libraryVideos.length > 0 ? (
+                        <WorkspaceSelect
+                          label="Escolha o vídeo do Reel"
+                          className="mt-2"
+                          value={singleVideoId}
+                          options={[
+                            { value: "", label: "Selecione na biblioteca" },
+                            ...libraryVideos.map((video) => ({
+                              value: video.id,
+                              label: video.name,
+                            })),
+                          ]}
+                          onValueChange={setSingleVideoId}
+                        />
+                      ) : (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {scheduleVideos.length === 1
+                            ? "1 vídeo escolhido"
+                            : scheduleVideos.length
+                              ? `${scheduleVideos.length} vídeos escolhidos`
+                              : "Abra a Biblioteca para escolher os vídeos desta conta."}
+                        </p>
+                      )}
+                      {folders.length > 0 && (
+                        <div className="mt-2">
+                          <Field label="Pasta desta conta">
+                            <WorkspaceSelect
+                              label="Pasta desta conta"
+                              value={sourceFolder}
+                              options={folderOptions}
+                              onValueChange={selectFolder}
+                            />
+                          </Field>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  <InstagramAutomationReview
-                    username={reelAccount?.username ?? ""}
-                    confirmed={reviewConfirmed}
-                    onConfirm={setReviewConfirmed}
-                    disabled={savingQueue || queueSaved}
-                  />
-                  {workerActive === false && !queueSaved && (
-                    <div className="mt-3 rounded-lg border border-amber-500/30 p-3 text-sm">
-                      <p>Ative o processador para publicar os Reels nos horários agendados.</p>
-                      <button
-                        type="button"
-                        className="mt-2 rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50"
-                        disabled={activatingWorker}
-                        onClick={() => void activateWorker()}
-                      >
-                        {activatingWorker ? "Ativando…" : "Ativar publicação automática"}
-                      </button>
-                    </div>
-                  )}
-                  {!queueSaved && activationErrors.length > 0 && (
-                    <ul className="mt-3 space-y-1 text-xs text-amber-200">
-                      {activationErrors.map((error) => (
-                        <li key={error}>{error}</li>
-                      ))}
-                    </ul>
-                  )}
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-secondary/30 p-4">
-                    <p className="max-w-xl text-xs leading-5 text-muted-foreground">
-                      Confira contas, vídeos e horários. Salvar autoriza a programação deste lote; o
-                      Histórico mostra o resultado individual de cada publicação.
-                    </p>
                     <button
-                      onClick={() => void saveQueue()}
-                      disabled={
-                        savingQueue ||
-                        activationErrors.length > 0 ||
-                        queueSaved ||
-                        previewOutdated ||
-                        queue.some(
-                          (post) =>
-                            !connectedAccounts.some(
-                              (account) =>
-                                account.id === post.accountId &&
-                                account.connection_status === "connected",
-                            ),
-                        )
+                      type="button"
+                      className="rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-secondary"
+                      disabled={libraryBusy}
+                      onClick={() =>
+                        reelAccount ? openAccountLibrary(reelAccount.id) : setTab("biblioteca")
                       }
-                      className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
                     >
-                      {savingQueue
-                        ? "Salvando…"
-                        : queueSaved
-                          ? "Agendamento salvo"
-                          : "Ativar esta programação"}
+                      {reelMode === "single"
+                        ? "Abrir biblioteca"
+                        : accountVideos.length
+                          ? "Escolher vídeos na Biblioteca"
+                          : "Adicionar vídeos na Biblioteca"}
                     </button>
                   </div>
-                </>
-              ) : (
-                <Empty
-                  icon={CalendarDays}
-                  title="Nenhuma prévia gerada"
-                  text="Selecione vídeos e gere uma programação para revisar a distribuição de datas e horários."
-                />
-              )}
-            </Panel>
+                </div>
+                <section
+                  hidden={reelStep !== "content"}
+                  className="mb-5 space-y-3 rounded-xl border border-fuchsia-400/25 bg-fuchsia-400/5 p-3 sm:p-4"
+                >
+                  <div>
+                    <h3 className="text-sm font-semibold text-fuchsia-200">
+                      3. Conteúdo dos Reels
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Se preencher, o texto vale para todos os Reels. Ajuste cada um na prévia.
+                    </p>
+                  </div>
+                  <ReelCaptionFields
+                    caption={caption}
+                    hashtags={hashtags}
+                    onCaptionChange={setCaption}
+                    onHashtagsChange={setHashtags}
+                  />
+                  <details className="rounded-lg border border-fuchsia-400/20 p-3">
+                    <summary className="cursor-pointer text-sm font-semibold">
+                      Capa e primeiro comentário (opcionais)
+                    </summary>
+                    <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                      <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+                        <Field label="Foto de capa (opcional · JPEG, até 8 MB)">
+                          <input
+                            className="field"
+                            type="file"
+                            accept=".jpg,.jpeg,image/jpeg"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              event.target.value = "";
+                              if (!file) return;
+                              if (
+                                !/\.jpe?g$/i.test(file.name) ||
+                                file.size > 8_000_000 ||
+                                !file.size
+                              ) {
+                                setNotice("Escolha uma imagem JPEG de até 8 MB para a capa.");
+                                return;
+                              }
+                              setCover(file);
+                            }}
+                          />
+                        </Field>
+                        {coverPreview && (
+                          <div className="flex items-center gap-3">
+                            <img
+                              className="h-24 w-14 rounded-md border border-border object-cover"
+                              src={coverPreview}
+                              alt="Prévia da capa do Reel"
+                            />
+                            <button
+                              type="button"
+                              className="text-xs font-semibold text-brand-red"
+                              onClick={() => setCover(undefined)}
+                            >
+                              Remover capa
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="rounded-xl border border-border bg-card p-3">
+                        <Field label="Primeiro comentário (opcional)">
+                          <textarea
+                            className="field min-h-20"
+                            value={firstComment}
+                            maxLength={2200}
+                            placeholder="Texto ou hashtags para o primeiro comentário"
+                            onChange={(event) => setFirstComment(event.target.value)}
+                          />
+                        </Field>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Sai após a confirmação do Reel. A conta precisa autorizar comentários na
+                          Meta.
+                        </p>
+                      </div>
+                    </div>
+                  </details>
+                </section>
+                <section
+                  hidden={reelStep !== "timing"}
+                  className="space-y-4 rounded-xl border border-sky-400/25 bg-card p-3 sm:p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-semibold text-sky-200">4. Dias e horários</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {reelMode === "batch"
+                          ? "Os horários se repetem até acabarem os vídeos."
+                          : "Escolha a data e o horário em que o Reel deve sair."}
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-sky-400/25 px-2.5 py-1 text-xs text-sky-200">
+                      {timezoneLabel}
+                    </span>
+                  </div>
+                  <div className={reelMode === "single" ? "grid gap-3 lg:grid-cols-2" : undefined}>
+                    <ScheduleDate
+                      value={startDate}
+                      timezone={workspace.timezone}
+                      onChange={setStartDate}
+                    />
+                    {reelMode === "single" ? (
+                      <div className="flex items-center gap-3 rounded-xl border border-sky-400/20 bg-sky-400/5 p-3">
+                        <span className="shrink-0 rounded-lg bg-sky-400/15 px-2.5 py-1.5 text-sm font-semibold text-sky-200">
+                          Reel 1
+                        </span>
+                        <Field label="Horário de publicação">
+                          <input
+                            type="time"
+                            aria-label="Horário de publicação do Reel 1"
+                            className="field text-base"
+                            value={singleTime}
+                            onChange={(event) => setSingleTime(event.target.value)}
+                          />
+                        </Field>
+                      </div>
+                    ) : null}
+                  </div>
+                  {pastTimeToday && (
+                    <p className="rounded-lg bg-amber-400/10 p-3 text-sm text-amber-200">
+                      O horário de {pastTimeToday} de hoje já passou. Escolha Amanhã ou edite o
+                      horário.
+                    </p>
+                  )}
+                  {reelMode === "batch" && (
+                    <ReelTimingFields
+                      value={times}
+                      slots={timeSlots}
+                      onChange={setTimes}
+                      intervalMinutes={intervalMinutes}
+                      onIntervalChange={setIntervalMinutes}
+                    >
+                      <div className="grid items-start gap-3 lg:grid-cols-2">
+                        <Field label="Total de Reels por conta (opcional)">
+                          <input
+                            type="number"
+                            min={1}
+                            max={maxReelsPerBatch}
+                            value={quantity ?? ""}
+                            placeholder="Usar os vídeos selecionados"
+                            onChange={(event) =>
+                              setQuantity(
+                                event.target.value === "" ? null : Number(event.target.value),
+                              )
+                            }
+                            className="field"
+                          />
+                        </Field>
+                        <div className="space-y-2">
+                          <div
+                            role="group"
+                            aria-label="Escolher ordem dos Reels"
+                            className="flex flex-wrap gap-2"
+                          >
+                            {(
+                              [
+                                ["selection", "Na ordem da biblioteca"],
+                                ["numeric", "Ordem numérica"],
+                                ["random", "Ordem aleatória"],
+                              ] as const
+                            ).map(([value, label]) => (
+                              <button
+                                type="button"
+                                key={value}
+                                aria-pressed={batchOrder === value}
+                                className="filter-chip"
+                                onClick={() => setBatchOrder(value)}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <label className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={repeatVideos}
+                            onChange={(event) => setRepeatVideos(event.target.checked)}
+                          />
+                          Repetir vídeos se a seleção for menor que o total do lote.
+                        </label>
+                      </div>
+                    </ReelTimingFields>
+                  )}
+                </section>
+                <div
+                  hidden={reelStep !== "timing"}
+                  className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-4"
+                >
+                  <div>
+                    <p className="text-sm font-semibold">5. Confira a programação</p>
+                    <p className="text-xs text-muted-foreground">
+                      {reelAccount && scheduleVideos.length && slotsPerDay
+                        ? `@${reelAccount.username} · ${reelsPerAccount} ${reelsPerAccount === 1 ? "Reel" : "Reels"} · ${daysInBatch} ${daysInBatch === 1 ? "dia" : "dias"} de programação.`
+                        : "Escolha a conta, os vídeos e os horários para ver a prévia."}
+                    </p>
+                  </div>
+                  <button
+                    onClick={generatePreview}
+                    disabled={savingQueue}
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
+                  >
+                    <Sparkles className="size-3" /> Próximo: revisar Reels
+                  </button>
+                  {previewError && (
+                    <p role="alert" className="basis-full text-sm text-amber-300">
+                      {previewError}
+                    </p>
+                  )}
+                </div>
+                {reelStep !== "timing" && (
+                  <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-border pt-4">
+                    {reelStep === "content" && (
+                      <button
+                        type="button"
+                        onClick={() => showReelStep("videos")}
+                        className="rounded-lg border border-border px-4 py-2 font-semibold hover:bg-secondary"
+                      >
+                        Voltar
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={
+                        reelStep === "videos" &&
+                        (!reelAccount || !scheduleVideos.length || libraryBusy)
+                      }
+                      onClick={() => showReelStep(reelStep === "videos" ? "content" : "timing")}
+                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50"
+                    >
+                      {reelStep === "videos"
+                        ? "Próximo: legenda e capa"
+                        : "Próximo: dias e horários"}
+                      <ArrowRight className="size-4" aria-hidden />
+                    </button>
+                  </div>
+                )}
+                {reelStep === "timing" && (
+                  <button
+                    type="button"
+                    onClick={() => showReelStep("content")}
+                    className="mt-4 rounded-lg border border-border px-4 py-2 font-semibold hover:bg-secondary"
+                  >
+                    Voltar à legenda e capa
+                  </button>
+                )}
+              </Panel>
+            </div>
+            {reelStep === "review" && (
+              <Panel
+                title={queueSaved ? "Reels agendados" : "Prévia da programação"}
+                headingRef={reviewHeading}
+                action={
+                  queue.length > 0 && !queueSaved ? (
+                    <button
+                      onClick={clearQueue}
+                      disabled={savingQueue}
+                      className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                    >
+                      Limpar prévia
+                    </button>
+                  ) : undefined
+                }
+              >
+                {queue.length ? (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      {queue.length === 1 ? "1 publicação" : `${queue.length} publicações`} ·
+                      Confira os vídeos, contas e horários abaixo.
+                    </p>
+                    {previewOutdated && (
+                      <p
+                        role="status"
+                        className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200"
+                      >
+                        Você mudou a programação. Clique em “Ver prévia dos Reels” para revisar os
+                        novos dados.
+                      </p>
+                    )}
+                    {previewSettings === currentSettings &&
+                      (coverPreview || firstComment.trim()) && (
+                        <div className="mt-3 flex flex-wrap items-start gap-3 rounded-lg border border-border p-3">
+                          {coverPreview && (
+                            <img
+                              className="h-20 w-12 rounded object-cover"
+                              src={coverPreview}
+                              alt="Capa compartilhada do agendamento"
+                            />
+                          )}
+                          <div className="min-w-0 text-sm">
+                            {coverPreview && (
+                              <p className="font-medium">Capa aplicada a todos os Reels</p>
+                            )}
+                            {firstComment.trim() && (
+                              <p className="break-words text-muted-foreground">
+                                Primeiro comentário: {firstComment.trim()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    <div className="mt-4 max-h-[560px] overflow-auto">
+                      {queue
+                        .slice(reviewPage * reviewPageSize, (reviewPage + 1) * reviewPageSize)
+                        .map((post, index) => (
+                          <div
+                            key={post.id}
+                            className="flex items-center gap-3 border-b border-border py-3 last:border-0"
+                          >
+                            <span className="w-10 text-xs font-semibold text-muted-foreground">
+                              #{reviewPage * reviewPageSize + index + 1}
+                            </span>
+                            <Video className="size-4 shrink-0 text-brand-red" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">
+                                {post.video} · @{post.accountName}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {post.date} · {post.time} ({workspace.timezone})
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
+                                {captionWithHashtags(post.caption, post.hashtags) ||
+                                  "Sem descrição ou hashtags"}
+                              </p>
+                              {!queueSaved && !previewOutdated && (
+                                <details className="mt-2 text-xs">
+                                  <summary className="cursor-pointer font-semibold text-brand-red">
+                                    Editar só esta legenda
+                                  </summary>
+                                  <label className="mt-2 block">
+                                    Legenda deste Reel
+                                    <textarea
+                                      className="field mt-1 min-h-16"
+                                      value={post.caption}
+                                      maxLength={2200}
+                                      disabled={savingQueue}
+                                      onChange={(event) => {
+                                        const value = event.target.value;
+                                        setQueue((current) =>
+                                          current.map((item) =>
+                                            item.id === post.id
+                                              ? { ...item, caption: value }
+                                              : item,
+                                          ),
+                                        );
+                                      }}
+                                    />
+                                  </label>
+                                  <p className="mt-1 text-muted-foreground">
+                                    As hashtags do agendamento continuam ao final.
+                                  </p>
+                                </details>
+                              )}
+                            </div>
+                            <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold">
+                              {queueSaved ? "Agendado" : "Prévia"}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                    {reviewPages > 1 && (
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+                        <button
+                          type="button"
+                          className="rounded border border-border px-3 py-1.5 disabled:opacity-50"
+                          disabled={reviewPage === 0}
+                          onClick={() => setReviewPage((page) => page - 1)}
+                        >
+                          Anterior
+                        </button>
+                        <span aria-live="polite">
+                          Página {reviewPage + 1} de {reviewPages}
+                        </span>
+                        <button
+                          type="button"
+                          className="rounded border border-border px-3 py-1.5 disabled:opacity-50"
+                          disabled={reviewPage + 1 >= reviewPages}
+                          onClick={() => setReviewPage((page) => page + 1)}
+                        >
+                          Próxima
+                        </button>
+                      </div>
+                    )}
+                    <InstagramAutomationReview
+                      username={reelAccount?.username ?? ""}
+                      confirmed={reviewConfirmed}
+                      onConfirm={setReviewConfirmed}
+                      disabled={savingQueue || queueSaved}
+                    />
+                    {workerActive === false && !queueSaved && (
+                      <div className="mt-3 rounded-lg border border-amber-500/30 p-3 text-sm">
+                        <p>Ative o processador para publicar os Reels nos horários agendados.</p>
+                        <button
+                          type="button"
+                          className="mt-2 rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50"
+                          disabled={activatingWorker}
+                          onClick={() => void activateWorker()}
+                        >
+                          {activatingWorker ? "Ativando…" : "Ativar publicação automática"}
+                        </button>
+                      </div>
+                    )}
+                    {!queueSaved && activationErrors.length > 0 && (
+                      <ul className="mt-3 space-y-1 text-xs text-amber-200">
+                        {activationErrors.map((error) => (
+                          <li key={error}>{error}</li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-secondary/30 p-4">
+                      <p className="max-w-xl text-xs leading-5 text-muted-foreground">
+                        Confira contas, vídeos e horários. Salvar autoriza a programação deste lote;
+                        o Histórico mostra o resultado individual de cada publicação.
+                      </p>
+                      {queueSaved ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTab("publicacoes");
+                            setQueueAccountId(selectedAccountId);
+                          }}
+                          className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                        >
+                          Próximo: acompanhar na fila
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => void saveQueue()}
+                          disabled={
+                            savingQueue ||
+                            activationErrors.length > 0 ||
+                            queueSaved ||
+                            previewOutdated ||
+                            queue.some(
+                              (post) =>
+                                !connectedAccounts.some(
+                                  (account) =>
+                                    account.id === post.accountId &&
+                                    account.connection_status === "connected",
+                                ),
+                            )
+                          }
+                          className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                        >
+                          {savingQueue ? "Salvando…" : "Ativar esta programação"}
+                        </button>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <Empty
+                    icon={CalendarDays}
+                    title="Nenhuma prévia gerada"
+                    text="Selecione vídeos e gere uma programação para revisar a distribuição de datas e horários."
+                  />
+                )}
+                {!queueSaved && (
+                  <button
+                    type="button"
+                    disabled={savingQueue}
+                    onClick={() => showReelStep("timing")}
+                    className="mt-4 rounded-lg border border-border px-4 py-2 font-semibold hover:bg-secondary disabled:opacity-50"
+                  >
+                    Voltar aos horários
+                  </button>
+                )}
+              </Panel>
+            )}
           </section>
         )}
 
@@ -2564,52 +2663,15 @@ function InstagramWorkspacePage({
             </Panel>
           </section>
         )}
-        {guidedSetup && ["nova-conta", "biblioteca", "fila"].includes(tab) && (
-          <footer
-            className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4"
-            aria-label="Etapas da nova conta"
-          >
-            <p className="text-sm text-muted-foreground">
-              {tab === "nova-conta"
-                ? "1. Conecte e selecione a conta acima."
-                : tab === "biblioteca"
-                  ? "2. Envie os vídeos exclusivos desta conta."
-                  : queueSaved
-                    ? "Programação ativada. Acompanhe cada publicação na fila."
-                    : "3. Confira legendas, ordem e horários. Depois revise e ative."}
-            </p>
+        {guidedSetup && tab === "nova-conta" && (
+          <footer className="mt-6 flex justify-end rounded-xl border border-border bg-card p-4">
             <button
               type="button"
+              disabled={!reelAccount || loginWaiting}
+              onClick={() => openAccountLibrary(selectedAccountId)}
               className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50"
-              disabled={
-                tab === "nova-conta"
-                  ? !reelAccount
-                  : tab === "biblioteca"
-                    ? !libraryVideos.length || uploading
-                    : false
-              }
-              onClick={() => {
-                if (tab === "nova-conta") openAccountLibrary(selectedAccountId);
-                else if (tab === "biblioteca") {
-                  setReelMode("batch");
-                  setTab("fila");
-                } else if (queueSaved) {
-                  setGuidedSetup(false);
-                  setTab("publicacoes");
-                } else if (!queue.length || previewOutdated) generatePreview();
-                else reviewHeading.current?.focus();
-              }}
             >
-              {tab === "nova-conta"
-                ? "Próximo: biblioteca de Reels"
-                : tab === "biblioteca"
-                  ? "Próximo: configurar Reels"
-                  : queueSaved
-                    ? "Finalizar e acompanhar"
-                    : queue.length && !previewOutdated
-                      ? "Próximo: revisar e ativar"
-                      : "Próximo: ver prévia"}{" "}
-              <ArrowRight className="ml-2 inline size-4" />
+              Próximo: biblioteca de Reels <ArrowRight className="ml-2 inline size-4" aria-hidden />
             </button>
           </footer>
         )}

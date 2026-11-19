@@ -8,6 +8,8 @@ import {
   Instagram,
   Video,
 } from "lucide-react";
+import { InstagramAccountCards } from "./InstagramAccountCards";
+import type { InstagramConnectionDetailsAccount } from "./InstagramConnectionDetails";
 import { supabase } from "@/integrations/supabase/client";
 import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
 
@@ -21,6 +23,8 @@ const periods = [
 type UpcomingPost = {
   id: string;
   scheduled_at: string | null;
+  status: string;
+  content_type: string;
   instagram_accounts: { username: string } | null;
   media_assets: { original_filename: string } | null;
 };
@@ -29,7 +33,7 @@ type DashboardData = {
   upcoming: UpcomingPost[];
   queued: number;
   published: number;
-  hasPublished: boolean;
+  allPublished: number;
   needsAttention: number;
 };
 
@@ -45,6 +49,9 @@ export function InstagramDashboard({
   timezone,
   accountCount,
   videoCount,
+  accounts,
+  videoCounts,
+  onOpenAccount,
   refreshKey,
   onAccounts,
   onLibrary,
@@ -56,6 +63,9 @@ export function InstagramDashboard({
   timezone: string;
   accountCount: number | null;
   videoCount: number | null;
+  accounts: InstagramConnectionDetailsAccount[];
+  videoCounts?: ReadonlyMap<string, number>;
+  onOpenAccount: (id: string) => void;
   refreshKey: number;
   onAccounts: () => void;
   onLibrary: () => void;
@@ -77,7 +87,7 @@ export function InstagramDashboard({
       const [upcoming, published, allPublished, attention] = await Promise.all([
         posts()
           .select(
-            "id,scheduled_at,instagram_accounts(username),media_assets!posts_media_asset_id_workspace_id_fkey(original_filename)",
+            "id,scheduled_at,status,content_type,instagram_accounts!posts_instagram_account_id_workspace_id_fkey(username),media_assets!posts_media_asset_id_workspace_id_fkey(original_filename)",
             {
               count: "exact",
             },
@@ -113,7 +123,7 @@ export function InstagramDashboard({
         upcoming: upcoming.data ?? [],
         queued: upcoming.count ?? 0,
         published: published.count ?? 0,
-        hasPublished: (allPublished.count ?? 0) > 0,
+        allPublished: allPublished.count ?? 0,
         needsAttention: attention.count ?? 0,
       });
       setError(false);
@@ -145,13 +155,13 @@ export function InstagramDashboard({
     },
     {
       title: "Agende uma publicação",
-      done: !!data && (data.queued > 0 || data.hasPublished),
+      done: !!data && (data.queued > 0 || data.allPublished > 0),
       action: "Agendar Reel",
       run: onSchedule,
     },
     {
       title: "Confira a primeira publicação no ar",
-      done: !!data?.hasPublished,
+      done: !!data?.allPublished,
       action: "Ver fila",
       run: onQueue,
     },
@@ -160,8 +170,8 @@ export function InstagramDashboard({
   const metrics = [
     {
       label: "Publicações no ar",
-      value: periodData?.published,
-      note: "Confirmadas no período",
+      value: data?.allPublished,
+      note: periodData ? periodData.published + " no período" : "Total publicado pela plataforma",
       icon: CheckCircle2,
     },
     {
@@ -180,8 +190,15 @@ export function InstagramDashboard({
   ];
   const dateFormat = new Intl.DateTimeFormat("pt-BR", {
     timeZone: timezone,
-    dateStyle: "short",
-    timeStyle: "short",
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+  });
+
+  const timeFormat = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
   return (
@@ -273,6 +290,19 @@ export function InstagramDashboard({
         </div>
       </section>
 
+      {accounts.length > 0 && (
+        <section className="space-y-3" aria-labelledby="dashboard-instagram-accounts">
+          <h2 id="dashboard-instagram-accounts" className="font-semibold">
+            Contas conectadas
+          </h2>
+          <InstagramAccountCards
+            accounts={accounts}
+            videoCounts={videoCounts}
+            onSelect={onOpenAccount}
+          />
+        </section>
+      )}
+
       {error && (
         <p
           role="status"
@@ -312,21 +342,49 @@ export function InstagramDashboard({
               A fila está vazia. Agende um Reel para começar.
             </p>
           )}
-          <ul className="mt-2 divide-y divide-border">
-            {data?.upcoming.map((post) => (
-              <li key={post.id} className="py-2.5">
-                <p className="break-words text-sm font-medium">
-                  {post.media_assets?.original_filename ?? "Reel"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {post.instagram_accounts?.username
-                    ? `@${post.instagram_accounts.username}`
-                    : "Conta indisponível"}{" "}
-                  ·{" "}
-                  {post.scheduled_at ? dateFormat.format(new Date(post.scheduled_at)) : "Sem data"}
-                </p>
-              </li>
-            ))}
+          <ul className="mt-3 space-y-2">
+            {data?.upcoming.map((post) => {
+              const planned = post.scheduled_at ? new Date(post.scheduled_at) : undefined;
+              const isLate = planned && planned.getTime() < Date.now();
+              const status =
+                post.status === "processing"
+                  ? "Em processamento"
+                  : isLate
+                    ? "Em atraso"
+                    : "Agendado";
+              const kind = post.content_type === "story" ? "Story" : "Reel";
+              return (
+                <li
+                  key={post.id}
+                  className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-lg border border-border bg-background/40 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center"
+                >
+                  <div className="min-w-20 rounded-lg bg-secondary/60 px-2 py-1.5 text-center">
+                    <p className="text-sm font-semibold tabular-nums">
+                      {planned ? timeFormat.format(planned) : "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {planned ? dateFormat.format(planned) : "Sem data"}
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">
+                      {post.instagram_accounts?.username
+                        ? "@" + post.instagram_accounts.username
+                        : "Conta indisponível"}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {kind}
+                      {post.media_assets?.original_filename
+                        ? " · " + post.media_assets.original_filename
+                        : ""}
+                    </p>
+                  </div>
+                  <span className="col-start-2 justify-self-start rounded-md border border-border px-2 py-1 text-xs font-medium sm:col-start-auto">
+                    {status}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </section>
         <section className="rounded-xl border border-border bg-card p-4">

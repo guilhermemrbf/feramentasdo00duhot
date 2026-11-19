@@ -41,6 +41,7 @@ export function InstagramHistory({
   refreshKey,
   mode,
   accounts,
+  initialAccountId = "",
   onSchedule,
 }: {
   workspaceId: string;
@@ -48,11 +49,12 @@ export function InstagramHistory({
   refreshKey: number;
   mode: "queue" | "history";
   accounts: Array<{ id: string; username: string }>;
-  onSchedule: () => void;
+  initialAccountId?: string;
+  onSchedule: (accountId: string) => void;
 }) {
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [filter, setFilter] = useState<"all" | Status>("all");
-  const [account, setAccount] = useState("");
+  const [account, setAccount] = useState(initialAccountId);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(0);
@@ -190,7 +192,11 @@ export function InstagramHistory({
               : "Nenhuma publicação encontrada neste filtro."}
           </p>
           {mode === "queue" && !account && filter === "all" && (
-            <button type="button" className="mt-3 font-semibold text-brand-red" onClick={onSchedule}>
+            <button
+              type="button"
+              className="mt-3 font-semibold text-brand-red"
+              onClick={() => onSchedule(account)}
+            >
               Agendar um Reel
             </button>
           )}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ArrowUpRight, Crown, Instagram, TrendingUp } from "lucide-react";
+import { ArrowUpRight, Instagram, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { PostkitDatabase } from "@/lib/postkit-database";
 import { WorkspaceSelect } from "@/components/ui/workspace-select";
@@ -9,12 +9,6 @@ const db = supabase as unknown as SupabaseClient<PostkitDatabase>;
 const format = new Intl.NumberFormat("pt-BR");
 const number = (value: number | null | undefined) => (value == null ? "—" : format.format(value));
 const panel = "rounded-xl border border-border bg-card";
-const podium = [
-  "sm:col-start-2 border-amber-400/40 bg-amber-400/10 text-amber-200 sm:min-h-56",
-  "sm:col-start-1 border-slate-300/30 bg-slate-300/10 text-slate-200 sm:min-h-48",
-  "sm:col-start-3 border-orange-500/30 bg-orange-500/10 text-orange-200 sm:min-h-44",
-];
-
 type Account = {
   id: string;
   username: string;
@@ -26,13 +20,15 @@ type RankedReel = {
   account_id: string;
   media_id: string;
   username: string;
-  views: number;
+  views: number | null;
+  interactions?: number;
   likes: number | null;
   comments: number | null;
   published_at: string;
   permalink: string | null;
 };
 type Report = {
+  ranking_basis?: "engagement";
   accounts: Account[];
   ranking: RankedReel[];
   totals: {
@@ -116,12 +112,13 @@ export function InstagramTopPosts({
   const accounts = snapshot?.report.accounts ?? [];
   const report = snapshot?.account === account ? snapshot.report : undefined;
   const totals = report?.totals;
+  const byEngagement = report?.ranking_basis === "engagement";
   const ranking = report?.ranking ?? [];
   const leader = report?.leader;
   const date = new Intl.DateTimeFormat("pt-BR", { timeZone: timezone, dateStyle: "short" });
   const cards = [
     [
-      "Views totais",
+      "Visualizações",
       totals?.views,
       totals ? `${number(totals.measured)} Reels com medição` : "Leitura da Meta",
     ],
@@ -142,9 +139,10 @@ export function InstagramTopPosts({
     <section aria-label="Top posts do Instagram" className="mt-4 space-y-4">
       <div className={`${panel} flex flex-wrap items-end justify-between gap-3 p-4`}>
         <div>
-          <h2 className="font-semibold">Os Reels mais vistos</h2>
+          <h2 className="font-semibold">Melhores publicações</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Publicações dos últimos 30 dias, com views acumuladas até a última leitura.
+            Reels publicados nos últimos 30 dias. Os totais refletem as leituras disponíveis da
+            Meta.
           </p>
         </div>
         <label className="block w-full max-w-xs text-sm font-semibold">
@@ -197,11 +195,13 @@ export function InstagramTopPosts({
 
       <section className={`${panel} p-4`}>
         <h2 className="flex items-center gap-2 font-semibold">
-          <TrendingUp className="size-4 text-emerald-300" aria-hidden /> Conta com mais engajamento
+          <TrendingUp className="size-4 text-emerald-300" aria-hidden />{" "}
+          {account && byEngagement
+            ? "Engajamento da conta selecionada"
+            : "Conta com mais engajamento"}
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Entre todas as contas conectadas, pela soma de curtidas e comentários dos Reels com as
-          duas métricas disponíveis.
+          Soma de curtidas e comentários dos Reels com as duas métricas disponíveis.
         </p>
         {leader ? (
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-3">
@@ -225,9 +225,19 @@ export function InstagramTopPosts({
 
       <section className={panel}>
         <div className="border-b border-border p-4">
-          <h2 className="font-semibold">Top 10 de Reels por visualizações</h2>
+          <h2 className="font-semibold">
+            {byEngagement
+              ? "Top 10 Reels por engajamento"
+              : report
+                ? "Top 10 Reels por visualizações"
+                : "Top 10 Reels"}
+          </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            O @ abaixo das views identifica o perfil que publicou o Reel.
+            {byEngagement
+              ? "Ordenado pela soma de curtidas e comentários."
+              : report
+                ? "A ordenação por engajamento depende da atualização do banco."
+                : ""}
           </p>
         </div>
         {!report && !error && (
@@ -237,7 +247,11 @@ export function InstagramTopPosts({
         )}
         {report && !ranking.length && (
           <div className="p-8 text-center">
-            <p className="font-semibold">Nenhum Reel com views medidas ainda</p>
+            <p className="font-semibold">
+              {byEngagement
+                ? "Nenhum Reel com curtidas e comentários disponíveis"
+                : "Nenhum Reel com visualizações medidas ainda"}
+            </p>
             <p className="mt-1 text-sm text-muted-foreground">
               O ranking aparece quando a Meta disponibilizar a primeira leitura.
             </p>
@@ -251,62 +265,46 @@ export function InstagramTopPosts({
           </div>
         )}
         {ranking.length > 0 && (
-          <>
-            <ol
-              aria-label="Pódio dos três Reels mais vistos"
-              className={`grid items-end gap-3 p-4 ${ranking.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
-            >
-              {ranking.slice(0, 3).map((reel) => (
-                <li
-                  key={reel.account_id + ":" + reel.media_id}
-                  className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border p-4 text-center sm:row-start-1 ${ranking.length >= 3 ? podium[reel.position - 1] : "border-sky-400/30 bg-sky-400/10 text-sky-200"}`}
-                >
-                  {reel.position === 1 && <Crown className="size-6" aria-hidden />}
-                  <span className="text-lg font-semibold">{reel.position}º lugar</span>
-                  <span className="text-3xl font-bold tabular-nums">
-                    {number(reel.views)} <span className="text-base font-medium">views</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 break-all text-sm font-semibold">
-                    <Instagram className="size-4 shrink-0" aria-hidden /> @{reel.username}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {date.format(new Date(reel.published_at))}
-                  </span>
-                  <ReelLink reel={reel} />
-                </li>
-              ))}
-            </ol>
-            {ranking.length > 3 && (
-              <ol
-                start={4}
-                aria-label="Do quarto ao décimo lugar"
-                className="mx-4 mb-4 divide-y divide-border rounded-lg border border-border"
+          <ol aria-label="Ranking de Reels" className="divide-y divide-border">
+            {ranking.map((reel) => (
+              <li
+                key={reel.account_id + ":" + reel.media_id}
+                className="grid items-center gap-3 p-4 sm:grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,2fr)_auto]"
               >
-                {ranking.slice(3).map((reel) => (
-                  <li
-                    key={reel.account_id + ":" + reel.media_id}
-                    className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1 p-3"
-                  >
-                    <span className="w-8 text-center font-semibold text-sky-200">
-                      {reel.position}º
-                    </span>
-                    <div className="min-w-0">
-                      <p className="break-all text-sm font-semibold">@{reel.username}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {date.format(new Date(reel.published_at))}
-                      </p>
+                <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-sm font-semibold text-brand-red">
+                  {reel.position}º
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">@{reel.username}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {date.format(new Date(reel.published_at))}
+                  </p>
+                </div>
+                <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                  {[
+                    [
+                      "Interações",
+                      reel.interactions ??
+                        (reel.likes != null && reel.comments != null
+                          ? reel.likes + reel.comments
+                          : null),
+                    ],
+                    ["Visualizações", reel.views],
+                    ["Curtidas", reel.likes],
+                    ["Comentários", reel.comments],
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="text-muted-foreground">{label}</dt>
+                      <dd className="mt-1 font-semibold tabular-nums">
+                        {number(typeof value === "number" ? value : null)}
+                      </dd>
                     </div>
-                    <strong className="text-right text-sm tabular-nums">
-                      {number(reel.views)} views
-                    </strong>
-                    <div className="col-start-2 col-span-2">
-                      <ReelLink reel={reel} />
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </>
+                  ))}
+                </dl>
+                <ReelLink reel={reel} />
+              </li>
+            ))}
+          </ol>
         )}
       </section>
     </section>
