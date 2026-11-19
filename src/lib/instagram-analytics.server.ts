@@ -26,6 +26,7 @@ type Result = {
   graph?: { status: number; code?: number };
   catalogError?: "transport" | "response" | "pagination" | "graph";
   profileGraph?: { status: number; code?: number };
+  transportError?: "timeout" | "network" | "runtime";
   discovered?: boolean;
   restart?: boolean;
   after?: string;
@@ -59,9 +60,11 @@ async function readGraph<T>(
   const url = new URL(`${base}/${path}`);
   url.search = new URLSearchParams(params).toString();
   const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-    redirect: "error",
-    signal: AbortSignal.timeout(7_000),
+    headers: { Authorization: "Bearer " + token },
+    // Report redirects as an HTTP status and keep the token on the original host.
+    redirect: "manual",
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
   });
   const value = (await response.json().catch(() => null)) as
     | (T & { error?: { code?: number } })
@@ -148,8 +151,14 @@ async function readPage(base: string, token: string, job: Job, result: Result) {
   // carry a token or omit cursors.after; only accept the cursor parameter.
   let next: string | undefined;
   if (page.paging?.next) {
-    const pagingUrl = URL.canParse(page.paging.next) ? new URL(page.paging.next) : undefined;
-    next = page.paging.cursors?.after ?? pagingUrl?.searchParams.get("after") ?? undefined;
+    next = page.paging.cursors?.after;
+    if (!next) {
+      try {
+        next = new URL(page.paging.next).searchParams.get("after") ?? undefined;
+      } catch {
+        // A malformed pagination link cannot be used for another request.
+      }
+    }
     if (!next || next === job.after || next.length > 4096) {
       // Persist this page even if the following page cannot be fetched.
       result.catalog = [...items.values()];
@@ -173,7 +182,16 @@ async function collect(job: Job, token: string) {
         result.graph = { status: error.status, code: error.code };
         result.catalogError = "graph";
       } else {
-        result.catalogError = error instanceof CatalogError ? error.reason : "transport";
+        if (error instanceof CatalogError) result.catalogError = error.reason;
+        else {
+          result.catalogError = "transport";
+          result.transportError =
+            error instanceof Error && ["TimeoutError", "AbortError"].includes(error.name)
+              ? "timeout"
+              : error instanceof TypeError
+                ? "network"
+                : "runtime";
+        }
       }
       if (
         job.edge === "stories" &&
@@ -279,6 +297,7 @@ export async function runInstagramAnalytics(client: SupabaseClient<PostkitDataba
     graph: result.graph,
     catalogError: result.catalogError,
     profileGraph: result.profileGraph,
+    transportError: result.transportError,
   });
 }
 
