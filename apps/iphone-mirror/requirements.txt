@@ -1,0 +1,7 @@
+pymobiledevice3==11.58.0
+pytun-pmd3==3.0.3
+pyimg4==0.8.9
+av==19.0.2
+httpx==0.28.1
+Pillow==13.0.0
+PyInstaller==6.22.3

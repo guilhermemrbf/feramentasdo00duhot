@@ -17,6 +17,24 @@ export const TEMP_MAIL_URL = publicMailUrl(import.meta.env?.VITE_TEMP_MAIL_URL);
 
 const ALL_TOOLS = [
   {
+    id: "controlHub",
+    action: "Baixar para Windows",
+    path: "/fazenda-de-celulares",
+    name: "Fazenda de Celulares",
+    category: "Ambientes",
+    mode: "Aplicativo Windows",
+    summary: "Veja e controle iPhones por USB no Windows.",
+    input: "Um iPhone conectado com cabo USB de dados.",
+    output: "Tela do iPhone no computador, com mouse e teclado no iOS 27 ou superior.",
+    steps: [
+      "Baixe e instale a Fazenda de Celulares no Windows.",
+      "Conecte o iPhone desbloqueado por USB e confirme a confiança no aparelho.",
+      "Selecione o iPhone e clique em Conectar e abrir tela.",
+    ],
+    requirement:
+      "Windows 10/11 de 64 bits, conexão USB e Modo de Desenvolvedor ativo. O controle requer iOS 27 ou superior.",
+  },
+  {
     id: "tempMail",
     action: "Abrir caixa de entrada",
     path: "/email-temporario",

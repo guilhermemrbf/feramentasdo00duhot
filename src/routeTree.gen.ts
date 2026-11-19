@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AutomacaoInstagramRouteImport } from './routes/automacao-instagram'
 import { Route as AutomacaoTiktokRouteImport } from './routes/automacao-tiktok'
+import { Route as ControlHubRouteImport } from './routes/control-hub'
 import { Route as CriarPaginaRouteImport } from './routes/criar-pagina'
 import { Route as EmailTemporarioRouteImport } from './routes/email-temporario'
 import { Route as ExclusaoDeDadosRouteImport } from './routes/exclusao-de-dados'
+import { Route as FazendaDeCelularesRouteImport } from './routes/fazenda-de-celulares'
 import { Route as FunilRouteImport } from './routes/funil'
 import { Route as GerarPreviewRouteImport } from './routes/gerar-preview'
 import { Route as HotProfilesRouteImport } from './routes/hot-profiles'
@@ -43,6 +45,11 @@ const AutomacaoTiktokRoute = AutomacaoTiktokRouteImport.update({
   path: '/automacao-tiktok',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ControlHubRoute = ControlHubRouteImport.update({
+  id: '/control-hub',
+  path: '/control-hub',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CriarPaginaRoute = CriarPaginaRouteImport.update({
   id: '/criar-pagina',
   path: '/criar-pagina',
@@ -56,6 +63,11 @@ const EmailTemporarioRoute = EmailTemporarioRouteImport.update({
 const ExclusaoDeDadosRoute = ExclusaoDeDadosRouteImport.update({
   id: '/exclusao-de-dados',
   path: '/exclusao-de-dados',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FazendaDeCelularesRoute = FazendaDeCelularesRouteImport.update({
+  id: '/fazenda-de-celulares',
+  path: '/fazenda-de-celulares',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FunilRoute = FunilRouteImport.update({
@@ -124,9 +136,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
+  '/control-hub': typeof ControlHubRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/email-temporario': typeof EmailTemporarioRoute
   '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
+  '/fazenda-de-celulares': typeof FazendaDeCelularesRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
@@ -144,9 +158,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
+  '/control-hub': typeof ControlHubRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/email-temporario': typeof EmailTemporarioRoute
   '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
+  '/fazenda-de-celulares': typeof FazendaDeCelularesRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
@@ -165,9 +181,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
+  '/control-hub': typeof ControlHubRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/email-temporario': typeof EmailTemporarioRoute
   '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
+  '/fazenda-de-celulares': typeof FazendaDeCelularesRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
@@ -187,9 +205,11 @@ export interface FileRouteTypes {
     | '/'
     | '/automacao-instagram'
     | '/automacao-tiktok'
+    | '/control-hub'
     | '/criar-pagina'
     | '/email-temporario'
     | '/exclusao-de-dados'
+    | '/fazenda-de-celulares'
     | '/funil'
     | '/gerar-preview'
     | '/hot-profiles'
@@ -207,9 +227,11 @@ export interface FileRouteTypes {
     | '/'
     | '/automacao-instagram'
     | '/automacao-tiktok'
+    | '/control-hub'
     | '/criar-pagina'
     | '/email-temporario'
     | '/exclusao-de-dados'
+    | '/fazenda-de-celulares'
     | '/funil'
     | '/gerar-preview'
     | '/hot-profiles'
@@ -227,9 +249,11 @@ export interface FileRouteTypes {
     | '/'
     | '/automacao-instagram'
     | '/automacao-tiktok'
+    | '/control-hub'
     | '/criar-pagina'
     | '/email-temporario'
     | '/exclusao-de-dados'
+    | '/fazenda-de-celulares'
     | '/funil'
     | '/gerar-preview'
     | '/hot-profiles'
@@ -248,9 +272,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AutomacaoInstagramRoute: typeof AutomacaoInstagramRoute
   AutomacaoTiktokRoute: typeof AutomacaoTiktokRoute
+  ControlHubRoute: typeof ControlHubRoute
   CriarPaginaRoute: typeof CriarPaginaRoute
   EmailTemporarioRoute: typeof EmailTemporarioRoute
   ExclusaoDeDadosRoute: typeof ExclusaoDeDadosRoute
+  FazendaDeCelularesRoute: typeof FazendaDeCelularesRoute
   FunilRoute: typeof FunilRoute
   GerarPreviewRoute: typeof GerarPreviewRoute
   HotProfilesRoute: typeof HotProfilesRoute
@@ -288,6 +314,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AutomacaoTiktokRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/control-hub': {
+      id: '/control-hub'
+      path: '/control-hub'
+      fullPath: '/control-hub'
+      preLoaderRoute: typeof ControlHubRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/criar-pagina': {
       id: '/criar-pagina'
       path: '/criar-pagina'
@@ -307,6 +340,13 @@ declare module '@tanstack/react-router' {
       path: '/exclusao-de-dados'
       fullPath: '/exclusao-de-dados'
       preLoaderRoute: typeof ExclusaoDeDadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fazenda-de-celulares': {
+      id: '/fazenda-de-celulares'
+      path: '/fazenda-de-celulares'
+      fullPath: '/fazenda-de-celulares'
+      preLoaderRoute: typeof FazendaDeCelularesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/funil': {
@@ -400,9 +440,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AutomacaoInstagramRoute: AutomacaoInstagramRoute,
   AutomacaoTiktokRoute: AutomacaoTiktokRoute,
+  ControlHubRoute: ControlHubRoute,
   CriarPaginaRoute: CriarPaginaRoute,
   EmailTemporarioRoute: EmailTemporarioRoute,
   ExclusaoDeDadosRoute: ExclusaoDeDadosRoute,
+  FazendaDeCelularesRoute: FazendaDeCelularesRoute,
   FunilRoute: FunilRoute,
   GerarPreviewRoute: GerarPreviewRoute,
   HotProfilesRoute: HotProfilesRoute,

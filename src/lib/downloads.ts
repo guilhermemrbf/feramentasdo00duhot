@@ -9,6 +9,10 @@ function packageDownload(tag: string, filename: string) {
 }
 
 export const downloads = {
+  fazendaDeCelulares: {
+    version: "0.6.0",
+    ...packageDownload("fazenda-de-celulares-v0.6.0", "Fazenda-de-Celulares-0.6.0-Setup-Windows-x64.exe"),
+  },
   mouseHotDownloader: {
     version: "3.0.7",
     url: "/downloads/Mouse-Hot-Downloader-3.0.7.zip",
