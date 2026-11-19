@@ -1,16 +1,6 @@
 import { useState } from "react";
-import { Instagram, Loader2, RefreshCw, Unplug } from "lucide-react";
+import { Instagram, Loader2, RefreshCw } from "lucide-react";
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-} from "@/components/ui/alert-dialog";
-import {
-  disconnectInstagramConnection,
   verifyInstagramConnection,
   type InstagramConnectionCheck,
 } from "@/lib/api/instagram-connection.functions";
@@ -63,8 +53,6 @@ export function InstagramConnectionDetails({
   onReconnect: () => void;
 }) {
   const [checking, setChecking] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
-  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [check, setCheck] = useState<InstagramConnectionCheck | null>(null);
   const [error, setError] = useState("");
   const [pictureFailed, setPictureFailed] = useState(false);
@@ -154,7 +142,7 @@ export function InstagramConnectionDetails({
           {ready && (
             <button
               type="button"
-              disabled={checking || disconnecting || disabled}
+              disabled={checking || disabled}
               className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 py-2 font-medium disabled:opacity-50"
               onClick={async () => {
                 setChecking(true);
@@ -183,26 +171,12 @@ export function InstagramConnectionDetails({
           )}
           <button
             type="button"
-            disabled={checking || disconnecting || disabled}
+            disabled={checking || disabled}
             onClick={onReconnect}
             className="min-h-10 rounded-md border border-border px-3 py-2 font-medium disabled:opacity-50"
           >
             Reconectar Instagram
           </button>
-          {account.connection_status !== "revoked" && (
-            <button
-              type="button"
-              disabled={checking || disconnecting || disabled}
-              onClick={() => {
-                setError("");
-                setConfirmDisconnect(true);
-              }}
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-red-400/30 px-3 py-2 font-medium text-red-300 disabled:opacity-50"
-            >
-              <Unplug aria-hidden="true" className="size-4" />
-              Desconectar desta operação
-            </button>
-          )}
         </div>
         {check && (
           <p
@@ -220,55 +194,6 @@ export function InstagramConnectionDetails({
           </p>
         )}
       </details>
-      <AlertDialog
-        open={confirmDisconnect}
-        onOpenChange={(open) => {
-          if (!disconnecting) setConfirmDisconnect(open);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Desconectar @{account.username}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Os Reels agendados e os lembretes pendentes de Stories desta conta serão cancelados, e
-              as repetições serão pausadas. Sua biblioteca e o histórico permanecem salvos. As
-              outras contas continuam conectadas. Reconectar depois não reativa os agendamentos
-              cancelados.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {error && (
-            <p role="alert" className="text-sm text-red-300">
-              {error}
-            </p>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={disconnecting}>Manter conectada</AlertDialogCancel>
-            <button
-              type="button"
-              disabled={disconnecting}
-              className="min-h-10 rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50"
-              onClick={async () => {
-                setDisconnecting(true);
-                setError("");
-                try {
-                  await disconnectInstagramConnection({
-                    data: { workspaceId, accountId: account.id },
-                  });
-                  setCheck(null);
-                  setConfirmDisconnect(false);
-                  onChanged();
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : "Não foi possível desconectar.");
-                } finally {
-                  setDisconnecting(false);
-                }
-              }}
-            >
-              {disconnecting ? "Desconectando…" : "Confirmar desconexão"}
-            </button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

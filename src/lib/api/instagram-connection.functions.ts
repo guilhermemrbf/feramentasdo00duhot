@@ -127,7 +127,7 @@ export const disconnectInstagramConnection = createServerFn({ method: "POST" })
     if (error) {
       if (error.message.includes("account_publish_in_progress"))
         throw new Error(
-          "Há um Reel em processamento. Aguarde a conclusão ou cancele-o antes de desconectar.",
+          "Há um Reel em processamento nesta conta. Tente novamente quando o processamento terminar.",
         );
       if (error.code === "PGRST202")
         throw new Error(

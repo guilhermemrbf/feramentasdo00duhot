@@ -104,6 +104,9 @@ try {
     /Invalid Instagram profile/,
   );
   await db.exec(`update posts set status='published' where id='${id(33)}'`);
+  await db.query("update instagram_accounts set connection_status='expired' where id=$1", [
+    account,
+  ]);
   await actor("authenticated", editor);
   assert.deepEqual((await disconnect()).rows[0].result, {
     disconnected: true,

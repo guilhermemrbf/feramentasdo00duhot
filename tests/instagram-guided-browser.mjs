@@ -32,6 +32,7 @@ let stories = 0;
 let workerActive = false;
 let accountVerifiedAt = "2026-11-15T00:00:00Z";
 let accountBDisconnected = false;
+let accountBExpired = false;
 let disconnections = 0;
 let firstAccountRead = true;
 let releaseInitialAccounts;
@@ -110,7 +111,11 @@ const api = http.createServer(async (req, res) => {
         id: id(3),
         username: "conta_fixture_b",
         instagram_user_id: "133",
-        connection_status: accountBDisconnected ? "revoked" : "connected",
+        connection_status: accountBDisconnected
+          ? "revoked"
+          : accountBExpired
+            ? "expired"
+            : "connected",
         last_verified_at: "2026-11-15T00:00:00Z",
         account_type: "BUSINESS",
         auth_mode: "instagram_unified_login",
@@ -461,13 +466,26 @@ try {
     .filter({ hasText: /Não foi possível verificar/ })
     .waitFor();
   assert.equal(accountBDisconnected, false); // A missing token fixture is never called verified.
-  await detailsB.getByRole("button", { name: "Desconectar desta operação", exact: true }).click();
+  accountBExpired = true;
+  await page.reload();
+  await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
+  const cardB = page.getByRole("button", { name: "Abrir conta @conta_fixture_b", exact: true });
+  const disconnectB = page.getByRole("button", {
+    name: "Desconectar @conta_fixture_b",
+    exact: true,
+  });
+  assert.match(await cardB.innerText(), /Acesso expirado/);
+  await disconnectB.click();
+  await page
+    .getByRole("alertdialog", { name: "Desconectar @conta_fixture_b?", exact: true })
+    .waitFor();
+  assert.equal(await optionsB.count(), 0);
   await page
     .getByRole("alertdialog")
     .getByRole("button", { name: "Manter conectada", exact: true })
     .click();
   assert.equal(disconnections, 0);
-  await detailsB.getByRole("button", { name: "Desconectar desta operação", exact: true }).click();
+  await disconnectB.click();
   const disconnectedResponse = page.waitForResponse(
     (response) => response.url().includes("/_serverFn/") && response.request().method() === "POST",
   );
@@ -477,19 +495,18 @@ try {
     .click();
   await disconnectedResponse;
   await page.getByRole("alertdialog").waitFor({ state: "detached" });
-  await detailsB
-    .getByRole("button", { name: "Desconectar desta operação", exact: true })
-    .waitFor({ state: "detached" });
+  await disconnectB.waitFor({ state: "detached" });
+  assert.match(await cardB.innerText(), /Desconectada/);
+  const cardA = page.getByRole("button", { name: "Abrir conta @conta_fixture_a", exact: true });
+  assert.match(await cardA.innerText(), /Conectada/);
   assert.equal(disconnections, 1);
   await page.reload();
   await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
   await page.getByRole("button", { name: "Abrir conta @conta_fixture_b", exact: true }).click();
   await detailsB.locator("summary").click();
   await page.getByText("Conecte esta conta novamente", { exact: true }).waitFor();
-  assert.equal(
-    await detailsB.getByRole("button", { name: "Desconectar desta operação", exact: true }).count(),
-    0,
-  );
+  assert.equal(await disconnectB.count(), 0);
+  assert.match(await cardB.innerText(), /Desconectada/);
   await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
   assert.equal(await page.getByRole("region", { name: "Passo a passo por conta" }).count(), 0);
   await page.getByRole("button", { name: "Abrir conta @conta_fixture_a", exact: true }).click();

@@ -1596,8 +1596,33 @@ function InstagramWorkspacePage({
                     accounts={connectedAccounts}
                     selected={tab === "contas" ? openedAccountId : selectedAccountId}
                     videoCounts={videosLoaded ? videosByAccount : undefined}
-                    disabled={libraryBusy || loginWaiting}
+                    disabled={libraryBusy || loginWaiting || !!connecting}
                     onSelect={tab === "contas" ? setOpenedAccountId : chooseReelAccount}
+                    management={
+                      tab === "contas"
+                        ? {
+                            workspaceId: workspace.id,
+                            onDisconnected: (account) => {
+                              setConnectedAccounts((accounts) =>
+                                accounts.map((item) =>
+                                  item.id === account.id
+                                    ? {
+                                        ...item,
+                                        connection_status: "revoked",
+                                        scopes: [],
+                                        token_expires_at: null,
+                                      }
+                                    : item,
+                                ),
+                              );
+                              if (selectedAccountId === account.id) resetReelDraft("");
+                              setAccountRefresh((value) => value + 1);
+                              setHistoryRefresh((value) => value + 1);
+                              setNotice(`@${account.username} foi desconectada do MouseHot.`);
+                            },
+                          }
+                        : undefined
+                    }
                   />
                   {tab === "contas" && openedAccount && (
                     <section
@@ -1605,6 +1630,7 @@ function InstagramWorkspacePage({
                       className="mt-5 space-y-4 rounded-xl border border-primary/30 bg-background/50 p-4 sm:p-5"
                     >
                       <InstagramConnectionDetails
+                        key={openedAccount.id}
                         account={openedAccount}
                         workspaceId={workspace.id}
                         timeZone={workspace.timezone}
