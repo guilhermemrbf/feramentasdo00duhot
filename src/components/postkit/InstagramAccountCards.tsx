@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 import { ChevronRight, Instagram, Unplug } from "lucide-react";
 import {
   AlertDialog,
@@ -15,7 +15,6 @@ import type { InstagramConnectionDetailsAccount } from "./InstagramConnectionDet
 const connectionLabels: Record<string, string> = {
   connected: "Conectada",
   expired: "Acesso expirado",
-  revoked: "Desconectada",
   pending: "Aguardando autorização",
   error: "Precisa de atenção",
 };
@@ -35,6 +34,7 @@ export function InstagramAccountCards({
   disabled?: boolean;
   management?: {
     workspaceId: string;
+    fallbackFocus: RefObject<HTMLButtonElement | null>;
     onDisconnected: (account: InstagramConnectionDetailsAccount) => void;
   };
 }) {
@@ -52,7 +52,7 @@ export function InstagramAccountCards({
       await disconnectInstagramConnection({
         data: { workspaceId: management.workspaceId, accountId: target.id },
       });
-      returnFocus.current = accountButtons.current.get(target.id) ?? null;
+      returnFocus.current = null;
       setTarget(undefined);
       management.onDisconnected(target);
     } catch (error) {
@@ -103,7 +103,7 @@ export function InstagramAccountCards({
                 <span className="min-w-0 flex-1">
                   <strong className="block truncate text-sm">@{account.username}</strong>
                   <span
-                    className={`mt-1 block text-xs ${connected ? "text-emerald-300" : account.connection_status === "revoked" ? "text-muted-foreground" : "text-amber-200"}`}
+                    className={`mt-1 block text-xs ${connected ? "text-emerald-300" : "text-amber-200"}`}
                   >
                     {connectionLabels[account.connection_status] ?? "Precisa de atenção"}
                   </span>
@@ -149,7 +149,11 @@ export function InstagramAccountCards({
         <AlertDialogContent
           onCloseAutoFocus={(event) => {
             event.preventDefault();
-            returnFocus.current?.focus();
+            const focusTarget =
+              returnFocus.current ??
+              accountButtons.current.values().next().value ??
+              management?.fallbackFocus.current;
+            focusTarget?.focus();
           }}
         >
           <AlertDialogHeader>

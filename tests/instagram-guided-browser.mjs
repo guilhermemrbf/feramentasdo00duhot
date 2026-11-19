@@ -485,6 +485,8 @@ try {
     .getByRole("button", { name: "Manter conectada", exact: true })
     .click();
   assert.equal(disconnections, 0);
+  await cardB.click();
+  await optionsB.waitFor();
   await disconnectB.click();
   const disconnectedResponse = page.waitForResponse(
     (response) => response.url().includes("/_serverFn/") && response.request().method() === "POST",
@@ -495,18 +497,26 @@ try {
     .click();
   await disconnectedResponse;
   await page.getByRole("alertdialog").waitFor({ state: "detached" });
-  await disconnectB.waitFor({ state: "detached" });
-  assert.match(await cardB.innerText(), /Desconectada/);
+  await cardB.waitFor({ state: "detached" });
+  await optionsB.waitFor({ state: "detached" });
+  assert.equal(await disconnectB.count(), 0);
+  await page
+    .getByRole("status")
+    .filter({ hasText: /@conta_fixture_b foi desconectada/ })
+    .waitFor();
   const cardA = page.getByRole("button", { name: "Abrir conta @conta_fixture_a", exact: true });
   assert.match(await cardA.innerText(), /Conectada/);
   assert.equal(disconnections, 1);
   await page.reload();
   await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
-  await page.getByRole("button", { name: "Abrir conta @conta_fixture_b", exact: true }).click();
-  await detailsB.locator("summary").click();
-  await page.getByText("Conecte esta conta novamente", { exact: true }).waitFor();
+  await cardA.waitFor();
+  assert.equal(await cardB.count(), 0);
   assert.equal(await disconnectB.count(), 0);
-  assert.match(await cardB.innerText(), /Desconectada/);
+  await page.getByRole("button", { name: "Biblioteca de Reels", exact: true }).click();
+  await page.getByRole("button", { name: /@conta_fixture_b/ }).click();
+  await page
+    .getByRole("heading", { name: "Biblioteca de @conta_fixture_b", exact: true })
+    .waitFor();
   await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
   assert.equal(await page.getByRole("region", { name: "Passo a passo por conta" }).count(), 0);
   await page.getByRole("button", { name: "Abrir conta @conta_fixture_a", exact: true }).click();

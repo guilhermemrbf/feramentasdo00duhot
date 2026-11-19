@@ -263,6 +263,7 @@ function InstagramWorkspacePage({
   const loginPopup = useRef<Awaited<ReturnType<typeof openInstagramAuthorization>> | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [openedAccountId, setOpenedAccountId] = useState("");
+  const connectAccountButton = useRef<HTMLButtonElement>(null);
   const [analyticsAccountId, setAnalyticsAccountId] = useState("");
   const [queueAccountId, setQueueAccountId] = useState("");
   const [accountReelFlow, setAccountReelFlow] = useState(false);
@@ -717,14 +718,17 @@ function InstagramWorkspacePage({
     [times],
   );
 
-  const readyAccounts = connectedAccounts.filter(
+  const managedAccounts = connectedAccounts.filter(
+    (account) => account.connection_status !== "revoked",
+  );
+  const readyAccounts = managedAccounts.filter(
     (account) => account.connection_status === "connected",
   );
   const reelAccount = readyAccounts.find((account) => account.id === selectedAccountId);
   const libraryAccount = libraryOpen
     ? connectedAccounts.find((account) => account.id === selectedAccountId)
     : undefined;
-  const openedAccount = connectedAccounts.find((account) => account.id === openedAccountId);
+  const openedAccount = managedAccounts.find((account) => account.id === openedAccountId);
   const libraryBusy = uploading || linkingVideos || savingQueue;
   const videosByAccount = useMemo(() => {
     const counts = new Map<string, number>();
@@ -1570,6 +1574,7 @@ function InstagramWorkspacePage({
             >
               {tab === "contas" && (
                 <button
+                  ref={connectAccountButton}
                   type="button"
                   disabled={!!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError}
                   className="mb-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
@@ -1586,14 +1591,14 @@ function InstagramWorkspacePage({
                 <p role="status" className="text-sm text-muted-foreground">
                   {accountsLoadError || "Carregando contas…"}
                 </p>
-              ) : connectedAccounts.length ? (
+              ) : managedAccounts.length ? (
                 <>
                   <p className="mb-4 text-sm text-muted-foreground">
                     Abra um perfil para enviar vídeos, agendar Reels ou acompanhar os resultados
                     dessa conta.
                   </p>
                   <InstagramAccountCards
-                    accounts={connectedAccounts}
+                    accounts={managedAccounts}
                     selected={tab === "contas" ? openedAccountId : selectedAccountId}
                     videoCounts={videosLoaded ? videosByAccount : undefined}
                     disabled={libraryBusy || loginWaiting || !!connecting}
@@ -1602,6 +1607,7 @@ function InstagramWorkspacePage({
                       tab === "contas"
                         ? {
                             workspaceId: workspace.id,
+                            fallbackFocus: connectAccountButton,
                             onDisconnected: (account) => {
                               setConnectedAccounts((accounts) =>
                                 accounts.map((item) =>
@@ -1615,6 +1621,7 @@ function InstagramWorkspacePage({
                                     : item,
                                 ),
                               );
+                              setOpenedAccountId((id) => (id === account.id ? "" : id));
                               if (selectedAccountId === account.id) resetReelDraft("");
                               setAccountRefresh((value) => value + 1);
                               setHistoryRefresh((value) => value + 1);
