@@ -84,6 +84,91 @@ try {
       values('${w}','${account}','fixture','{${media}}','',120,now()+interval '1 day');
     insert into instagram_story_reminders(id,workspace_id,instagram_account_id,storage_path,filename,mime_type,link_url,link_title,sticker_x,sticker_y,scheduled_at)
       values('${id(40)}','${w}','${account}','${w}/${id(40)}/fixture.png','fixture.png','image/png','https://example.test','Fixture',50,50,now()+interval '1 day');`);
+  await db.exec(await sql("supabase/migrations/20261120100000_instagram_workspace_apps.sql"));
+  const newWorkspace = id(4);
+  await db.query("insert into workspaces(id,name,owner_id) values($1,'Nova operação',$2)", [
+    newWorkspace,
+    viewer,
+  ]);
+  await db.query(
+    "insert into workspace_members(workspace_id,user_id,role) values($1,$2,'editor')",
+    [newWorkspace, editor],
+  );
+  const register = (workspace, user, app = "1234", config = "4567") =>
+    one("select public.save_instagram_workspace_app($1,$2,$3,$4,'v1.fixture') ok", [
+      workspace,
+      user,
+      app,
+      config,
+    ]);
+  const grant = (workspace, user, revision, configId) =>
+    one("select public.save_workspace_instagram_grant($1,$2,$3,$4::jsonb,$5,'v1.token',null) ok", [
+      workspace,
+      user,
+      revision,
+      JSON.stringify([{ id: "422", username: "new_fixture", login_config_id: configId }]),
+      ["instagram_basic", "instagram_content_publish"],
+    ]);
+  await actor("service_role");
+  const legacy = await one(
+    "select app_id, revision from instagram_workspace_apps where workspace_id=$1",
+    [w],
+  );
+  assert.equal(legacy.app_id, null);
+  assert.equal(
+    await one("select * from instagram_workspace_apps where workspace_id=$1", [newWorkspace]),
+    undefined,
+  );
+  assert.deepEqual(await grant(newWorkspace, viewer, legacy.revision, "4567"), { ok: false });
+  assert.deepEqual(await register(w, owner), { ok: false });
+  await assert.rejects(register(newWorkspace, editor), /Workspace administrator required/);
+  await assert.rejects(register(newWorkspace, owner), /Workspace administrator required/);
+  assert.deepEqual(await register(newWorkspace, viewer), { ok: true });
+  const app = await one(
+    "select app_id, revision, secret_ciphertext from instagram_workspace_apps where workspace_id=$1",
+    [newWorkspace],
+  );
+  assert.equal(app.app_id, "1234");
+  assert.equal(app.secret_ciphertext, "v1.fixture");
+  assert.deepEqual(await register(newWorkspace, viewer, "1234", "8901"), { ok: true });
+  const rotated = await one("select revision from instagram_workspace_apps where workspace_id=$1", [
+    newWorkspace,
+  ]);
+  assert.notEqual(rotated.revision, app.revision);
+  assert.deepEqual(await grant(newWorkspace, viewer, app.revision, "4567"), { ok: false });
+  assert.deepEqual(await grant(newWorkspace, viewer, rotated.revision, "4567"), { ok: false });
+  await assert.rejects(
+    grant(newWorkspace, owner, rotated.revision, "8901"),
+    /Workspace access denied/,
+  );
+  assert.deepEqual(await grant(newWorkspace, editor, rotated.revision, "8901"), { ok: true });
+  const newAccount = await one(
+    "select id, login_config_id from instagram_accounts where workspace_id=$1",
+    [newWorkspace],
+  );
+  assert.equal(newAccount.login_config_id, "8901");
+  assert.deepEqual(await register(newWorkspace, viewer, "1235"), { ok: false });
+  await actor("authenticated", viewer);
+  await assert.rejects(
+    one("select secret_ciphertext from instagram_workspace_apps"),
+    /permission denied/,
+  );
+  await assert.rejects(register(newWorkspace, viewer), /permission denied/);
+  await assert.rejects(grant(newWorkspace, viewer, rotated.revision, "8901"), /permission denied/);
+  await assert.rejects(
+    db.query("update instagram_accounts set username='fake' where id=$1", [newAccount.id]),
+    /permission denied/,
+  );
+  await disconnectOwnFixture();
+
+  async function disconnectOwnFixture() {
+    const removed = await one("select public.disconnect_instagram_account($1) result", [
+      newAccount.id,
+    ]);
+    assert.equal(removed.result.disconnected, true);
+    await actor("service_role");
+    assert.deepEqual(await register(newWorkspace, viewer, "1235"), { ok: true });
+  }
   await actor("anon");
   await assert.rejects(disconnect(), /permission denied/);
   for (const who of [null, viewer, stranger]) {

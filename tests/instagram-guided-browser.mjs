@@ -35,6 +35,13 @@ let accountBDisconnected = false;
 let accountBExpired = false;
 let disconnections = 0;
 let firstAccountRead = true;
+let freshWorkspace = false;
+let appRow = null;
+let freshAccount = null;
+const customerApp = "12345678901";
+const customerConfig = "12345678902";
+const customerSecret = "3".repeat(32);
+const customerToken = "customer-access-token";
 let releaseInitialAccounts;
 const initialAccountsGate = new Promise((resolve) => {
   releaseInitialAccounts = resolve;
@@ -84,8 +91,59 @@ const api = http.createServer(async (req, res) => {
 
   if (name === "user") body = user;
   if (name === "ensure_postkit_workspace")
-    body = [{ id: id(1), name: "Operação de teste", timezone: "America/Sao_Paulo", role: "owner" }];
+    body = [
+      {
+        id: id(freshWorkspace ? 5 : 1),
+        name: "Operação de teste",
+        timezone: "America/Sao_Paulo",
+        owner_id: user.id,
+      },
+    ];
   if (name === "has_workspace_role") body = true;
+  if (name === "workspaces") body = [{ owner_id: user.id }];
+  if (name === "workspace_members") body = [];
+  if (name === "instagram_workspace_apps") {
+    assert.equal(req.headers.apikey, "fixture-service");
+    const config = freshWorkspace
+      ? appRow
+      : { revision: id(41), app_id: null, login_config_id: null };
+    if (config && url.searchParams.get("select") !== "app_id,login_config_id,secret_ciphertext") {
+      const { secret_ciphertext: _secret, ...publicConfig } = config;
+      body = [publicConfig];
+    } else body = config ? [config] : [];
+  }
+  if (name === "save_instagram_workspace_app") {
+    assert.equal(req.headers.apikey, "fixture-service");
+    assert.equal(input.p_workspace_id, id(5));
+    assert.equal(input.p_user_id, user.id);
+    assert.equal(input.p_app_id, customerApp);
+    assert.match(input.p_secret_ciphertext, /^v1\./);
+    assert.ok(!input.p_secret_ciphertext.includes(customerSecret));
+    appRow = {
+      revision: id(42),
+      app_id: input.p_app_id,
+      login_config_id: input.p_login_config_id,
+      secret_ciphertext: input.p_secret_ciphertext,
+    };
+    body = true;
+  }
+  if (name === "save_workspace_instagram_grant") {
+    assert.equal(req.headers.apikey, "fixture-service");
+    assert.equal(input.p_workspace_id, id(5));
+    assert.equal(input.p_revision, appRow.revision);
+    assert.equal(input.p_accounts[0].id, "299");
+    assert.equal(input.p_accounts[0].login_config_id, customerConfig);
+    assert.match(input.p_token_ciphertext, /^v1\./);
+    freshAccount = {
+      id: id(6),
+      username: input.p_accounts[0].username,
+      instagram_user_id: "299",
+      last_verified_at: new Date().toISOString(),
+      connection_status: "connected",
+      scopes: input.p_scopes,
+    };
+    body = true;
+  }
   if (name === "instagram_worker_is_active") body = workerActive;
   if (name === "enable_instagram_worker") {
     workerActive = true;
@@ -125,6 +183,7 @@ const api = http.createServer(async (req, res) => {
   if (name === "instagram_accounts" && url.searchParams.has("id")) {
     body = body.find((row) => row.id === url.searchParams.get("id").replace("eq.", "")) ?? null;
   }
+  if (freshWorkspace && name === "instagram_accounts") body = freshAccount ? [freshAccount] : [];
   if (name === "instagram_tokens") body = null;
   if (name === "disconnect_instagram_account") {
     assert.equal(input.p_account_id, id(3));
@@ -133,7 +192,7 @@ const api = http.createServer(async (req, res) => {
     body = { disconnected: true, cancelledPosts: 0, cancelledStories: 0 };
   }
   if (name === "media_assets")
-    body = [2, 3].flatMap((a) =>
+    body = (freshWorkspace ? [] : [2, 3]).flatMap((a) =>
       Array.from({ length: 20 }, (_, i) => ({
         id: id(a * 100 + i),
         original_filename: `conta-${a}-video-${i + 1}.mp4`,
@@ -233,10 +292,44 @@ const env = {
   META_GRAPH_API_VERSION: "v24.0",
   META_INSTAGRAM_LOGIN_CONFIG_ID: "123456",
   INSTAGRAM_OAUTH_STATE_SECRET: "fixture-only-state-secret-at-least-32-characters",
+  INSTAGRAM_TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
 };
+const metaFixture = `
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (target, init) => {
+    const url = new URL(target instanceof Request ? target.url : target);
+    if (url.hostname !== "graph.facebook.com") return originalFetch(target, init);
+    const auth = new Headers(init?.headers).get("Authorization");
+    if (url.pathname.endsWith("/${customerApp}"))
+      return Promise.resolve(auth === "Bearer ${customerApp}|${customerSecret}" ?
+        Response.json({ id: "${customerApp}" }) : Response.json({}, { status: 401 }));
+    if (url.pathname.endsWith("/oauth/access_token") &&
+      url.searchParams.get("client_id") === "${customerApp}" &&
+      url.searchParams.get("client_secret") === "${customerSecret}" &&
+      url.searchParams.get("code") === "authorized-fixture")
+      return Promise.resolve(Response.json({ access_token: "${customerToken}" }));
+    if (url.pathname.endsWith("/debug_token") &&
+      auth === "Bearer ${customerApp}|${customerSecret}" &&
+      url.searchParams.get("input_token") === "${customerToken}")
+      return Promise.resolve(Response.json({ data: { app_id: "${customerApp}", is_valid: true, expires_at: 0, scopes: ["instagram_basic", "instagram_content_publish"] } }));
+    if (url.pathname.endsWith("/me") && auth === "Bearer ${customerToken}")
+      return Promise.resolve(Response.json({ client_business_id: "101" }));
+    if (url.pathname.endsWith("/me/assigned_instagram_accounts") && auth === "Bearer ${customerToken}")
+      return Promise.resolve(Response.json({ data: [{ id: "299", username: "cliente_fixture" }] }));
+    return Promise.resolve(Response.json({}, { status: 403 }));
+  };
+`;
 const vite = spawn(
   process.execPath,
-  ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "4384", "--strictPort"],
+  [
+    "--import=data:text/javascript;base64," + Buffer.from(metaFixture).toString("base64"),
+    "node_modules/vite/bin/vite.js",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "4384",
+    "--strictPort",
+  ],
   { env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true },
 );
 let output = "";
@@ -566,9 +659,78 @@ try {
     .click();
   assert.equal(await page.getByRole("region", { name: "Passo a passo por conta" }).count(), 0);
   await page.getByRole("button", { name: "Próximo: biblioteca de Stories", exact: true }).waitFor();
+  freshWorkspace = true;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(web + "/automacao-instagram?tab=stories");
+  await page.getByRole("heading", { name: "Primeiros passos" }).waitFor();
+  assert.equal(
+    await page
+      .getByRole("progressbar", { name: "Progresso dos primeiros passos" })
+      .getAttribute("value"),
+    "0",
+  );
+  assert.equal(
+    await page.getByRole("region", { name: "Biblioteca exclusiva de Stories" }).count(),
+    0,
+  );
+  assert.equal(
+    await page.getByText(web + "/api/instagram/oauth/callback", { exact: true }).count(),
+    1,
+  );
+  assert.equal(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    true,
+  );
+  if (process.env.INSTAGRAM_BROWSER_SCREENSHOTS)
+    await page.screenshot({
+      path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "primeiros-passos-mobile.png"),
+      fullPage: true,
+    });
+  await page.getByLabel("ID do app Meta").fill(customerApp);
+  await page.getByLabel("ID da configuração do Login Unificado").fill(customerConfig);
+  await page.getByLabel("Segredo do app").fill("4".repeat(32));
+  await page.getByRole("button", { name: "Validar e salvar app" }).click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: /Meta não aceitou/ })
+    .waitFor();
+  assert.equal(appRow, null);
+  await page.getByLabel("Segredo do app").fill(customerSecret);
+  await page.getByRole("button", { name: "Validar e salvar app" }).click();
+  const firstSteps = page.getByRole("region", { name: "Primeiros passos" });
+  await firstSteps.getByRole("button", { name: "Conectar Instagram" }).waitFor();
+  assert.equal(await firstSteps.getByRole("progressbar").getAttribute("value"), "1");
+  assert.equal(
+    await page.getByRole("region", { name: "Biblioteca exclusiva de Stories" }).count(),
+    0,
+  );
+  assert.equal(await page.getByLabel("Segredo do app").count(), 0);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await firstSteps.getByRole("button", { name: "Conectar Instagram" }).click();
+  const newLogin = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).click();
+  const freshPopup = await newLogin;
+  await freshPopup.waitForURL("https://www.facebook.com/**");
+  const auth = new URL(freshPopup.url());
+  assert.equal(auth.searchParams.get("client_id"), customerApp);
+  assert.equal(auth.searchParams.get("config_id"), customerConfig);
+  assert.ok(!auth.href.includes(customerSecret));
+  const cb = new URL(auth.searchParams.get("redirect_uri"));
+  cb.searchParams.set("state", auth.searchParams.get("state"));
+  cb.searchParams.set("code", "authorized-fixture");
+  await freshPopup.goto(cb.href).catch((error) => {
+    if (!/closed/i.test(error.message)) throw error;
+  });
+  await page
+    .getByRole("status")
+    .filter({ hasText: /@cliente_fixture conectada/ })
+    .waitFor();
+  await page.goto(web + "/automacao-instagram");
+  await page.getByRole("button", { name: "Abrir conta @cliente_fixture" }).waitFor();
+  assert.equal(await firstSteps.getByRole("progressbar").getAttribute("value"), "2");
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: native OAuth popup and optional connector, new-account steps, existing-account flow, persistent Stories library upload/reload/copy and reminder activation, independent connection, random 20 Reels at 10/day, confirmed RPC, responsive layout; fixtures only",
+    "PASS: legacy and own-app OAuth, first-steps gates, authenticated credential validation/registration, own-app callback and persistence, separate Stories and Reels, responsive layout; fixtures only",
   );
 } catch (e) {
   console.error(e.stack || e.message);

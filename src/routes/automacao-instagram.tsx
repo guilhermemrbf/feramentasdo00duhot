@@ -59,6 +59,11 @@ import { calendarDateInZone } from "@/lib/scheduling";
 import { InstagramHistory } from "@/components/postkit/InstagramHistory";
 import { InstagramAccountCards } from "@/components/postkit/InstagramAccountCards";
 import { InstagramDashboard } from "@/components/postkit/InstagramDashboard";
+import {
+  InstagramWorkspaceSetup,
+  type WorkspaceAppStatus,
+} from "@/components/postkit/InstagramWorkspaceSetup";
+import { getInstagramWorkspaceApp } from "@/lib/api/instagram-workspace-app.functions";
 import { InstagramAnalytics } from "@/components/postkit/InstagramAnalytics";
 import { InstagramTopPosts } from "@/components/postkit/InstagramTopPosts";
 import { WorkspaceSelect } from "@/components/ui/workspace-select";
@@ -240,20 +245,113 @@ function AutomacaoInstagram() {
   return (
     <WorkspaceGate>
       {(workspace) => (
-        <InstagramWorkspacePage key={workspace.id} workspace={workspace} initialTab={tab} />
+        <InstagramWorkspaceEntry key={workspace.id} workspace={workspace} initialTab={tab} />
       )}
     </WorkspaceGate>
   );
 }
 
-function InstagramWorkspacePage({
+function InstagramWorkspaceEntry({
   workspace,
   initialTab,
 }: {
   workspace: Workspace;
   initialTab?: Tab;
 }) {
-  const [tab, setActiveTab] = useState<Tab>(initialTab ?? "dashboard");
+  const [app, setApp] = useState<WorkspaceAppStatus>();
+  const [loadingError, setLoadingError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void getInstagramWorkspaceApp({ data: { workspaceId: workspace.id } })
+      .then((result) => {
+        if (active) setApp(result);
+      })
+      .catch(() => {
+        if (active) setLoadingError(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [workspace.id, attempt]);
+
+  if (app && app.mode !== "missing" && !editing) {
+    return (
+      <InstagramWorkspacePage
+        workspace={workspace}
+        initialTab={initialTab}
+        app={app}
+        onEditApp={app.mode === "own" && app.canManage ? () => setEditing(true) : undefined}
+      />
+    );
+  }
+
+  return (
+    <main className="mx-auto w-full max-w-5xl space-y-4 px-4 py-5 sm:px-6">
+      <header className="tool-section-heading rounded-xl border border-border px-4 py-4 sm:px-5">
+        <p className="mb-1 text-xs font-semibold text-brand-red">Automação Instagram</p>
+        <h1 className="font-display text-2xl font-semibold">Visão geral</h1>
+      </header>
+      {app ? (
+        <>
+          {editing && (
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="min-h-10 rounded-md border border-border px-3 text-sm font-semibold"
+            >
+              Voltar à visão geral
+            </button>
+          )}
+          <InstagramWorkspaceSetup
+            workspaceId={workspace.id}
+            app={app}
+            onSaved={async () => {
+              const registered = await getInstagramWorkspaceApp({
+                data: { workspaceId: workspace.id },
+              });
+              setApp(registered);
+              setEditing(false);
+            }}
+          />
+        </>
+      ) : loadingError ? (
+        <div role="alert" className="rounded-xl border border-border bg-card p-4 text-sm">
+          Não foi possível verificar a configuração da sua operação.
+          <button
+            type="button"
+            className="ml-2 min-h-10 font-semibold text-brand-red underline"
+            onClick={() => {
+              setLoadingError(false);
+              setAttempt((value) => value + 1);
+            }}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      ) : (
+        <p role="status" className="text-sm text-muted-foreground">
+          Abrindo sua operação…
+        </p>
+      )}
+    </main>
+  );
+}
+
+function InstagramWorkspacePage({
+  workspace,
+  initialTab,
+  app,
+  onEditApp,
+}: {
+  workspace: Workspace;
+  initialTab?: Tab;
+  app: WorkspaceAppStatus;
+  onEditApp?: () => void;
+}) {
+  const [requestedTab, setActiveTab] = useState<Tab>(initialTab ?? "dashboard");
   const [guidedSetup, setGuidedSetup] = useState(initialTab === "nova-conta");
   const [isolatedLogin, setIsolatedLogin] = useState(false);
   const [connectionTarget, setConnectionTarget] = useState<"reels" | "stories">("reels");
@@ -532,6 +630,7 @@ function InstagramWorkspacePage({
         state_validation: "a validação de segurança da autorização",
         authorization_code_missing: "o código de autorização retornado pela Meta",
         workspace_access: "o acesso ao espaço de trabalho",
+        workspace_app_changed: "a validação do app Meta da operação",
         facebook_code_exchange: "a troca do código de autorização do Facebook",
         facebook_token_missing: "o retorno do token temporário do Facebook",
         facebook_token_exchange: "a troca pelo token de longa duração do Facebook",
@@ -724,6 +823,10 @@ function InstagramWorkspacePage({
   const readyAccounts = managedAccounts.filter(
     (account) => account.connection_status === "connected",
   );
+  const needsConnection = app.mode === "own" && !readyAccounts.length;
+  const canOpenTab = (item: Tab) =>
+    !needsConnection || item === "dashboard" || item === "nova-conta" || item === "contas";
+  const tab = canOpenTab(requestedTab) ? requestedTab : "dashboard";
   const reelAccount = readyAccounts.find((account) => account.id === selectedAccountId);
   const libraryAccount = libraryOpen
     ? connectedAccounts.find((account) => account.id === selectedAccountId)
@@ -1197,29 +1300,35 @@ function InstagramWorkspacePage({
             label="Seção do painel"
             className="mt-1"
             value={tab}
-            options={tabItems.map((item) => ({ value: item.id, label: item.label }))}
+            options={tabItems
+              .filter((item) => canOpenTab(item.id))
+              .map((item) => ({ value: item.id, label: item.label }))}
             onValueChange={(value) => setTab(value as Tab)}
           />
         </div>
         <nav aria-label="Seções da automação Instagram" className="hidden space-y-4 xl:block">
-          {tabGroups.map((group) => (
-            <div key={group.label}>
-              <p className="mb-1.5 px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {group.label}
-              </p>
-              {group.items.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setTab(id)}
-                  aria-current={tab === id ? "page" : undefined}
-                  className={`tool-nav-link w-full text-left ${tab === id ? "is-active" : ""}`}
-                >
-                  <Icon className="size-4 shrink-0" /> {label}
-                </button>
-              ))}
-            </div>
-          ))}
+          {tabGroups
+            .filter((group) => group.items.some((item) => canOpenTab(item.id)))
+            .map((group) => (
+              <div key={group.label}>
+                <p className="mb-1.5 px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.label}
+                </p>
+                {group.items
+                  .filter((item) => canOpenTab(item.id))
+                  .map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setTab(id)}
+                      aria-current={tab === id ? "page" : undefined}
+                      className={`tool-nav-link w-full text-left ${tab === id ? "is-active" : ""}`}
+                    >
+                      <Icon className="size-4 shrink-0" /> {label}
+                    </button>
+                  ))}
+              </div>
+            ))}
         </nav>
       </aside>
       <main className="min-w-0">
@@ -1230,7 +1339,7 @@ function InstagramWorkspacePage({
               {tabItems.find((item) => item.id === tab)?.label}
             </h1>
           </div>
-          {tab === "dashboard" && (
+          {tab === "dashboard" && !needsConnection && (
             <button
               type="button"
               onClick={() => {
@@ -1305,97 +1414,114 @@ function InstagramWorkspacePage({
               videoCounts={videosLoaded ? videosByAccount : undefined}
               onOpenAccount={openAccount}
               refreshKey={historyRefresh}
-              onAccounts={() => setTab("contas")}
+              ownApp={app.mode === "own"}
+              onAccounts={() => setTab("nova-conta")}
               onLibrary={() => setTab("biblioteca")}
               onSchedule={() => setTab("fila")}
               onQueue={() => setTab("publicacoes")}
               onHistory={() => setTab("historico")}
             />
-            <Panel title="O que você quer fazer?">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {quickActions.map(({ tab: target, title, text, icon: Icon, tone }) => (
-                  <button
-                    key={target}
-                    type="button"
-                    className="group rounded-xl border border-border bg-background/40 p-4 text-left hover:border-primary/50 hover:bg-secondary/40"
-                    onClick={() => setTab(target)}
-                  >
-                    <span className={`inline-flex rounded-lg p-2 ${tone}`}>
-                      <Icon className="size-5" />
-                    </span>
-                    <span className="mt-3 flex items-center justify-between gap-2 text-sm font-semibold">
-                      {title}
-                      <ArrowRight className="size-4 shrink-0 text-muted-foreground group-hover:text-brand-red" />
-                    </span>
-                    <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                      {text}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </Panel>
+            {onEditApp && (
+              <button
+                type="button"
+                onClick={onEditApp}
+                className="min-h-10 rounded-md border border-border px-3 text-sm font-semibold"
+              >
+                Gerenciar app Meta
+              </button>
+            )}
+            {!needsConnection && (
+              <Panel title="O que você quer fazer?">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {quickActions.map(({ tab: target, title, text, icon: Icon, tone }) => (
+                    <button
+                      key={target}
+                      type="button"
+                      className="group rounded-xl border border-border bg-background/40 p-4 text-left hover:border-primary/50 hover:bg-secondary/40"
+                      onClick={() => setTab(target)}
+                    >
+                      <span className={`inline-flex rounded-lg p-2 ${tone}`}>
+                        <Icon className="size-5" />
+                      </span>
+                      <span className="mt-3 flex items-center justify-between gap-2 text-sm font-semibold">
+                        {title}
+                        <ArrowRight className="size-4 shrink-0 text-muted-foreground group-hover:text-brand-red" />
+                      </span>
+                      <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                        {text}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </Panel>
+            )}
           </section>
         )}
 
-        <div hidden={tab !== "perfis"}>
-          <InstagramProfileDrafts
-            workspaceId={workspace.id}
-            accounts={readyAccounts}
-            videos={videos}
-            onConnect={() => setTab("contas")}
-            onLibrary={openAccountLibrary}
-            onReels={(accountId, daily, videoIds) => {
-              if (uploading || linkingVideos || savingQueue) {
-                setNotice("Aguarde a operação em andamento antes de abrir outro agendamento.");
-                return;
-              }
-              if (queue.length && !queueSaved) {
-                setNotice("Revise ou salve a prévia de Reels já aberta antes de carregar a ficha.");
+        {!needsConnection && (
+          <div hidden={tab !== "perfis"}>
+            <InstagramProfileDrafts
+              workspaceId={workspace.id}
+              accounts={readyAccounts}
+              videos={videos}
+              onConnect={() => setTab("contas")}
+              onLibrary={openAccountLibrary}
+              onReels={(accountId, daily, videoIds) => {
+                if (uploading || linkingVideos || savingQueue) {
+                  setNotice("Aguarde a operação em andamento antes de abrir outro agendamento.");
+                  return;
+                }
+                if (queue.length && !queueSaved) {
+                  setNotice(
+                    "Revise ou salve a prévia de Reels já aberta antes de carregar a ficha.",
+                  );
+                  setTab("fila");
+                  return;
+                }
+                const owned = new Set(
+                  videos
+                    .filter((video) => video.reelAccountId === accountId)
+                    .map((video) => video.id),
+                );
+                const available = videoIds.filter((id) => owned.has(id));
+                setQueue([]);
+                setQueueSaved(false);
+                setReelMode("batch");
+                chooseReelAccount(accountId);
+                setSourceFolder("");
+                setSelectedVideoIds(videoIds.length ? available : null);
+                setTimes(
+                  timeSlots.length >= daily
+                    ? timeSlots.slice(0, daily).join(", ")
+                    : dailyReelTimes(daily),
+                );
+                setQuantity(null);
+                setRepeatVideos(false);
+                setNotice(
+                  available.length < videoIds.length
+                    ? "A ficha contém vídeos sem vínculo com esta conta. Confira a Biblioteca."
+                    : "Conta e preferências da ficha carregadas. Gere uma prévia antes de agendar.",
+                );
                 setTab("fila");
-                return;
-              }
-              const owned = new Set(
-                videos
-                  .filter((video) => video.reelAccountId === accountId)
-                  .map((video) => video.id),
-              );
-              const available = videoIds.filter((id) => owned.has(id));
-              setQueue([]);
-              setQueueSaved(false);
-              setReelMode("batch");
-              chooseReelAccount(accountId);
-              setSourceFolder("");
-              setSelectedVideoIds(videoIds.length ? available : null);
-              setTimes(
-                timeSlots.length >= daily
-                  ? timeSlots.slice(0, daily).join(", ")
-                  : dailyReelTimes(daily),
-              );
-              setQuantity(null);
-              setRepeatVideos(false);
-              setNotice(
-                available.length < videoIds.length
-                  ? "A ficha contém vídeos sem vínculo com esta conta. Confira a Biblioteca."
-                  : "Conta e preferências da ficha carregadas. Gere uma prévia antes de agendar.",
-              );
-              setTab("fila");
-            }}
-            onStories={(accountId, productUrl) => {
-              setStoryAccount({ id: accountId, request: crypto.randomUUID(), productUrl });
-              setTab("stories");
-            }}
-          />
-        </div>
-
-        <div hidden={tab !== "stories"}>
-          <InstagramStories
-            workspaceId={workspace.id}
-            timezone={workspace.timezone}
-            accounts={readyAccounts}
-            onConnect={() => setTab("nova-conta", "stories")}
-            profileAccount={storyAccount}
-          />
-        </div>
+              }}
+              onStories={(accountId, productUrl) => {
+                setStoryAccount({ id: accountId, request: crypto.randomUUID(), productUrl });
+                setTab("stories");
+              }}
+            />
+          </div>
+        )}
+        {!needsConnection && (
+          <div hidden={tab !== "stories"}>
+            <InstagramStories
+              workspaceId={workspace.id}
+              timezone={workspace.timezone}
+              accounts={readyAccounts}
+              onConnect={() => setTab("nova-conta", "stories")}
+              profileAccount={storyAccount}
+            />
+          </div>
+        )}
 
         {(tab === "historico" || tab === "publicacoes") && (
           <InstagramHistory
@@ -1434,9 +1560,9 @@ function InstagramWorkspacePage({
                 }
               >
                 <p className="text-sm text-muted-foreground">
-                  O aplicativo de conexão já está configurado nesta instalação. Entre no Instagram,
-                  escolha o perfil profissional e confirme as permissões. A conta aparecerá aqui
-                  automaticamente, com sua própria biblioteca.
+                  O app Meta da operação está configurado. Entre no Instagram, escolha o perfil
+                  profissional e confirme as permissões. A conta aparecerá aqui automaticamente, com
+                  sua própria biblioteca.
                 </p>
                 <button
                   type="button"
@@ -1525,7 +1651,11 @@ function InstagramWorkspacePage({
                       Em{" "}
                       <a
                         className="font-medium text-foreground underline underline-offset-2"
-                        href="https://developers.facebook.com/apps/2201393490722211/roles/roles/"
+                        href={
+                          app.appId
+                            ? `https://developers.facebook.com/apps/${app.appId}/roles/roles/`
+                            : "https://developers.facebook.com/apps/"
+                        }
                         target="_blank"
                         rel="noreferrer"
                       >

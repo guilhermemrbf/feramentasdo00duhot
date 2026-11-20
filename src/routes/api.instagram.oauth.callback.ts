@@ -51,6 +51,7 @@ function oauthFailureReason(error: unknown): string {
     "Instagram Unified Login permissions were not granted.": "unified_permissions",
     "Instagram Unified Login account lookup failed.": "unified_account_lookup",
     "Instagram Unified Login business lookup failed.": "unified_business_lookup",
+    "Instagram workspace app changed or is unavailable.": "workspace_app_changed",
     "No Instagram accounts were shared in Unified Login.": "unified_accounts_empty",
     "Facebook returned no accessible Pages.": "facebook_pages_empty",
     "Facebook Pages did not include Page access tokens.": "facebook_page_token_missing",
@@ -70,13 +71,13 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
       GET: async ({ request }) => {
         const {
           instagramOAuthCookieName,
-          getInstagramOAuthConfig,
+          getInstagramOAuthBaseConfig,
           verifyInstagramOAuthState,
           encryptInstagramToken,
           instagramOAuthCookieOptions,
         } = await import("@/lib/instagram-oauth.server");
         const cookieName = instagramOAuthCookieName();
-        const config = getInstagramOAuthConfig();
+        const base = getInstagramOAuthBaseConfig().appBaseUrl;
         const cookieState = getCookie(cookieName);
         const params = new URL(request.url).searchParams;
         const returnedState = params.get("state");
@@ -84,21 +85,17 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
         deleteCookie(cookieName, instagramOAuthCookieOptions());
 
         if (params.has("error")) {
-          return redirectToApp(config.appBaseUrl, "connection_failed", "meta_denied");
+          return redirectToApp(base, "connection_failed", "meta_denied");
         }
         if (!cookieState || !returnedState || cookieState !== returnedState) {
-          return redirectToApp(config.appBaseUrl, "connection_failed", "state_validation");
+          return redirectToApp(base, "connection_failed", "state_validation");
         }
         if (!code) {
-          return redirectToApp(
-            config.appBaseUrl,
-            "connection_failed",
-            "authorization_code_missing",
-          );
+          return redirectToApp(base, "connection_failed", "authorization_code_missing");
         }
 
         try {
-          const { workspaceId, userId, mode, analytics } =
+          const { workspaceId, userId, mode, analytics, appRevision } =
             await verifyInstagramOAuthState(returnedState);
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const [{ data: workspace }, { data: membership }] = await Promise.all([
@@ -117,20 +114,27 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
           ) {
             throw new Error("Workspace access was revoked during Instagram authorization.");
           }
+          const { workspaceAppForCallback } = await import("@/lib/instagram-workspace-app.server");
+          const { config, configId } = await workspaceAppForCallback(workspaceId, appRevision);
+          if (configId && mode !== "instagram_unified_login")
+            throw new Error("Instagram workspace app changed or is unavailable.");
           if (mode === "facebook_login") {
             return await connectViaFacebookLogin({ code, config, workspaceId, userId, analytics });
           }
           if (mode === "instagram_unified_login") {
+            if (!appRevision) throw new Error("Instagram workspace app changed or is unavailable.");
             const { readInstagramUnifiedGrant } =
               await import("@/lib/instagram-unified-login.server");
-            const grant = await readInstagramUnifiedGrant(code, {
-              ...config,
-              facebookGraphBaseUrl: getMetaGraphBaseUrl("instagram_unified_login"),
-            });
+            const grant = await readInstagramUnifiedGrant(
+              code,
+              { ...config, facebookGraphBaseUrl: getMetaGraphBaseUrl("instagram_unified_login") },
+              configId,
+            );
             const postkit = supabaseAdmin as unknown as SupabaseClient<PostkitDatabase>;
-            const { error } = await postkit.rpc("save_instagram_unified_accounts", {
+            const { error, data: saved } = await postkit.rpc("save_workspace_instagram_grant", {
               p_workspace_id: workspaceId,
               p_user_id: userId,
+              p_revision: appRevision,
               p_accounts: grant.accounts.map((account) => ({
                 ...account,
                 client_business_id: grant.businessId,
@@ -141,6 +145,7 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
               p_expires_at: grant.expiry,
             });
             if (error) throw new Error("Instagram account could not be saved.");
+            if (!saved) throw new Error("Instagram workspace app changed or is unavailable.");
             return redirectToApp(config.appBaseUrl, "connected", undefined, {
               workspaceId,
               instagramAccountIds: grant.accounts.map((account) => account.id),
@@ -150,8 +155,8 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({
-              client_id: process.env.META_APP_ID!,
-              client_secret: process.env.META_APP_SECRET!,
+              client_id: config.appId,
+              client_secret: config.appSecret,
               grant_type: "authorization_code",
               redirect_uri: config.callbackUrl,
               code,
@@ -165,7 +170,7 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
           const longTokenUrl = new URL(`${config.graphBaseUrl}/access_token`);
           longTokenUrl.search = new URLSearchParams({
             grant_type: "ig_exchange_token",
-            client_secret: process.env.META_APP_SECRET!,
+            client_secret: config.appSecret,
             access_token: shortToken.access_token,
           }).toString();
           const longTokenResponse = await fetch(longTokenUrl);
@@ -232,7 +237,7 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
         } catch (error) {
           const reason = oauthFailureReason(error);
           console.error("[instagram-oauth] connection failed", { reason });
-          return redirectToApp(config.appBaseUrl, "connection_failed", reason);
+          return redirectToApp(base, "connection_failed", reason);
         }
       },
     },

@@ -24,22 +24,35 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
     const {
       createInstagramOAuthState,
       facebookAuthorizationUrl,
-      getInstagramOAuthConfig,
+      getInstagramOAuthBaseConfig,
       instagramAuthorizationUrl,
       instagramOAuthCookieOptions,
       instagramOAuthCookieName,
     } = await import("@/lib/instagram-oauth.server");
+    const { readWorkspaceApp } = await import("@/lib/instagram-workspace-app.server");
+    const app = await readWorkspaceApp(data.workspaceId);
+    if (!app) throw new Error("Cadastre o app Meta em Primeiros passos antes de conectar.");
+    if (app.app_id && data.mode !== "instagram_unified_login")
+      throw new Error("Use o Login Unificado para conectar com o app Meta da operação.");
     const state = await createInstagramOAuthState({
       workspaceId: data.workspaceId,
       userId: context.userId,
       mode: data.mode,
       analytics: data.analytics,
+      appRevision: app.revision,
     });
     let authorizationUrl: string;
     if (data.mode === "instagram_unified_login") {
       const { instagramUnifiedAuthorizationUrl } =
         await import("@/lib/instagram-unified-login.server");
-      authorizationUrl = instagramUnifiedAuthorizationUrl(state, getInstagramOAuthConfig());
+      const { callbackUrl } = getInstagramOAuthBaseConfig();
+      const appId = app.app_id ?? process.env.META_APP_ID;
+      if (!appId) throw new Error("O app Meta da plataforma não está configurado.");
+      authorizationUrl = instagramUnifiedAuthorizationUrl(
+        state,
+        { appId, callbackUrl },
+        app.login_config_id ?? undefined,
+      );
     } else {
       authorizationUrl =
         data.mode === "facebook_login"
@@ -52,7 +65,7 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
       cookie: {
         name: instagramOAuthCookieName(),
         value: state,
-        url: getInstagramOAuthConfig().appBaseUrl.origin,
+        url: getInstagramOAuthBaseConfig().appBaseUrl.origin,
         maxAge: 600,
       },
     };

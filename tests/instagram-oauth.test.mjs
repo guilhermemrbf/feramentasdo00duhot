@@ -60,6 +60,23 @@ test("Instagram tokens are encrypted with unique AES-GCM nonces", async () => {
   await assert.rejects(decryptInstagramToken(tampered));
 });
 
+test("workspace app credentials and authorization are bound to the selected operation", async () => {
+  const origin = "instagram-workspace-app:workspace-1:1234:5678";
+  const ciphertext = await encryptInstagramToken("app-secret-fixture", origin);
+  assert.equal(await decryptInstagramToken(ciphertext, origin), "app-secret-fixture");
+  await assert.rejects(
+    decryptInstagramToken(ciphertext, origin.replace("workspace-1", "workspace-2")),
+  );
+  await assert.rejects(decryptInstagramToken(ciphertext));
+  const state = await createInstagramOAuthState({
+    workspaceId: "workspace-1",
+    userId: "user-1",
+    mode: "instagram_unified_login",
+    appRevision: "revision-1",
+  });
+  assert.equal((await verifyInstagramOAuthState(state)).appRevision, "revision-1");
+});
+
 test("production OAuth cookie uses the host-only secure prefix", () => {
   const originalNodeEnv = process.env.NODE_ENV;
   process.env.NODE_ENV = "production";

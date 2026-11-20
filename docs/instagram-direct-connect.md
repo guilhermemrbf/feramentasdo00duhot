@@ -1,5 +1,7 @@
 # Conexão direta do Instagram — 16/11/2026
 
+Para o fluxo posterior de cadastro por operação, consulte [Primeiros passos no Automatic Post](instagram-workspace-onboarding.md).
+
 ## Escopo desta entrega
 
 O operador confirmou que quer usar o próprio app Meta já configurado, com conexão iniciada dentro do MouseHot, sem depender do chat. O app conecta contas de teste e publica Reels; **não está aprovado para conexão pública sem funções/convites**. O cadastro de app próprio para cada futuro cliente foi discutido, mas não foi implementado nesta entrega. Não afirmar que o backend atual suporta credenciais Meta por cliente.

@@ -21,6 +21,8 @@ export function instagramOAuthResult(
     authorization_code_missing:
       "O Instagram não retornou o código de autorização. Tente novamente.",
     workspace_access: "Seu acesso à operação mudou. Confira as permissões da equipe.",
+    workspace_app_changed:
+      "O cadastro do app Meta mudou durante a autorização. Confira os dados do app e inicie uma nova conexão.",
     unified_permissions: "A Meta não concedeu as permissões necessárias para conectar e publicar.",
     unified_accounts_empty: "Nenhuma conta profissional foi compartilhada com o aplicativo.",
     unified_business_lookup:

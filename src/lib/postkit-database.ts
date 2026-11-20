@@ -25,6 +25,14 @@ type FirstCommentJob = {
   first_comment: string;
 };
 
+export type InstagramWorkspaceAppRow = {
+  workspace_id: string;
+  revision: string;
+  app_id: string | null;
+  login_config_id: string | null;
+  secret_ciphertext: string | null;
+};
+
 export type InstagramReelLoop = {
   id: string;
   name: string;
@@ -42,6 +50,12 @@ export type InstagramReelLoop = {
 export type PostkitDatabase = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Tables" | "Functions"> & {
     Tables: Omit<Tables, "posts" | "media_assets" | "instagram_tokens" | "instagram_accounts"> & {
+      instagram_workspace_apps: {
+        Row: InstagramWorkspaceAppRow;
+        Insert: Omit<InstagramWorkspaceAppRow, "revision">;
+        Update: Partial<InstagramWorkspaceAppRow>;
+        Relationships: [];
+      };
       instagram_accounts: TableWithDetails<
         Tables["instagram_accounts"],
         {
@@ -81,6 +95,28 @@ export type PostkitDatabase = Omit<Database, "public"> & {
       Database["public"]["Functions"],
       "save_instagram_unified_accounts" | "get_instagram_analytics" | "get_instagram_top_posts"
     > & {
+      save_instagram_workspace_app: {
+        Args: {
+          p_workspace_id: string;
+          p_user_id: string;
+          p_app_id: string;
+          p_login_config_id: string;
+          p_secret_ciphertext: string;
+        };
+        Returns: boolean;
+      };
+      save_workspace_instagram_grant: {
+        Args: {
+          p_workspace_id: string;
+          p_user_id: string;
+          p_revision: string;
+          p_accounts: Json;
+          p_scopes: string[];
+          p_token_ciphertext: string;
+          p_expires_at: string | null;
+        };
+        Returns: boolean;
+      };
       disconnect_instagram_account: {
         Args: { p_account_id: string };
         Returns: Json;

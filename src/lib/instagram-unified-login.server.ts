@@ -16,9 +16,8 @@ export function getInstagramUnifiedConfigId(appId: string): string {
 export function instagramUnifiedAuthorizationUrl(
   state: string,
   { appId, callbackUrl }: Pick<OAuthConfig, "appId" | "callbackUrl">,
+  configId = getInstagramUnifiedConfigId(appId),
 ): string {
-  const configId = getInstagramUnifiedConfigId(appId);
-
   const url = new URL("https://www.facebook.com/dialog/oauth");
   url.search = new URLSearchParams({
     client_id: appId,
@@ -53,6 +52,7 @@ async function readGraph<T>(url: URL, failure: string, bearer?: string): Promise
 export async function readInstagramUnifiedGrant(
   code: string,
   { appId, appSecret, callbackUrl, facebookGraphBaseUrl }: OAuthConfig,
+  configId = getInstagramUnifiedConfigId(appId),
 ) {
   const exchange = new URL(facebookGraphBaseUrl + "/oauth/access_token");
   exchange.search = new URLSearchParams({
@@ -135,7 +135,7 @@ export async function readInstagramUnifiedGrant(
     token,
     scopes,
     businessId,
-    configId: getInstagramUnifiedConfigId(appId),
+    configId,
     expiry: expiry === null ? null : new Date(expiry).toISOString(),
     accounts: [...accounts.values()],
   };

@@ -1,14 +1,7 @@
 import { useEffect, useState } from "react";
-import {
-  ArrowRight,
-  CalendarDays,
-  Check,
-  CheckCircle2,
-  Clock3,
-  Instagram,
-  Video,
-} from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, Clock3, Instagram, Video } from "lucide-react";
 import { InstagramAccountCards } from "./InstagramAccountCards";
+import { InstagramFirstSteps, instagramOnboardingSteps } from "./InstagramWorkspaceSetup";
 import type { InstagramConnectionDetailsAccount } from "./InstagramConnectionDetails";
 import { supabase } from "@/integrations/supabase/client";
 import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
@@ -58,6 +51,7 @@ export function InstagramDashboard({
   onSchedule,
   onQueue,
   onHistory,
+  ownApp,
 }: {
   workspaceId: string;
   timezone: string;
@@ -72,6 +66,7 @@ export function InstagramDashboard({
   onSchedule: () => void;
   onQueue: () => void;
   onHistory: () => void;
+  ownApp: boolean;
 }) {
   const [period, setPeriod] = useState<(typeof periods)[number]>(periods[0]);
   const [data, setData] = useState<DashboardData>();
@@ -141,32 +136,32 @@ export function InstagramDashboard({
   }, [workspaceId, timezone, period, refreshKey, retry]);
 
   const steps = [
+    ...(ownApp ? [{ title: "Configure seu app Meta", done: true }] : []),
     {
-      title: "Conecte uma conta do Instagram",
+      title: instagramOnboardingSteps[0],
       done: !!accountCount,
-      action: "Abrir contas",
+      action: "Conectar Instagram",
       run: onAccounts,
     },
     {
-      title: "Adicione seu primeiro vídeo",
+      title: instagramOnboardingSteps[1],
       done: !!videoCount,
       action: "Adicionar vídeo",
-      run: onLibrary,
+      run: accountCount ? onLibrary : undefined,
     },
     {
-      title: "Agende uma publicação",
+      title: instagramOnboardingSteps[2],
       done: !!data && (data.queued > 0 || data.allPublished > 0),
       action: "Agendar Reel",
-      run: onSchedule,
+      run: accountCount && videoCount ? onSchedule : undefined,
     },
     {
-      title: "Confira a primeira publicação no ar",
+      title: instagramOnboardingSteps[3],
       done: !!data?.allPublished,
       action: "Ver fila",
-      run: onQueue,
+      run: accountCount && data?.queued ? onQueue : undefined,
     },
   ];
-  const completed = steps.filter((step) => step.done).length;
   const metrics = [
     {
       label: "Publicações no ar",
@@ -203,208 +198,165 @@ export function InstagramDashboard({
 
   return (
     <div className="space-y-4">
-      {accountCount === 0 && (
-        <section
-          aria-labelledby="instagram-first-steps"
-          className="rounded-2xl border border-border bg-card p-4 sm:p-5"
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 id="instagram-first-steps" className="font-display text-lg font-semibold">
-                Primeiros passos
+      {(ownApp ? !data?.allPublished : accountCount === 0) && <InstagramFirstSteps steps={steps} />}
+      {ownApp && !accountCount ? null : (
+        <>
+          <section aria-label="Resumo da operação" className="space-y-3">
+            <div
+              className="flex flex-wrap items-center gap-2"
+              role="group"
+              aria-label="Período do resumo"
+            >
+              <span className="mr-1 text-sm font-semibold">Período</span>
+              {periods.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-pressed={period.id === item.id}
+                  onClick={() => {
+                    if (period.id !== item.id) {
+                      setError(false);
+                      setPeriod(item);
+                    }
+                  }}
+                  className="filter-chip"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+              {metrics.map(({ label, value, note, icon: Icon }) => (
+                <article
+                  key={label}
+                  className="min-w-0 rounded-xl border border-border bg-card p-3 sm:p-4"
+                >
+                  <Icon className="mb-2 size-4 text-brand-red" aria-hidden />
+                  <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
+                  <p className="mt-1 font-display text-2xl font-semibold">{value ?? "—"}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{note}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          {accounts.length > 0 && (
+            <section className="space-y-3" aria-labelledby="dashboard-instagram-accounts">
+              <h2 id="dashboard-instagram-accounts" className="font-semibold">
+                Contas conectadas
               </h2>
-              <p className="text-sm text-muted-foreground">
-                Da primeira conexão à primeira publicação.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 text-xs font-medium">
-              <progress
-                value={completed}
-                max={steps.length}
-                aria-label="Progresso dos primeiros passos"
-                className="h-2 w-24 accent-primary sm:w-36"
+              <InstagramAccountCards
+                accounts={accounts}
+                videoCounts={videoCounts}
+                onSelect={onOpenAccount}
               />
-              {completed} de {steps.length}
-            </div>
-          </div>
-          <ol className="mt-3 divide-y divide-border">
-            {steps.map(({ title, done, action, run }, index) => (
-              <li key={title} className="flex flex-wrap items-center gap-3 py-3 last:pb-0">
-                <span
-                  className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${done ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-border text-muted-foreground"}`}
-                >
-                  {done ? <Check className="size-4" aria-label="Concluído" /> : index + 1}
-                </span>
-                <span className="min-w-40 flex-1 text-sm font-medium">{title}</span>
-                {!done && (
-                  <button
-                    type="button"
-                    onClick={run}
-                    className="rounded-md px-2 py-1.5 text-sm font-semibold text-brand-red hover:bg-primary/10"
-                  >
-                    {action}
-                  </button>
-                )}
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
+            </section>
+          )}
 
-      <section aria-label="Resumo da operação" className="space-y-3">
-        <div
-          className="flex flex-wrap items-center gap-2"
-          role="group"
-          aria-label="Período do resumo"
-        >
-          <span className="mr-1 text-sm font-semibold">Período</span>
-          {periods.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              aria-pressed={period.id === item.id}
-              onClick={() => {
-                if (period.id !== item.id) {
-                  setError(false);
-                  setPeriod(item);
-                }
-              }}
-              className="filter-chip"
+          {error && (
+            <p
+              role="status"
+              className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200"
             >
-              {item.label}
-            </button>
-          ))}
-        </div>
-        <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-          {metrics.map(({ label, value, note, icon: Icon }) => (
-            <article
-              key={label}
-              className="min-w-0 rounded-xl border border-border bg-card p-3 sm:p-4"
-            >
-              <Icon className="mb-2 size-4 text-brand-red" aria-hidden />
-              <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
-              <p className="mt-1 font-display text-2xl font-semibold">{value ?? "—"}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{note}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {accounts.length > 0 && (
-        <section className="space-y-3" aria-labelledby="dashboard-instagram-accounts">
-          <h2 id="dashboard-instagram-accounts" className="font-semibold">
-            Contas conectadas
-          </h2>
-          <InstagramAccountCards
-            accounts={accounts}
-            videoCounts={videoCounts}
-            onSelect={onOpenAccount}
-          />
-        </section>
-      )}
-
-      {error && (
-        <p
-          role="status"
-          className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200"
-        >
-          O painel não conseguiu atualizar os dados.{" "}
-          <button
-            type="button"
-            className="font-semibold underline"
-            onClick={() => setRetry((value) => value + 1)}
-          >
-            Tentar novamente
-          </button>
-        </p>
-      )}
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        <section className="rounded-xl border border-border bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 font-semibold">
-              <CalendarDays className="size-4 text-brand-red" /> Próximas publicações
-            </h2>
-            <button
-              type="button"
-              onClick={onQueue}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-brand-red"
-            >
-              Ver fila <ArrowRight className="size-3.5" />
-            </button>
-          </div>
-          {!data && !error && (
-            <p role="status" className="mt-4 text-sm text-muted-foreground">
-              Carregando a fila…
+              O painel não conseguiu atualizar os dados.{" "}
+              <button
+                type="button"
+                className="font-semibold underline"
+                onClick={() => setRetry((value) => value + 1)}
+              >
+                Tentar novamente
+              </button>
             </p>
           )}
-          {data?.upcoming.length === 0 && (
-            <p className="mt-4 text-sm text-muted-foreground">
-              A fila está vazia. Agende um Reel para começar.
-            </p>
-          )}
-          <ul className="mt-3 space-y-2">
-            {data?.upcoming.map((post) => {
-              const planned = post.scheduled_at ? new Date(post.scheduled_at) : undefined;
-              const isLate = planned && planned.getTime() < Date.now();
-              const status =
-                post.status === "processing"
-                  ? "Em processamento"
-                  : isLate
-                    ? "Em atraso"
-                    : "Agendado";
-              const kind = post.content_type === "story" ? "Story" : "Reel";
-              return (
-                <li
-                  key={post.id}
-                  className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-lg border border-border bg-background/40 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center"
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+            <section className="rounded-xl border border-border bg-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 font-semibold">
+                  <CalendarDays className="size-4 text-brand-red" /> Próximas publicações
+                </h2>
+                <button
+                  type="button"
+                  onClick={onQueue}
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-brand-red"
                 >
-                  <div className="min-w-20 rounded-lg bg-secondary/60 px-2 py-1.5 text-center">
-                    <p className="text-sm font-semibold tabular-nums">
-                      {planned ? timeFormat.format(planned) : "—"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {planned ? dateFormat.format(planned) : "Sem data"}
-                    </p>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">
-                      {post.instagram_accounts?.username
-                        ? "@" + post.instagram_accounts.username
-                        : "Conta indisponível"}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {kind}
-                      {post.media_assets?.original_filename
-                        ? " · " + post.media_assets.original_filename
-                        : ""}
-                    </p>
-                  </div>
-                  <span className="col-start-2 justify-self-start rounded-md border border-border px-2 py-1 text-xs font-medium sm:col-start-auto">
-                    {status}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-        <section className="rounded-xl border border-border bg-card p-4">
-          <h2 className="font-semibold">Precisa de atenção</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {periodData
-              ? periodData.needsAttention === 0
-                ? "Nenhuma falha ou revisão no período selecionado."
-                : `${periodData.needsAttention} ${periodData.needsAttention === 1 ? "publicação precisa" : "publicações precisam"} de atenção neste período.`
-              : "Confira o histórico para acompanhar o resultado de cada publicação."}
-          </p>
-          <button
-            type="button"
-            onClick={onHistory}
-            className="mt-3 text-sm font-semibold text-brand-red"
-          >
-            Abrir histórico
-          </button>
-        </section>
-      </div>
+                  Ver fila <ArrowRight className="size-3.5" />
+                </button>
+              </div>
+              {!data && !error && (
+                <p role="status" className="mt-4 text-sm text-muted-foreground">
+                  Carregando a fila…
+                </p>
+              )}
+              {data?.upcoming.length === 0 && (
+                <p className="mt-4 text-sm text-muted-foreground">
+                  A fila está vazia. Agende um Reel para começar.
+                </p>
+              )}
+              <ul className="mt-3 space-y-2">
+                {data?.upcoming.map((post) => {
+                  const planned = post.scheduled_at ? new Date(post.scheduled_at) : undefined;
+                  const isLate = planned && planned.getTime() < Date.now();
+                  const status =
+                    post.status === "processing"
+                      ? "Em processamento"
+                      : isLate
+                        ? "Em atraso"
+                        : "Agendado";
+                  const kind = post.content_type === "story" ? "Story" : "Reel";
+                  return (
+                    <li
+                      key={post.id}
+                      className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-lg border border-border bg-background/40 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center"
+                    >
+                      <div className="min-w-20 rounded-lg bg-secondary/60 px-2 py-1.5 text-center">
+                        <p className="text-sm font-semibold tabular-nums">
+                          {planned ? timeFormat.format(planned) : "—"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {planned ? dateFormat.format(planned) : "Sem data"}
+                        </p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">
+                          {post.instagram_accounts?.username
+                            ? "@" + post.instagram_accounts.username
+                            : "Conta indisponível"}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {kind}
+                          {post.media_assets?.original_filename
+                            ? " · " + post.media_assets.original_filename
+                            : ""}
+                        </p>
+                      </div>
+                      <span className="col-start-2 justify-self-start rounded-md border border-border px-2 py-1 text-xs font-medium sm:col-start-auto">
+                        {status}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+            <section className="rounded-xl border border-border bg-card p-4">
+              <h2 className="font-semibold">Precisa de atenção</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {periodData
+                  ? periodData.needsAttention === 0
+                    ? "Nenhuma falha ou revisão no período selecionado."
+                    : `${periodData.needsAttention} ${periodData.needsAttention === 1 ? "publicação precisa" : "publicações precisam"} de atenção neste período.`
+                  : "Confira o histórico para acompanhar o resultado de cada publicação."}
+              </p>
+              <button
+                type="button"
+                onClick={onHistory}
+                className="mt-3 text-sm font-semibold text-brand-red"
+              >
+                Abrir histórico
+              </button>
+            </section>
+          </div>
+        </>
+      )}
     </div>
   );
 }

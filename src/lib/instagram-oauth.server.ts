@@ -71,6 +71,7 @@ export async function createInstagramOAuthState(input: {
   userId: string;
   mode: InstagramAuthMode;
   analytics?: boolean;
+  appRevision?: string;
 }): Promise<string> {
   const nonce = globalThis.crypto.getRandomValues(new Uint8Array(32));
   const payload = base64Url(
@@ -88,6 +89,7 @@ export async function verifyInstagramOAuthState(state: string): Promise<{
   userId: string;
   mode: InstagramAuthMode;
   analytics?: true;
+  appRevision?: string;
 }> {
   const [payload, signature, extra] = state.split(".");
   if (!payload || !signature || extra) throw new Error("Invalid OAuth state.");
@@ -107,6 +109,7 @@ export async function verifyInstagramOAuthState(state: string): Promise<{
     userId?: string;
     mode?: string;
     analytics?: boolean;
+    appRevision?: string;
     nonce?: string;
     expiresAt?: number;
   };
@@ -127,10 +130,11 @@ export async function verifyInstagramOAuthState(state: string): Promise<{
     userId: parsed.userId,
     mode,
     ...(parsed.analytics === true ? { analytics: true as const } : {}),
+    ...(parsed.appRevision ? { appRevision: parsed.appRevision } : {}),
   };
 }
 
-export async function encryptInstagramToken(token: string): Promise<string> {
+export async function encryptInstagramToken(token: string, binding?: string): Promise<string> {
   const key = decodeBase64(requiredEnv("INSTAGRAM_TOKEN_ENCRYPTION_KEY"));
   if (key.length !== 32) throw new Error("Instagram token encryption key must decode to 32 bytes.");
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
@@ -139,7 +143,7 @@ export async function encryptInstagramToken(token: string): Promise<string> {
   ]);
   const encrypted = new Uint8Array(
     await globalThis.crypto.subtle.encrypt(
-      { name: "AES-GCM", iv, tagLength: 128 },
+      { name: "AES-GCM", iv, tagLength: 128, additionalData: bindingBytes(binding) },
       cryptoKey,
       new TextEncoder().encode(token),
     ),
@@ -147,7 +151,11 @@ export async function encryptInstagramToken(token: string): Promise<string> {
   return `v1.${base64Url(iv)}.${base64Url(encrypted.slice(-16))}.${base64Url(encrypted.slice(0, -16))}`;
 }
 
-export async function decryptInstagramToken(value: string): Promise<string> {
+function bindingBytes(binding?: string) {
+  return binding === undefined ? undefined : new TextEncoder().encode(binding);
+}
+
+export async function decryptInstagramToken(value: string, binding?: string): Promise<string> {
   const [version, ivPart, tagPart, encryptedPart, extra] = value.split(".");
   if (version !== "v1" || !ivPart || !tagPart || !encryptedPart || extra) {
     throw new Error("Stored Instagram token has an unsupported format.");
@@ -158,7 +166,12 @@ export async function decryptInstagramToken(value: string): Promise<string> {
     "decrypt",
   ]);
   const decrypted = await globalThis.crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: decodeBase64Url(ivPart), tagLength: 128 },
+    {
+      name: "AES-GCM",
+      iv: decodeBase64Url(ivPart),
+      tagLength: 128,
+      additionalData: bindingBytes(binding),
+    },
     cryptoKey,
     new Uint8Array([...decodeBase64Url(encryptedPart), ...decodeBase64Url(tagPart)]),
   );
@@ -247,7 +260,7 @@ export function instagramOAuthCookieName() {
   return process.env.NODE_ENV === "production" ? "__Host-instagram-oauth" : "instagram-oauth-state";
 }
 
-export function getInstagramOAuthConfig() {
+export function getInstagramOAuthBaseConfig() {
   const baseUrl = new URL(requiredEnv("APP_BASE_URL"));
   if (baseUrl.protocol !== "https:" && process.env.NODE_ENV === "production") {
     throw new Error("APP_BASE_URL must use HTTPS in production.");
@@ -256,13 +269,19 @@ export function getInstagramOAuthConfig() {
   const version = requiredEnv("META_GRAPH_API_VERSION");
   if (!/^v\d+\.\d+$/.test(version)) throw new Error("META_GRAPH_API_VERSION is invalid.");
   return {
-    appId: requiredEnv("META_APP_ID"),
-    appSecret: requiredEnv("META_APP_SECRET"),
     callbackUrl: callbackUrl.href,
     appBaseUrl: baseUrl,
     graphApiVersion: version,
     graphBaseUrl: `https://graph.instagram.com/${version}`,
     facebookGraphBaseUrl: `https://graph.facebook.com/${version}`,
+  };
+}
+
+export function getInstagramOAuthConfig() {
+  return {
+    ...getInstagramOAuthBaseConfig(),
+    appId: requiredEnv("META_APP_ID"),
+    appSecret: requiredEnv("META_APP_SECRET"),
   };
 }
 
