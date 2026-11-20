@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { Loader2, LogOut, Users } from "lucide-react";
 import { signInWithGoogle } from "@/lib/google-sign-in";
@@ -117,11 +117,7 @@ function GoogleAccessCard({ error }: { error: string }) {
   );
 }
 
-export function WorkspaceGate({
-  children,
-}: {
-  children: (ws: Workspace, accountControls: ReactNode, teamControls: ReactNode) => ReactNode;
-}) {
+export function WorkspaceGate({ children }: { children: (ws: Workspace) => ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [list, setList] = useState<Workspace[] | null>(null);
@@ -225,40 +221,46 @@ export function WorkspaceGate({
         </div>
       </AppShell>
     );
-  return children(
-    current,
-    <>
-      <WorkspaceSelect
-        label="Operação atual"
-        value={current.id}
-        className="min-w-0 flex-1"
-        options={(list ?? []).map((workspace) => ({
-          value: workspace.id,
-          label: workspace.name,
-        }))}
-        onValueChange={(value) => {
-          setCurrentId(value);
-          try {
-            localStorage.setItem(STORAGE_KEY, value);
-          } catch {
-            /* optional */
-          }
-        }}
-      />
-      <button
-        aria-label="Sair da conta Google"
-        title="Sair"
-        onClick={() => void supabase.auth.signOut()}
-        className="grid size-9 shrink-0 place-items-center text-muted-foreground hover:text-foreground"
-      >
-        <LogOut className="size-4" />
-      </button>
-    </>,
-    <TeamAccess key={current.id} workspace={current} userId={userId} />,
+  return (
+    <AppShell>
+      <div className="mx-auto max-w-7xl px-5 pt-5">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-xs">
+          <span className="text-muted-foreground">Sua operação</span>
+          <WorkspaceSelect
+            label="Operação atual"
+            value={current.id}
+            className="w-auto min-w-36"
+            options={(list ?? []).map((workspace) => ({
+              value: workspace.id,
+              label: workspace.name,
+            }))}
+            onValueChange={(value) => {
+              setCurrentId(value);
+              try {
+                localStorage.setItem(STORAGE_KEY, value);
+              } catch {
+                /* optional */
+              }
+            }}
+          />
+          <button
+            aria-label="Sair da conta Google"
+            title="Sair"
+            onClick={() => void supabase.auth.signOut()}
+            className="ml-auto text-muted-foreground hover:text-foreground"
+          >
+            <LogOut className="size-4" />
+          </button>
+        </div>
+        <TeamAccess key={current.id} workspace={current} userId={userId} />
+      </div>
+      {children(current)}
+    </AppShell>
   );
 }
 
 function TeamAccess({ workspace, userId }: { workspace: Workspace; userId: string }) {
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [invitation, setInvitation] = useState<{ url: string; hash: string } | null>(null);
   const [message, setMessage] = useState("");
@@ -266,17 +268,14 @@ function TeamAccess({ workspace, userId }: { workspace: Workspace; userId: strin
     [],
   );
   const owner = workspace.owner_id === userId;
-  const loadMembers = useCallback(async () => {
+  const loadMembers = async () => {
     const result = await supabase
       .from("workspace_members")
       .select("user_id,role,created_at")
       .eq("workspace_id", workspace.id);
     if (result.error) throw result.error;
     setMembers(result.data ?? []);
-  }, [workspace.id]);
-  useEffect(() => {
-    void loadMembers().catch(() => setMessage("Sem conexão para carregar os dispositivos."));
-  }, [loadMembers]);
+  };
   const invite = async () => {
     if (busy) return;
     setBusy(true);
@@ -336,79 +335,92 @@ function TeamAccess({ workspace, userId }: { workspace: Workspace; userId: strin
     }
   };
   return (
-    <div className="space-y-3 text-sm">
-      <h2 className="flex items-center gap-2 font-semibold">
+    <div className="mt-3 text-xs">
+      <button
+        className="inline-flex items-center gap-2 text-muted-foreground"
+        onClick={() => {
+          setOpen(!open);
+          if (!open)
+            void loadMembers().catch(() =>
+              setMessage("Sem conexão para carregar os dispositivos."),
+            );
+        }}
+      >
         <Users className="size-4" /> Equipe e dispositivos
-      </h2>
-      <p>
-        Este navegador guarda seu acesso. Antes de limpar os dados do navegador ou trocar de
-        computador, vincule outro dispositivo da equipe.
-      </p>
-      {owner ? (
-        <>
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3 rounded-lg border border-border bg-card p-4">
           <p>
-            O convite permite que outro dispositivo gerencie vídeos, contas e agendamentos desta
-            operação. Compartilhe somente com sua equipe. Válido por 30 minutos, uma única vez.
+            Este navegador guarda seu acesso. Antes de limpar os dados do navegador ou trocar de
+            computador, vincule outro dispositivo da equipe.
           </p>
-          <button
-            disabled={busy}
-            onClick={() => void invite()}
-            className="rounded-md bg-primary px-3 py-2 text-primary-foreground disabled:opacity-50"
-          >
-            {busy ? "Aguarde…" : "Gerar convite para a equipe"}
-          </button>
-          {invitation && (
-            <div className="space-y-2">
-              <input
-                aria-label="Convite de acesso da equipe"
-                className="w-full rounded-md border border-border bg-background p-2"
-                readOnly
-                value={invitation.url}
-              />
-              <div className="flex gap-3">
-                <button
-                  onClick={() =>
-                    void navigator.clipboard
-                      .writeText(invitation.url)
-                      .then(() => setMessage("Convite copiado."))
-                      .catch(() => setMessage("Selecione e copie o convite acima."))
-                  }
-                >
-                  Copiar convite
-                </button>
-                <button disabled={busy} onClick={() => void revoke()}>
-                  Cancelar convite
-                </button>
-              </div>
-            </div>
-          )}
-          {members
-            .filter((member) => member.user_id !== userId)
-            .map((member, index) => (
-              <div
-                key={member.user_id}
-                className="flex items-center justify-between gap-3 border-t border-border pt-2"
+          {owner ? (
+            <>
+              <p>
+                O convite permite que outro dispositivo gerencie vídeos, contas e agendamentos desta
+                operação. Compartilhe somente com sua equipe. Válido por 30 minutos, uma única vez.
+              </p>
+              <button
+                disabled={busy}
+                onClick={() => void invite()}
+                className="rounded-md bg-primary px-3 py-2 text-primary-foreground disabled:opacity-50"
               >
-                <span>
-                  Dispositivo {index + 1} · adicionado em{" "}
-                  {new Intl.DateTimeFormat("pt-BR").format(new Date(member.created_at))}
-                </span>
-                <button disabled={busy} onClick={() => void remove(member.user_id)}>
-                  Revogar acesso
-                </button>
-              </div>
-            ))}
-        </>
-      ) : (
-        <p>
-          Você está em uma operação compartilhada. Para vincular outro dispositivo, peça um convite
-          ao responsável.
-        </p>
-      )}
-      {message && (
-        <p role="status" className="text-muted-foreground">
-          {message}
-        </p>
+                {busy ? "Aguarde…" : "Gerar convite para a equipe"}
+              </button>
+              {invitation && (
+                <div className="space-y-2">
+                  <input
+                    aria-label="Convite de acesso da equipe"
+                    className="w-full rounded-md border border-border bg-background p-2"
+                    readOnly
+                    value={invitation.url}
+                  />
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() =>
+                        void navigator.clipboard
+                          .writeText(invitation.url)
+                          .then(() => setMessage("Convite copiado."))
+                          .catch(() => setMessage("Selecione e copie o convite acima."))
+                      }
+                    >
+                      Copiar convite
+                    </button>
+                    <button disabled={busy} onClick={() => void revoke()}>
+                      Cancelar convite
+                    </button>
+                  </div>
+                </div>
+              )}
+              {members
+                .filter((member) => member.user_id !== userId)
+                .map((member, index) => (
+                  <div
+                    key={member.user_id}
+                    className="flex items-center justify-between gap-3 border-t border-border pt-2"
+                  >
+                    <span>
+                      Dispositivo {index + 1} · adicionado em{" "}
+                      {new Intl.DateTimeFormat("pt-BR").format(new Date(member.created_at))}
+                    </span>
+                    <button disabled={busy} onClick={() => void remove(member.user_id)}>
+                      Revogar acesso
+                    </button>
+                  </div>
+                ))}
+            </>
+          ) : (
+            <p>
+              Você está em uma operação compartilhada. Para vincular outro dispositivo, peça um
+              convite ao responsável.
+            </p>
+          )}
+          {message && (
+            <p role="status" className="text-muted-foreground">
+              {message}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

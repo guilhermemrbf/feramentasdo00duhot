@@ -86,7 +86,7 @@ export const metaGuide: readonly MetaGuideStep[] = [
       "Se a Meta informar que o redirecionamento é inválido, confira o domínio e o caminho completos. Copie novamente pelo botão deste passo.",
   },
   {
-    title: "Copie os três números e cole aqui",
+    title: "Copie as três credenciais do seu app",
     instruction:
       "Copie a Identificação da configuração no quadro do login unificado. Em Configurações do app → Básico, copie o ID do Aplicativo e a Chave Secreta do Aplicativo. Cole os três abaixo.",
     controls: [
@@ -114,7 +114,7 @@ export const metaGuide: readonly MetaGuideStep[] = [
       "Use o ID e a chave do mesmo aplicativo. A identificação da configuração vem do quadro do Login Unificado.",
   },
   {
-    title: "Adicione a conta do Instagram como testadora",
+    title: "Prepare a conta profissional do Instagram",
     instruction:
       "Se o aplicativo estiver em desenvolvimento, abra Funções do app, entre na aba Testadores e clique em Adicionar pessoas. Marque Testador do Instagram, digite o @ da conta e adicione.",
     controls: [
