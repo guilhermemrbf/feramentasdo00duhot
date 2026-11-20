@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowUpRight,
+  ChevronDown,
   CircleHelp,
   Download,
   FileKey,
@@ -48,7 +49,7 @@ export const TOOL_ICONS = {
   profiles: MonitorSmartphone,
   tempMail: Mail,
 };
-export function Brand({ compact = false }: { compact?: boolean }) {
+function Brand() {
   return (
     <span className="flex items-center gap-3">
       <img
@@ -60,25 +61,39 @@ export function Brand({ compact = false }: { compact?: boolean }) {
       />
       <span>
         <strong className="block text-[17px] font-semibold tracking-tight">MauseHot</strong>
-        {!compact && (
-          <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">
-            Suas ferramentas, sem complicação
-          </span>
-        )}
+        <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">
+          Suas ferramentas, sem complicação
+        </span>
       </span>
     </span>
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+}: {
+  children: ReactNode | ((openTools: () => void) => ReactNode);
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const current = findTool(pathname);
   const currentId = current?.id;
+  const isHome = pathname === "/";
   const [mobile, setMobile] = useState(false),
     [query, setQuery] = useState("");
   const dialog = useRef<HTMLDialogElement>(null),
     searchInput = useRef<HTMLInputElement>(null);
-  const { favorites } = useToolPreferences();
+  const desktopSidebar = useRef<HTMLElement>(null);
+  const { favorites, recent, toggle } = useToolPreferences();
+  const shortcuts = [...new Set([...favorites, ...recent.slice(0, 4)])]
+    .map((id) => TOOL_CATALOG.find((tool) => tool.id === id))
+    .filter((tool) => tool !== undefined);
+  const openTools = () => {
+    if (desktopSidebar.current?.getClientRects().length) {
+      desktopSidebar.current.querySelector<HTMLAnchorElement>("[data-main-tool]")?.focus();
+    } else {
+      setMobile(true);
+    }
+  };
   useEffect(() => {
     if (currentId) recordTool(currentId);
     setMobile(false);
@@ -102,27 +117,38 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
-  const nav = (tool: Tool) => {
+  const nav = (tool: Tool, shortcut = false) => {
     const Icon = TOOL_ICONS[tool.id];
-    const active = current?.id === tool.id;
+    const active = currentId === tool.id;
+    const favorite = favorites.includes(tool.id);
     return (
-      <Link
-        key={tool.id}
-        to={tool.path}
-        onClick={() => setMobile(false)}
-        aria-current={active ? "page" : undefined}
-        className={cn("tool-nav-link", active && "is-active")}
-      >
-        <Icon
-          className="tool-tone size-[17px] shrink-0"
-          data-tone={normalizeSearch(tool.category)}
-          aria-hidden
-        />
-        <span className="min-w-0 flex-1 truncate">{tool.name}</span>
-        {favorites.includes(tool.id) && (
-          <Star className="size-3 shrink-0 fill-current opacity-60" />
+      <div key={tool.id} className="flex min-w-0 items-center gap-0.5">
+        <Link
+          to={tool.path}
+          data-main-tool={shortcut ? undefined : ""}
+          onClick={() => setMobile(false)}
+          aria-current={active ? "page" : undefined}
+          className={cn("tool-nav-link min-w-0 flex-1 gap-2.5", active && "is-active")}
+        >
+          <Icon
+            className="tool-tone size-[17px] shrink-0"
+            data-tone={normalizeSearch(tool.category)}
+            aria-hidden
+          />
+          <span className="min-w-0 flex-1 leading-tight break-words">{tool.name}</span>
+        </Link>
+        {!shortcut && (
+          <button
+            type="button"
+            onClick={() => toggle(tool.id)}
+            aria-pressed={favorite}
+            aria-label={`${favorite ? "Remover" : "Adicionar"} ${tool.name} ${favorite ? "dos" : "aos"} favoritos`}
+            className="grid min-h-11 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-brand-red aria-pressed:text-brand-red"
+          >
+            <Star className={cn("size-3.5", favorite && "fill-current")} aria-hidden />
+          </button>
         )}
-      </Link>
+      </div>
     );
   };
   const sidebar = (
@@ -147,12 +173,22 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link
             to="/"
             onClick={() => setMobile(false)}
-            aria-current={pathname === "/" ? "page" : undefined}
-            className={cn("tool-nav-link mb-5", pathname === "/" && "is-active")}
+            aria-current={isHome ? "page" : undefined}
+            className={cn("tool-nav-link mb-4", isHome && "is-active")}
           >
             <Home className="size-[17px]" />
-            Todas as ferramentas
+            Visão geral
           </Link>
+          {shortcuts.length > 0 && (
+            <details className="group mb-5 rounded-lg border border-border px-1">
+              <summary className="flex min-h-11 list-none items-center gap-2 px-2 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+                <Star className="size-3.5" aria-hidden />
+                Favoritas e recentes
+                <ChevronDown className="ml-auto size-3.5 group-open:rotate-180" aria-hidden />
+              </summary>
+              <div className="pb-1">{shortcuts.map((tool) => nav(tool, true))}</div>
+            </details>
+          )}
           {CATEGORIES.filter((category) =>
             TOOL_CATALOG.some((tool) => tool.category === category),
           ).map((category) => (
@@ -160,7 +196,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {category}
               </p>
-              {TOOL_CATALOG.filter((tool) => tool.category === category).map(nav)}
+              {TOOL_CATALOG.filter((tool) => tool.category === category).map((tool) => nav(tool))}
             </div>
           ))}
         </nav>
@@ -188,7 +224,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <a href="#workspace-main" className="skip-link">
         Pular para o conteúdo
       </a>
-      <aside className="workspace-sidebar hidden lg:flex">{sidebar}</aside>
+      <aside ref={desktopSidebar} className="workspace-sidebar hidden lg:flex">
+        {sidebar}
+      </aside>
       <div className="lg:pl-[244px]">
         <header className="workspace-topbar">
           <div className="flex min-w-0 items-center gap-3">
@@ -223,25 +261,29 @@ export function AppShell({ children }: { children: ReactNode }) {
                 className="brand-mark size-8 rounded-md object-contain"
               />
             </Link>
-            <Link
-              to="/"
-              className="hidden text-xs text-muted-foreground hover:text-foreground sm:block"
-            >
-              Início
-            </Link>
-            <span className="hidden text-muted-foreground/40 sm:block">/</span>
-            <span className="truncate text-sm font-semibold">
-              {current?.name || "Todas as ferramentas"}
-            </span>
+            {!isHome && (
+              <>
+                <Link
+                  to="/"
+                  className="hidden text-xs text-muted-foreground hover:text-foreground sm:block"
+                >
+                  Início
+                </Link>
+                <span className="hidden text-muted-foreground/40 sm:block">/</span>
+              </>
+            )}
+            <span className="truncate text-sm font-semibold">{current?.name || "Visão geral"}</span>
           </div>
-          <button
-            onClick={openSearch}
-            aria-label="Buscar ferramenta"
-            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-input bg-background px-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground"
-          >
-            <Search className="size-4" aria-hidden />
-            <span className="hidden sm:inline">Buscar</span>
-          </button>
+          {!isHome && (
+            <button
+              onClick={openSearch}
+              aria-label="Buscar ferramenta"
+              className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-input bg-background px-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground"
+            >
+              <Search className="size-4" aria-hidden />
+              <span className="hidden sm:inline">Buscar</span>
+            </button>
+          )}
         </header>
         <div id="workspace-main" tabIndex={-1}>
           {current && (current.id === "profiles" || current.id === "funnels") && (
@@ -249,7 +291,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <ToolGuide tool={current} />
             </div>
           )}
-          {children}
+          {typeof children === "function" ? children(openTools) : children}
         </div>
         <footer className="workspace-footer">
           <span>MauseHot · Suas ferramentas, sem complicação</span>
