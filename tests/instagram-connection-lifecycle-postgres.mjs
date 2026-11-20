@@ -90,6 +90,7 @@ try {
       values('${id(40)}','${w}','${account}','${w}/${id(40)}/fixture.png','fixture.png','image/png','https://example.test','Fixture',50,50,now()+interval '1 day');`);
   await db.exec(await sql("supabase/migrations/20261120100000_instagram_workspace_apps.sql"));
   const newWorkspace = id(4);
+  const recoveredWorkspace = id(5);
   await db.query("insert into workspaces(id,name,owner_id) values($1,'Nova operação',$2)", [
     newWorkspace,
     viewer,
@@ -98,6 +99,10 @@ try {
     "insert into workspace_members(workspace_id,user_id,role) values($1,$2,'editor')",
     [newWorkspace, editor],
   );
+  await db.query("insert into workspaces(id,name,owner_id) values($1,'Operação recuperada',$2)", [
+    recoveredWorkspace,
+    owner,
+  ]);
   const register = (workspace, user, app = "1234", config = "4567") =>
     one("select public.save_instagram_workspace_app($1,$2,$3,$4,'v1.fixture') ok", [
       workspace,
@@ -134,6 +139,43 @@ try {
   );
   assert.equal(app.app_id, "1234");
   assert.equal(app.secret_ciphertext, "v1.fixture");
+  const restoreScript = await sql("tools/restore-instagram-platform-workspace.sql");
+  const restore = async (workspace, user) => {
+    try {
+      await db.exec(
+        restoreScript.replace("<OWNER_UUID>", user).replace("<WORKSPACE_UUID>", workspace),
+      );
+    } catch (error) {
+      await db.exec("rollback");
+      throw error;
+    }
+  };
+  await db.exec("reset role");
+  await assert.rejects(restore(recoveredWorkspace, viewer), /does not belong/);
+  await assert.rejects(restore(newWorkspace, viewer), /already has a dedicated Meta app/);
+  await actor("authenticated", owner);
+  await assert.rejects(restore(recoveredWorkspace, owner), /permission denied/);
+  await db.exec("reset role");
+  assert.equal(
+    await one("select revision from instagram_workspace_apps where workspace_id=$1", [
+      recoveredWorkspace,
+    ]),
+    undefined,
+  );
+  await restore(recoveredWorkspace, owner);
+  const restoredApp = await one(
+    "select app_id, revision from instagram_workspace_apps where workspace_id=$1",
+    [recoveredWorkspace],
+  );
+  assert.equal(restoredApp.app_id, null);
+  await restore(recoveredWorkspace, owner);
+  assert.deepEqual(
+    await one("select app_id, revision from instagram_workspace_apps where workspace_id=$1", [
+      recoveredWorkspace,
+    ]),
+    restoredApp,
+  );
+  await actor("service_role");
   assert.deepEqual(await register(newWorkspace, viewer, "1234", "8901"), { ok: true });
   const rotated = await one("select revision from instagram_workspace_apps where workspace_id=$1", [
     newWorkspace,

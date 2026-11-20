@@ -6,6 +6,7 @@ import { WorkspaceDate } from "@/components/ui/workspace-date";
 import { WorkspaceSelect } from "@/components/ui/workspace-select";
 import { supabase } from "@/integrations/supabase/client";
 import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
+import type { InstagramStoryReminder as Reminder, PostkitDatabase } from "@/lib/postkit-database";
 import {
   ArrowRight,
   Bell,
@@ -35,7 +36,7 @@ import {
 } from "@/lib/instagram-story-layout";
 
 type Account = { id: string; username: string };
-type MediaType = "image/jpeg" | "image/png" | "video/mp4" | "video/quicktime" | "video/webm";
+type MediaType = Reminder["mime_type"];
 type Media = { id: string; file: File; url: string; mime: MediaType; storagePath?: string };
 type Planned = { media: Media; date: string; time: string };
 const stickerIcons = { link: Link2, mention: UserRound, hashtag: Hash, text: CaseSensitive };
@@ -45,41 +46,9 @@ const stickerHelp = {
   hashtag: "Adiciona um tópico ao Story, como #oferta.",
   text: "Mostra uma frase sobre a foto ou o vídeo.",
 };
-type State = "pending" | "done" | "cancelled";
-type Reminder = {
-  id: string;
-  workspace_id: string;
-  instagram_account_id: string;
-  storage_path: string;
-  filename: string;
-  mime_type: MediaType;
-  link_url: string | null;
-  link_title: string | null;
-  stickers: StoryStickers | null;
-  audience: StoryAudience;
-  sticker_x: number;
-  sticker_y: number;
-  scheduled_at: string;
-  state: State;
-  created_at: string;
-};
 type ReminderInsert = Omit<Reminder, "state" | "created_at">;
-type StoryDatabase = {
-  public: {
-    Tables: {
-      instagram_story_reminders: {
-        Row: Reminder;
-        Insert: ReminderInsert;
-        Update: { state: State };
-        Relationships: [];
-      };
-    };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-  };
-};
 
-const storyClient = supabase as unknown as SupabaseClient<StoryDatabase>;
+const storyClient = supabase as unknown as SupabaseClient<PostkitDatabase>;
 const mimeTypes: Record<string, MediaType> = {
   jpg: "image/jpeg",
   jpeg: "image/jpeg",

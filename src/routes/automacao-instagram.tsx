@@ -331,8 +331,6 @@ function InstagramWorkspaceEntry({
         <InstagramDashboard
           workspaceId={workspace.id}
           timezone={workspace.timezone}
-          accountCount={0}
-          videoCount={null}
           accounts={[]}
           refreshKey={0}
           appMode={app.mode}
@@ -726,7 +724,6 @@ function InstagramWorkspacePage({
     }
   };
 
-  const videoCount = videos.length;
   const formattedSize = (bytes: number) =>
     bytes < 1024 * 1024
       ? `${Math.max(1, Math.round(bytes / 1024))} KB`
@@ -1453,18 +1450,18 @@ function InstagramWorkspacePage({
             <InstagramDashboard
               workspaceId={workspace.id}
               timezone={workspace.timezone}
-              accountCount={accountsLoaded ? readyAccounts.length : null}
-              videoCount={videosLoaded ? videoCount : null}
               accounts={readyAccounts}
               videoCounts={videosLoaded ? videosByAccount : undefined}
               onOpenAccount={openAccount}
               refreshKey={historyRefresh}
               appMode={app.mode}
+              platformAppConfigured={app.platformAppConfigured}
               onAppSetup={onEditApp}
               onAccounts={() => setTab("nova-conta")}
               onLibrary={!needsConnection ? () => setTab("biblioteca") : undefined}
               onSchedule={!needsConnection ? () => setTab("fila") : undefined}
               onQueue={!needsConnection ? () => setTab("publicacoes") : undefined}
+              onStories={!needsConnection ? () => setTab("stories") : undefined}
               onHistory={!needsConnection ? () => setTab("historico") : undefined}
               onAnalytics={!needsConnection ? () => setTab("analytics") : undefined}
             />

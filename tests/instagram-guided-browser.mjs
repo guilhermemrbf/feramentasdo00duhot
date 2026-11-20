@@ -38,6 +38,7 @@ let firstAccountRead = true;
 let freshWorkspace = false;
 let appRow = null;
 let freshAccount = null;
+let remindersUnavailable = false;
 let googleCodeExchanged = false;
 const customerApp = "12345678901";
 const customerConfig = "12345678902";
@@ -197,6 +198,11 @@ const api = http.createServer(async (req, res) => {
     body = body.find((row) => row.id === url.searchParams.get("id").replace("eq.", "")) ?? null;
   }
   if (freshWorkspace && name === "instagram_accounts") body = freshAccount ? [freshAccount] : [];
+  if (name === "instagram_accounts" && req.method === "HEAD") {
+    assert.equal(url.searchParams.get("connection_status"), "eq.connected");
+    const count = body.filter((row) => row.connection_status === "connected").length;
+    res.setHeader("Content-Range", `*/${count}`);
+  }
   if (name === "instagram_tokens") body = null;
   if (name === "disconnect_instagram_account") {
     assert.equal(input.p_account_id, id(3));
@@ -219,12 +225,22 @@ const api = http.createServer(async (req, res) => {
         import_batch_id: a === 3 && i === 19 ? null : id(a * 10),
       })),
     );
+  if (name === "media_assets" && req.method === "HEAD") {
+    assert.equal(url.searchParams.get("archived_at"), "is.null");
+    res.setHeader("Content-Range", `*/${freshWorkspace ? 0 : 40}`);
+  }
   if (name === "instagram_story_reminders") {
     if (req.method === "POST") {
-      storyRows.push(...input);
+      storyRows.push(...input.map((row) => ({ ...row, state: "pending" })));
       body = input;
-    } else body = storyRows;
-    res.setHeader("Content-Range", `0-0/${storyRows.length}`);
+    } else {
+      if (remindersUnavailable)
+        return res.writeHead(503).end(JSON.stringify({ message: "Fixture unavailable" }));
+      body = freshWorkspace ? [] : storyRows;
+      if (url.searchParams.has("state"))
+        body = body.filter((row) => `eq.${row.state}` === url.searchParams.get("state"));
+      res.setHeader("Content-Range", `*/${body.length}`);
+    }
   }
   if (name === "schedule_reviewed_instagram_reels") {
     saved.push(input);
@@ -247,20 +263,32 @@ const api = http.createServer(async (req, res) => {
       res.setHeader("Content-Range", "*/0");
     }
   }
+  if (name === "posts" && req.method === "HEAD") {
+    const count = freshWorkspace
+      ? 0
+      : url.searchParams.get("status") === "eq.published"
+        ? url.searchParams.has("content_type")
+          ? 2
+          : 3
+        : 1;
+    res.setHeader("Content-Range", `*/${count}`);
+  }
   if (name === "get_instagram_analytics" || name === "get_instagram_top_posts") {
-    const accounts = [2, ...(accountBDisconnected ? [] : [3])].map((key) => ({
-      id: id(key),
-      username: key === 2 ? "conta_fixture_a" : "conta_fixture_b",
-      auth_mode: "instagram_unified_login",
-      followers: key === 2 ? 120 : 80,
-      following: 12,
-      reel_views: key === 2 ? 800 : null,
-      reels: 1,
-      measured: key === 2 ? 1 : 0,
-      issue: null,
-      last_catalog_at: "2026-11-19T00:00:00Z",
-      last_measured_at: key === 2 ? "2026-11-19T00:00:00Z" : null,
-    }));
+    const accounts = (freshWorkspace ? [] : [2, ...(accountBDisconnected ? [] : [3])]).map(
+      (key) => ({
+        id: id(key),
+        username: key === 2 ? "conta_fixture_a" : "conta_fixture_b",
+        auth_mode: "instagram_unified_login",
+        followers: key === 2 ? 120 : 80,
+        following: 12,
+        reel_views: key === 2 ? 800 : null,
+        reels: 1,
+        measured: key === 2 ? 1 : 0,
+        issue: null,
+        last_catalog_at: "2026-11-19T00:00:00Z",
+        last_measured_at: key === 2 ? "2026-11-19T00:00:00Z" : null,
+      }),
+    );
     const profiles = accounts.filter(
       (profile) => !input.p_account || profile.id === input.p_account,
     );
@@ -283,9 +311,16 @@ const api = http.createServer(async (req, res) => {
         profiles,
         reels: totals,
         statuses: [],
-        totals: [
-          { kind: "reel", publications: profiles.length, measured, views: measured ? 800 : null },
-        ],
+        totals: profiles.length
+          ? [
+              {
+                kind: "reel",
+                publications: profiles.length,
+                measured,
+                views: measured ? 800 : null,
+              },
+            ]
+          : [],
       };
     } else {
       body = {
@@ -458,6 +493,9 @@ try {
     .waitFor();
   assert.equal(await page.getByRole("region", { name: "Conectar navegador local" }).count(), 0);
   await popup.waitForURL("https://www.facebook.com/**");
+  const platformOAuth = new URL(popup.url());
+  assert.equal(platformOAuth.searchParams.get("client_id"), env.META_APP_ID);
+  assert.equal(platformOAuth.searchParams.get("config_id"), env.META_INSTAGRAM_LOGIN_CONFIG_ID);
   assert.equal(await popup.evaluate(() => window.opener === null), true);
   // A callback notification alone cannot manufacture a connected account.
   const rechecked = page.waitForResponse((response) =>
@@ -559,6 +597,7 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole("button", { name: "Visão geral", exact: true }).click();
   const navigation = page.getByRole("navigation", { name: "Seções da automação Instagram" });
+  await page.getByText("App Meta da plataforma vinculado à operação", { exact: true }).waitFor();
   await navigation.getByRole("button", { name: "Agendar Reels", exact: true }).waitFor();
   await navigation.getByRole("button", { name: "Stories", exact: true }).waitFor();
   await navigation.getByRole("button", { name: "Biblioteca de Reels", exact: true }).waitFor();
@@ -573,6 +612,21 @@ try {
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: "Visualizações de Reels", exact: true }) });
   assert.match(await views.innerText(), /800/);
+  const summary = page.getByRole("region", { name: "Resumo da operação" });
+  const summaryCard = (name) =>
+    summary.getByRole("article").filter({ has: page.getByRole("heading", { name, exact: true }) });
+  for (const [label, count] of [
+    ["Contas conectadas", 2],
+    ["Publicações na fila", 1],
+    ["Vídeos na biblioteca", 40],
+    ["Publicações no período", 3],
+  ]) {
+    await summaryCard(label).getByText(String(count), { exact: true }).waitFor();
+  }
+  await summaryCard("Publicações no período")
+    .getByText("2 Reels publicados no período", { exact: true })
+    .waitFor();
+  await page.getByText("1 publicação precisa de atenção neste período.", { exact: true }).waitFor();
   const rankingPreview = page.getByRole("region", { name: "Contas com mais views" });
   assert.match(await rankingPreview.innerText(), /@conta_fixture_a/);
   assert.doesNotMatch(await rankingPreview.innerText(), /@conta_fixture_b/);
@@ -773,6 +827,26 @@ try {
   assert.equal(storyRows[0].instagram_account_id, id(2));
   assert.equal(library.size, 1);
   assert.equal(saved.length, 1); // No additional Reel scheduling from Stories.
+  storyRows.push({ ...storyRows[0], id: id(701), filename: "concluido.png", state: "done" });
+  storyRows.push({ ...storyRows[0], id: id(702), filename: "cancelado.png", state: "cancelled" });
+  await page.getByRole("button", { name: "Visão geral", exact: true }).click();
+  const upcoming = page.getByRole("region", { name: "Próximas publicações" });
+  await upcoming.getByText(/Lembrete de Story ·/).waitFor();
+  await upcoming.getByText("1 lembrete de Story pendente").waitFor();
+  assert.equal(await upcoming.getByText(/concluido.png|cancelado.png/).count(), 0);
+  await summaryCard("Publicações na fila").getByText("1", { exact: true }).waitFor();
+  await summaryCard("Contas conectadas").getByText("1", { exact: true }).waitFor();
+  await upcoming.getByRole("button", { name: "Ver lembretes" }).click();
+  await page.getByRole("region", { name: "Biblioteca exclusiva de Stories" }).waitFor();
+  remindersUnavailable = true;
+  await page.getByRole("button", { name: "Visão geral", exact: true }).click();
+  await upcoming.getByText("Não foi possível carregar toda a programação.").waitFor();
+  assert.equal(await upcoming.getByText("Nenhuma publicação na fila").count(), 0);
+  await summaryCard("Publicações na fila").getByText("1", { exact: true }).waitFor();
+  remindersUnavailable = false;
+  await page.getByRole("button", { name: "Tentar novamente", exact: true }).click();
+  await upcoming.getByText("1 lembrete de Story pendente").waitFor();
+  await upcoming.getByRole("button", { name: "Ver lembretes" }).click();
   await page
     .getByRole("button", { name: "Conectar outra conta para Stories", exact: true })
     .click();
@@ -782,6 +856,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(web + "/automacao-instagram?tab=stories");
   await page.getByRole("heading", { name: "Primeiros passos" }).waitFor();
+  assert.equal(await page.getByText("App Meta da plataforma vinculado à operação").count(), 0);
   assert.equal(
     await page
       .getByRole("progressbar", { name: "Progresso dos primeiros passos" })

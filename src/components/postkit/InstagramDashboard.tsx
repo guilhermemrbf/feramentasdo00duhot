@@ -37,21 +37,28 @@ const periods = [
 ] as const;
 type Period = (typeof periods)[number] | { id: "custom"; start: string; end: string };
 
-type UpcomingPost = {
-  id: string;
-  scheduled_at: string | null;
-  status: string;
-  content_type: string;
-  instagram_accounts: { username: string } | null;
-  media_assets: { original_filename: string } | null;
+type UpcomingPublication = {
+  key: string;
+  scheduledAt: string | null;
+  kind: "Reel" | "Story" | "Lembrete de Story";
+  username?: string;
+  filename?: string;
+  processing: boolean;
+  isReminder: boolean;
+  accountId?: string;
 };
 type DashboardData = {
   period: string;
-  upcoming: UpcomingPost[];
-  queued: number;
-  published: number;
-  allPublished: number;
-  needsAttention: number;
+  upcoming: UpcomingPublication[];
+  scheduleUnavailable: boolean;
+  queued: number | null;
+  reminderCount: number | null;
+  published: number | null;
+  allPublished: number | null;
+  reelsPublished: number | null;
+  needsAttention: number | null;
+  accountCount: number | null;
+  videoCount: number | null;
   analytics?: InstagramAnalyticsReport;
   analyticsUnavailable: boolean;
 };
@@ -74,8 +81,6 @@ function periodBounds(timezone: string, period: Period) {
 export function InstagramDashboard({
   workspaceId,
   timezone,
-  accountCount,
-  videoCount,
   accounts,
   videoCounts,
   onOpenAccount,
@@ -84,15 +89,15 @@ export function InstagramDashboard({
   onLibrary,
   onSchedule,
   onQueue,
+  onStories,
   onHistory,
   onAnalytics,
   appMode,
+  platformAppConfigured,
   onAppSetup,
 }: {
   workspaceId: string;
   timezone: string;
-  accountCount: number | null;
-  videoCount: number | null;
   accounts: InstagramConnectionDetailsAccount[];
   videoCounts?: ReadonlyMap<string, number>;
   onOpenAccount?: (id: string) => void;
@@ -101,9 +106,11 @@ export function InstagramDashboard({
   onLibrary?: () => void;
   onSchedule?: () => void;
   onQueue?: () => void;
+  onStories?: () => void;
   onHistory?: () => void;
   onAnalytics?: () => void;
   appMode: WorkspaceAppStatus["mode"];
+  platformAppConfigured?: boolean;
   onAppSetup?: (guideStep?: number) => void;
 }) {
   const [period, setPeriod] = useState<Period>(periods[0]);
@@ -116,7 +123,7 @@ export function InstagramDashboard({
   const periodKey = period.id === "custom" ? period.start + "/" + period.end : period.id;
   const periodData = data?.period === periodKey ? data : undefined;
   const today = calendarDateInZone(timezone);
-  const loadAnalytics = !!accountCount;
+  const { accountCount, videoCount } = data ?? {};
 
   useEffect(() => {
     try {
@@ -142,7 +149,24 @@ export function InstagramDashboard({
     const load = async () => {
       const { start, end } = periodBounds(timezone, period);
       const posts = () => supabase.from("posts");
-      const [upcoming, published, allPublished, attention, analytics] = await Promise.all([
+      const publishedInPeriod = () =>
+        posts()
+          .select("id", { count: "exact", head: true })
+          .eq("workspace_id", workspaceId)
+          .eq("status", "published")
+          .gte("published_at", start)
+          .lt("published_at", end);
+      const [
+        upcoming,
+        reminders,
+        published,
+        allPublished,
+        reelsPublished,
+        attention,
+        accountInventory,
+        reelInventory,
+        analytics,
+      ] = await Promise.all([
         posts()
           .select(
             "id,scheduled_at,status,content_type,instagram_accounts!posts_instagram_account_id_workspace_id_fkey(username),media_assets!posts_media_asset_id_workspace_id_fkey(original_filename)",
@@ -153,51 +177,107 @@ export function InstagramDashboard({
           .eq("workspace_id", workspaceId)
           .in("status", ["scheduled", "processing"])
           .order("scheduled_at", { ascending: true, nullsFirst: false })
+          .order("id")
           .limit(5),
-        posts()
-          .select("id", { count: "exact", head: true })
+        database
+          .from("instagram_story_reminders")
+          .select("id,scheduled_at,filename,instagram_account_id", { count: "exact" })
           .eq("workspace_id", workspaceId)
-          .eq("status", "published")
-          .gte("published_at", start)
-          .lt("published_at", end),
+          .eq("state", "pending")
+          .order("scheduled_at")
+          .order("id")
+          .limit(5),
+        publishedInPeriod(),
         posts()
           .select("id", { count: "exact", head: true })
           .eq("workspace_id", workspaceId)
           .eq("status", "published"),
+        publishedInPeriod().eq("content_type", "reel"),
         posts()
           .select("id", { count: "exact", head: true })
           .eq("workspace_id", workspaceId)
           .in("status", ["failed", "needs_review"])
           .gte("updated_at", start)
           .lt("updated_at", end),
-        loadAnalytics
-          ? database.rpc("get_instagram_analytics", {
-              p_workspace: workspaceId,
-              p_account: null,
-              p_start: start,
-              p_end: end,
-              p_page: 0,
-            })
-          : null,
+        database
+          .from("instagram_accounts")
+          .select("id", { count: "exact", head: true })
+          .eq("workspace_id", workspaceId)
+          .eq("connection_status", "connected"),
+        database
+          .from("media_assets")
+          .select("id", { count: "exact", head: true })
+          .eq("workspace_id", workspaceId)
+          .is("archived_at", null)
+          .in("mime_type", ["video/mp4", "video/quicktime"])
+          .in("status", ["uploaded", "ready"]),
+        database.rpc("get_instagram_analytics", {
+          p_workspace: workspaceId,
+          p_account: null,
+          p_start: start,
+          p_end: end,
+          p_page: 0,
+        }),
       ]);
       if (!active) return;
-      if (upcoming.error || published.error || allPublished.error || attention.error) {
-        setError(true);
-        return;
-      }
+      const schedule: UpcomingPublication[] = [
+        ...(upcoming.data ?? []).map(
+          (post): UpcomingPublication => ({
+            key: "post-" + post.id,
+            scheduledAt: post.scheduled_at,
+            kind: post.content_type === "story" ? "Story" : "Reel",
+            username: post.instagram_accounts?.username,
+            filename: post.media_assets?.original_filename,
+            processing: post.status === "processing",
+            isReminder: false,
+          }),
+        ),
+        ...(reminders.data ?? []).map(
+          (reminder): UpcomingPublication => ({
+            key: "reminder-" + reminder.id,
+            scheduledAt: reminder.scheduled_at,
+            kind: "Lembrete de Story",
+            accountId: reminder.instagram_account_id,
+            filename: reminder.filename,
+            processing: false,
+            isReminder: true,
+          }),
+        ),
+      ];
+      const sortDate = (value: string | null) => (value ? Date.parse(value) : Infinity);
+      schedule.sort(
+        (a, b) => sortDate(a.scheduledAt) - sortDate(b.scheduledAt) || a.key.localeCompare(b.key),
+      );
       setData({
         period: periodKey,
-        upcoming: upcoming.data ?? [],
-        queued: upcoming.count ?? 0,
-        published: published.count ?? 0,
-        allPublished: allPublished.count ?? 0,
-        needsAttention: attention.count ?? 0,
-        analytics: analytics?.data
+        upcoming: schedule.slice(0, 5),
+        scheduleUnavailable: Boolean(upcoming.error || reminders.error),
+        queued: upcoming.count,
+        reminderCount: reminders.count,
+        published: published.count,
+        allPublished: allPublished.count,
+        reelsPublished: reelsPublished.count,
+        needsAttention: attention.count,
+        accountCount: accountInventory.count,
+        videoCount: reelInventory.count,
+        analytics: analytics.data
           ? (analytics.data as unknown as InstagramAnalyticsReport)
           : undefined,
-        analyticsUnavailable: !!analytics?.error,
+        analyticsUnavailable: Boolean(analytics.error),
       });
-      setError(false);
+      setError(
+        [
+          upcoming,
+          reminders,
+          published,
+          allPublished,
+          reelsPublished,
+          attention,
+          accountInventory,
+          reelInventory,
+          analytics,
+        ].some(({ error }) => Boolean(error)),
+      );
     };
     const refresh = () => {
       if (loading) return;
@@ -216,7 +296,7 @@ export function InstagramDashboard({
       active = false;
       window.clearInterval(timer);
     };
-  }, [workspaceId, timezone, period, periodKey, refreshKey, retry, loadAnalytics]);
+  }, [workspaceId, timezone, period, periodKey, refreshKey, retry]);
 
   const steps = [
     {
@@ -245,7 +325,7 @@ export function InstagramDashboard({
     },
     {
       title: instagramOnboardingSteps[2],
-      done: !!data && (data.queued > 0 || data.allPublished > 0),
+      done: (data?.queued ?? 0) > 0 || (data?.allPublished ?? 0) > 0,
       action: "Agendar Reel",
       run: accountCount && videoCount ? onSchedule : undefined,
     },
@@ -281,9 +361,11 @@ export function InstagramDashboard({
     {
       label: "Publicações no período",
       value: periodData?.published,
-      note: data
-        ? `${showNumber(data.allPublished)} publicadas pelo MouseHot no total`
-        : "Publicações pelo MouseHot",
+      note:
+        data?.allPublished != null
+          ? `${showNumber(data.allPublished)} publicadas pelo MouseHot no total`
+          : "Publicações pelo MouseHot",
+      detail: `${showNumber(periodData?.reelsPublished)} Reels publicados no período`,
       icon: CheckCircle2,
       tone: "success",
     },
@@ -304,7 +386,7 @@ export function InstagramDashboard({
     {
       label: "Vídeos na biblioteca",
       value: videoCount,
-      note: "Arquivos disponíveis",
+      note: "Vídeos de Reels disponíveis",
       icon: Video,
       tone: "coral",
     },
@@ -324,6 +406,14 @@ export function InstagramDashboard({
 
   return (
     <div className="space-y-4">
+      {appMode === "legacy" && (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm">
+          <Instagram className="size-4 shrink-0 text-brand-red" aria-hidden />
+          {platformAppConfigured
+            ? "App Meta da plataforma vinculado à operação"
+            : "Vínculo com o app Meta da plataforma registrado. A configuração do servidor está incompleta."}
+        </div>
+      )}
       {(appMode === "missing" ||
         accountCount === 0 ||
         (appMode === "own" && data && !steps.every(({ done }) => done))) &&
@@ -441,7 +531,7 @@ export function InstagramDashboard({
           </p>
         )}
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-3">
-          {metrics.map(({ label, value, note, icon: Icon, tone }) => (
+          {metrics.map(({ label, value, note, detail, icon: Icon, tone }) => (
             <article
               key={label}
               data-tone={tone}
@@ -457,6 +547,9 @@ export function InstagramDashboard({
                 {showNumber(value)}
               </p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{note}</p>
+              {detail && (
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{detail}</p>
+              )}
             </article>
           ))}
         </div>
@@ -478,9 +571,12 @@ export function InstagramDashboard({
         </p>
       )}
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <section className="min-w-0 rounded-xl border border-border bg-card">
+        <section
+          aria-labelledby="dashboard-upcoming"
+          className="min-w-0 rounded-xl border border-border bg-card"
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <h2 className="flex items-center gap-2 font-semibold">
+            <h2 id="dashboard-upcoming" className="flex items-center gap-2 font-semibold">
               <CalendarDays className="size-4 text-brand-red" /> Próximas publicações
             </h2>
             {onQueue && (
@@ -498,7 +594,31 @@ export function InstagramDashboard({
               Carregando a fila…
             </p>
           )}
-          {data?.upcoming.length === 0 && (
+          {data?.scheduleUnavailable && (
+            <p role="status" className="px-4 py-3 text-sm text-muted-foreground">
+              Não foi possível carregar toda a programação.
+            </p>
+          )}
+          {data && (data.reminderCount ?? 0) > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2 text-xs text-muted-foreground">
+              <p>
+                {showNumber(data.reminderCount)}{" "}
+                {data.reminderCount === 1
+                  ? "lembrete de Story pendente"
+                  : "lembretes de Stories pendentes"}
+              </p>
+              {onStories && (
+                <button
+                  type="button"
+                  onClick={onStories}
+                  className="min-h-8 font-semibold text-brand-red"
+                >
+                  Ver lembretes
+                </button>
+              )}
+            </div>
+          )}
+          {data?.upcoming.length === 0 && !data.scheduleUnavailable && (
             <div className="grid justify-items-center px-4 py-7 text-center">
               <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-brand-red">
                 <CalendarDays className="size-5" aria-hidden />
@@ -522,18 +642,22 @@ export function InstagramDashboard({
           )}
           <ul className="divide-y divide-border">
             {data?.upcoming.map((post) => {
-              const planned = post.scheduled_at ? new Date(post.scheduled_at) : undefined;
+              const planned = post.scheduledAt ? new Date(post.scheduledAt) : undefined;
               const isLate = planned && planned.getTime() < Date.now();
-              const status =
-                post.status === "processing"
+              const status = post.isReminder
+                ? isLate
+                  ? "Lembrete em atraso"
+                  : "Publicação manual"
+                : post.processing
                   ? "Em processamento"
                   : isLate
                     ? "Em atraso"
                     : "Agendado";
-              const kind = post.content_type === "story" ? "Story" : "Reel";
+              const username =
+                post.username ?? accounts.find(({ id }) => id === post.accountId)?.username;
               return (
                 <li
-                  key={post.id}
+                  key={post.key}
                   className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center"
                 >
                   <div className="min-w-20 rounded-lg bg-secondary/60 px-2 py-1.5 text-center">
@@ -546,15 +670,11 @@ export function InstagramDashboard({
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">
-                      {post.instagram_accounts?.username
-                        ? "@" + post.instagram_accounts.username
-                        : "Conta indisponível"}
+                      {username ? "@" + username : "Conta indisponível"}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {kind}
-                      {post.media_assets?.original_filename
-                        ? " · " + post.media_assets.original_filename
-                        : ""}
+                      {post.kind}
+                      {post.filename ? " · " + post.filename : ""}
                     </p>
                   </div>
                   <span className="col-start-2 justify-self-start rounded-md border border-border px-2 py-1 text-xs font-medium sm:col-start-auto">
@@ -628,7 +748,7 @@ export function InstagramDashboard({
         <div>
           <h2 className="text-sm font-semibold">Precisa de atenção</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            {periodData
+            {periodData?.needsAttention != null
               ? periodData.needsAttention === 0
                 ? "Nenhuma falha ou revisão no período selecionado."
                 : `${periodData.needsAttention} ${periodData.needsAttention === 1 ? "publicação precisa" : "publicações precisam"} de atenção neste período.`

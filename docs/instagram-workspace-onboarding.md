@@ -26,6 +26,14 @@ Em desenvolvimento, a Meta restringe o app a perfis com as funções adequadas. 
 - `node tests/instagram-connection-lifecycle-postgres.mjs` aplica as migrações em PGlite e verifica acesso, isolamento e salvamento da conta.
 - `node --experimental-strip-types tests/instagram-guided-browser.mjs` usa Chrome e respostas Meta/Supabase controladas para exercitar login existente e cadastro de uma operação nova até o callback e a reabertura do painel. Os dois testes de integração aceitam `INTELLIGENCE_PG_TEST_DEPS` apontando para um diretório com `@electric-sql/pglite` e `playwright-core`.
 
+## Recuperar o vínculo da operação administradora
+
+A operação que já usava o app Meta da plataforma deve continuar utilizando as credenciais de servidor existentes. Se a Visão geral pedir o cadastro de outro app após uma migração, localize em **Supabase → Authentication → Users** o UUID da conta Google que é proprietária da operação. Em **Table Editor → workspaces**, confirme o UUID da operação e a correspondência com `owner_id`. Uma mesma conta pode ter mais de uma operação.
+
+No SQL Editor, execute [o script de recuperação](../tools/restore-instagram-platform-workspace.sql) com os dois UUIDs verificados. Ele vincula só a operação indicada, preserva vínculos existentes e recusa sobrescrever um app próprio. O vínculo reaproveita `META_APP_ID`, `META_APP_SECRET` e `META_INSTAGRAM_LOGIN_CONFIG_ID` no servidor. Confira a presença dessas variáveis e a URI de callback cadastrada no app da Meta sem copiar segredos para o navegador ou para o repositório.
+
+Ao reabrir a Visão geral, verifique que o app da plataforma está vinculado à operação. Se o Supabase de destino ainda estiver sem os registros anteriores, restaure as contas, os tokens, o histórico e os arquivos pelo [procedimento de migração](./supabase-vercel-migration.md#transferência-da-operação-existente). Uma nova autorização do Instagram pode vincular perfis para uso futuro quando os tokens antigos não puderem ser recuperados. Confira também os jobs de publicação e métricas e a resposta de cada worker antes de colocar a fila real em execução.
+
 ## Estado da entrega
 
 O código está na branch `feat/home-saas`. Os testes locais confirmaram que a operação nova só abre o Automatic Post após registrar seu app e conectar o perfil, que a conta reaparece após atualizar a página e que uma configuração substituída invalida autorizações anteriores. No navegador, foram mantidos os fluxos das contas existentes e das bibliotecas de Reels e Stories.

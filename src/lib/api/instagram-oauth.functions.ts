@@ -25,6 +25,7 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
       createInstagramOAuthState,
       facebookAuthorizationUrl,
       getInstagramOAuthBaseConfig,
+      getInstagramOAuthConfig,
       instagramAuthorizationUrl,
       instagramOAuthCookieOptions,
       instagramOAuthCookieName,
@@ -46,8 +47,7 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
       const { instagramUnifiedAuthorizationUrl } =
         await import("@/lib/instagram-unified-login.server");
       const { callbackUrl } = getInstagramOAuthBaseConfig();
-      const appId = app.app_id ?? process.env.META_APP_ID;
-      if (!appId) throw new Error("O app Meta da plataforma não está configurado.");
+      const appId = app.app_id ?? getInstagramOAuthConfig().appId;
       authorizationUrl = instagramUnifiedAuthorizationUrl(
         state,
         { appId, callbackUrl },

@@ -1,5 +1,6 @@
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { PublishPhase } from "./instagram-publish-step";
+import type { StoryAudience, StoryStickers } from "./instagram-story-layout";
 
 export type LeasedInstagramPost = Database["public"]["Tables"]["posts"]["Row"] & {
   publish_phase: PublishPhase;
@@ -17,6 +18,24 @@ type TableWithDetails<T, D> = {
       : T[K];
 };
 type CommentStatus = "sending" | "published" | "failed" | "needs_review";
+export type StoryReminderState = "pending" | "done" | "cancelled";
+export type InstagramStoryReminder = {
+  id: string;
+  workspace_id: string;
+  instagram_account_id: string;
+  storage_path: string;
+  filename: string;
+  mime_type: "image/jpeg" | "image/png" | "video/mp4" | "video/quicktime" | "video/webm";
+  link_url: string | null;
+  link_title: string | null;
+  stickers: StoryStickers | null;
+  audience: StoryAudience;
+  sticker_x: number;
+  sticker_y: number;
+  scheduled_at: string;
+  state: StoryReminderState;
+  created_at: string;
+};
 type FirstCommentJob = {
   id: string;
   workspace_id: string;
@@ -50,6 +69,12 @@ export type InstagramReelLoop = {
 export type PostkitDatabase = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Tables" | "Functions"> & {
     Tables: Omit<Tables, "posts" | "media_assets" | "instagram_tokens" | "instagram_accounts"> & {
+      instagram_story_reminders: {
+        Row: InstagramStoryReminder;
+        Insert: Omit<InstagramStoryReminder, "state" | "created_at">;
+        Update: { state: StoryReminderState };
+        Relationships: [];
+      };
       instagram_workspace_apps: {
         Row: InstagramWorkspaceAppRow;
         Insert: Omit<InstagramWorkspaceAppRow, "revision">;
