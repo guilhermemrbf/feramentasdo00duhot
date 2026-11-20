@@ -84,7 +84,7 @@ export function ConnectComputer({
               rel="noreferrer"
               className="mt-2 block text-xs text-muted-foreground underline underline-offset-4"
             >
-              Ver assinatura SHA-256 do arquivo
+              Conferir SHA-256 do arquivo
             </a>
           </div>
         </li>

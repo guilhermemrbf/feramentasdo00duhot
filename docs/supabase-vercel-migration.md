@@ -14,7 +14,6 @@ O GitHub continua como fonte do aplicativo. A Vercel hospeda TanStack Start, o S
 
 | Variáveis                                                          | Uso                                                                                                                                                                                           |
 | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `VITE_AUTH_PROVIDER=supabase`                                      | Ativa Google Auth nativo e PKCE no destino.                                                                                                                                                   |
 | `VITE_SUPABASE_URL` e `SUPABASE_URL`                               | Mesma URL explícita do projeto de destino.                                                                                                                                                    |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_PUBLISHABLE_KEY`       | Mesma chave pública do projeto de destino.                                                                                                                                                    |
 | `SUPABASE_SERVICE_ROLE_KEY`                                        | Chave de servidor do destino, armazenada como segredo.                                                                                                                                        |
@@ -62,6 +61,10 @@ on conflict (workspace_id) do nothing;
 5. **Virada.** Planeje uma janela sem gravações, pause os jobs antigos e deixe terminar as publicações em andamento. Reconcilie as linhas em processamento com a Meta antes de executar no destino. Faça a última cópia de dados e arquivos. Depois de conferir o DNS, os callbacks e a conexão ao destino, habilite somente os jobs novos. Mantenha a origem para recuperação e confirme uma primeira publicação no destino. Após a virada, voltar exige reconciliar as mudanças já gravadas no Supabase novo.
 
 O endereço `mausehot.lovable.app` pertence ao provedor anterior. O alias pretendido no novo projeto é `mausehot.vercel.app`. Confirme a atribuição na Vercel e configure login e callbacks da Meta para o endereço atribuído. Mantenha a origem como referência de recuperação durante a homologação.
+
+### Estado do destino
+
+O projeto Supabase `mausehot` (`hibuqeckyklnfjawztzf`, São Paulo) recebeu 34 migrações. A verificação confirmou zero operações e os dois jobs de publicação pausados. A exportação e a reconciliação permanecem pendentes porque o projeto de origem está pausado no Lovable. O alias da Vercel ainda precisa ser atribuído e verificado, assim como o Google Auth, os callbacks da Meta e os segredos do destino.
 
 ## Verificação da publicação
 
