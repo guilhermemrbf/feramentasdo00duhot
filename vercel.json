@@ -1,4 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "NITRO_PRESET=vercel npm run build"
+  "framework": "tanstack-start",
+  "buildCommand": "NITRO_PRESET=vercel npm run build",
+  "regions": ["gru1"]
 }

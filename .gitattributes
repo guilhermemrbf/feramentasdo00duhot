@@ -1,4 +1,3 @@
-# Keep connector ZIP contents reproducible on Windows and Linux.
 tools/hot-profiles/*.mjs text eol=lf
 tools/hot-profiles/*.md text eol=lf
-tools/hot-profiles/*.cmd text eol=crlf
+tools/hot-profiles/*.cmd text eol=lf

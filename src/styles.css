@@ -284,10 +284,6 @@
   }
 }
 
-#lovable-badge {
-  display: none !important;
-}
-
 /* The workspace shares its surfaces and interaction states across tools. */
 .app-workspace {
   background-image: radial-gradient(ellipse 48rem 28rem at 98% 2%, #c8233a0d, transparent 72%);

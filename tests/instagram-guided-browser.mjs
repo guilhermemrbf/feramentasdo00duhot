@@ -312,7 +312,6 @@ await new Promise((r) => api.listen(4385, "127.0.0.1", r));
 const env = {
   ...process.env,
   VITE_SUPABASE_URL: apiUrl,
-  VITE_AUTH_PROVIDER: "supabase",
   VITE_SUPABASE_PUBLISHABLE_KEY: "fixture-anon",
   SUPABASE_URL: apiUrl,
   SUPABASE_PUBLISHABLE_KEY: "fixture-anon",

@@ -39,7 +39,7 @@ const directory = path.resolve(
     path.join(process.env.LOCALAPPDATA || os.homedir(), "00duHot", "HotProfiles"),
 );
 const origins = new Set([
-  "https://feramentasdo00duhot.lovable.app",
+  "https://mausehot.vercel.app",
   "http://127.0.0.1:8081",
   "http://localhost:8081",
   "http://127.0.0.1:8080",

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateInstagramLogin, createInstagramLoginManager } from "../tools/hot-profiles/instagram-login.mjs";
-const origin = "https://feramentasdo00duhot.lovable.app";
+const origin = "https://mausehot.vercel.app";
 const state = "signed-test-state";
 const request = () => ({ authorizationUrl: `https://www.instagram.com/oauth/authorize?state=${state}&redirect_uri=${encodeURIComponent(origin + "/api/instagram/oauth/callback")}`, cookie: { name: "__Host-instagram-oauth", value: state, url: origin, maxAge: 600 } });
 test("only provider OAuth and matching same-origin callback cookie are accepted", () => {

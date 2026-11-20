@@ -24,11 +24,11 @@ O GitHub continua como fonte do aplicativo. A Vercel hospeda TanStack Start, o S
 | `INSTAGRAM_TOKEN_ENCRYPTION_KEY`                                   | Chave em base64 de 32 bytes. No destino final, é necessária a chave original para decifrar registros copiados. Na homologação use chave separada e dados de teste, sem tokens reais copiados. |
 | `META_APP_ID`, `META_APP_SECRET`, `META_INSTAGRAM_LOGIN_CONFIG_ID` | App da plataforma para as operações legadas. Cadastre o novo callback antes da virada.                                                                                                        |
 
-Mantenha segredos do servidor em variáveis sem `VITE_`. Revise demais variáveis usadas pelos módulos ativos em `.env.example`. Ambientes de homologação usam recursos independentes. Uma instalação ainda hospedada no Lovable continua usando sua configuração de login anterior.
+Mantenha segredos do servidor em variáveis sem `VITE_`. Revise demais variáveis usadas pelos módulos ativos em `.env.example`. Ambientes de homologação usam recursos independentes. O código usa Google Auth nativo do Supabase com PKCE. Use o preset Nitro da Vercel no deploy.
 
 ### Agendadores do Automatic Post
 
-Depois de aplicar `20261120150000`, configure o destino pelo SQL Editor, como operador do banco. Substitua a origem pelo endereço HTTPS do projeto implantado.
+Depois de aplicar `20261120150000` e `20261120153000`, configure o destino pelo SQL Editor, como operador do banco. Substitua a origem pelo endereço HTTPS do projeto implantado.
 
 ```sql
 select private.configure_instagram_worker_destination('https://host.exemplo');
@@ -61,7 +61,13 @@ on conflict (workspace_id) do nothing;
 4. **Conferência.** Na cópia, confira contagens de usuários, operações, contas e publicações. Compare objetos de Storage e seus caminhos e valide uma sessão autorizada com as regras de acesso existentes. Para testar a cópia sem disparar a fila real, mantenha a publicação em pausa. Use dados e credenciais de teste para o ensaio completo de publicação.
 5. **Virada.** Planeje uma janela sem gravações, pause os jobs antigos e deixe terminar as publicações em andamento. Reconcilie as linhas em processamento com a Meta antes de executar no destino. Faça a última cópia de dados e arquivos. Depois de conferir o DNS, os callbacks e a conexão ao destino, habilite somente os jobs novos. Mantenha a origem para recuperação e confirme uma primeira publicação no destino. Após a virada, voltar exige reconciliar as mudanças já gravadas no Supabase novo.
 
-O endereço `mausehot.lovable.app` pertence ao Lovable. Planeje um domínio sob controle do titular para o destino final. Configure DNS, login e callbacks da Meta para esse endereço. Não desative o projeto antigo durante a homologação.
+O endereço `mausehot.lovable.app` pertence ao provedor anterior. O alias pretendido no novo projeto é `mausehot.vercel.app`. Confirme a atribuição na Vercel e configure login e callbacks da Meta para o endereço atribuído. Mantenha a origem como referência de recuperação durante a homologação.
+
+## Verificação da publicação
+
+1. Confirme o domínio associado ao projeto Vercel, o commit publicado e o estado `Ready`. O perfil Hobby é voltado a uso pessoal e não comercial. Para disponibilizar o SaaS comercial, use um plano que comporte esse uso.
+2. No domínio novo, abra as ferramentas do catálogo e confirme que elas carregam. O teste `node --experimental-strip-types tests/vercel-build-smoke.mjs` usa a função gerada e valida também os redirecionamentos, os assets e os limites de autenticação.
+3. Valide as operações que dependem de serviços externos: autenticação Google, OAuth da Meta, envio ao Cloudinary, publicação de um Reel de teste, métricas e armazenamento privado. O Correio Temporário tem implantação própria. Ferramentas Windows e a extensão Chrome exigem seu ambiente local para teste funcional.
 
 ## Referências
 

@@ -54,7 +54,7 @@ node bridge.mjs --port 47900 --data-dir "D:\Meus ambientes"
 node bridge.mjs --allow-origin https://seu-dominio.com
 ```
 
-A origem publicada já autorizada é `https://feramentasdo00duhot.lovable.app`. Para outro domínio, use `--allow-origin` com uma origem exata, sem caminho. Não use URLs ou endereços de terceiros como conector: o painel só aceita localhost/127.0.0.1.
+A origem web autorizada por padrão é `https://mausehot.vercel.app`. Para outra implantação do MouseHot controlada por você, use `--allow-origin` com uma origem exata, sem caminho. O painel só aceita um conector em localhost ou 127.0.0.1.
 
 Para caminhos não padrão: variáveis de ambiente `HOT_PROFILES_BROWSER` (Chrome/Edge) e `HOT_PROFILES_ADB` (adb). Apenas executáveis já instalados e confiáveis.
 

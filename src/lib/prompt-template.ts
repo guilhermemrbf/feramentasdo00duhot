@@ -295,7 +295,7 @@ NÃO expor o Client Secret no frontend.
 
 NÃO deixar credenciais privadas em arquivos públicos.
 
-As credenciais deverão ser configuradas através do sistema seguro de Secrets / Environment Variables da Lovable.
+As credenciais deverão ser configuradas em variáveis de ambiente privadas do servidor.
 
 Utilizar:
 

@@ -268,7 +268,7 @@ async function runSelfTest() {
   const unauthorized = await fetch(connection.url + "/v1/state");
   const foreign = await fetch(connection.url + "/v1/state", {
     headers: {
-      Origin: "https://feramentasdo00duhot.lovable.app",
+      Origin: "https://mausehot.vercel.app",
       Authorization: "Bearer " + connection.token,
     },
   });

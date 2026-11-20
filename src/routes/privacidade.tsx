@@ -11,7 +11,7 @@ export const Route = createFileRoute("/privacidade")({
           "Como o MauseHot trata os dados do Automatic Post e da integração com o Instagram.",
       },
     ],
-    links: [{ rel: "canonical", href: siteOrigin + "/privacidade" }],
+    links: siteOrigin ? [{ rel: "canonical", href: siteOrigin + "/privacidade" }] : [],
   }),
   component: Privacy,
 });
@@ -99,9 +99,9 @@ function Privacy() {
         </h2>
         <p>
           Google participa da autenticação. Meta e Instagram recebem as ações de conexão e
-          publicação. Lovable Cloud e a infraestrutura Supabase utilizada pela aplicação fornecem
-          hospedagem, autenticação, banco de dados e armazenamento. Esses serviços tratam os dados
-          necessários ao funcionamento da integração, de acordo com seus papéis e termos aplicáveis.
+          publicação. A Vercel hospeda a aplicação, e o Supabase fornece autenticação, banco de
+          dados e armazenamento. Esses serviços tratam os dados necessários ao funcionamento da
+          integração, de acordo com seus papéis e termos aplicáveis.
         </p>
         <p>
           O processamento pode envolver infraestrutura fora do Brasil. Entre em contato para obter

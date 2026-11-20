@@ -10,7 +10,7 @@ export const Route = createFileRoute("/exclusao-de-dados")({
         content: "Como solicitar a exclusão dos dados da integração Instagram no MauseHot.",
       },
     ],
-    links: [{ rel: "canonical", href: siteOrigin + "/exclusao-de-dados" }],
+    links: siteOrigin ? [{ rel: "canonical", href: siteOrigin + "/exclusao-de-dados" }] : [],
   }),
   component: DataDeletion,
 });
