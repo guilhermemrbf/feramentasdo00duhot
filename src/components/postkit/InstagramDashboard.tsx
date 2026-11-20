@@ -7,8 +7,8 @@ import {
   Clock3,
   Eye,
   Instagram,
-  Video,
-  Activity,
+  CircleHelp,
+  Wallet,
   Trophy,
 } from "lucide-react";
 import { InstagramAccountCards } from "./InstagramAccountCards";
@@ -71,6 +71,20 @@ function periodBounds(timezone: string, period: Period) {
   return { start: boundary(-period.days), end: boundary(period.id === "yesterday" ? 0 : 1) };
 }
 
+function MetricHelp({ children }: { children: string }) {
+  return (
+    <details className="relative ml-auto">
+      <summary
+        aria-label="O que é esta métrica"
+        className="grid size-8 cursor-pointer list-none place-items-center text-muted-foreground [&::-webkit-details-marker]:hidden"
+      >
+        <CircleHelp className="size-3.5" aria-hidden />
+      </summary>
+      <p className="postkit-card absolute right-0 z-10 w-48 p-2 text-xs shadow-lg">{children}</p>
+    </details>
+  );
+}
+
 export function InstagramDashboard({
   workspaceId,
   timezone,
@@ -83,9 +97,11 @@ export function InstagramDashboard({
   onAccounts,
   onLibrary,
   onSchedule,
+  onNewPost,
   onQueue,
   onHistory,
   onAnalytics,
+  onIntegrations,
   appMode,
   onAppSetup,
 }: {
@@ -100,9 +116,11 @@ export function InstagramDashboard({
   onAccounts?: () => void;
   onLibrary?: () => void;
   onSchedule?: () => void;
+  onNewPost?: () => void;
   onQueue?: () => void;
   onHistory?: () => void;
   onAnalytics?: () => void;
+  onIntegrations: () => void;
   appMode: WorkspaceAppStatus["mode"];
   onAppSetup?: (guideStep?: number) => void;
 }) {
@@ -224,35 +242,35 @@ export function InstagramDashboard({
       done: appMode !== "missing",
       description:
         appMode === "missing"
-          ? "Vincule o app da sua operação para conectar o Instagram."
+          ? "É o que deixa o painel publicar pelas suas contas. Leva uns 10 minutos."
           : undefined,
-      action: "Cadastrar app Meta",
+      action: "Cadastrar o app",
       run: onAppSetup && (() => onAppSetup()),
       onGuide: onAppSetup && (() => onAppSetup(0)),
     },
     {
       title: instagramOnboardingSteps[0],
       done: !!accountCount,
-      action: "Conectar Instagram",
+      action: "Conectar conta",
       run: onAccounts,
-      onGuide: appMode !== "missing" && onAppSetup ? () => onAppSetup(6) : undefined,
+      onGuide: onAppSetup ? () => onAppSetup(6) : undefined,
     },
     {
       title: instagramOnboardingSteps[1],
       done: !!videoCount,
-      action: "Adicionar vídeo",
-      run: accountCount ? onLibrary : undefined,
+      action: "Subir vídeos",
+      run: onLibrary,
     },
     {
       title: instagramOnboardingSteps[2],
       done: !!data && (data.queued > 0 || data.allPublished > 0),
-      action: "Agendar Reel",
-      run: accountCount && videoCount ? onSchedule : undefined,
+      action: "Agendar",
+      run: onSchedule,
     },
     {
       title: instagramOnboardingSteps[3],
       done: !!data?.allPublished,
-      action: "Ver fila",
+      action: "Ver a fila",
       run: onQueue,
     },
   ];
@@ -267,7 +285,7 @@ export function InstagramDashboard({
     .slice(0, 4);
   const metrics = [
     {
-      label: "Visualizações de Reels",
+      label: period.id === "today" ? "Visualizações hoje" : "Visualizações",
       value: reelMetrics?.views,
       note:
         reelMetrics?.views != null
@@ -276,37 +294,30 @@ export function InstagramDashboard({
             ? "Falha ao ler as métricas"
             : "Sem visualizações coletadas para este período",
       icon: Eye,
-      tone: "coral",
+      help: "Visualizações de Reels disponibilizadas pela Meta. O painel indica quantos vídeos do período têm leitura.",
     },
     {
-      label: "Publicações no período",
+      label: "Publicados",
       value: periodData?.published,
       note: data
         ? `${showNumber(data.allPublished)} publicadas pelo MouseHot no total`
         : "Publicações pelo MouseHot",
       icon: CheckCircle2,
-      tone: "success",
+      help: "Publicações com status publicado e horário de publicação dentro do período selecionado.",
     },
     {
-      label: "Contas conectadas",
+      label: period.id === "today" ? "Contas ativas hoje" : "Contas ativas",
       value: accountCount,
-      note: "Disponíveis para publicar",
+      note: `de ${showNumber(accountCount)} conectadas`,
       icon: Instagram,
-      tone: "violet",
+      help: "Contas com conexão ativa e disponíveis para publicar pela operação.",
     },
     {
-      label: "Publicações na fila",
+      label: "Posts na fila",
       value: data?.queued,
-      note: "Agendadas ou em processamento",
+      note: data?.queued === 0 ? "nenhuma agendada" : "Agendados ou em processamento",
       icon: Clock3,
-      tone: "info",
-    },
-    {
-      label: "Vídeos na biblioteca",
-      value: videoCount,
-      note: "Arquivos disponíveis",
-      icon: Video,
-      tone: "coral",
+      help: "Total atual de posts agendados ou em processamento. A fila independe do período das métricas.",
     },
   ];
   const dateFormat = new Intl.DateTimeFormat("pt-BR", {
@@ -339,17 +350,10 @@ export function InstagramDashboard({
           <InstagramFirstSteps steps={steps} onHide={toggleFirstSteps} />
         ))}
       <section aria-labelledby="instagram-overview-summary" className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 id="instagram-overview-summary" className="font-display text-lg font-semibold">
-              Resumo da operação
-            </h2>
-            {data && !error && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Activity className="size-3.5 text-emerald-400" aria-hidden /> Atualiza a cada 30 s
-              </span>
-            )}
-          </div>
+        <div className="postkit-period-bar">
+          <h2 id="instagram-overview-summary" className="text-sm font-semibold">
+            {period.id === "custom" ? "período" : period.label.toLocaleLowerCase("pt-BR")}
+          </h2>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Período do resumo">
             {periods.map((item) => (
               <button
@@ -389,9 +393,13 @@ export function InstagramDashboard({
               const values = new FormData(event.currentTarget);
               const start = String(values.get("start"));
               const end = String(values.get("end"));
-              if (start > end) {
+              if (start > end || Date.parse(end) - Date.parse(start) > 365 * 86_400_000) {
                 const input = event.currentTarget.elements.namedItem("end") as HTMLInputElement;
-                input.setCustomValidity("Informe uma data final igual ou posterior à inicial.");
+                input.setCustomValidity(
+                  start > end
+                    ? "Informe uma data final igual ou posterior à inicial."
+                    : "Selecione até 366 dias.",
+                );
                 input.reportValidity();
                 return;
               }
@@ -440,23 +448,37 @@ export function InstagramDashboard({
             {period.end.split("-").reverse().join("/")}
           </p>
         )}
+        <article className="postkit-card flex flex-wrap items-center justify-between gap-3 p-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                <Wallet className="size-4" aria-hidden />{" "}
+                {period.id === "today" ? "Faturado hoje" : "Faturamento"}
+              </h3>
+              <MetricHelp>Dados de receita dependem de um gateway integrado à operação.</MetricHelp>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Conecte o seu gateway de pagamento para ver aqui quanto você faturou.
+            </p>
+          </div>
+          <button type="button" className="postkit-outlined" onClick={onIntegrations}>
+            Conectar gateway
+          </button>
+        </article>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-3">
-          {metrics.map(({ label, value, note, icon: Icon, tone }) => (
-            <article
-              key={label}
-              data-tone={tone}
-              className="metric-card min-w-0 rounded-xl border border-border p-3 sm:p-4"
-            >
+          {metrics.map(({ label, value, note, icon: Icon, help }) => (
+            <article key={label} className="postkit-card min-w-0 p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-background/70 text-brand-red">
                   <Icon className="size-4" aria-hidden />
                 </span>
-                <h3 className="text-xs font-semibold">{label}</h3>
+                <h3 className="text-xs font-semibold uppercase text-muted-foreground">{label}</h3>
+                <MetricHelp>{help}</MetricHelp>
               </div>
               <p className="mt-3 font-display text-2xl font-semibold tabular-nums">
                 {showNumber(value)}
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{note}</p>
+              <p className="mt-1 text-xs leading-relaxed text-[#43c4ad]">{note}</p>
             </article>
           ))}
         </div>
@@ -489,7 +511,7 @@ export function InstagramDashboard({
                 onClick={onQueue}
                 className="inline-flex items-center gap-1 text-sm font-semibold text-brand-red"
               >
-                Ver fila <ArrowRight className="size-3.5" />
+                ver todas <ArrowRight className="size-3.5" />
               </button>
             )}
           </div>
@@ -499,23 +521,11 @@ export function InstagramDashboard({
             </p>
           )}
           {data?.upcoming.length === 0 && (
-            <div className="grid justify-items-center px-4 py-7 text-center">
-              <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-brand-red">
-                <CalendarDays className="size-5" aria-hidden />
-              </span>
-              <p className="mt-3 text-sm font-semibold">Nenhuma publicação na fila</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {onSchedule
-                  ? "Agende um Reel para vê-lo aqui."
-                  : "Conclua a configuração para agendar."}
-              </p>
-              {onSchedule && (
-                <button
-                  type="button"
-                  onClick={onSchedule}
-                  className="mt-3 min-h-10 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-secondary"
-                >
-                  Agendar Reel
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <p className="text-sm text-muted-foreground">Nenhuma publicação pendente na fila.</p>
+              {onNewPost && (
+                <button type="button" className="postkit-outlined" onClick={onNewPost}>
+                  Nova publicação
                 </button>
               )}
             </div>
@@ -571,7 +581,7 @@ export function InstagramDashboard({
         >
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <h2 id="dashboard-top-accounts" className="flex items-center gap-2 font-semibold">
-              <Trophy className="size-4 text-brand-red" aria-hidden /> Contas com mais views
+              <Trophy className="size-4 text-brand-red" aria-hidden /> Top contas
             </h2>
             {onAnalytics && (
               <button

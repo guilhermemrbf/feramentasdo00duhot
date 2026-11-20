@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Copy, KeyRound } from "lucide-react";
+import { useRef, useState, type FormEvent } from "react";
+import { ArrowLeft, ArrowRight, Check, Copy, X } from "lucide-react";
 import {
   getInstagramWorkspaceApp,
   registerInstagramWorkspaceApp,
 } from "@/lib/api/instagram-workspace-app.functions";
+import { metaGuide } from "./instagram-meta-guide";
 
 export type WorkspaceAppStatus = Awaited<ReturnType<typeof getInstagramWorkspaceApp>>;
 type Step = {
@@ -15,76 +16,65 @@ type Step = {
   onGuide?: () => void;
 };
 
-export const instagramAppStepTitle = "Cadastre seu aplicativo da Meta";
-
+export const instagramAppStepTitle = "Criar o app na Meta e cadastrar aqui";
 export const instagramOnboardingSteps = [
-  "Conecte uma conta profissional do Instagram",
-  "Adicione seu primeiro vídeo",
-  "Agende uma publicação",
-  "Confira a primeira publicação no ar",
+  "Conectar a primeira conta do Instagram",
+  "Subir os primeiros vídeos",
+  "Agendar o primeiro post ou lote",
+  "Primeira publicação no ar",
 ];
 
 export function InstagramFirstSteps({ steps, onHide }: { steps: Step[]; onHide: () => void }) {
-  const completed = steps.filter((step) => step.done).length;
+  const completed = steps.filter(({ done }) => done).length;
+  const active = steps.findIndex(({ done }) => !done);
   return (
-    <section
-      aria-labelledby="instagram-first-steps"
-      className="rounded-2xl border border-border bg-card p-4 sm:p-5"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section aria-labelledby="instagram-first-steps" className="postkit-card postkit-first-steps">
+      <div className="postkit-steps-header">
         <div>
-          <h2 id="instagram-first-steps" className="font-display text-lg font-semibold">
-            Primeiros passos
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Da configuração da Meta à primeira publicação. O progresso acompanha sua operação.
-          </p>
+          <h2 id="instagram-first-steps">Primeiros passos</h2>
+          <p>Do cadastro à primeira publicação. Cada passo se marca sozinho.</p>
         </div>
-        <div className="flex items-center gap-2 text-xs font-medium">
+        <div className="postkit-steps-progress">
           <progress
             value={completed}
             max={steps.length}
             aria-label="Progresso dos primeiros passos"
-            className="h-2 w-24 accent-primary sm:w-36"
           />
-          {completed} de {steps.length}
+          <span>
+            {completed} de {steps.length}
+          </span>
           <button
             type="button"
             onClick={onHide}
-            className="min-h-10 rounded-md px-2 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+            title="Ocultar primeiros passos"
+            aria-label="Ocultar primeiros passos"
           >
-            Ocultar primeiros passos
+            <X className="size-4" aria-hidden />
           </button>
         </div>
       </div>
-      <ol className="mt-3 divide-y divide-border">
+      <ol>
         {steps.map(({ title, done, description, action, run, onGuide }, index) => (
-          <li
-            key={title}
-            className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
-          >
-            <span
-              className={
-                done
-                  ? "grid size-7 place-items-center rounded-full bg-emerald-500/10 text-emerald-300"
-                  : "grid size-7 place-items-center rounded-full border border-border text-xs text-muted-foreground"
-              }
-            >
+          <li key={title} data-active={index === active} data-done={done}>
+            <span className="postkit-step-number">
               {done ? <Check className="size-4" role="img" aria-label="Concluído" /> : index + 1}
             </span>
             <div>
-              <p className="text-sm font-medium">{title}</p>
-              {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
+              <p>
+                {title}
+                <span className="sr-only">{done ? " (concluído)" : " (falta)"}</span>
+              </p>
+              {description && <p className="postkit-step-description">{description}</p>}
             </div>
             {!done && (action || onGuide) && (
-              <div className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-auto sm:justify-end">
+              <div className="postkit-step-actions">
                 {onGuide && (
                   <button
                     type="button"
                     onClick={onGuide}
-                    className="min-h-10 rounded-md px-2 text-sm font-medium text-brand-red hover:bg-primary/10"
+                    className="postkit-text-button postkit-muted"
                   >
-                    Ver guia
+                    ver como fazer
                   </button>
                 )}
                 {action && (
@@ -92,7 +82,7 @@ export function InstagramFirstSteps({ steps, onHide }: { steps: Step[]; onHide: 
                     type="button"
                     onClick={run}
                     disabled={!run}
-                    className="min-h-10 rounded-lg border border-primary/40 bg-primary/10 px-3 text-sm font-semibold text-brand-red hover:bg-primary/20 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground"
+                    className={index === active && run ? "postkit-primary" : "postkit-text-button"}
                   >
                     {action}
                   </button>
@@ -106,66 +96,34 @@ export function InstagramFirstSteps({ steps, onHide }: { steps: Step[]; onHide: 
   );
 }
 
-const metaGuide = [
-  {
-    title: "Abra o portal de desenvolvedores",
-    instruction:
-      "Em Meus apps, escolha Criar app. Informe o nome e o e-mail de contato da sua operação.",
-  },
-  {
-    title: "Escolha o caso de uso do Instagram",
-    instruction:
-      "Selecione o caso de uso para gerenciar conteúdo e mensagens do Instagram. Vincule o portfólio empresarial da operação e conclua a criação do app.",
-  },
-  {
-    title: "Configure o Login Unificado",
-    instruction:
-      "Crie uma configuração para Instagram com token de usuário do sistema. Inclua as permissões de perfil e de publicação.",
-  },
-  {
-    title: "Autorize a leitura de métricas",
-    instruction:
-      "Se quiser acompanhar o desempenho, inclua a permissão de insights do Instagram na configuração. O painel mostra as métricas que a Meta disponibilizar.",
-  },
-  {
-    title: "Cadastre o endereço de retorno",
-    instruction:
-      "Na configuração da Meta, cole o endereço abaixo em URIs de redirecionamento OAuth válidos e salve.",
-  },
-  {
-    title: "Preencha as credenciais no MouseHot",
-    instruction:
-      "Em Configurações do app → Básico, encontre o ID e o segredo do app. No Login Unificado, encontre o ID da configuração. Use os três campos do formulário de cadastro.",
-  },
-  {
-    title: "Prepare a conta profissional",
-    instruction:
-      "Use uma conta profissional do Instagram. Se seu app Meta estiver em desenvolvimento, adicione o perfil como testador e aceite o convite no Instagram antes de conectar.",
-  },
-] as const;
-
 export function InstagramWorkspaceSetup({
   app,
   workspaceId,
   onSaved,
   initialGuideStep,
-  onBack,
   onConnect,
 }: {
   app: WorkspaceAppStatus;
   workspaceId: string;
-  onSaved: (continueGuide: boolean) => Promise<void>;
+  onSaved: () => Promise<void>;
   initialGuideStep?: number;
-  onBack: () => void;
   onConnect: () => void;
 }) {
+  const firstSetup = app.mode === "missing";
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
-  const [guideStep, setGuideStep] = useState(initialGuideStep ?? 0);
-  const [showGuide, setShowGuide] = useState(initialGuideStep !== undefined);
+  const [guideStep, setGuideStep] = useState(initialGuideStep ?? (firstSetup ? 0 : 5));
+  const heading = useRef<HTMLHeadingElement>(null);
   const guide = metaGuide[guideStep];
-  const firstSetup = app.mode === "missing";
+  const goTo = (step: number) => {
+    setGuideStep(step);
+    requestAnimationFrame(() => {
+      heading.current?.focus({ preventScroll: true });
+      heading.current?.scrollIntoView({ block: "nearest" });
+    });
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (saving) return;
@@ -190,7 +148,8 @@ export function InstagramWorkspaceSetup({
       });
       if (outcome === "saved") {
         form.reset();
-        await onSaved(showGuide);
+        await onSaved();
+        goTo(6);
         return;
       }
       setError(
@@ -212,198 +171,174 @@ export function InstagramWorkspaceSetup({
   };
 
   return (
-    <div className="space-y-4">
-      <section
-        aria-labelledby="instagram-app-setup"
-        className="rounded-2xl border border-border bg-card p-4 sm:p-6"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2
-            id="instagram-app-setup"
-            className="flex items-center gap-2 font-display text-xl font-semibold"
-          >
-            <KeyRound className="size-5 text-brand-red" aria-hidden />
-            {firstSetup ? "Cadastrar app Meta" : "App Meta da operação"}
-          </h2>
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-secondary"
-          >
-            <ArrowLeft className="size-4" aria-hidden /> Voltar à visão geral
-          </button>
-        </div>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Cadastre o aplicativo da sua operação para conectar o Instagram e começar a publicar.
-        </p>
-        {!app.canManage ? (
-          <p className="mt-4 text-sm">
-            Peça ao responsável pela operação para concluir o cadastro.
+    <section className="postkit-card postkit-guide" aria-label="Guia de configuração do Meta">
+      <h2>Como criar o app na Meta, passo a passo</h2>
+      <div className="postkit-guide-body">
+        <nav className="postkit-guide-steps" aria-label="Passos do guia">
+          {metaGuide.map(({ title }, index) => (
+            <button
+              type="button"
+              key={title}
+              aria-current={index === guideStep ? "step" : undefined}
+              aria-label={`Passo ${index + 1}: ${title}`}
+              title={title}
+              onClick={() => goTo(index)}
+            />
+          ))}
+        </nav>
+        <div className="postkit-guide-intro">
+          <p className="postkit-muted">
+            Passo {guideStep + 1} de {metaGuide.length}
           </p>
-        ) : (
-          <>
-            <details
-              open={showGuide}
-              onToggle={(event) => setShowGuide(event.currentTarget.open)}
-              className="mt-5 rounded-xl border border-border bg-background/50"
+          <h3 ref={heading} tabIndex={-1}>
+            {guide.title}
+          </h3>
+          <p className="postkit-guide-instruction">{guide.instruction}</p>
+        </div>
+        {guideStep === 0 && (
+          <a
+            className="postkit-outlined"
+            href="https://developers.facebook.com"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Abrir developers.facebook.com <ArrowRight className="size-4" aria-hidden />
+          </a>
+        )}
+        <div>
+          <p className="postkit-muted">Na Meta, clique em</p>
+          <ol className="postkit-guide-controls">
+            {guide.controls.map((control, index) => (
+              <li key={control}>
+                {index > 0 && <ArrowRight className="size-3.5" aria-hidden />}
+                <span>{control}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+        {guideStep === 3 && <code>instagram_manage_insights</code>}
+        {guideStep === 4 && (
+          <div className="postkit-callback">
+            <code>{app.callbackUrl}</code>
+            <button
+              type="button"
+              className="postkit-outlined"
+              onClick={() => {
+                void navigator.clipboard
+                  .writeText(app.callbackUrl)
+                  .then(() => setCopyStatus("Endereço copiado."))
+                  .catch(() => setCopyStatus("Selecione e copie o endereço acima."));
+              }}
             >
-              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
-                Guia de configuração
-              </summary>
-              <section
-                className="space-y-4 border-t border-border p-4"
-                aria-label="Guia de configuração do Meta"
-              >
-                <nav aria-label="Etapas do guia" className="flex flex-wrap gap-2">
-                  {metaGuide.map(({ title }, index) => (
-                    <button
-                      key={title}
-                      type="button"
-                      aria-current={index === guideStep ? "step" : undefined}
-                      aria-label={`Etapa ${index + 1} de ${metaGuide.length} — ${title}`}
-                      onClick={() => setGuideStep(index)}
-                      className={`min-h-10 min-w-10 rounded-lg border text-sm font-semibold hover:bg-secondary ${index === guideStep ? "border-brand-red bg-primary/15 text-brand-red" : "border-border"}`}
-                    >
-                      {index + 1}
-                    </button>
-                  ))}
-                </nav>
-                <div aria-live="polite">
-                  <p className="text-xs font-semibold text-brand-red">
-                    Etapa {guideStep + 1} de {metaGuide.length}
-                  </p>
-                  <h3 className="mt-1 font-semibold">{guide.title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">{guide.instruction}</p>
-                </div>
-                {guideStep === 0 && (
-                  <a
-                    className="inline-flex items-center gap-1 font-semibold text-brand-red underline underline-offset-4"
-                    href="https://developers.facebook.com/apps/"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Abra o Meta for Developers <ArrowUpRight className="size-4" aria-hidden />
-                  </a>
-                )}
-                {guideStep === 4 && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <code className="break-all rounded-md bg-background px-2 py-1 text-xs">
-                      {app.callbackUrl}
-                    </code>
-                    <button
-                      type="button"
-                      className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 text-xs font-semibold"
-                      onClick={() =>
-                        void navigator.clipboard
-                          .writeText(app.callbackUrl)
-                          .then(() => setCopyStatus("Endereço copiado."))
-                          .catch(() => setCopyStatus("Selecione e copie o endereço acima."))
-                      }
-                    >
-                      <Copy className="size-4" aria-hidden /> Copiar endereço
-                    </button>
-                    {copyStatus && (
-                      <p className="text-xs text-muted-foreground" role="status">
-                        {copyStatus}
-                      </p>
-                    )}
-                  </div>
-                )}
-                {guideStep === 6 && firstSetup && (
-                  <p className="text-sm text-muted-foreground">
-                    Cadastre seu app na etapa anterior para liberar a conexão.
-                  </p>
-                )}
-                <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-                  <button
-                    type="button"
-                    disabled={guideStep === 0}
-                    onClick={() => setGuideStep(guideStep - 1)}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-secondary disabled:opacity-45"
-                  >
-                    <ArrowLeft className="size-4" aria-hidden /> Voltar
-                  </button>
-                  {guideStep < metaGuide.length - 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setGuideStep(guideStep + 1)}
-                      className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
-                    >
-                      Próximo <ArrowRight className="size-4" aria-hidden />
-                    </button>
-                  )}
-                  {guideStep === 6 && (
-                    <button
-                      type="button"
-                      onClick={firstSetup ? () => setGuideStep(5) : onConnect}
-                      className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
-                    >
-                      {firstSetup ? "Ir para o cadastro" : "Conectar a primeira conta"}
-                      <ArrowRight className="size-4 shrink-0" aria-hidden />
-                    </button>
-                  )}
-                </div>
-              </section>
-            </details>
-            <form
-              id="instagram-app-credentials"
-              hidden={showGuide && guideStep !== 5}
-              aria-label="Cadastro do app Meta"
-              method="post"
-              className="mt-5 space-y-4 border-t border-border pt-5"
-              onSubmit={(event) => void submit(event)}
-            >
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="grid gap-1.5 text-sm font-medium">
-                  ID do app Meta
-                  <input
-                    name="appId"
-                    required
-                    inputMode="numeric"
-                    maxLength={32}
-                    defaultValue={app.appId}
-                    className="min-h-11 min-w-0 rounded-md border border-border bg-background px-3"
-                  />
-                </label>
-                <label className="grid gap-1.5 text-sm font-medium">
-                  ID da configuração do Login Unificado
-                  <input
-                    name="configId"
-                    required
-                    inputMode="numeric"
-                    maxLength={32}
-                    defaultValue={app.configId}
-                    className="min-h-11 min-w-0 rounded-md border border-border bg-background px-3"
-                  />
-                </label>
-              </div>
-              <label className="grid gap-1.5 text-sm font-medium">
-                Segredo do app
+              <Copy className="size-4" aria-hidden /> Copiar
+            </button>
+            {copyStatus && <p role="status">{copyStatus}</p>}
+          </div>
+        )}
+        <figure className="postkit-guide-visual">
+          <p className="postkit-muted">O que você deve estar vendo</p>
+          <figcaption>{guide.expected}</figcaption>
+          {guide.images.map(([file, alt]) => {
+            const src = `/tutorial-meta/meta-${file}.webp`;
+            return (
+              <a href={src} target="_blank" rel="noreferrer" key={file}>
+                <img src={src} alt={alt} />
+              </a>
+            );
+          })}
+          <p className="postkit-muted">Clique ou toque na imagem para ver inteira.</p>
+        </figure>
+        {guide.tip && <p className="postkit-guide-tip">{guide.tip}</p>}
+        {app.canManage ? (
+          <form
+            hidden={guideStep !== 5}
+            aria-label="Cadastro do app Meta"
+            method="post"
+            className="postkit-credentials"
+            onSubmit={(event) => void submit(event)}
+          >
+            <div className="postkit-credentials-grid">
+              <label>
+                ID do Aplicativo
+                <input
+                  name="appId"
+                  required
+                  inputMode="numeric"
+                  maxLength={32}
+                  defaultValue={app.appId}
+                  placeholder="só números"
+                />
+              </label>
+              <label>
+                Chave Secreta do Aplicativo
                 <input
                   name="appSecret"
                   type="password"
                   autoComplete="off"
                   maxLength={32}
                   required
-                  className="min-h-11 min-w-0 rounded-md border border-border bg-background px-3"
+                  placeholder="a chave secreta"
                 />
               </label>
-              {error && (
-                <p role="alert" className="text-sm text-red-300">
-                  {error}
-                </p>
-              )}
-              <button
-                type="submit"
-                disabled={saving}
-                className="min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
-              >
-                {saving ? "Validando com a Meta…" : "Validar e salvar app"}
-              </button>
-            </form>
-          </>
+              <label>
+                Identificação da configuração
+                <input
+                  name="configId"
+                  required
+                  inputMode="numeric"
+                  maxLength={32}
+                  defaultValue={app.configId}
+                  placeholder="só números"
+                />
+              </label>
+            </div>
+            <p className="postkit-muted">
+              O ID e a chave ficam em Configurações do app → Básico. A identificação da configuração
+              fica no quadro API do Instagram (login unificado).
+            </p>
+            {error && (
+              <p role="alert" className="text-red-300">
+                {error}
+              </p>
+            )}
+            <button type="submit" className="postkit-primary" disabled={saving}>
+              {saving ? "Validando com a Meta…" : "Cadastrar"}
+            </button>
+          </form>
+        ) : guideStep === 5 ? (
+          <p>Peça ao responsável pela operação para concluir o cadastro.</p>
+        ) : null}
+        {guide.commonIssue && (
+          <details key={guideStep} className="postkit-guide-issues">
+            <summary>Erros comuns neste passo</summary>
+            <p>{guide.commonIssue}</p>
+          </details>
         )}
-      </section>
-    </div>
+        <div className="postkit-guide-footer">
+          <button
+            type="button"
+            className="postkit-outlined"
+            disabled={guideStep === 0}
+            onClick={() => goTo(guideStep - 1)}
+          >
+            <ArrowLeft className="size-4" aria-hidden /> Voltar
+          </button>
+          {guideStep < metaGuide.length - 1 ? (
+            <button type="button" className="postkit-primary" onClick={() => goTo(guideStep + 1)}>
+              Próximo <ArrowRight className="size-4" aria-hidden />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="postkit-primary"
+              onClick={firstSetup ? () => goTo(5) : onConnect}
+            >
+              {firstSetup ? "Ir para o cadastro" : "Conectar a primeira conta"}{" "}
+              <ArrowRight className="size-4" aria-hidden />
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }

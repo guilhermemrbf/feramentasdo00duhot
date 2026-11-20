@@ -557,15 +557,26 @@ try {
   assert.equal(await resultPage.getByRole("button", { name: "Continuar com Google" }).count(), 0);
   await isolated.close();
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.getByRole("button", { name: "Visão geral", exact: true }).click();
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
   await page.getByText("Reel · reel-que-esta-na-fila.mp4", { exact: true }).waitFor();
   const views = page
     .getByRole("article")
-    .filter({ has: page.getByRole("heading", { name: "Visualizações de Reels", exact: true }) });
+    .filter({ has: page.getByRole("heading", { name: /^Visualizações(?: hoje)?$/ }) });
   assert.match(await views.innerText(), /800/);
-  const rankingPreview = page.getByRole("region", { name: "Contas com mais views" });
+  const rankingPreview = page.getByRole("region", { name: "Top contas" });
   assert.match(await rankingPreview.innerText(), /@conta_fixture_a/);
   assert.doesNotMatch(await rankingPreview.innerText(), /@conta_fixture_b/);
+  await page
+    .getByRole("navigation", { name: "Seções da automação Instagram" })
+    .getByRole("button", { name: "Ranking", exact: true })
+    .click();
+  await page.getByRole("heading", { name: "Top 5 do mês", exact: true }).waitFor();
+  await page.getByRole("heading", { name: "Top 5 de hoje", exact: true }).waitFor();
+  await page
+    .getByRole("navigation", { name: "Seções da automação Instagram" })
+    .getByRole("button", { name: "Dashboard", exact: true })
+    .click();
+  await views.getByText("800", { exact: true }).waitFor();
   const dateSwitch = page.waitForResponse((response) =>
     response.url().includes("/rpc/get_instagram_analytics"),
   );
@@ -589,7 +600,10 @@ try {
       path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "instagram-overview-desktop.png"),
       fullPage: true,
     });
-  await page.getByRole("button", { name: "Biblioteca de Reels", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Seções da automação Instagram" })
+    .getByRole("button", { name: "Biblioteca", exact: true })
+    .click();
   await page.getByRole("button", { name: /@conta_fixture_b/ }).click();
   const folders = page.getByRole("region", { name: "Pastas da biblioteca" });
   const catalog = page.getByRole("region", { name: "Vídeos desta pasta" });
@@ -636,7 +650,7 @@ try {
       fullPage: true,
     });
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
+  await page.getByRole("button", { name: "Contas", exact: true }).click();
   assert.equal(
     await page
       .getByRole("main")
@@ -648,17 +662,17 @@ try {
   const optionsB = page.getByRole("region", { name: "Opções de @conta_fixture_b" });
   await optionsB.getByRole("button", { name: "Biblioteca de Reels", exact: true }).click();
   await page.getByRole("heading", { name: /Biblioteca.*conta_fixture_b/ }).waitFor();
-  await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
+  await page.getByRole("button", { name: "Contas", exact: true }).click();
   await page.getByRole("button", { name: "Abrir conta @conta_fixture_b", exact: true }).click();
   await page.getByRole("button", { name: "Ver resultados", exact: true }).click();
   await page.getByText("80 seguidores · 12 seguindo").waitFor();
   assert.equal(await page.getByText("120 seguidores · 12 seguindo").count(), 0);
-  await page.getByRole("button", { name: "Melhores publicações", exact: true }).click();
+  await page.getByRole("button", { name: "Top posts", exact: true }).click();
   await page.getByRole("heading", { name: "Top 10 Reels por engajamento", exact: true }).waitFor();
   const ranking = page.getByRole("list", { name: "Ranking de Reels" });
   assert.match(await ranking.innerText(), /@conta_fixture_a/);
   assert.match(await ranking.innerText(), /@conta_fixture_b/);
-  await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
+  await page.getByRole("button", { name: "Contas", exact: true }).click();
   await page.getByRole("button", { name: "Abrir conta @conta_fixture_b", exact: true }).click();
   const detailsB = page.locator('details[aria-label="Conexão de @conta_fixture_b"]');
   await detailsB.locator("summary").click();
@@ -670,7 +684,7 @@ try {
   assert.equal(accountBDisconnected, false); // A missing token fixture is never called verified.
   accountBExpired = true;
   await page.reload();
-  await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
+  await page.getByRole("button", { name: "Contas", exact: true }).click();
   const cardB = page.getByRole("button", { name: "Abrir conta @conta_fixture_b", exact: true });
   const disconnectB = page.getByRole("button", {
     name: "Desconectar @conta_fixture_b",
@@ -710,16 +724,19 @@ try {
   assert.match(await cardA.innerText(), /Conectada/);
   assert.equal(disconnections, 1);
   await page.reload();
-  await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
+  await page.getByRole("button", { name: "Contas", exact: true }).click();
   await cardA.waitFor();
   assert.equal(await cardB.count(), 0);
   assert.equal(await disconnectB.count(), 0);
-  await page.getByRole("button", { name: "Biblioteca de Reels", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Seções da automação Instagram" })
+    .getByRole("button", { name: "Biblioteca", exact: true })
+    .click();
   await page.getByRole("button", { name: /@conta_fixture_b/ }).click();
   await page
     .getByRole("heading", { name: "Biblioteca de @conta_fixture_b", exact: true })
     .waitFor();
-  await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
+  await page.getByRole("button", { name: "Contas", exact: true }).click();
   assert.equal(await page.getByRole("region", { name: "Passo a passo por conta" }).count(), 0);
   await page.getByRole("button", { name: "Abrir conta @conta_fixture_a", exact: true }).click();
   await page.getByRole("button", { name: "Configurar Stories", exact: true }).click();
@@ -771,6 +788,8 @@ try {
   freshWorkspace = true;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(web + "/automacao-instagram?tab=stories");
+  await page.getByRole("heading", { name: "Cadastre o app da Meta para começar" }).waitFor();
+  await page.goto(web + "/automacao-instagram");
   await page.getByRole("heading", { name: "Primeiros passos" }).waitFor();
   assert.equal(
     await page
@@ -782,12 +801,13 @@ try {
     await page.getByRole("region", { name: "Biblioteca exclusiva de Stories" }).count(),
     0,
   );
-  assert.equal(
-    await page.getByRole("button", { name: "Conectar Instagram", exact: true }).isDisabled(),
-    true,
-  );
+  await page.getByRole("button", { name: "Conectar conta", exact: true }).click();
+  await page.getByRole("heading", { name: "Cadastre o app da Meta para começar" }).waitFor();
+  await page.getByRole("button", { name: "Menu do Automatic Post", exact: true }).click();
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  await page.getByRole("region", { name: "Primeiros passos", exact: true }).waitFor();
   await page.getByRole("heading", { name: "Próximas publicações", exact: true }).waitFor();
-  assert.equal(await page.getByLabel("Segredo do app").count(), 0);
+  assert.equal(await page.getByLabel("Chave Secreta do Aplicativo", { exact: true }).count(), 0);
   await page.getByRole("button", { name: "Ocultar primeiros passos", exact: true }).click();
   await page.reload();
   await page.getByRole("button", { name: "Mostrar primeiros passos", exact: true }).click();
@@ -801,18 +821,34 @@ try {
       path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "primeiros-passos-mobile.png"),
       fullPage: true,
     });
-  await page.getByRole("button", { name: "Ver guia", exact: true }).click();
+  await page.getByRole("button", { name: "ver como fazer", exact: true }).first().click();
   const setupGuide = page.getByRole("region", { name: "Guia de configuração do Meta" });
-  await setupGuide.getByRole("heading", { name: "Abra o portal de desenvolvedores" }).waitFor();
+  await setupGuide.getByRole("heading", { name: "Crie o app na Meta" }).waitFor();
+  assert.equal(
+    await setupGuide
+      .getByRole("link", { name: "Abrir developers.facebook.com" })
+      .getAttribute("href"),
+    "https://developers.facebook.com",
+  );
+  await setupGuide.getByRole("img", { name: /Tela Criar um app/ }).waitFor();
+  await page.waitForFunction(() => {
+    const image = document.querySelector(".postkit-guide-visual img");
+    return image?.complete && image.naturalWidth > 0;
+  });
+  if (process.env.INSTAGRAM_BROWSER_SCREENSHOTS)
+    await page.screenshot({
+      path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "meta-guide-first-step.png"),
+      fullPage: true,
+    });
   assert.equal(
     await setupGuide.getByRole("button", { name: "Voltar", exact: true }).isDisabled(),
     true,
   );
   await setupGuide.getByRole("button", { name: "Próximo", exact: true }).click();
-  await setupGuide.getByRole("heading", { name: "Escolha o caso de uso do Instagram" }).waitFor();
-  await setupGuide.getByRole("button", { name: /Etapa 5 de 7/ }).click();
+  await setupGuide.getByRole("heading", { name: "Escolha o caso de uso e crie o app" }).waitFor();
+  await setupGuide.getByRole("button", { name: /^Passo 5:/ }).click();
   await setupGuide.getByText(web + "/api/instagram/oauth/callback", { exact: true }).waitFor();
-  await setupGuide.getByRole("button", { name: /Etapa 7 de 7/ }).click();
+  await setupGuide.getByRole("button", { name: /^Passo 7:/ }).click();
   assert.equal(await setupGuide.getByRole("button", { name: "Próximo", exact: true }).count(), 0);
   assert.equal(await page.getByRole("form", { name: "Cadastro do app Meta" }).count(), 0);
   await setupGuide.getByRole("button", { name: "Ir para o cadastro", exact: true }).click();
@@ -821,36 +857,36 @@ try {
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     true,
   );
-  await page.getByRole("button", { name: "Voltar à visão geral", exact: true }).click();
-  await page.getByRole("button", { name: "Cadastrar app Meta", exact: true }).click();
-  await page.getByLabel("ID do app Meta").fill(customerApp);
-  await page.getByLabel("ID da configuração do Login Unificado").fill(customerConfig);
-  await page.getByLabel("Segredo do app").fill("4".repeat(32));
-  await page.getByRole("button", { name: "Validar e salvar app" }).click();
+  await page.getByRole("button", { name: "Voltar ao dashboard", exact: true }).click();
+  await page.getByRole("button", { name: "Cadastrar o app", exact: true }).click();
+  await setupGuide.getByRole("button", { name: /^Passo 6:/ }).click();
+  await page.getByLabel("ID do Aplicativo", { exact: true }).fill(customerApp);
+  await page.getByLabel("Identificação da configuração", { exact: true }).fill(customerConfig);
+  await page.getByLabel("Chave Secreta do Aplicativo", { exact: true }).fill("4".repeat(32));
+  await page.getByRole("button", { name: "Cadastrar", exact: true }).click();
   await page
     .getByRole("alert")
     .filter({ hasText: /Meta não aceitou/ })
     .waitFor();
   assert.equal(appRow, null);
-  await page.getByText("Guia de configuração", { exact: true }).click();
-  const credentialStep = page.getByRole("button", { name: /Etapa 6 de 7/ });
+  const credentialStep = page.getByRole("button", { name: /^Passo 6:/ });
   await credentialStep.click();
-  await page.getByLabel("Segredo do app").fill(customerSecret);
-  await page.getByRole("button", { name: "Validar e salvar app" }).click();
+  await page.getByLabel("Chave Secreta do Aplicativo", { exact: true }).fill(customerSecret);
+  await page.getByRole("button", { name: "Cadastrar", exact: true }).click();
   await page.getByRole("button", { name: "Conectar a primeira conta", exact: true }).click();
   await page.getByRole("region", { name: "Passo a passo por conta" }).waitFor();
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.getByRole("button", { name: "Visão geral", exact: true }).click();
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
   const firstSteps = page.getByRole("region", { name: "Primeiros passos" });
-  await firstSteps.getByRole("button", { name: "Conectar Instagram" }).waitFor();
+  await firstSteps.getByRole("button", { name: "Conectar conta", exact: true }).waitFor();
   assert.equal(await firstSteps.getByRole("progressbar").getAttribute("value"), "1");
   assert.equal(
     await page.getByRole("region", { name: "Biblioteca exclusiva de Stories" }).count(),
     0,
   );
-  assert.equal(await page.getByLabel("Segredo do app").count(), 0);
+  assert.equal(await page.getByLabel("Chave Secreta do Aplicativo", { exact: true }).count(), 0);
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await firstSteps.getByRole("button", { name: "Conectar Instagram" }).click();
+  await firstSteps.getByRole("button", { name: "Conectar conta", exact: true }).click();
   const newLogin = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Conectar Instagram", exact: true }).click();
   const freshPopup = await newLogin;
