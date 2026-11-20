@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { Loader2, LogOut, Users } from "lucide-react";
 import { signInWithGoogle } from "@/lib/google-sign-in";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +18,7 @@ const PENDING_INVITE_KEY = "postkit.pending-invite";
 const client = () => supabase as unknown as SupabaseClient<PostkitDatabase>;
 let opening: {
   userId: string;
-  promise: Promise<{ list: Workspace[]; selected: string; userId: string }>;
+  promise: Promise<{ list: Workspace[]; selected: string }>;
 } | null = null;
 
 function invitationToken() {
@@ -32,8 +32,8 @@ function invitationToken() {
   }
 }
 
-function openWorkspace(session: Session) {
-  if (opening?.userId === session.user.id) return opening.promise;
+function openWorkspace(userId: string) {
+  if (opening?.userId === userId) return opening.promise;
   const promise = (async () => {
     let selected = "";
     try {
@@ -62,9 +62,9 @@ function openWorkspace(session: Session) {
     if (result.error || !result.data?.length) {
       throw new Error("Não foi possível abrir sua operação. Confira o acesso e tente novamente.");
     }
-    return { list: result.data, selected, userId: session.user.id };
+    return { list: result.data, selected };
   })();
-  const current = { userId: session.user.id, promise };
+  const current = { userId, promise };
   opening = current;
   void promise
     .finally(() => {
@@ -118,7 +118,7 @@ function GoogleAccessCard({ error }: { error: string }) {
 }
 
 export function WorkspaceGate({ children }: { children: (ws: Workspace) => ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [list, setList] = useState<Workspace[] | null>(null);
   const [currentId, setCurrentId] = useState("");
@@ -129,22 +129,23 @@ export function WorkspaceGate({ children }: { children: (ws: Workspace) => React
 
   useEffect(() => {
     let active = true;
+    let authEventReceived = false;
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!active) return;
-      setSession(nextSession);
+      authEventReceived = true;
+      setAuthUserId(nextSession?.user.id ?? null);
       setAuthReady(true);
-      setList(null);
-      setError("");
+      setAuthError("");
     });
     void getPostkitSession(supabase.auth)
       .then((currentSession) => {
-        if (!active) return;
-        setSession(currentSession);
+        if (!active || authEventReceived) return;
+        setAuthUserId(currentSession?.user.id ?? null);
         setAuthReady(true);
         setAuthError("");
       })
       .catch(() => {
-        if (!active) return;
+        if (!active || authEventReceived) return;
         setAuthError("Não foi possível recuperar a sessão. Atualize a página e tente novamente.");
         setAuthReady(true);
       });
@@ -155,18 +156,18 @@ export function WorkspaceGate({ children }: { children: (ws: Workspace) => React
   }, []);
 
   useEffect(() => {
-    if (!authReady || !session) {
+    if (!authReady || !authUserId) {
       setList(null);
       return;
     }
     let active = true;
     setError("");
-    void openWorkspace(session)
+    void openWorkspace(authUserId)
       .then((value) => {
         if (active) {
           setList(value.list);
           setCurrentId(value.selected);
-          setUserId(value.userId);
+          setUserId(authUserId);
         }
       })
       .catch((reason) => {
@@ -180,7 +181,7 @@ export function WorkspaceGate({ children }: { children: (ws: Workspace) => React
     return () => {
       active = false;
     };
-  }, [authReady, session, retry]);
+  }, [authReady, authUserId, retry]);
 
   if (!authReady)
     return (
@@ -188,8 +189,11 @@ export function WorkspaceGate({ children }: { children: (ws: Workspace) => React
         <Loader2 className="mx-auto my-20 size-5 animate-spin text-muted-foreground" />
       </AppShell>
     );
-  if (!session) return <GoogleAccessCard error={authError} />;
-  const current = list?.find((workspace) => workspace.id === currentId) ?? list?.[0];
+  if (!authUserId) return <GoogleAccessCard error={authError} />;
+  const current =
+    userId === authUserId
+      ? (list?.find((workspace) => workspace.id === currentId) ?? list?.[0])
+      : undefined;
   if (!current)
     return (
       <AppShell>

@@ -678,7 +678,14 @@ function InstagramWorkspacePage({
     }
   }, []);
 
+  const platformMetaUnavailable = app.mode === "legacy" && !app.platformAppConfigured;
+  const platformMetaMessage =
+    "O app Meta já está vinculado a esta operação. Faltam as credenciais do app no servidor para abrir a autorização.";
   const connectInstagram = async (mode: InstagramAuthMode, analytics = false) => {
+    if (platformMetaUnavailable) {
+      setNotice(platformMetaMessage);
+      return;
+    }
     if (loginLock.current || loginWaiting || !accountsLoaded || accountsLoadError) return;
     loginLock.current = true;
     setConnecting(mode);
@@ -1594,15 +1601,26 @@ function InstagramWorkspacePage({
                     : "Conectar Instagram"
                 }
               >
-                <p className="text-sm text-muted-foreground">
-                  O app Meta da operação está configurado. Entre no Instagram, escolha o perfil
-                  profissional e confirme as permissões. A conta aparecerá aqui automaticamente, com
-                  sua própria biblioteca.
-                </p>
+                {platformMetaUnavailable ? (
+                  <p role="alert" className="text-sm text-amber-200">
+                    {platformMetaMessage}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Entre no Instagram, escolha o perfil profissional e confirme as permissões. A
+                    conta aparecerá aqui automaticamente, com sua própria biblioteca.
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={() => void connectInstagram("instagram_unified_login")}
-                  disabled={!!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError}
+                  disabled={
+                    platformMetaUnavailable ||
+                    !!connecting ||
+                    loginWaiting ||
+                    !accountsLoaded ||
+                    !!accountsLoadError
+                  }
                   className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-base font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                 >
                   <Instagram aria-hidden="true" className="size-4" />
@@ -1656,7 +1674,13 @@ function InstagramWorkspacePage({
                   Seus vídeos e agendamentos ficam separados por conta.
                 </p>
                 <InstagramProfessionalSetup
-                  disabled={!!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError}
+                  disabled={
+                    platformMetaUnavailable ||
+                    !!connecting ||
+                    loginWaiting ||
+                    !accountsLoaded ||
+                    !!accountsLoadError
+                  }
                   onConnect={() => void connectInstagram("instagram_unified_login")}
                 />
                 <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">

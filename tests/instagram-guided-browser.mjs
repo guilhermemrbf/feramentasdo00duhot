@@ -497,6 +497,24 @@ try {
   assert.equal(platformOAuth.searchParams.get("client_id"), env.META_APP_ID);
   assert.equal(platformOAuth.searchParams.get("config_id"), env.META_INSTAGRAM_LOGIN_CONFIG_ID);
   assert.equal(await popup.evaluate(() => window.opener === null), true);
+  const workspaceReadsBeforeRefresh = calls.filter(
+    (name) => name === "ensure_postkit_workspace",
+  ).length;
+  await page.evaluate(async () => {
+    const authChannel = new BroadcastChannel("sb-127-auth-token");
+    authChannel.postMessage({
+      event: "TOKEN_REFRESHED",
+      session: JSON.parse(localStorage.getItem("sb-127-auth-token")),
+    });
+    authChannel.close();
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  });
+  assert.equal(
+    calls.filter((name) => name === "ensure_postkit_workspace").length,
+    workspaceReadsBeforeRefresh,
+    "Renovar a sessão da mesma pessoa não deve reabrir a operação",
+  );
+  await page.getByRole("button", { name: "Cancelar esta tentativa", exact: true }).waitFor();
   // A callback notification alone cannot manufacture a connected account.
   const rechecked = page.waitForResponse((response) =>
     response.url().includes("/rest/v1/instagram_accounts"),
