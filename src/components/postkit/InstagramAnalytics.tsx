@@ -45,7 +45,7 @@ type Profile = Account & {
   measured: number;
 };
 type Totals = { kind: Kind; publications: number; measured: number; views: number | null };
-type Report = {
+export type InstagramAnalyticsReport = {
   accounts: Account[];
   profiles: Profile[];
   totals: Totals[];
@@ -158,7 +158,7 @@ export function InstagramAnalytics({
   const [page, setPage] = useState(0);
   const [reload, setReload] = useState(0);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [report, setReport] = useState<{ key: string; data: Report }>();
+  const [report, setReport] = useState<{ key: string; data: InstagramAnalyticsReport }>();
   const [error, setError] = useState("");
   const { from, to } = rangeDays(range, timezone, customStart, customEnd);
   const today = calendarDateInZone(timezone);
@@ -184,7 +184,7 @@ export function InstagramAnalytics({
         });
         if (!active) return;
         if (error || !data) throw new Error("Não foi possível carregar as métricas do Instagram.");
-        const result = data as unknown as Report;
+        const result = data as unknown as InstagramAnalyticsReport;
         if (account && !result.accounts.some((item) => item.id === account)) {
           setAccount("");
           setPage(0);

@@ -1,10 +1,28 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, CalendarDays, CheckCircle2, Clock3, Instagram, Video } from "lucide-react";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  ArrowRight,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Eye,
+  Instagram,
+  Video,
+  Activity,
+  Trophy,
+} from "lucide-react";
 import { InstagramAccountCards } from "./InstagramAccountCards";
+import type { InstagramAnalyticsReport } from "./InstagramAnalytics";
 import { InstagramFirstSteps, instagramOnboardingSteps } from "./InstagramWorkspaceSetup";
 import type { InstagramConnectionDetailsAccount } from "./InstagramConnectionDetails";
 import { supabase } from "@/integrations/supabase/client";
 import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
+import type { PostkitDatabase } from "@/lib/postkit-database";
+
+const database = supabase as unknown as SupabaseClient<PostkitDatabase>;
+const numbers = new Intl.NumberFormat("pt-BR");
+const showNumber = (value: number | null | undefined) =>
+  value == null ? "—" : numbers.format(value);
 
 const periods = [
   { id: "today", label: "Hoje", days: 0 },
@@ -28,6 +46,8 @@ type DashboardData = {
   published: number;
   allPublished: number;
   needsAttention: number;
+  analytics?: InstagramAnalyticsReport;
+  analyticsUnavailable: boolean;
 };
 
 function periodBounds(timezone: string, days: number, yesterday: boolean) {
@@ -51,6 +71,7 @@ export function InstagramDashboard({
   onSchedule,
   onQueue,
   onHistory,
+  onAnalytics,
   ownApp,
 }: {
   workspaceId: string;
@@ -66,6 +87,7 @@ export function InstagramDashboard({
   onSchedule: () => void;
   onQueue: () => void;
   onHistory: () => void;
+  onAnalytics: () => void;
   ownApp: boolean;
 }) {
   const [period, setPeriod] = useState<(typeof periods)[number]>(periods[0]);
@@ -73,13 +95,15 @@ export function InstagramDashboard({
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
   const periodData = data?.period === period.id ? data : undefined;
+  const loadAnalytics = !!accountCount;
 
   useEffect(() => {
     let active = true;
+    let loading = false;
     const load = async () => {
       const { start, end } = periodBounds(timezone, period.days, period.id === "yesterday");
       const posts = () => supabase.from("posts");
-      const [upcoming, published, allPublished, attention] = await Promise.all([
+      const [upcoming, published, allPublished, attention, analytics] = await Promise.all([
         posts()
           .select(
             "id,scheduled_at,status,content_type,instagram_accounts!posts_instagram_account_id_workspace_id_fkey(username),media_assets!posts_media_asset_id_workspace_id_fkey(original_filename)",
@@ -107,6 +131,15 @@ export function InstagramDashboard({
           .in("status", ["failed", "needs_review"])
           .gte("updated_at", start)
           .lt("updated_at", end),
+        loadAnalytics
+          ? database.rpc("get_instagram_analytics", {
+              p_workspace: workspaceId,
+              p_account: null,
+              p_start: start,
+              p_end: end,
+              p_page: 0,
+            })
+          : null,
       ]);
       if (!active) return;
       if (upcoming.error || published.error || allPublished.error || attention.error) {
@@ -120,20 +153,31 @@ export function InstagramDashboard({
         published: published.count ?? 0,
         allPublished: allPublished.count ?? 0,
         needsAttention: attention.count ?? 0,
+        analytics: analytics?.data
+          ? (analytics.data as unknown as InstagramAnalyticsReport)
+          : undefined,
+        analyticsUnavailable: !!analytics?.error,
       });
       setError(false);
     };
-    const refresh = () =>
-      void load().catch(() => {
-        if (active) setError(true);
-      });
+    const refresh = () => {
+      if (loading) return;
+      loading = true;
+      void load()
+        .catch(() => {
+          if (active) setError(true);
+        })
+        .finally(() => {
+          loading = false;
+        });
+    };
     refresh();
     const timer = window.setInterval(refresh, 30_000);
     return () => {
       active = false;
       window.clearInterval(timer);
     };
-  }, [workspaceId, timezone, period, refreshKey, retry]);
+  }, [workspaceId, timezone, period, refreshKey, retry, loadAnalytics]);
 
   const steps = [
     ...(ownApp ? [{ title: "Configure seu app Meta", done: true }] : []),
@@ -162,26 +206,58 @@ export function InstagramDashboard({
       run: accountCount && data?.queued ? onQueue : undefined,
     },
   ];
+  const reelMetrics = periodData?.analytics?.totals.find(({ kind }) => kind === "reel");
+  const rankedAccounts = (periodData?.analytics?.profiles ?? [])
+    .flatMap(({ id, username, reel_views, measured, reels }) =>
+      reel_views == null || !accounts.some((account) => account.id === id)
+        ? []
+        : [{ id, username, views: reel_views, measured, reels }],
+    )
+    .sort((a, b) => b.views - a.views || a.username.localeCompare(b.username, "pt-BR"))
+    .slice(0, 4);
   const metrics = [
     {
-      label: "Publicações no ar",
-      value: data?.allPublished,
-      note: periodData ? periodData.published + " no período" : "Total publicado pela plataforma",
+      label: "Visualizações de Reels",
+      value: reelMetrics?.views,
+      note:
+        reelMetrics?.views != null
+          ? `${reelMetrics.measured} de ${reelMetrics.publications} Reels publicados no período com dados`
+          : periodData?.analyticsUnavailable
+            ? "Falha ao ler as métricas"
+            : "Sem visualizações coletadas para este período",
+      icon: Eye,
+      tone: "coral",
+    },
+    {
+      label: "Publicações no período",
+      value: periodData?.published,
+      note: data
+        ? `${showNumber(data.allPublished)} publicadas pelo MouseHot no total`
+        : "Publicações pelo MouseHot",
       icon: CheckCircle2,
+      tone: "success",
     },
     {
       label: "Contas conectadas",
       value: accountCount,
       note: "Disponíveis para publicar",
       icon: Instagram,
+      tone: "violet",
     },
     {
       label: "Publicações na fila",
       value: data?.queued,
       note: "Agendadas ou em processamento",
       icon: Clock3,
+      tone: "info",
     },
-    { label: "Vídeos na biblioteca", value: videoCount, note: "Arquivos disponíveis", icon: Video },
+    {
+      label: "Vídeos na biblioteca",
+      value: videoCount,
+      note: "Arquivos disponíveis",
+      icon: Video,
+      tone: "coral",
+    },
   ];
   const dateFormat = new Intl.DateTimeFormat("pt-BR", {
     timeZone: timezone,
@@ -201,57 +277,59 @@ export function InstagramDashboard({
       {(ownApp ? !data?.allPublished : accountCount === 0) && <InstagramFirstSteps steps={steps} />}
       {ownApp && !accountCount ? null : (
         <>
-          <section aria-label="Resumo da operação" className="space-y-3">
-            <div
-              className="flex flex-wrap items-center gap-2"
-              role="group"
-              aria-label="Período do resumo"
-            >
-              <span className="mr-1 text-sm font-semibold">Período</span>
-              {periods.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  aria-pressed={period.id === item.id}
-                  onClick={() => {
-                    if (period.id !== item.id) {
-                      setError(false);
-                      setPeriod(item);
-                    }
-                  }}
-                  className="filter-chip"
-                >
-                  {item.label}
-                </button>
-              ))}
+          <section aria-labelledby="instagram-overview-summary" className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 id="instagram-overview-summary" className="font-display text-lg font-semibold">
+                  Resumo da operação
+                </h2>
+                {data && !error && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Activity className="size-3.5 text-emerald-400" aria-hidden /> Atualiza a cada
+                    30 s
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Período do resumo">
+                {periods.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-pressed={period.id === item.id}
+                    onClick={() => {
+                      if (period.id !== item.id) {
+                        setError(false);
+                        setPeriod(item);
+                      }
+                    }}
+                    className="filter-chip"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-              {metrics.map(({ label, value, note, icon: Icon }) => (
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-3">
+              {metrics.map(({ label, value, note, icon: Icon, tone }) => (
                 <article
                   key={label}
-                  className="min-w-0 rounded-xl border border-border bg-card p-3 sm:p-4"
+                  data-tone={tone}
+                  className="metric-card min-w-0 rounded-xl border border-border p-3 sm:p-4"
                 >
-                  <Icon className="mb-2 size-4 text-brand-red" aria-hidden />
-                  <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
-                  <p className="mt-1 font-display text-2xl font-semibold">{value ?? "—"}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{note}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-background/70 text-brand-red">
+                      <Icon className="size-4" aria-hidden />
+                    </span>
+                    <h3 className="text-xs font-semibold">{label}</h3>
+                  </div>
+                  <p className="mt-3 font-display text-2xl font-semibold tabular-nums">
+                    {showNumber(value)}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{note}</p>
                 </article>
               ))}
             </div>
           </section>
-
-          {accounts.length > 0 && (
-            <section className="space-y-3" aria-labelledby="dashboard-instagram-accounts">
-              <h2 id="dashboard-instagram-accounts" className="font-semibold">
-                Contas conectadas
-              </h2>
-              <InstagramAccountCards
-                accounts={accounts}
-                videoCounts={videoCounts}
-                onSelect={onOpenAccount}
-              />
-            </section>
-          )}
 
           {error && (
             <p
@@ -268,9 +346,9 @@ export function InstagramDashboard({
               </button>
             </p>
           )}
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-            <section className="rounded-xl border border-border bg-card p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+            <section className="min-w-0 rounded-xl border border-border bg-card">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
                 <h2 className="flex items-center gap-2 font-semibold">
                   <CalendarDays className="size-4 text-brand-red" /> Próximas publicações
                 </h2>
@@ -283,16 +361,29 @@ export function InstagramDashboard({
                 </button>
               </div>
               {!data && !error && (
-                <p role="status" className="mt-4 text-sm text-muted-foreground">
+                <p role="status" className="p-4 text-sm text-muted-foreground">
                   Carregando a fila…
                 </p>
               )}
               {data?.upcoming.length === 0 && (
-                <p className="mt-4 text-sm text-muted-foreground">
-                  A fila está vazia. Agende um Reel para começar.
-                </p>
+                <div className="grid justify-items-center px-4 py-7 text-center">
+                  <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-brand-red">
+                    <CalendarDays className="size-5" aria-hidden />
+                  </span>
+                  <p className="mt-3 text-sm font-semibold">Nenhuma publicação na fila</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Agende um Reel para vê-lo aqui.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={onSchedule}
+                    className="mt-3 min-h-10 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-secondary"
+                  >
+                    Agendar Reel
+                  </button>
+                </div>
               )}
-              <ul className="mt-3 space-y-2">
+              <ul className="divide-y divide-border">
                 {data?.upcoming.map((post) => {
                   const planned = post.scheduled_at ? new Date(post.scheduled_at) : undefined;
                   const isLate = planned && planned.getTime() < Date.now();
@@ -306,7 +397,7 @@ export function InstagramDashboard({
                   return (
                     <li
                       key={post.id}
-                      className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-lg border border-border bg-background/40 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center"
+                      className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center"
                     >
                       <div className="min-w-20 rounded-lg bg-secondary/60 px-2 py-1.5 text-center">
                         <p className="text-sm font-semibold tabular-nums">
@@ -337,24 +428,94 @@ export function InstagramDashboard({
                 })}
               </ul>
             </section>
-            <section className="rounded-xl border border-border bg-card p-4">
-              <h2 className="font-semibold">Precisa de atenção</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
+            <section
+              aria-labelledby="dashboard-top-accounts"
+              className="min-w-0 rounded-xl border border-border bg-card"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+                <h2 id="dashboard-top-accounts" className="flex items-center gap-2 font-semibold">
+                  <Trophy className="size-4 text-brand-red" aria-hidden /> Contas com mais views
+                </h2>
+                <button
+                  type="button"
+                  onClick={onAnalytics}
+                  className="min-h-8 text-sm font-semibold text-brand-red"
+                >
+                  Ver métricas
+                </button>
+              </div>
+              {rankedAccounts.length > 0 ? (
+                <>
+                  <p className="px-4 pt-3 text-xs text-muted-foreground">
+                    Visualizações de Reels no histórico coletado
+                  </p>
+                  <ol className="divide-y divide-border px-4">
+                    {rankedAccounts.map(({ id, username, views, measured, reels }, index) => (
+                      <li key={id}>
+                        <button
+                          type="button"
+                          onClick={() => onOpenAccount(id)}
+                          className="grid min-h-12 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 py-2 text-left hover:text-brand-red"
+                        >
+                          <span className="grid size-6 place-items-center rounded-md bg-primary/10 text-xs font-semibold text-brand-red">
+                            {index + 1}
+                          </span>
+                          <span className="truncate text-sm font-medium" title={`@${username}`}>
+                            @{username}
+                          </span>
+                          <span className="text-right text-sm font-semibold tabular-nums">
+                            {showNumber(views)}
+                            <span className="block text-[11px] font-normal text-muted-foreground">
+                              {measured}/{reels} Reels medidos
+                            </span>
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                </>
+              ) : (
+                <p className="px-4 py-7 text-center text-sm text-muted-foreground">
+                  {!periodData
+                    ? "Carregando métricas…"
+                    : periodData.analyticsUnavailable
+                      ? "As métricas estão indisponíveis agora."
+                      : "Nenhuma conta com visualizações coletadas."}
+                </p>
+              )}
+            </section>
+          </div>
+          <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+            <div>
+              <h2 className="text-sm font-semibold">Precisa de atenção</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
                 {periodData
                   ? periodData.needsAttention === 0
                     ? "Nenhuma falha ou revisão no período selecionado."
                     : `${periodData.needsAttention} ${periodData.needsAttention === 1 ? "publicação precisa" : "publicações precisam"} de atenção neste período.`
                   : "Confira o histórico para acompanhar o resultado de cada publicação."}
               </p>
-              <button
-                type="button"
-                onClick={onHistory}
-                className="mt-3 text-sm font-semibold text-brand-red"
-              >
-                Abrir histórico
-              </button>
+            </div>
+            <button
+              type="button"
+              onClick={onHistory}
+              className="min-h-10 text-sm font-semibold text-brand-red"
+            >
+              Abrir histórico
+            </button>
+          </section>
+          {accounts.length > 0 && (
+            <section className="space-y-3" aria-labelledby="dashboard-instagram-accounts">
+              <h2 id="dashboard-instagram-accounts" className="font-semibold">
+                Contas conectadas
+              </h2>
+              <InstagramAccountCards
+                accounts={accounts}
+                videoCounts={videoCounts}
+                onSelect={onOpenAccount}
+              />
             </section>
-          </div>
+          )}
         </>
       )}
     </div>

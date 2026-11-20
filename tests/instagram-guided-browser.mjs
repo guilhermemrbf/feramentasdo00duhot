@@ -202,8 +202,8 @@ const api = http.createServer(async (req, res) => {
         status: "uploaded",
         reel_account_id: id(a),
         import_position: i,
-        import_folder: "Teste",
-        import_batch_id: id(a * 10),
+        import_folder: a === 3 && i === 19 ? null : "Teste",
+        import_batch_id: a === 3 && i === 19 ? null : id(a * 10),
       })),
     );
   if (name === "instagram_story_reminders") {
@@ -216,6 +216,23 @@ const api = http.createServer(async (req, res) => {
   if (name === "schedule_reviewed_instagram_reels") {
     saved.push(input);
     body = input.p_posts.length;
+  }
+  if (name === "posts" && url.searchParams.get("select")?.includes("media_assets!")) {
+    if (!freshWorkspace && saved.length) {
+      body = [
+        {
+          id: id(700),
+          scheduled_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+          status: "scheduled",
+          content_type: "reel",
+          instagram_accounts: { username: "conta_fixture_a" },
+          media_assets: { original_filename: "reel-que-esta-na-fila.mp4" },
+        },
+      ];
+      res.setHeader("Content-Range", "0-0/1");
+    } else {
+      res.setHeader("Content-Range", "*/0");
+    }
   }
   if (name === "get_instagram_analytics" || name === "get_instagram_top_posts") {
     const accounts = [2, ...(accountBDisconnected ? [] : [3])].map((key) => ({
@@ -527,6 +544,74 @@ try {
   assert.equal(await resultPage.getByRole("button", { name: "Continuar com Google" }).count(), 0);
   await isolated.close();
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole("button", { name: "Visão geral", exact: true }).click();
+  await page.getByText("Reel · reel-que-esta-na-fila.mp4", { exact: true }).waitFor();
+  const views = page
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { name: "Visualizações de Reels", exact: true }) });
+  assert.match(await views.innerText(), /800/);
+  const rankingPreview = page.getByRole("region", { name: "Contas com mais views" });
+  assert.match(await rankingPreview.innerText(), /@conta_fixture_a/);
+  assert.doesNotMatch(await rankingPreview.innerText(), /@conta_fixture_b/);
+  const dateSwitch = page.waitForResponse((response) =>
+    response.url().includes("/rpc/get_instagram_analytics"),
+  );
+  await page.getByRole("button", { name: "7 dias", exact: true }).click();
+  const dateInput = (await dateSwitch).request().postDataJSON();
+  assert.ok(Date.parse(dateInput.p_end) - Date.parse(dateInput.p_start) >= 7 * 23 * 3600 * 1000);
+  await views.getByText("800", { exact: true }).waitFor();
+  if (process.env.INSTAGRAM_BROWSER_SCREENSHOTS)
+    await page.screenshot({
+      path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "instagram-overview-desktop.png"),
+      fullPage: true,
+    });
+  await page.getByRole("button", { name: "Biblioteca de Reels", exact: true }).click();
+  await page.getByRole("button", { name: /@conta_fixture_b/ }).click();
+  const folders = page.getByRole("region", { name: "Pastas da biblioteca" });
+  const catalog = page.getByRole("region", { name: "Vídeos desta pasta" });
+  await folders.getByRole("button", { name: "Teste 19", exact: true }).click();
+  assert.equal(await catalog.getByRole("checkbox").count(), 19);
+  await folders.getByRole("button", { name: "Sem pasta 1", exact: true }).click();
+  assert.equal(await catalog.getByRole("checkbox").count(), 1);
+  await catalog.getByRole("checkbox", { name: "Usar conta-3-video-20.mp4" }).uncheck();
+  assert.equal(
+    await catalog.getByRole("button", { name: "Próximo: configurar Reels" }).isDisabled(),
+    true,
+  );
+  await folders.getByRole("button", { name: "Todos os vídeos 20", exact: true }).click();
+  await catalog.getByRole("searchbox", { name: "Buscar vídeos" }).fill("CONTA-3-VIDEO-11");
+  assert.equal(await catalog.getByRole("checkbox").count(), 1);
+  assert.equal(
+    await catalog.getByRole("checkbox", { name: "Usar conta-3-video-11.mp4" }).count(),
+    1,
+  );
+  await catalog.getByRole("searchbox", { name: "Buscar vídeos" }).clear();
+  await catalog.getByRole("searchbox", { name: "Buscar vídeos" }).blur();
+  const chooseFiles = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Enviar vídeos", exact: true }).click();
+  assert.equal((await chooseFiles).isMultiple(), true);
+  if (process.env.INSTAGRAM_BROWSER_SCREENSHOTS)
+    await page.screenshot({
+      path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "instagram-library-desktop.png"),
+      fullPage: true,
+    });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileFolders = folders.getByRole("combobox", { name: "Pasta da biblioteca" });
+  await mobileFolders.click();
+  await page.getByRole("option", { name: "Sem pasta (1)", exact: true }).click();
+  assert.equal(await catalog.getByRole("checkbox").count(), 1);
+  await mobileFolders.click();
+  await page.getByRole("option", { name: "Todos os vídeos (20)", exact: true }).click();
+  assert.equal(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    true,
+  );
+  if (process.env.INSTAGRAM_BROWSER_SCREENSHOTS)
+    await page.screenshot({
+      path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "instagram-library-mobile.png"),
+      fullPage: true,
+    });
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
   assert.equal(
     await page
@@ -730,7 +815,7 @@ try {
   assert.equal(await firstSteps.getByRole("progressbar").getAttribute("value"), "2");
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: legacy and own-app OAuth, first-steps gates, authenticated credential validation/registration, own-app callback and persistence, separate Stories and Reels, responsive layout; fixtures only",
+    "PASS: onboarding and OAuth, dashboard metrics and queue, library folder filters/search/selection, separate Stories and Reels, responsive layout; fixtures only",
   );
 } catch (e) {
   console.error(e.stack || e.message);
