@@ -267,7 +267,7 @@ function InstagramWorkspaceEntry({
   const [app, setApp] = useState<WorkspaceAppStatus>();
   const [loadingError, setLoadingError] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [editing, setEditing] = useState(false);
+  const [setup, setSetup] = useState<{ guideStep?: number }>();
 
   useEffect(() => {
     let active = true;
@@ -283,13 +283,15 @@ function InstagramWorkspaceEntry({
     };
   }, [workspace.id, attempt]);
 
-  if (app && app.mode !== "missing" && !editing) {
+  const openSetup = (guideStep?: number) => setSetup({ guideStep });
+
+  if (app && app.mode !== "missing" && !setup) {
     return (
       <InstagramWorkspacePage
         workspace={workspace}
         initialTab={initialTab}
         app={app}
-        onEditApp={app.mode === "own" && app.canManage ? () => setEditing(true) : undefined}
+        onEditApp={app.mode === "own" && app.canManage ? openSetup : undefined}
       />
     );
   }
@@ -298,31 +300,35 @@ function InstagramWorkspaceEntry({
     <main className="mx-auto w-full max-w-5xl space-y-4 px-4 py-5 sm:px-6">
       <header className="tool-section-heading rounded-xl border border-border px-4 py-4 sm:px-5">
         <p className="mb-1 text-xs font-semibold text-brand-red">Automação Instagram</p>
-        <h1 className="font-display text-2xl font-semibold">Visão geral</h1>
+        <h1 className="font-display text-2xl font-semibold">
+          {setup ? "Apps da Meta" : "Visão geral"}
+        </h1>
       </header>
-      {app ? (
-        <>
-          {editing && (
-            <button
-              type="button"
-              onClick={() => setEditing(false)}
-              className="min-h-10 rounded-md border border-border px-3 text-sm font-semibold"
-            >
-              Voltar à visão geral
-            </button>
-          )}
-          <InstagramWorkspaceSetup
-            workspaceId={workspace.id}
-            app={app}
-            onSaved={async () => {
-              const registered = await getInstagramWorkspaceApp({
-                data: { workspaceId: workspace.id },
-              });
-              setApp(registered);
-              setEditing(false);
-            }}
-          />
-        </>
+      {app && setup ? (
+        <InstagramWorkspaceSetup
+          workspaceId={workspace.id}
+          app={app}
+          initialGuideStep={setup.guideStep}
+          onBack={() => setSetup(undefined)}
+          onSaved={async () => {
+            const registered = await getInstagramWorkspaceApp({
+              data: { workspaceId: workspace.id },
+            });
+            setApp(registered);
+            setSetup(undefined);
+          }}
+        />
+      ) : app ? (
+        <InstagramDashboard
+          workspaceId={workspace.id}
+          timezone={workspace.timezone}
+          accountCount={0}
+          videoCount={null}
+          accounts={[]}
+          refreshKey={0}
+          appMode={app.mode}
+          onAppSetup={app.canManage ? openSetup : undefined}
+        />
       ) : loadingError ? (
         <div role="alert" className="rounded-xl border border-border bg-card p-4 text-sm">
           Não foi possível verificar a configuração da sua operação.
@@ -355,7 +361,7 @@ function InstagramWorkspacePage({
   workspace: Workspace;
   initialTab?: Tab;
   app: WorkspaceAppStatus;
-  onEditApp?: () => void;
+  onEditApp?: (guideStep?: number) => void;
 }) {
   const [requestedTab, setActiveTab] = useState<Tab>(initialTab ?? "dashboard");
   const [guidedSetup, setGuidedSetup] = useState(initialTab === "nova-conta");
@@ -1359,17 +1365,27 @@ function InstagramWorkspacePage({
               {tabItems.find((item) => item.id === tab)?.label}
             </h1>
           </div>
-          {tab === "dashboard" && !needsConnection && (
-            <button
-              type="button"
-              onClick={() => {
-                setReelMode("single");
-                setTab("fila");
-              }}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
-            >
-              <Plus className="size-4" /> Nova publicação
-            </button>
+          {tab === "dashboard" && (
+            <div className="flex flex-wrap items-center gap-2">
+              {onEditApp && (
+                <button
+                  type="button"
+                  onClick={() => onEditApp()}
+                  className="min-h-10 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-secondary"
+                >
+                  Gerenciar app Meta
+                </button>
+              )}
+              {!needsConnection && (
+                <button
+                  type="button"
+                  onClick={() => setTab("publicacoes")}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
+                >
+                  <ListVideo className="size-4" aria-hidden /> Ver fila
+                </button>
+              )}
+            </div>
           )}
         </header>
 
@@ -1434,23 +1450,15 @@ function InstagramWorkspacePage({
               videoCounts={videosLoaded ? videosByAccount : undefined}
               onOpenAccount={openAccount}
               refreshKey={historyRefresh}
-              ownApp={app.mode === "own"}
+              appMode={app.mode}
+              onAppSetup={onEditApp}
               onAccounts={() => setTab("nova-conta")}
-              onLibrary={() => setTab("biblioteca")}
-              onSchedule={() => setTab("fila")}
-              onQueue={() => setTab("publicacoes")}
-              onHistory={() => setTab("historico")}
-              onAnalytics={() => setTab("analytics")}
+              onLibrary={!needsConnection ? () => setTab("biblioteca") : undefined}
+              onSchedule={!needsConnection ? () => setTab("fila") : undefined}
+              onQueue={!needsConnection ? () => setTab("publicacoes") : undefined}
+              onHistory={!needsConnection ? () => setTab("historico") : undefined}
+              onAnalytics={!needsConnection ? () => setTab("analytics") : undefined}
             />
-            {onEditApp && (
-              <button
-                type="button"
-                onClick={onEditApp}
-                className="min-h-10 rounded-md border border-border px-3 text-sm font-semibold"
-              >
-                Gerenciar app Meta
-              </button>
-            )}
             {!needsConnection && (
               <Panel title="O que você quer fazer?">
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

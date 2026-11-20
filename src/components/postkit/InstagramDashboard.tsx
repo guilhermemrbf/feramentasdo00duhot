@@ -13,7 +13,12 @@ import {
 } from "lucide-react";
 import { InstagramAccountCards } from "./InstagramAccountCards";
 import type { InstagramAnalyticsReport } from "./InstagramAnalytics";
-import { InstagramFirstSteps, instagramOnboardingSteps } from "./InstagramWorkspaceSetup";
+import {
+  InstagramFirstSteps,
+  instagramAppStepTitle,
+  instagramOnboardingSteps,
+  type WorkspaceAppStatus,
+} from "./InstagramWorkspaceSetup";
 import type { InstagramConnectionDetailsAccount } from "./InstagramConnectionDetails";
 import { supabase } from "@/integrations/supabase/client";
 import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
@@ -30,6 +35,7 @@ const periods = [
   { id: "week", label: "7 dias", days: 6 },
   { id: "month", label: "30 dias", days: 29 },
 ] as const;
+type Period = (typeof periods)[number] | { id: "custom"; start: string; end: string };
 
 type UpcomingPost = {
   id: string;
@@ -40,7 +46,7 @@ type UpcomingPost = {
   media_assets: { original_filename: string } | null;
 };
 type DashboardData = {
-  period: (typeof periods)[number]["id"];
+  period: string;
   upcoming: UpcomingPost[];
   queued: number;
   published: number;
@@ -50,11 +56,19 @@ type DashboardData = {
   analyticsUnavailable: boolean;
 };
 
-function periodBounds(timezone: string, days: number, yesterday: boolean) {
+function periodBounds(timezone: string, period: Period) {
+  if (period.id === "custom") {
+    const tomorrow = new Date(period.end + "T00:00:00Z");
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    return {
+      start: zonedDateTimeToIso(period.start, "00:00", timezone),
+      end: zonedDateTimeToIso(tomorrow.toISOString().slice(0, 10), "00:00", timezone),
+    };
+  }
   const now = new Date();
   const boundary = (offset: number) =>
     zonedDateTimeToIso(calendarDateInZone(timezone, offset, now), "00:00", timezone);
-  return { start: boundary(-days), end: boundary(yesterday ? 0 : 1) };
+  return { start: boundary(-period.days), end: boundary(period.id === "yesterday" ? 0 : 1) };
 }
 
 export function InstagramDashboard({
@@ -72,7 +86,8 @@ export function InstagramDashboard({
   onQueue,
   onHistory,
   onAnalytics,
-  ownApp,
+  appMode,
+  onAppSetup,
 }: {
   workspaceId: string;
   timezone: string;
@@ -80,28 +95,32 @@ export function InstagramDashboard({
   videoCount: number | null;
   accounts: InstagramConnectionDetailsAccount[];
   videoCounts?: ReadonlyMap<string, number>;
-  onOpenAccount: (id: string) => void;
+  onOpenAccount?: (id: string) => void;
   refreshKey: number;
-  onAccounts: () => void;
-  onLibrary: () => void;
-  onSchedule: () => void;
-  onQueue: () => void;
-  onHistory: () => void;
-  onAnalytics: () => void;
-  ownApp: boolean;
+  onAccounts?: () => void;
+  onLibrary?: () => void;
+  onSchedule?: () => void;
+  onQueue?: () => void;
+  onHistory?: () => void;
+  onAnalytics?: () => void;
+  appMode: WorkspaceAppStatus["mode"];
+  onAppSetup?: (guideStep?: number) => void;
 }) {
-  const [period, setPeriod] = useState<(typeof periods)[number]>(periods[0]);
+  const [period, setPeriod] = useState<Period>(periods[0]);
+  const [choosingDates, setChoosingDates] = useState(false);
   const [data, setData] = useState<DashboardData>();
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
-  const periodData = data?.period === period.id ? data : undefined;
+  const periodKey = period.id === "custom" ? period.start + "/" + period.end : period.id;
+  const periodData = data?.period === periodKey ? data : undefined;
+  const today = calendarDateInZone(timezone);
   const loadAnalytics = !!accountCount;
 
   useEffect(() => {
     let active = true;
     let loading = false;
     const load = async () => {
-      const { start, end } = periodBounds(timezone, period.days, period.id === "yesterday");
+      const { start, end } = periodBounds(timezone, period);
       const posts = () => supabase.from("posts");
       const [upcoming, published, allPublished, attention, analytics] = await Promise.all([
         posts()
@@ -147,7 +166,7 @@ export function InstagramDashboard({
         return;
       }
       setData({
-        period: period.id,
+        period: periodKey,
         upcoming: upcoming.data ?? [],
         queued: upcoming.count ?? 0,
         published: published.count ?? 0,
@@ -177,15 +196,26 @@ export function InstagramDashboard({
       active = false;
       window.clearInterval(timer);
     };
-  }, [workspaceId, timezone, period, refreshKey, retry, loadAnalytics]);
+  }, [workspaceId, timezone, period, periodKey, refreshKey, retry, loadAnalytics]);
 
   const steps = [
-    ...(ownApp ? [{ title: "Configure seu app Meta", done: true }] : []),
+    {
+      title: instagramAppStepTitle,
+      done: appMode !== "missing",
+      description:
+        appMode === "missing"
+          ? "Vincule o app da sua operação para conectar o Instagram."
+          : undefined,
+      action: "Cadastrar app Meta",
+      run: onAppSetup && (() => onAppSetup()),
+      onGuide: onAppSetup && (() => onAppSetup(0)),
+    },
     {
       title: instagramOnboardingSteps[0],
       done: !!accountCount,
       action: "Conectar Instagram",
       run: onAccounts,
+      onGuide: appMode !== "missing" && onAppSetup ? () => onAppSetup(6) : undefined,
     },
     {
       title: instagramOnboardingSteps[1],
@@ -203,7 +233,7 @@ export function InstagramDashboard({
       title: instagramOnboardingSteps[3],
       done: !!data?.allPublished,
       action: "Ver fila",
-      run: accountCount && data?.queued ? onQueue : undefined,
+      run: onQueue,
     },
   ];
   const reelMetrics = periodData?.analytics?.totals.find(({ kind }) => kind === "reel");
@@ -274,249 +304,329 @@ export function InstagramDashboard({
 
   return (
     <div className="space-y-4">
-      {(ownApp ? !data?.allPublished : accountCount === 0) && <InstagramFirstSteps steps={steps} />}
-      {ownApp && !accountCount ? null : (
-        <>
-          <section aria-labelledby="instagram-overview-summary" className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 id="instagram-overview-summary" className="font-display text-lg font-semibold">
-                  Resumo da operação
-                </h2>
-                {data && !error && (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Activity className="size-3.5 text-emerald-400" aria-hidden /> Atualiza a cada
-                    30 s
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2" role="group" aria-label="Período do resumo">
-                {periods.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    aria-pressed={period.id === item.id}
-                    onClick={() => {
-                      if (period.id !== item.id) {
-                        setError(false);
-                        setPeriod(item);
-                      }
-                    }}
-                    className="filter-chip"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-3">
-              {metrics.map(({ label, value, note, icon: Icon, tone }) => (
-                <article
-                  key={label}
-                  data-tone={tone}
-                  className="metric-card min-w-0 rounded-xl border border-border p-3 sm:p-4"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-background/70 text-brand-red">
-                      <Icon className="size-4" aria-hidden />
-                    </span>
-                    <h3 className="text-xs font-semibold">{label}</h3>
-                  </div>
-                  <p className="mt-3 font-display text-2xl font-semibold tabular-nums">
-                    {showNumber(value)}
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{note}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          {error && (
-            <p
-              role="status"
-              className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200"
-            >
-              O painel não conseguiu atualizar os dados.{" "}
-              <button
-                type="button"
-                className="font-semibold underline"
-                onClick={() => setRetry((value) => value + 1)}
-              >
-                Tentar novamente
-              </button>
-            </p>
-          )}
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-            <section className="min-w-0 rounded-xl border border-border bg-card">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-                <h2 className="flex items-center gap-2 font-semibold">
-                  <CalendarDays className="size-4 text-brand-red" /> Próximas publicações
-                </h2>
-                <button
-                  type="button"
-                  onClick={onQueue}
-                  className="inline-flex items-center gap-1 text-sm font-semibold text-brand-red"
-                >
-                  Ver fila <ArrowRight className="size-3.5" />
-                </button>
-              </div>
-              {!data && !error && (
-                <p role="status" className="p-4 text-sm text-muted-foreground">
-                  Carregando a fila…
-                </p>
-              )}
-              {data?.upcoming.length === 0 && (
-                <div className="grid justify-items-center px-4 py-7 text-center">
-                  <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-brand-red">
-                    <CalendarDays className="size-5" aria-hidden />
-                  </span>
-                  <p className="mt-3 text-sm font-semibold">Nenhuma publicação na fila</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Agende um Reel para vê-lo aqui.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={onSchedule}
-                    className="mt-3 min-h-10 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-secondary"
-                  >
-                    Agendar Reel
-                  </button>
-                </div>
-              )}
-              <ul className="divide-y divide-border">
-                {data?.upcoming.map((post) => {
-                  const planned = post.scheduled_at ? new Date(post.scheduled_at) : undefined;
-                  const isLate = planned && planned.getTime() < Date.now();
-                  const status =
-                    post.status === "processing"
-                      ? "Em processamento"
-                      : isLate
-                        ? "Em atraso"
-                        : "Agendado";
-                  const kind = post.content_type === "story" ? "Story" : "Reel";
-                  return (
-                    <li
-                      key={post.id}
-                      className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center"
-                    >
-                      <div className="min-w-20 rounded-lg bg-secondary/60 px-2 py-1.5 text-center">
-                        <p className="text-sm font-semibold tabular-nums">
-                          {planned ? timeFormat.format(planned) : "—"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {planned ? dateFormat.format(planned) : "Sem data"}
-                        </p>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">
-                          {post.instagram_accounts?.username
-                            ? "@" + post.instagram_accounts.username
-                            : "Conta indisponível"}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {kind}
-                          {post.media_assets?.original_filename
-                            ? " · " + post.media_assets.original_filename
-                            : ""}
-                        </p>
-                      </div>
-                      <span className="col-start-2 justify-self-start rounded-md border border-border px-2 py-1 text-xs font-medium sm:col-start-auto">
-                        {status}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-            <section
-              aria-labelledby="dashboard-top-accounts"
-              className="min-w-0 rounded-xl border border-border bg-card"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-                <h2 id="dashboard-top-accounts" className="flex items-center gap-2 font-semibold">
-                  <Trophy className="size-4 text-brand-red" aria-hidden /> Contas com mais views
-                </h2>
-                <button
-                  type="button"
-                  onClick={onAnalytics}
-                  className="min-h-8 text-sm font-semibold text-brand-red"
-                >
-                  Ver métricas
-                </button>
-              </div>
-              {rankedAccounts.length > 0 ? (
-                <>
-                  <p className="px-4 pt-3 text-xs text-muted-foreground">
-                    Visualizações de Reels no histórico coletado
-                  </p>
-                  <ol className="divide-y divide-border px-4">
-                    {rankedAccounts.map(({ id, username, views, measured, reels }, index) => (
-                      <li key={id}>
-                        <button
-                          type="button"
-                          onClick={() => onOpenAccount(id)}
-                          className="grid min-h-12 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 py-2 text-left hover:text-brand-red"
-                        >
-                          <span className="grid size-6 place-items-center rounded-md bg-primary/10 text-xs font-semibold text-brand-red">
-                            {index + 1}
-                          </span>
-                          <span className="truncate text-sm font-medium" title={`@${username}`}>
-                            @{username}
-                          </span>
-                          <span className="text-right text-sm font-semibold tabular-nums">
-                            {showNumber(views)}
-                            <span className="block text-[11px] font-normal text-muted-foreground">
-                              {measured}/{reels} Reels medidos
-                            </span>
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ol>
-                </>
-              ) : (
-                <p className="px-4 py-7 text-center text-sm text-muted-foreground">
-                  {!periodData
-                    ? "Carregando métricas…"
-                    : periodData.analyticsUnavailable
-                      ? "As métricas estão indisponíveis agora."
-                      : "Nenhuma conta com visualizações coletadas."}
-                </p>
-              )}
-            </section>
+      {(appMode === "missing" ||
+        accountCount === 0 ||
+        (appMode === "own" && data && !steps.every(({ done }) => done))) && (
+        <InstagramFirstSteps steps={steps} />
+      )}
+      <section aria-labelledby="instagram-overview-summary" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 id="instagram-overview-summary" className="font-display text-lg font-semibold">
+              Resumo da operação
+            </h2>
+            {data && !error && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Activity className="size-3.5 text-emerald-400" aria-hidden /> Atualiza a cada 30 s
+              </span>
+            )}
           </div>
-          <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
-            <div>
-              <h2 className="text-sm font-semibold">Precisa de atenção</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {periodData
-                  ? periodData.needsAttention === 0
-                    ? "Nenhuma falha ou revisão no período selecionado."
-                    : `${periodData.needsAttention} ${periodData.needsAttention === 1 ? "publicação precisa" : "publicações precisam"} de atenção neste período.`
-                  : "Confira o histórico para acompanhar o resultado de cada publicação."}
-              </p>
-            </div>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Período do resumo">
+            {periods.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                aria-pressed={period.id === item.id}
+                onClick={() => {
+                  setChoosingDates(false);
+                  if (period.id !== item.id) {
+                    setError(false);
+                    setPeriod(item);
+                  }
+                }}
+                className="filter-chip"
+              >
+                {item.label}
+              </button>
+            ))}
             <button
               type="button"
-              onClick={onHistory}
-              className="min-h-10 text-sm font-semibold text-brand-red"
+              aria-expanded={choosingDates}
+              aria-controls="instagram-custom-period"
+              aria-pressed={period.id === "custom"}
+              onClick={() => setChoosingDates((value) => !value)}
+              className="filter-chip"
             >
-              Abrir histórico
+              Personalizado
             </button>
-          </section>
-          {accounts.length > 0 && (
-            <section className="space-y-3" aria-labelledby="dashboard-instagram-accounts">
-              <h2 id="dashboard-instagram-accounts" className="font-semibold">
-                Contas conectadas
-              </h2>
-              <InstagramAccountCards
-                accounts={accounts}
-                videoCounts={videoCounts}
-                onSelect={onOpenAccount}
+          </div>
+        </div>
+        {choosingDates && (
+          <form
+            id="instagram-custom-period"
+            className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const values = new FormData(event.currentTarget);
+              const start = String(values.get("start"));
+              const end = String(values.get("end"));
+              if (start > end) {
+                const input = event.currentTarget.elements.namedItem("end") as HTMLInputElement;
+                input.setCustomValidity("Informe uma data final igual ou posterior à inicial.");
+                input.reportValidity();
+                return;
+              }
+              setError(false);
+              setPeriod({ id: "custom", start, end });
+              setChoosingDates(false);
+            }}
+            onInput={(event) => {
+              const input = event.currentTarget.elements.namedItem("end") as HTMLInputElement;
+              input.setCustomValidity("");
+            }}
+          >
+            <label className="grid gap-1 text-sm">
+              Data inicial
+              <input
+                type="date"
+                name="start"
+                required
+                max={today}
+                defaultValue={period.id === "custom" ? period.start : today}
+                className="min-h-10 rounded-md border border-border bg-background px-2"
               />
-            </section>
+            </label>
+            <label className="grid gap-1 text-sm">
+              Data final
+              <input
+                type="date"
+                name="end"
+                required
+                max={today}
+                defaultValue={period.id === "custom" ? period.end : today}
+                className="min-h-10 rounded-md border border-border bg-background px-2"
+              />
+            </label>
+            <button
+              type="submit"
+              className="min-h-10 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
+            >
+              Aplicar período
+            </button>
+          </form>
+        )}
+        {period.id === "custom" && (
+          <p className="text-xs text-muted-foreground">
+            {period.start.split("-").reverse().join("/")} a{" "}
+            {period.end.split("-").reverse().join("/")}
+          </p>
+        )}
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-3">
+          {metrics.map(({ label, value, note, icon: Icon, tone }) => (
+            <article
+              key={label}
+              data-tone={tone}
+              className="metric-card min-w-0 rounded-xl border border-border p-3 sm:p-4"
+            >
+              <div className="flex items-center gap-2">
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-background/70 text-brand-red">
+                  <Icon className="size-4" aria-hidden />
+                </span>
+                <h3 className="text-xs font-semibold">{label}</h3>
+              </div>
+              <p className="mt-3 font-display text-2xl font-semibold tabular-nums">
+                {showNumber(value)}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{note}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {error && (
+        <p
+          role="status"
+          className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200"
+        >
+          O painel não conseguiu atualizar os dados.{" "}
+          <button
+            type="button"
+            className="font-semibold underline"
+            onClick={() => setRetry((value) => value + 1)}
+          >
+            Tentar novamente
+          </button>
+        </p>
+      )}
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <section className="min-w-0 rounded-xl border border-border bg-card">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+            <h2 className="flex items-center gap-2 font-semibold">
+              <CalendarDays className="size-4 text-brand-red" /> Próximas publicações
+            </h2>
+            {onQueue && (
+              <button
+                type="button"
+                onClick={onQueue}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-brand-red"
+              >
+                Ver fila <ArrowRight className="size-3.5" />
+              </button>
+            )}
+          </div>
+          {!data && !error && (
+            <p role="status" className="p-4 text-sm text-muted-foreground">
+              Carregando a fila…
+            </p>
           )}
-        </>
+          {data?.upcoming.length === 0 && (
+            <div className="grid justify-items-center px-4 py-7 text-center">
+              <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-brand-red">
+                <CalendarDays className="size-5" aria-hidden />
+              </span>
+              <p className="mt-3 text-sm font-semibold">Nenhuma publicação na fila</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {onSchedule
+                  ? "Agende um Reel para vê-lo aqui."
+                  : "Conclua a configuração para agendar."}
+              </p>
+              {onSchedule && (
+                <button
+                  type="button"
+                  onClick={onSchedule}
+                  className="mt-3 min-h-10 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-secondary"
+                >
+                  Agendar Reel
+                </button>
+              )}
+            </div>
+          )}
+          <ul className="divide-y divide-border">
+            {data?.upcoming.map((post) => {
+              const planned = post.scheduled_at ? new Date(post.scheduled_at) : undefined;
+              const isLate = planned && planned.getTime() < Date.now();
+              const status =
+                post.status === "processing"
+                  ? "Em processamento"
+                  : isLate
+                    ? "Em atraso"
+                    : "Agendado";
+              const kind = post.content_type === "story" ? "Story" : "Reel";
+              return (
+                <li
+                  key={post.id}
+                  className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center"
+                >
+                  <div className="min-w-20 rounded-lg bg-secondary/60 px-2 py-1.5 text-center">
+                    <p className="text-sm font-semibold tabular-nums">
+                      {planned ? timeFormat.format(planned) : "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {planned ? dateFormat.format(planned) : "Sem data"}
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">
+                      {post.instagram_accounts?.username
+                        ? "@" + post.instagram_accounts.username
+                        : "Conta indisponível"}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {kind}
+                      {post.media_assets?.original_filename
+                        ? " · " + post.media_assets.original_filename
+                        : ""}
+                    </p>
+                  </div>
+                  <span className="col-start-2 justify-self-start rounded-md border border-border px-2 py-1 text-xs font-medium sm:col-start-auto">
+                    {status}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+        <section
+          aria-labelledby="dashboard-top-accounts"
+          className="min-w-0 rounded-xl border border-border bg-card"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+            <h2 id="dashboard-top-accounts" className="flex items-center gap-2 font-semibold">
+              <Trophy className="size-4 text-brand-red" aria-hidden /> Contas com mais views
+            </h2>
+            {onAnalytics && (
+              <button
+                type="button"
+                onClick={onAnalytics}
+                className="min-h-8 text-sm font-semibold text-brand-red"
+              >
+                Ver métricas
+              </button>
+            )}
+          </div>
+          {rankedAccounts.length > 0 ? (
+            <>
+              <p className="px-4 pt-3 text-xs text-muted-foreground">
+                Visualizações de Reels no histórico coletado
+              </p>
+              <ol className="divide-y divide-border px-4">
+                {rankedAccounts.map(({ id, username, views, measured, reels }, index) => (
+                  <li key={id}>
+                    <button
+                      type="button"
+                      onClick={() => onOpenAccount?.(id)}
+                      className="grid min-h-12 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 py-2 text-left hover:text-brand-red"
+                    >
+                      <span className="grid size-6 place-items-center rounded-md bg-primary/10 text-xs font-semibold text-brand-red">
+                        {index + 1}
+                      </span>
+                      <span className="truncate text-sm font-medium" title={`@${username}`}>
+                        @{username}
+                      </span>
+                      <span className="text-right text-sm font-semibold tabular-nums">
+                        {showNumber(views)}
+                        <span className="block text-[11px] font-normal text-muted-foreground">
+                          {measured}/{reels} Reels medidos
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </>
+          ) : (
+            <p className="px-4 py-7 text-center text-sm text-muted-foreground">
+              {!periodData
+                ? "Carregando métricas…"
+                : periodData.analyticsUnavailable
+                  ? "As métricas estão indisponíveis agora."
+                  : "Nenhuma conta com visualizações coletadas."}
+            </p>
+          )}
+        </section>
+      </div>
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+        <div>
+          <h2 className="text-sm font-semibold">Precisa de atenção</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {periodData
+              ? periodData.needsAttention === 0
+                ? "Nenhuma falha ou revisão no período selecionado."
+                : `${periodData.needsAttention} ${periodData.needsAttention === 1 ? "publicação precisa" : "publicações precisam"} de atenção neste período.`
+              : "Confira o histórico para acompanhar o resultado de cada publicação."}
+          </p>
+        </div>
+        {onHistory && (
+          <button
+            type="button"
+            onClick={onHistory}
+            className="min-h-10 text-sm font-semibold text-brand-red"
+          >
+            Abrir histórico
+          </button>
+        )}
+      </section>
+      {onOpenAccount && accounts.length > 0 && (
+        <section className="space-y-3" aria-labelledby="dashboard-instagram-accounts">
+          <h2 id="dashboard-instagram-accounts" className="font-semibold">
+            Contas conectadas
+          </h2>
+          <InstagramAccountCards
+            accounts={accounts}
+            videoCounts={videoCounts}
+            onSelect={onOpenAccount}
+          />
+        </section>
       )}
     </div>
   );

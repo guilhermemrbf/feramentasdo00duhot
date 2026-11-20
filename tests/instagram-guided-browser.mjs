@@ -573,6 +573,17 @@ try {
   const dateInput = (await dateSwitch).request().postDataJSON();
   assert.ok(Date.parse(dateInput.p_end) - Date.parse(dateInput.p_start) >= 7 * 23 * 3600 * 1000);
   await views.getByText("800", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Personalizado", exact: true }).click();
+  await page.getByLabel("Data inicial").fill("2026-11-01");
+  await page.getByLabel("Data final").fill("2026-11-02");
+  const customRange = page.waitForResponse((response) =>
+    response.url().includes("/rpc/get_instagram_analytics"),
+  );
+  await page.getByRole("button", { name: "Aplicar período", exact: true }).click();
+  const submittedRange = (await customRange).request().postDataJSON();
+  assert.equal(submittedRange.p_start, "2026-11-01T03:00:00.000Z");
+  assert.equal(submittedRange.p_end, "2026-11-03T03:00:00.000Z");
+  await views.getByText("800", { exact: true }).waitFor();
   if (process.env.INSTAGRAM_BROWSER_SCREENSHOTS)
     await page.screenshot({
       path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "instagram-overview-desktop.png"),
@@ -772,9 +783,11 @@ try {
     0,
   );
   assert.equal(
-    await page.getByText(web + "/api/instagram/oauth/callback", { exact: true }).count(),
-    1,
+    await page.getByRole("button", { name: "Conectar Instagram", exact: true }).isDisabled(),
+    true,
   );
+  await page.getByRole("heading", { name: "Próximas publicações", exact: true }).waitFor();
+  assert.equal(await page.getByLabel("Segredo do app").count(), 0);
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     true,
@@ -784,6 +797,25 @@ try {
       path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "primeiros-passos-mobile.png"),
       fullPage: true,
     });
+  await page.getByRole("button", { name: "Ver guia", exact: true }).click();
+  const setupGuide = page.getByRole("region", { name: "Guia de configuração do Meta" });
+  await setupGuide.getByRole("heading", { name: "Abra o portal de desenvolvedores" }).waitFor();
+  assert.equal(
+    await setupGuide.getByRole("button", { name: "Voltar", exact: true }).isDisabled(),
+    true,
+  );
+  await setupGuide.getByRole("button", { name: "Próximo", exact: true }).click();
+  await setupGuide.getByRole("heading", { name: "Escolha o caso de uso do Instagram" }).waitFor();
+  await setupGuide.getByRole("button", { name: /Etapa 5 de 7/ }).click();
+  await setupGuide.getByText(web + "/api/instagram/oauth/callback", { exact: true }).waitFor();
+  await setupGuide.getByRole("button", { name: /Etapa 7 de 7/ }).click();
+  assert.equal(await setupGuide.getByRole("button", { name: "Próximo", exact: true }).count(), 0);
+  assert.equal(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    true,
+  );
+  await page.getByRole("button", { name: "Voltar à visão geral", exact: true }).click();
+  await page.getByRole("button", { name: "Cadastrar app Meta", exact: true }).click();
   await page.getByLabel("ID do app Meta").fill(customerApp);
   await page.getByLabel("ID da configuração do Login Unificado").fill(customerConfig);
   await page.getByLabel("Segredo do app").fill("4".repeat(32));

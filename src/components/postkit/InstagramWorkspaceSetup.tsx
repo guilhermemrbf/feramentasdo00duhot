@@ -1,12 +1,21 @@
 import { useState, type FormEvent } from "react";
-import { ArrowUpRight, Check, Copy, KeyRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Copy, KeyRound } from "lucide-react";
 import {
   getInstagramWorkspaceApp,
   registerInstagramWorkspaceApp,
 } from "@/lib/api/instagram-workspace-app.functions";
 
 export type WorkspaceAppStatus = Awaited<ReturnType<typeof getInstagramWorkspaceApp>>;
-type Step = { title: string; done: boolean; action?: string; run?: () => void };
+type Step = {
+  title: string;
+  done: boolean;
+  description?: string;
+  action?: string;
+  run?: () => void;
+  onGuide?: () => void;
+};
+
+export const instagramAppStepTitle = "Cadastre seu aplicativo da Meta";
 
 export const instagramOnboardingSteps = [
   "Conecte uma conta profissional do Instagram",
@@ -23,9 +32,14 @@ export function InstagramFirstSteps({ steps }: { steps: Step[] }) {
       className="rounded-2xl border border-border bg-card p-4 sm:p-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="instagram-first-steps" className="font-display text-lg font-semibold">
-          Primeiros passos
-        </h2>
+        <div>
+          <h2 id="instagram-first-steps" className="font-display text-lg font-semibold">
+            Primeiros passos
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Da configuração da Meta à primeira publicação. O progresso acompanha sua operação.
+          </p>
+        </div>
         <div className="flex items-center gap-2 text-xs font-medium">
           <progress
             value={completed}
@@ -37,8 +51,11 @@ export function InstagramFirstSteps({ steps }: { steps: Step[] }) {
         </div>
       </div>
       <ol className="mt-3 divide-y divide-border">
-        {steps.map(({ title, done, action, run }, index) => (
-          <li key={title} className="flex flex-wrap items-center gap-3 py-3 last:pb-0">
+        {steps.map(({ title, done, description, action, run, onGuide }, index) => (
+          <li
+            key={title}
+            className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
+          >
             <span
               className={
                 done
@@ -48,19 +65,32 @@ export function InstagramFirstSteps({ steps }: { steps: Step[] }) {
             >
               {done ? <Check className="size-4" role="img" aria-label="Concluído" /> : index + 1}
             </span>
-            <span
-              className={`min-w-40 flex-1 text-sm font-medium ${!done && !run ? "text-muted-foreground" : ""}`}
-            >
-              {title}
-            </span>
-            {!done && run && (
-              <button
-                type="button"
-                onClick={run}
-                className="min-h-10 rounded-md px-3 text-sm font-semibold text-brand-red hover:bg-primary/10"
-              >
-                {action}
-              </button>
+            <div>
+              <p className="text-sm font-medium">{title}</p>
+              {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
+            </div>
+            {!done && (action || onGuide) && (
+              <div className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-auto sm:justify-end">
+                {onGuide && (
+                  <button
+                    type="button"
+                    onClick={onGuide}
+                    className="min-h-10 rounded-md px-2 text-sm font-medium text-brand-red hover:bg-primary/10"
+                  >
+                    Ver guia
+                  </button>
+                )}
+                {action && (
+                  <button
+                    type="button"
+                    onClick={run}
+                    disabled={!run}
+                    className="min-h-10 rounded-lg border border-primary/40 bg-primary/10 px-3 text-sm font-semibold text-brand-red hover:bg-primary/20 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground"
+                  >
+                    {action}
+                  </button>
+                )}
+              </div>
             )}
           </li>
         ))}
@@ -69,18 +99,63 @@ export function InstagramFirstSteps({ steps }: { steps: Step[] }) {
   );
 }
 
+const metaGuide = [
+  {
+    title: "Abra o portal de desenvolvedores",
+    instruction:
+      "Em Meus apps, escolha Criar app. Informe o nome e o e-mail de contato da sua operação.",
+  },
+  {
+    title: "Escolha o caso de uso do Instagram",
+    instruction:
+      "Selecione o caso de uso para gerenciar conteúdo e mensagens do Instagram. Vincule o portfólio empresarial da operação e conclua a criação do app.",
+  },
+  {
+    title: "Configure o Login Unificado",
+    instruction:
+      "Crie uma configuração para Instagram com token de usuário do sistema. Inclua as permissões de perfil e de publicação.",
+  },
+  {
+    title: "Autorize a leitura de métricas",
+    instruction:
+      "Se quiser acompanhar o desempenho, inclua a permissão de insights do Instagram na configuração. O painel mostra as métricas que a Meta disponibilizar.",
+  },
+  {
+    title: "Cadastre o endereço de retorno",
+    instruction:
+      "Na configuração da Meta, cole o endereço abaixo em URIs de redirecionamento OAuth válidos e salve.",
+  },
+  {
+    title: "Preencha as credenciais no MouseHot",
+    instruction:
+      "Em Configurações do app → Básico, encontre o ID e o segredo do app. No Login Unificado, encontre o ID da configuração. Use os três campos do formulário de cadastro.",
+  },
+  {
+    title: "Prepare a conta profissional",
+    instruction:
+      "Use uma conta profissional do Instagram. Se seu app Meta estiver em desenvolvimento, adicione o perfil como testador e aceite o convite no Instagram antes de conectar.",
+  },
+] as const;
+
 export function InstagramWorkspaceSetup({
   app,
   workspaceId,
   onSaved,
+  initialGuideStep,
+  onBack,
 }: {
   app: WorkspaceAppStatus;
   workspaceId: string;
   onSaved: () => Promise<void>;
+  initialGuideStep?: number;
+  onBack: () => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
+  const [guideStep, setGuideStep] = useState(initialGuideStep ?? 0);
+  const [showGuide, setShowGuide] = useState(initialGuideStep !== undefined);
+  const guide = metaGuide[guideStep];
   const firstSetup = app.mode === "missing";
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -129,22 +204,26 @@ export function InstagramWorkspaceSetup({
 
   return (
     <div className="space-y-4">
-      {firstSetup && (
-        <InstagramFirstSteps
-          steps={["Configure seu app Meta", ...instagramOnboardingSteps].map((title) => ({
-            title,
-            done: false,
-          }))}
-        />
-      )}
       <section
         aria-labelledby="instagram-app-setup"
         className="rounded-2xl border border-border bg-card p-4 sm:p-6"
       >
-        <KeyRound className="mb-3 size-5 text-brand-red" aria-hidden />
-        <h2 id="instagram-app-setup" className="font-display text-xl font-semibold">
-          {firstSetup ? "Configure seu app Meta" : "App Meta da operação"}
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2
+            id="instagram-app-setup"
+            className="flex items-center gap-2 font-display text-xl font-semibold"
+          >
+            <KeyRound className="size-5 text-brand-red" aria-hidden />
+            {firstSetup ? "Cadastrar app Meta" : "App Meta da operação"}
+          </h2>
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-secondary"
+          >
+            <ArrowLeft className="size-4" aria-hidden /> Voltar à visão geral
+          </button>
+        </div>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Cadastre o aplicativo da sua operação para conectar o Instagram e começar a publicar.
         </p>
@@ -154,67 +233,104 @@ export function InstagramWorkspaceSetup({
           </p>
         ) : (
           <>
-            <ol className="mt-5 list-decimal space-y-3 pl-5 text-sm">
-              <li>
-                <a
-                  className="inline-flex items-center gap-1 font-semibold text-brand-red underline underline-offset-4"
-                  href="https://developers.facebook.com/apps/"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Abra o Meta for Developers <ArrowUpRight className="size-4" aria-hidden />
-                </a>{" "}
-                e crie um app no seu portfólio empresarial. Escolha o caso de uso para gerenciar
-                mensagens e conteúdo no Instagram.
-              </li>
-              <li>
-                Em <strong>Login Unificado</strong>, crie uma configuração para Instagram com token
-                de usuário do sistema. Inclua as permissões de perfil e publicação. Adicione a
-                permissão de métricas se quiser acompanhar o desempenho.
-              </li>
-              <li>
-                Em <strong>URIs de redirecionamento OAuth válidos</strong>, salve o endereço abaixo.
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <code className="break-all rounded-md bg-background px-2 py-1 text-xs">
-                    {app.callbackUrl}
-                  </code>
+            <details
+              open={showGuide}
+              onToggle={(event) => setShowGuide(event.currentTarget.open)}
+              className="mt-5 rounded-xl border border-border bg-background/50"
+            >
+              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
+                Guia de configuração
+              </summary>
+              <section
+                className="space-y-4 border-t border-border p-4"
+                aria-label="Guia de configuração do Meta"
+              >
+                <nav aria-label="Etapas do guia" className="flex flex-wrap gap-2">
+                  {metaGuide.map(({ title }, index) => (
+                    <button
+                      key={title}
+                      type="button"
+                      aria-current={index === guideStep ? "step" : undefined}
+                      aria-label={`Etapa ${index + 1} de ${metaGuide.length} — ${title}`}
+                      onClick={() => setGuideStep(index)}
+                      className={`min-h-10 min-w-10 rounded-lg border text-sm font-semibold hover:bg-secondary ${index === guideStep ? "border-brand-red bg-primary/15 text-brand-red" : "border-border"}`}
+                    >
+                      {index + 1}
+                    </button>
+                  ))}
+                </nav>
+                <div aria-live="polite">
+                  <p className="text-xs font-semibold text-brand-red">
+                    Etapa {guideStep + 1} de {metaGuide.length}
+                  </p>
+                  <h3 className="mt-1 font-semibold">{guide.title}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">{guide.instruction}</p>
+                </div>
+                {guideStep === 0 && (
+                  <a
+                    className="inline-flex items-center gap-1 font-semibold text-brand-red underline underline-offset-4"
+                    href="https://developers.facebook.com/apps/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Abra o Meta for Developers <ArrowUpRight className="size-4" aria-hidden />
+                  </a>
+                )}
+                {guideStep === 4 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <code className="break-all rounded-md bg-background px-2 py-1 text-xs">
+                      {app.callbackUrl}
+                    </code>
+                    <button
+                      type="button"
+                      className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 text-xs font-semibold"
+                      onClick={() =>
+                        void navigator.clipboard
+                          .writeText(app.callbackUrl)
+                          .then(() => setCopyStatus("Endereço copiado."))
+                          .catch(() => setCopyStatus("Selecione e copie o endereço acima."))
+                      }
+                    >
+                      <Copy className="size-4" aria-hidden /> Copiar endereço
+                    </button>
+                    {copyStatus && (
+                      <p className="text-xs text-muted-foreground" role="status">
+                        {copyStatus}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {(guideStep === 5 || guideStep === 6) && (
+                  <a
+                    href="#instagram-app-credentials"
+                    className="text-sm font-semibold text-brand-red underline underline-offset-4"
+                  >
+                    Ir para o formulário de cadastro
+                  </a>
+                )}
+                <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
                   <button
                     type="button"
-                    className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 text-xs font-semibold"
-                    onClick={() =>
-                      void navigator.clipboard
-                        .writeText(app.callbackUrl)
-                        .then(() => setCopyStatus("Endereço copiado."))
-                        .catch(() => setCopyStatus("Selecione e copie o endereço acima."))
-                    }
+                    disabled={guideStep === 0}
+                    onClick={() => setGuideStep(guideStep - 1)}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-secondary disabled:opacity-45"
                   >
-                    <Copy className="size-4" aria-hidden /> Copiar endereço
+                    <ArrowLeft className="size-4" aria-hidden /> Voltar
                   </button>
+                  {guideStep < metaGuide.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setGuideStep(guideStep + 1)}
+                      className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
+                    >
+                      Próximo <ArrowRight className="size-4" aria-hidden />
+                    </button>
+                  )}
                 </div>
-                {copyStatus && (
-                  <p className="mt-1 text-xs text-muted-foreground" role="status">
-                    {copyStatus}
-                  </p>
-                )}
-              </li>
-              <li>
-                Em <strong>Configurações do app → Básico</strong>, copie o ID e o segredo do app. Em{" "}
-                <strong>Login Unificado</strong>, copie o ID da configuração.
-              </li>
-            </ol>
-            <p className="mt-4 text-xs text-muted-foreground">
-              Use uma conta profissional. Em modo de desenvolvimento, aceite o convite de teste no
-              próprio Instagram antes de conectar.{" "}
-              <a
-                className="font-semibold underline underline-offset-4"
-                href="https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-unified-login/get-started"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Guia oficial da Meta
-              </a>
-            </p>
+              </section>
+            </details>
             <form
+              id="instagram-app-credentials"
               method="post"
               className="mt-5 space-y-4 border-t border-border pt-5"
               onSubmit={(event) => void submit(event)}
