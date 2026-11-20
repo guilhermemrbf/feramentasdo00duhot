@@ -111,10 +111,30 @@ export function InstagramDashboard({
   const [data, setData] = useState<DashboardData>();
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+  const preferenceKey = "mousehot.instagram.first-steps:" + workspaceId;
   const periodKey = period.id === "custom" ? period.start + "/" + period.end : period.id;
   const periodData = data?.period === periodKey ? data : undefined;
   const today = calendarDateInZone(timezone);
   const loadAnalytics = !!accountCount;
+
+  useEffect(() => {
+    try {
+      setDismissed(window.localStorage.getItem(preferenceKey) === "hidden");
+    } catch {
+      setDismissed(false);
+    }
+  }, [preferenceKey]);
+
+  const toggleFirstSteps = () => {
+    const next = !dismissed;
+    setDismissed(next);
+    try {
+      window.localStorage.setItem(preferenceKey, next ? "hidden" : "shown");
+    } catch {
+      // This preference still applies until the page closes.
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -306,9 +326,18 @@ export function InstagramDashboard({
     <div className="space-y-4">
       {(appMode === "missing" ||
         accountCount === 0 ||
-        (appMode === "own" && data && !steps.every(({ done }) => done))) && (
-        <InstagramFirstSteps steps={steps} />
-      )}
+        (appMode === "own" && data && !steps.every(({ done }) => done))) &&
+        (dismissed ? (
+          <button
+            type="button"
+            onClick={toggleFirstSteps}
+            className="min-h-10 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-secondary"
+          >
+            Mostrar primeiros passos
+          </button>
+        ) : (
+          <InstagramFirstSteps steps={steps} onHide={toggleFirstSteps} />
+        ))}
       <section aria-labelledby="instagram-overview-summary" className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">

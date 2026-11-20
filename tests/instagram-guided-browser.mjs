@@ -788,6 +788,10 @@ try {
   );
   await page.getByRole("heading", { name: "Próximas publicações", exact: true }).waitFor();
   assert.equal(await page.getByLabel("Segredo do app").count(), 0);
+  await page.getByRole("button", { name: "Ocultar primeiros passos", exact: true }).click();
+  await page.reload();
+  await page.getByRole("button", { name: "Mostrar primeiros passos", exact: true }).click();
+  await page.getByRole("region", { name: "Primeiros passos", exact: true }).waitFor();
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     true,
@@ -810,6 +814,9 @@ try {
   await setupGuide.getByText(web + "/api/instagram/oauth/callback", { exact: true }).waitFor();
   await setupGuide.getByRole("button", { name: /Etapa 7 de 7/ }).click();
   assert.equal(await setupGuide.getByRole("button", { name: "Próximo", exact: true }).count(), 0);
+  assert.equal(await page.getByRole("form", { name: "Cadastro do app Meta" }).count(), 0);
+  await setupGuide.getByRole("button", { name: "Ir para o cadastro", exact: true }).click();
+  await page.getByRole("form", { name: "Cadastro do app Meta" }).waitFor();
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     true,
@@ -825,8 +832,15 @@ try {
     .filter({ hasText: /Meta não aceitou/ })
     .waitFor();
   assert.equal(appRow, null);
+  await page.getByText("Guia de configuração", { exact: true }).click();
+  const credentialStep = page.getByRole("button", { name: /Etapa 6 de 7/ });
+  await credentialStep.click();
   await page.getByLabel("Segredo do app").fill(customerSecret);
   await page.getByRole("button", { name: "Validar e salvar app" }).click();
+  await page.getByRole("button", { name: "Conectar a primeira conta", exact: true }).click();
+  await page.getByRole("region", { name: "Passo a passo por conta" }).waitFor();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole("button", { name: "Visão geral", exact: true }).click();
   const firstSteps = page.getByRole("region", { name: "Primeiros passos" });
   await firstSteps.getByRole("button", { name: "Conectar Instagram" }).waitFor();
   assert.equal(await firstSteps.getByRole("progressbar").getAttribute("value"), "1");

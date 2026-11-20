@@ -268,6 +268,7 @@ function InstagramWorkspaceEntry({
   const [loadingError, setLoadingError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [setup, setSetup] = useState<{ guideStep?: number }>();
+  const [entryTab, setEntryTab] = useState(initialTab);
 
   useEffect(() => {
     let active = true;
@@ -289,7 +290,7 @@ function InstagramWorkspaceEntry({
     return (
       <InstagramWorkspacePage
         workspace={workspace}
-        initialTab={initialTab}
+        initialTab={entryTab}
         app={app}
         onEditApp={app.mode === "own" && app.canManage ? openSetup : undefined}
       />
@@ -306,16 +307,24 @@ function InstagramWorkspaceEntry({
       </header>
       {app && setup ? (
         <InstagramWorkspaceSetup
+          key={app.mode}
           workspaceId={workspace.id}
           app={app}
           initialGuideStep={setup.guideStep}
-          onBack={() => setSetup(undefined)}
-          onSaved={async () => {
+          onBack={() => {
+            setEntryTab("dashboard");
+            setSetup(undefined);
+          }}
+          onConnect={() => {
+            setEntryTab("nova-conta");
+            setSetup(undefined);
+          }}
+          onSaved={async (continueGuide) => {
             const registered = await getInstagramWorkspaceApp({
               data: { workspaceId: workspace.id },
             });
             setApp(registered);
-            setSetup(undefined);
+            setSetup(continueGuide && app.mode === "missing" ? { guideStep: 6 } : undefined);
           }}
         />
       ) : app ? (

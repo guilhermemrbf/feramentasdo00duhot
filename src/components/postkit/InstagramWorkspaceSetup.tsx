@@ -24,7 +24,7 @@ export const instagramOnboardingSteps = [
   "Confira a primeira publicação no ar",
 ];
 
-export function InstagramFirstSteps({ steps }: { steps: Step[] }) {
+export function InstagramFirstSteps({ steps, onHide }: { steps: Step[]; onHide: () => void }) {
   const completed = steps.filter((step) => step.done).length;
   return (
     <section
@@ -48,6 +48,13 @@ export function InstagramFirstSteps({ steps }: { steps: Step[] }) {
             className="h-2 w-24 accent-primary sm:w-36"
           />
           {completed} de {steps.length}
+          <button
+            type="button"
+            onClick={onHide}
+            className="min-h-10 rounded-md px-2 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            Ocultar primeiros passos
+          </button>
         </div>
       </div>
       <ol className="mt-3 divide-y divide-border">
@@ -143,12 +150,14 @@ export function InstagramWorkspaceSetup({
   onSaved,
   initialGuideStep,
   onBack,
+  onConnect,
 }: {
   app: WorkspaceAppStatus;
   workspaceId: string;
-  onSaved: () => Promise<void>;
+  onSaved: (continueGuide: boolean) => Promise<void>;
   initialGuideStep?: number;
   onBack: () => void;
+  onConnect: () => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -181,7 +190,7 @@ export function InstagramWorkspaceSetup({
       });
       if (outcome === "saved") {
         form.reset();
-        await onSaved();
+        await onSaved(showGuide);
         return;
       }
       setError(
@@ -300,13 +309,10 @@ export function InstagramWorkspaceSetup({
                     )}
                   </div>
                 )}
-                {(guideStep === 5 || guideStep === 6) && (
-                  <a
-                    href="#instagram-app-credentials"
-                    className="text-sm font-semibold text-brand-red underline underline-offset-4"
-                  >
-                    Ir para o formulário de cadastro
-                  </a>
+                {guideStep === 6 && firstSetup && (
+                  <p className="text-sm text-muted-foreground">
+                    Cadastre seu app na etapa anterior para liberar a conexão.
+                  </p>
                 )}
                 <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
                   <button
@@ -326,11 +332,23 @@ export function InstagramWorkspaceSetup({
                       Próximo <ArrowRight className="size-4" aria-hidden />
                     </button>
                   )}
+                  {guideStep === 6 && (
+                    <button
+                      type="button"
+                      onClick={firstSetup ? () => setGuideStep(5) : onConnect}
+                      className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
+                    >
+                      {firstSetup ? "Ir para o cadastro" : "Conectar a primeira conta"}
+                      <ArrowRight className="size-4 shrink-0" aria-hidden />
+                    </button>
+                  )}
                 </div>
               </section>
             </details>
             <form
               id="instagram-app-credentials"
+              hidden={showGuide && guideStep !== 5}
+              aria-label="Cadastro do app Meta"
               method="post"
               className="mt-5 space-y-4 border-t border-border pt-5"
               onSubmit={(event) => void submit(event)}
