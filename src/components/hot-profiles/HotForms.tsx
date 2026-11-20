@@ -79,12 +79,12 @@ export function ConnectComputer({
               Baixar conector Windows
             </a>
             <a
-              href={downloads.hotProfiles.release}
+              href={downloads.hotProfiles.integrity}
               target="_blank"
               rel="noreferrer"
               className="mt-2 block text-xs text-muted-foreground underline underline-offset-4"
             >
-              Ver versão e integridade do arquivo
+              Ver assinatura SHA-256 do arquivo
             </a>
           </div>
         </li>

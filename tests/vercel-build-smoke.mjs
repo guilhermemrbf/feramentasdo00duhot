@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { stat } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { readFile, stat } from "node:fs/promises";
 import { TOOL_CATALOG } from "../src/lib/tool-catalog.ts";
 
 const output = new URL("../.vercel/output/", import.meta.url);
@@ -43,9 +44,19 @@ assert.match(await deniedOAuth.text(), /A autorização foi cancelada/);
 const worker = await request("/api/instagram/worker", { method: "POST" });
 assert.equal(worker.status, 401);
 
-for (const asset of ["brand/mark.png", "hot-profiles-connector.zip"]) {
+for (const asset of [
+  "brand/mark.png",
+  "hot-profiles-connector.zip",
+  "downloads/Mouse-Hot-Downloader-3.0.7.zip",
+]) {
   assert.ok((await stat(new URL("static/" + asset, output))).size > 0, asset);
 }
+const archive = await readFile(new URL("static/hot-profiles-connector.zip", output));
+const sums = await readFile(new URL("static/hot-profiles-SHA256SUMS.txt", output), "utf8");
+assert.equal(
+  sums.trim(),
+  createHash("sha256").update(archive).digest("hex") + "  hot-profiles-connector.zip",
+);
 console.log(
   `PASS: ${routes.size} pages, legacy redirects, authenticated worker, OAuth callback and bundled assets in the Vercel artifact.`,
 );

@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { deflateRawSync } from "node:zlib";
+import { createHash } from "node:crypto";
 
 // Reproducible, dependency-free ZIP containing only the companion's distributable source.
 const directory = path.dirname(fileURLToPath(import.meta.url));
@@ -74,8 +75,12 @@ end.writeUInt16LE(files.length, 10);
 end.writeUInt32LE(directoryBytes.length, 12);
 end.writeUInt32LE(offset, 16);
 await mkdir(destination, { recursive: true });
+const filename = "hot-profiles-connector.zip";
+const archive = Buffer.concat([...local, directoryBytes, end]);
+await writeFile(path.join(destination, filename), archive);
+const digest = createHash("sha256").update(archive).digest("hex");
 await writeFile(
-  path.join(destination, "hot-profiles-connector.zip"),
-  Buffer.concat([...local, directoryBytes, end]),
+  path.join(destination, "hot-profiles-SHA256SUMS.txt"),
+  digest + "  " + filename + "\n",
 );
 console.log(`Conector empacotado: ${files.length} arquivos, sem dados ou credenciais.`);
