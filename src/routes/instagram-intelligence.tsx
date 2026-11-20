@@ -9,7 +9,7 @@ import {
 } from "@/components/instagram-intelligence/IntelligenceResults";
 import { IntelligenceBatch } from "@/components/instagram-intelligence/IntelligenceBatch";
 import { Button } from "@/components/ui/button";
-import { lovable } from "@/integrations/lovable";
+import { signInWithGoogle } from "@/lib/google-sign-in";
 import { supabase } from "@/integrations/supabase/client";
 import {
   analyzeIntelligenceBatch,
@@ -74,11 +74,9 @@ function InstagramIntelligence() {
     setSigningIn(true);
     setError("");
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri:
-          window.location.origin + "/instagram-intelligence" + (modo ? "?modo=revisao" : ""),
-      });
-      if (result.error) throw result.error;
+      await signInWithGoogle(
+        window.location.origin + "/instagram-intelligence" + (modo ? "?modo=revisao" : ""),
+      );
     } catch {
       setError("Não foi possível entrar com Google. Tente novamente.");
     } finally {

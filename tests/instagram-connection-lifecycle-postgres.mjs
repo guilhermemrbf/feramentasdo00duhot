@@ -58,11 +58,15 @@ try {
       "",
     ),
   );
-  await db.exec(await sql("drizzle/migrations/0002_add_instagram_accounts_auth_mode.sql"));
+  const authModeMigration = await sql(
+    "supabase/migrations/20261110165000_postkit_instagram_auth_mode.sql",
+  );
+  await db.exec(authModeMigration);
   await db.exec(
     await sql("supabase/migrations/20261110173000_facebook_insights_authorization.sql"),
   );
   await db.exec(await sql("supabase/migrations/20261111145000_instagram_unified_login.sql"));
+  await db.exec(authModeMigration);
   // The storage catalog is a Supabase dependency; only the catalog is a fixture.
   await db.exec("create schema storage; create table storage.objects(bucket_id text,name text);");
   await db.exec(await sql("supabase/migrations/20261109170000_instagram_story_reminders.sql"));

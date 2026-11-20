@@ -67,7 +67,9 @@ function createSupabaseClient() {
       fetch: createSupabaseFetch(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY),
     },
     auth: {
-      storage: brokeredPreviewStorage(),
+      ...(import.meta.env.VITE_AUTH_PROVIDER === 'supabase'
+        ? { flowType: 'pkce' as const }
+        : { storage: brokeredPreviewStorage() }),
       persistSession: true,
       autoRefreshToken: true,
     },

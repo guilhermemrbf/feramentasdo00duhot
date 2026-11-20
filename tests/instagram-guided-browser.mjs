@@ -38,6 +38,7 @@ let firstAccountRead = true;
 let freshWorkspace = false;
 let appRow = null;
 let freshAccount = null;
+let googleCodeExchanged = false;
 const customerApp = "12345678901";
 const customerConfig = "12345678902";
 const customerSecret = "3".repeat(32);
@@ -90,6 +91,18 @@ const api = http.createServer(async (req, res) => {
   }
 
   if (name === "user") body = user;
+  if (name === "token" && url.searchParams.get("grant_type") === "pkce") {
+    assert.equal(input.auth_code, "google-fixture-code");
+    assert.match(input.code_verifier, /^[a-zA-Z0-9._~-]{43,128}$/);
+    googleCodeExchanged = true;
+    body = {
+      access_token: token,
+      refresh_token: "fixture",
+      token_type: "bearer",
+      expires_in: 3600,
+      user,
+    };
+  }
   if (name === "ensure_postkit_workspace")
     body = [
       {
@@ -299,6 +312,7 @@ await new Promise((r) => api.listen(4385, "127.0.0.1", r));
 const env = {
   ...process.env,
   VITE_SUPABASE_URL: apiUrl,
+  VITE_AUTH_PROVIDER: "supabase",
   VITE_SUPABASE_PUBLISHABLE_KEY: "fixture-anon",
   SUPABASE_URL: apiUrl,
   SUPABASE_PUBLISHABLE_KEY: "fixture-anon",
@@ -814,8 +828,26 @@ try {
   await page.getByRole("button", { name: "Abrir conta @cliente_fixture" }).waitFor();
   assert.equal(await firstSteps.getByRole("progressbar").getAttribute("value"), "2");
   assert.deepEqual(errors, []);
+  const googlePage = await browser.newPage();
+  await googlePage.context().route(apiUrl + "/auth/v1/authorize?**", (route) => {
+    const query = new URL(route.request().url()).searchParams;
+    assert.equal(query.get("provider"), "google");
+    assert.equal(query.get("code_challenge_method"), "s256");
+    assert.match(query.get("code_challenge") ?? "", /^[a-zA-Z0-9_-]{43}$/);
+    const destination = new URL(query.get("redirect_to"));
+    assert.equal(destination.origin, web);
+    assert.equal(destination.pathname, "/automacao-instagram");
+    assert.equal(destination.searchParams.get("tab"), "nova-conta");
+    destination.searchParams.set("code", "google-fixture-code");
+    return route.fulfill({ status: 302, headers: { location: destination.href } });
+  });
+  await googlePage.goto(web + "/automacao-instagram?tab=nova-conta");
+  await googlePage.getByRole("button", { name: "Continuar com Google", exact: true }).click();
+  await googlePage.getByRole("region", { name: "Passo a passo por conta" }).waitFor();
+  assert.equal(googleCodeExchanged, true);
+  await googlePage.close();
   console.log(
-    "PASS: onboarding and OAuth, dashboard metrics and queue, library folder filters/search/selection, separate Stories and Reels, responsive layout; fixtures only",
+    "PASS: native Supabase Google PKCE, Instagram OAuth and onboarding, dashboard, library, scheduling, separate Stories and Reels; fixtures only",
   );
 } catch (e) {
   console.error(e.stack || e.message);

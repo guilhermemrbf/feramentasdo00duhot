@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { Loader2, LogOut, Users } from "lucide-react";
-import { lovable } from "@/integrations/lovable";
+import { signInWithGoogle } from "@/lib/google-sign-in";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { WorkspaceSelect } from "@/components/ui/workspace-select";
@@ -84,13 +84,9 @@ function GoogleAccessCard({ error }: { error: string }) {
     try {
       const invite = new URLSearchParams(window.location.hash.slice(1)).get("postkit-invite");
       if (invite) sessionStorage.setItem(PENDING_INVITE_KEY, invite);
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + window.location.pathname + window.location.search,
-      });
-      if (result.error) {
-        setMessage("Não foi possível entrar com Google. Tente novamente.");
-        setBusy(false);
-      }
+      await signInWithGoogle(
+        window.location.origin + window.location.pathname + window.location.search,
+      );
     } catch {
       setMessage("Não foi possível iniciar o acesso com Google. Tente novamente.");
       setBusy(false);

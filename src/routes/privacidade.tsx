@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { siteOrigin } from "@/lib/site-origin";
 
 export const Route = createFileRoute("/privacidade")({
   head: () => ({
@@ -10,7 +11,7 @@ export const Route = createFileRoute("/privacidade")({
           "Como o MauseHot trata os dados do Automatic Post e da integração com o Instagram.",
       },
     ],
-    links: [{ rel: "canonical", href: "https://mausehot.lovable.app/privacidade" }],
+    links: [{ rel: "canonical", href: siteOrigin + "/privacidade" }],
   }),
   component: Privacy,
 });

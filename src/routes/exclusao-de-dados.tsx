@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { siteOrigin } from "@/lib/site-origin";
 
 export const Route = createFileRoute("/exclusao-de-dados")({
   head: () => ({
@@ -9,7 +10,7 @@ export const Route = createFileRoute("/exclusao-de-dados")({
         content: "Como solicitar a exclusão dos dados da integração Instagram no MauseHot.",
       },
     ],
-    links: [{ rel: "canonical", href: "https://mausehot.lovable.app/exclusao-de-dados" }],
+    links: [{ rel: "canonical", href: siteOrigin + "/exclusao-de-dados" }],
   }),
   component: DataDeletion,
 });
