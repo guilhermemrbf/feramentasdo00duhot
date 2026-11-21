@@ -27,7 +27,9 @@ O GitHub continua como fonte do aplicativo. A Vercel hospeda TanStack Start, o S
 
 Mantenha segredos do servidor em variáveis sem `VITE_`. Revise demais variáveis usadas pelos módulos ativos em `.env.example`. Ambientes de homologação usam recursos independentes. O código usa Google Auth nativo do Supabase com PKCE. Use o preset Nitro da Vercel no deploy.
 
-Publique um novo deploy depois de salvar variáveis de produção. Na Visão geral do Automatic Post, um vínculo com o app da plataforma e uma configuração de servidor incompleta indicam que o cadastro da operação existe, mas falta configuração no deploy ativo. Confira as três variáveis Meta no ambiente de Produção e teste se **Conectar Instagram** abre a tela oficial de autorização.
+Publique um novo deploy depois de salvar variáveis de produção. Na Visão geral do Automatic Post, um vínculo com o app da plataforma e uma configuração de servidor incompleta indicam que o cadastro da operação existe, mas falta configuração no deploy ativo. Confira as três variáveis Meta no ambiente de Produção e teste se **Conectar Instagram** abre a tela oficial de autorização. No painel **Login do Facebook para Empresas → Configurações**, valide a URL exata `https://mausehot.vercel.app/api/instagram/oauth/callback` na lista de redirecionamentos OAuth.
+
+Aplique a migração `20261121150000` em bancos novos e existentes. O PostgreSQL exige permissão de atualização em uma coluna para bloquear a linha da operação durante o cadastro do app e o retorno OAuth. A migração concede ao backend somente a permissão de atualizar `workspaces.updated_at`.
 
 ### Agendadores do Automatic Post
 

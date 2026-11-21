@@ -85,6 +85,39 @@ try {
   await db.query("select * from public.instagram_workspace_apps");
   await db.query("select account_id from public.instagram_tokens");
   await db.exec("reset role");
+  const {
+    rows: [platformApp],
+  } = await db.query(
+    "insert into public.instagram_workspace_apps(workspace_id) values($1) returning revision",
+    [workspace.id],
+  );
+  const scopes = ["instagram_basic", "instagram_content_publish"];
+  await db.exec("set role service_role");
+  const {
+    rows: [grant],
+  } = await db.query(
+    "select public.save_workspace_instagram_grant($1,$2,$3,$4::jsonb,$5,'v1.fixture',null) saved",
+    [
+      workspace.id,
+      user,
+      platformApp.revision,
+      JSON.stringify([{ id: "123", username: "test_profile", login_config_id: "456" }]),
+      scopes,
+    ],
+  );
+  assert.equal(grant.saved, true);
+  await assert.rejects(
+    db.query("update public.workspaces set owner_id=$1 where id=$2", [user, workspace.id]),
+    /permission denied/,
+  );
+  await db.exec("reset role; set role authenticated");
+  const { rows: accounts } = await db.query(
+    "select username, connection_status from public.instagram_accounts where workspace_id=$1",
+    [workspace.id],
+  );
+  assert.deepEqual(accounts, [{ username: "test_profile", connection_status: "connected" }]);
+  await assert.rejects(db.query("select * from public.instagram_tokens"), /permission denied/);
+  await db.exec("reset role");
   await db.query(
     "select private.configure_instagram_worker_destination('https://preview.example.test')",
   );
@@ -97,7 +130,7 @@ try {
     0,
   );
   console.log(
-    `PASS: ${migrations.length} migrations in order, fresh workspace access and secret isolation. Hosted service interfaces are fixtures.`,
+    `PASS: ${migrations.length} migrations in order, fresh workspace access, OAuth grant persistence and secret isolation. Hosted service interfaces are fixtures.`,
   );
 } finally {
   await db.close();
