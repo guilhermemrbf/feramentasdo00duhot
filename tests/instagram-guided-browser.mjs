@@ -351,6 +351,8 @@ const env = {
   SUPABASE_URL: apiUrl,
   SUPABASE_PUBLISHABLE_KEY: "fixture-anon",
   SUPABASE_SERVICE_ROLE_KEY: "fixture-service",
+  GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL: "",
+  GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY: "",
   APP_BASE_URL: web,
   META_APP_ID: "fixture-id",
   META_APP_SECRET: "fixture-secret",
@@ -673,6 +675,13 @@ try {
     });
   await page.getByRole("button", { name: "Biblioteca de Reels", exact: true }).click();
   await page.getByRole("button", { name: /@conta_fixture_b/ }).click();
+  await page.getByText("Google Drive para Reels", { exact: true }).click();
+  await page
+    .getByText("A integração com Google Drive ainda não foi ativada nesta instalação.", {
+      exact: true,
+    })
+    .waitFor();
+  await page.getByText("Google Drive para Reels", { exact: true }).click();
   const folders = page.getByRole("region", { name: "Pastas da biblioteca" });
   const catalog = page.getByRole("region", { name: "Vídeos desta pasta" });
   await folders.getByRole("button", { name: "Teste 19", exact: true }).click();

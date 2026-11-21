@@ -43,6 +43,8 @@ assert.equal(deniedOAuth.status, 200);
 assert.match(await deniedOAuth.text(), /A autorização foi cancelada/);
 const worker = await request("/api/instagram/worker", { method: "POST" });
 assert.equal(worker.status, 401);
+const driveCleanup = await request("/api/instagram/drive-cleanup", { method: "POST" });
+assert.equal(driveCleanup.status, 401);
 
 for (const asset of [
   "brand/mark.png",

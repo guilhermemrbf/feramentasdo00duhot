@@ -7,6 +7,7 @@ import {
   type InstagramAuthMode,
 } from "@/lib/instagram-oauth.server";
 import { runInstagramPublishStep } from "@/lib/instagram-publish-step";
+import { driveMediaPrefix } from "@/lib/instagram-drive";
 import type { PostkitDatabase } from "@/lib/postkit-database";
 import {
   createInstagramFirstComment,
@@ -68,6 +69,7 @@ export const Route = createFileRoute("/api/instagram/worker")({
           );
         const post = data?.[0];
         if (!post) return Response.json({ claimed: 0 });
+        let driveMedia = false;
         try {
           const outcome = await runInstagramPublishStep(post, {
             checkpoint: async (value) => {
@@ -95,17 +97,29 @@ export const Route = createFileRoute("/api/instagram/worker")({
                 !["video/mp4", "video/quicktime"].includes(media.mime_type)
               )
                 throw new Error("Media unavailable");
-              const signed = await supabaseAdmin.storage
-                .from("postkit-media")
-                .createSignedUrl(media.storage_path, 3600);
-              if (signed.error || !signed.data?.signedUrl) throw new Error("Media unavailable");
               const account = await authorizedAccount(supabaseAdmin, post);
               const coverUrl = post.cover_asset_id
                 ? await signReelCover(supabaseAdmin, post.workspace_id, post.cover_asset_id)
                 : undefined;
+              driveMedia = media.storage_path.startsWith(driveMediaPrefix);
+              let videoUrl: string;
+              if (driveMedia) {
+                const { stageDriveReel } = await import("@/lib/instagram-drive-publishing.server");
+                videoUrl = await stageDriveReel(
+                  client,
+                  post,
+                  media.mime_type as "video/mp4" | "video/quicktime",
+                );
+              } else {
+                const signed = await supabaseAdmin.storage
+                  .from("postkit-media")
+                  .createSignedUrl(media.storage_path, 3600);
+                if (signed.error || !signed.data?.signedUrl) throw new Error("Media unavailable");
+                videoUrl = signed.data.signedUrl;
+              }
               return createInstagramReelContainer({
                 ...account,
-                publicVideoUrl: signed.data.signedUrl,
+                publicVideoUrl: videoUrl,
                 publicCoverUrl: coverUrl,
                 caption: post.caption,
               });
@@ -123,6 +137,10 @@ export const Route = createFileRoute("/api/instagram/worker")({
               return publishInstagramContainer({ ...account, containerId });
             },
           });
+          if (outcome === "published" || (outcome === "failed" && driveMedia)) {
+            const { cleanupDriveStaging } = await import("@/lib/instagram-drive-publishing.server");
+            await cleanupDriveStaging(client, post.id).catch(() => false);
+          }
           return Response.json({ claimed: 1, outcome });
         } catch {
           // Do not report success, clear the lease or resubmit after a lost DB response.

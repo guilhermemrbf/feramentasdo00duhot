@@ -81,6 +81,39 @@ export type PostkitDatabase = Omit<Database, "public"> & {
         Update: Partial<InstagramWorkspaceAppRow>;
         Relationships: [];
       };
+      instagram_drive_sources: {
+        Row: {
+          account_id: string;
+          workspace_id: string;
+          folder_id: string;
+          folder_name: string;
+          library_folder_id: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      instagram_drive_files: {
+        Row: {
+          media_asset_id: string;
+          workspace_id: string;
+          account_id: string;
+          folder_id: string;
+          file_id: string;
+          revision: string;
+          checksum: string;
+          size_bytes: number;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      instagram_drive_staging: {
+        Row: { path: string; post_id: string; expires_at: string };
+        Insert: { path: string; post_id: string };
+        Update: never;
+        Relationships: [];
+      };
       instagram_accounts: TableWithDetails<
         Tables["instagram_accounts"],
         {
@@ -120,6 +153,22 @@ export type PostkitDatabase = Omit<Database, "public"> & {
       Database["public"]["Functions"],
       "save_instagram_unified_accounts" | "get_instagram_analytics" | "get_instagram_top_posts"
     > & {
+      sync_instagram_drive_library: {
+        Args: {
+          p_workspace: string;
+          p_account: string;
+          p_actor: string;
+          p_folder: string;
+          p_name: string;
+          p_files: Json;
+          p_connect: boolean;
+        };
+        Returns: number;
+      };
+      disconnect_instagram_drive_library: {
+        Args: { p_workspace: string; p_account: string; p_actor: string };
+        Returns: undefined;
+      };
       save_instagram_workspace_app: {
         Args: {
           p_workspace_id: string;

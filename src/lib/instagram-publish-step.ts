@@ -1,3 +1,5 @@
+import { DrivePublishError } from "./instagram-drive.ts";
+
 export type PublishPhase = "create" | "waiting" | "publishing" | "done";
 export type PublishCheckpoint = {
   outcome: "waiting" | "publishing" | "published" | "failed" | "needs_review";
@@ -68,7 +70,11 @@ export async function runInstagramPublishStep(
     const outcome = publicationStarted ? "needs_review" : "failed";
     await checkpoint({
       outcome,
-      errorCode: publicationStarted ? "publish_outcome_ambiguous" : "preparation_failed",
+      errorCode: publicationStarted
+        ? "publish_outcome_ambiguous"
+        : error instanceof DrivePublishError
+          ? error.code
+          : "preparation_failed",
     });
     return outcome;
   }

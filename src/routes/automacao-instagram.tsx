@@ -58,6 +58,7 @@ import {
 } from "@/lib/api/instagram-worker.functions";
 import { calendarDateInZone } from "@/lib/scheduling";
 import { InstagramHistory } from "@/components/postkit/InstagramHistory";
+import { InstagramDriveLibrary } from "@/components/postkit/InstagramDriveLibrary";
 import { InstagramAccountCards } from "@/components/postkit/InstagramAccountCards";
 import { InstagramDashboard } from "@/components/postkit/InstagramDashboard";
 import {
@@ -414,6 +415,7 @@ function InstagramWorkspacePage({
     if (initialTab) setActiveTab(initialTab);
   }, [initialTab]);
   const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [videoRefresh, setVideoRefresh] = useState(0);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [caption, setCaption] = useState("");
   const [hashtags, setHashtags] = useState("");
@@ -611,7 +613,7 @@ function InstagramWorkspacePage({
     return () => {
       active = false;
     };
-  }, [workspace.id]);
+  }, [workspace.id, videoRefresh]);
 
   useEffect(() => {
     if (!cover) {
@@ -2015,6 +2017,14 @@ function InstagramWorkspacePage({
                     </div>
                   )}
                 </header>
+                {reelAccount && (
+                  <InstagramDriveLibrary
+                    key={reelAccount.id}
+                    workspaceId={workspace.id}
+                    accountId={reelAccount.id}
+                    onLibraryChange={() => setVideoRefresh((value) => value + 1)}
+                  />
+                )}
                 {uploading && (
                   <p
                     role="status"

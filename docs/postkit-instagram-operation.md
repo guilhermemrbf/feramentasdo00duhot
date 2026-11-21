@@ -55,6 +55,21 @@ Na aba Configurações do PostKit, uma pessoa owner/admin ativa o processamento.
 
 Antes da liberação operacional: conectar conta de teste, enviar vídeo autorizado, agendar e verificar ID/resultado no Instagram; testar cancelamento, desconexão e recuperação. Não declarar publicação real aprovada com base em mocks.
 
+## Biblioteca privada do Google Drive para Reels
+
+No MouseHot, abra **Biblioteca de Reels**, selecione a conta e expanda **Google Drive para Reels**. Compartilhe uma pasta privada como **Leitor** com o e-mail indicado. Cole o link, gere o nome de confirmação e crie a subpasta vazia com esse nome dentro da pasta de vídeos. Depois de conectar, use **Atualizar vídeos** para importar novos arquivos. A leitura inicial abrange os MP4 e MOV de até 50 MB que estão diretamente nessa pasta, com até 1.000 vídeos por biblioteca do Drive.
+
+O cadastro guarda referências à revisão exata dos vídeos. O worker verifica permissões, pasta, tamanho e integridade novamente perto da publicação. Se o arquivo sumir, mudar ou perder acesso, o Histórico mostra a falha. O navegador não recebe token nem chave do Google. Stories e capas continuam usando os buckets privados já utilizados pelo MouseHot.
+
+O streaming envia somente o Reel agendado ao bucket temporário privado `postkit-drive-staging`. O link expira em uma hora. A confirmação da publicação aciona a remoção da cópia. O job `00duhot-instagram-drive-cleanup` tenta remover cópias restantes a cada 15 minutos após a retenção de duas horas.
+
+1. No Google Cloud do operador, ative a Drive API e crie uma conta de serviço dedicada à integração. Use acesso a pastas explicitamente compartilhadas. A conta de serviço não precisa de papéis de projeto nem delegação de domínio para o fluxo de leitura por compartilhamento.
+2. Configure `GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL` e `GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY` no ambiente de servidor da Vercel. A chave privada PEM pode usar quebras de linha literais ou escapadas. Mantenha-a no gerenciador de segredos.
+3. Aplique a migração `20261121160000` antes de ativar a integração. Ela preserva o estado da fila e aumenta o timeout do worker de publicação para 90 segundos. A reserva de processamento continua em dois minutos.
+4. Para homologar, vincule uma pasta privada com um MP4 autorizado de teste ao perfil já conectado. Confirme a listagem, o agendamento e o resultado real da Meta. Valide também a falha ao mover o vídeo para fora da pasta e a remoção do arquivo temporário.
+
+[Compartilhamento no Drive](https://developers.google.com/workspace/drive/api/guides/manage-sharing) · [Conta de serviço do Google](https://developers.google.com/identity/protocols/oauth2/service-account)
+
 ## Verificações locais
 
 - `npm test`: 102 testes aprovados, incluindo falha de conexão, checkpoint perdido, retomada sem recriar contêiner e bloqueio de reenvio incerto. Testes de rede local exigem permissões de portas/temporários do Windows.

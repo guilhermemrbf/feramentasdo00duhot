@@ -27,6 +27,7 @@ import { Route as MouseHotDownloaderRouteImport } from './routes/mouse-hot-downl
 import { Route as OtimizarCriativosRouteImport } from './routes/otimizar-criativos'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as TelegramSyncRouteImport } from './routes/telegram-sync'
+import { Route as ApiInstagramDriveCleanupRouteImport } from './routes/api.instagram.drive-cleanup'
 import { Route as ApiInstagramWorkerRouteImport } from './routes/api.instagram.worker'
 import { Route as ApiInstagramOauthCallbackRouteImport } from './routes/api.instagram.oauth.callback'
 
@@ -120,6 +121,12 @@ const TelegramSyncRoute = TelegramSyncRouteImport.update({
   path: '/telegram-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInstagramDriveCleanupRoute =
+  ApiInstagramDriveCleanupRouteImport.update({
+    id: '/api/instagram/drive-cleanup',
+    path: '/api/instagram/drive-cleanup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiInstagramWorkerRoute = ApiInstagramWorkerRouteImport.update({
   id: '/api/instagram/worker',
   path: '/api/instagram/worker',
@@ -151,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/otimizar-criativos': typeof OtimizarCriativosRoute
   '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
+  '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
 }
@@ -173,6 +181,7 @@ export interface FileRoutesByTo {
   '/otimizar-criativos': typeof OtimizarCriativosRoute
   '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
+  '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
 }
@@ -196,6 +205,7 @@ export interface FileRoutesById {
   '/otimizar-criativos': typeof OtimizarCriativosRoute
   '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
+  '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
 }
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/otimizar-criativos'
     | '/privacidade'
     | '/telegram-sync'
+    | '/api/instagram/drive-cleanup'
     | '/api/instagram/worker'
     | '/api/instagram/oauth/callback'
   fileRoutesByTo: FileRoutesByTo
@@ -242,6 +253,7 @@ export interface FileRouteTypes {
     | '/otimizar-criativos'
     | '/privacidade'
     | '/telegram-sync'
+    | '/api/instagram/drive-cleanup'
     | '/api/instagram/worker'
     | '/api/instagram/oauth/callback'
   id:
@@ -264,6 +276,7 @@ export interface FileRouteTypes {
     | '/otimizar-criativos'
     | '/privacidade'
     | '/telegram-sync'
+    | '/api/instagram/drive-cleanup'
     | '/api/instagram/worker'
     | '/api/instagram/oauth/callback'
   fileRoutesById: FileRoutesById
@@ -287,6 +300,7 @@ export interface RootRouteChildren {
   OtimizarCriativosRoute: typeof OtimizarCriativosRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   TelegramSyncRoute: typeof TelegramSyncRoute
+  ApiInstagramDriveCleanupRoute: typeof ApiInstagramDriveCleanupRoute
   ApiInstagramWorkerRoute: typeof ApiInstagramWorkerRoute
   ApiInstagramOauthCallbackRoute: typeof ApiInstagramOauthCallbackRoute
 }
@@ -419,6 +433,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TelegramSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/instagram/drive-cleanup': {
+      id: '/api/instagram/drive-cleanup'
+      path: '/api/instagram/drive-cleanup'
+      fullPath: '/api/instagram/drive-cleanup'
+      preLoaderRoute: typeof ApiInstagramDriveCleanupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/instagram/worker': {
       id: '/api/instagram/worker'
       path: '/api/instagram/worker'
@@ -455,6 +476,7 @@ const rootRouteChildren: RootRouteChildren = {
   OtimizarCriativosRoute: OtimizarCriativosRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   TelegramSyncRoute: TelegramSyncRoute,
+  ApiInstagramDriveCleanupRoute: ApiInstagramDriveCleanupRoute,
   ApiInstagramWorkerRoute: ApiInstagramWorkerRoute,
   ApiInstagramOauthCallbackRoute: ApiInstagramOauthCallbackRoute,
 }

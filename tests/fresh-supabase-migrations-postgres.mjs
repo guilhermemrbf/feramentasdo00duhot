@@ -117,6 +117,85 @@ try {
   );
   assert.deepEqual(accounts, [{ username: "test_profile", connection_status: "connected" }]);
   await assert.rejects(db.query("select * from public.instagram_tokens"), /permission denied/);
+  const {
+    rows: [account],
+  } = await db.query("select id from public.instagram_accounts where workspace_id=$1", [
+    workspace.id,
+  ]);
+  await assert.rejects(db.query("select * from public.instagram_drive_files"), /permission denied/);
+  await assert.rejects(
+    db.query(
+      "select public.sync_instagram_drive_library($1,$2,$3,'TestDriveFolder','Private Reels','[]',true)",
+      [workspace.id, account.id, user],
+    ),
+    /permission denied/,
+  );
+  await db.exec("reset role; set role service_role");
+  const fixture = {
+    file_id: "TestDriveFileId",
+    revision: "first",
+    filename: "clip.mp4",
+    mime: "video/mp4",
+    checksum: "1".repeat(32),
+    size_bytes: 1234,
+  };
+  const sync = (files, connect = false, actor = user, folder = "TestDriveFolder") =>
+    db
+      .query(
+        "select public.sync_instagram_drive_library($1,$2,$3,$4,'Private Reels',$5::jsonb,$6) count",
+        [workspace.id, account.id, actor, folder, JSON.stringify(files), connect],
+      )
+      .then((result) => result.rows[0].count);
+  await assert.rejects(sync([], true, "596b11ea-09ef-44d5-a69e-d18dad10a0a1"), /drive_access/);
+  assert.equal(await sync([fixture], true), 1);
+  assert.equal(await sync([fixture]), 1);
+  await assert.rejects(sync([fixture], true, user, "ForeignDriveFolder"), /drive_source_changed/);
+  const {
+    rows: [originalRef],
+  } = await db.query("select media_asset_id from public.instagram_drive_files");
+  await db.exec("reset role; set role authenticated");
+  const {
+    rows: [visible],
+  } = await db.query("select id,storage_path,archived_at from public.media_assets where id=$1", [
+    originalRef.media_asset_id,
+  ]);
+  assert.deepEqual(visible, {
+    id: originalRef.media_asset_id,
+    storage_path: "drive/" + originalRef.media_asset_id,
+    archived_at: null,
+  });
+  const changed = await db.query(
+    "update public.media_assets set original_filename='tampered.mp4' where id=$1 returning id",
+    [visible.id],
+  );
+  assert.equal(changed.rows.length, 0);
+  await db.exec("reset role; set role service_role");
+  assert.equal(await sync([{ ...fixture, revision: "second" }]), 1);
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int count from public.media_assets where archived_at is null",
+      )
+    ).rows[0].count,
+    1,
+  );
+  assert.ok(
+    (await db.query("select archived_at from public.media_assets where id=$1", [visible.id]))
+      .rows[0].archived_at,
+  );
+  await db.query("select public.disconnect_instagram_drive_library($1,$2,$3)", [
+    workspace.id,
+    account.id,
+    user,
+  ]);
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int count from public.media_assets where archived_at is null",
+      )
+    ).rows[0].count,
+    0,
+  );
   await db.exec("reset role");
   await db.query(
     "select private.configure_instagram_worker_destination('https://preview.example.test')",
@@ -129,8 +208,20 @@ try {
     ).rows[0].n,
     0,
   );
+  const {
+    rows: [publishJob],
+  } = await db.query("select command from cron.job where jobname='00duhot-instagram-worker'");
+  assert.match(publishJob.command, /timeout_milliseconds := 90000/);
+  const {
+    rows: [cleanupJob],
+  } = await db.query(
+    "select schedule, active, command from cron.job where jobname='00duhot-instagram-drive-cleanup'",
+  );
+  assert.equal(cleanupJob.schedule, "*/15 * * * *");
+  assert.equal(cleanupJob.active, false);
+  assert.match(cleanupJob.command, /\/api\/instagram\/drive-cleanup/);
   console.log(
-    `PASS: ${migrations.length} migrations in order, fresh workspace access, OAuth grant persistence and secret isolation. Hosted service interfaces are fixtures.`,
+    `PASS: ${migrations.length} migrations in order, OAuth persistence, Drive reference isolation, revision handling and paused worker configuration. Hosted service interfaces are fixtures.`,
   );
 } finally {
   await db.close();

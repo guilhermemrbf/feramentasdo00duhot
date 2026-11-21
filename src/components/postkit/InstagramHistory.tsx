@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { PostkitDatabase } from "@/lib/postkit-database";
 import { WorkspaceSelect } from "@/components/ui/workspace-select";
+import { drivePublishMessage } from "@/lib/instagram-drive";
 
 const labels = {
   scheduled: "Agendado",
@@ -28,6 +29,7 @@ type HistoryRow = {
   scheduled_at: string | null;
   published_at: string | null;
   meta_media_id: string | null;
+  last_error_code: string | null;
   last_error_message: string | null;
   first_comment: string | null;
   first_comment_status: string | null;
@@ -67,7 +69,7 @@ export function InstagramHistory({
       let query = client
         .from("posts")
         .select(
-          "id,status,caption,scheduled_at,published_at,meta_media_id,last_error_message,first_comment,first_comment_status,instagram_accounts(username),media_assets!posts_media_asset_id_workspace_id_fkey(original_filename)",
+          "id,status,caption,scheduled_at,published_at,meta_media_id,last_error_code,last_error_message,first_comment,first_comment_status,instagram_accounts(username),media_assets!posts_media_asset_id_workspace_id_fkey(original_filename)",
         )
         .eq("workspace_id", workspaceId);
       if (account) query = query.eq("instagram_account_id", account);
@@ -223,7 +225,9 @@ export function InstagramHistory({
                   <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-xs">{row.caption}</p>
                 )}
                 {row.last_error_message && (
-                  <p className="mt-2 text-xs text-amber-500">{row.last_error_message}</p>
+                  <p className="mt-2 text-xs text-amber-500">
+                    {drivePublishMessage(row.last_error_code) ?? row.last_error_message}
+                  </p>
                 )}
                 {row.first_comment &&
                   (row.status === "published" ||
