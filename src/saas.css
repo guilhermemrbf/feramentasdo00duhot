@@ -190,7 +190,6 @@
 }
 .launch-site .launch-hero-access .access-form-panel {
   box-shadow: 0 18px 55px #07010668;
-  border-top: 3px solid #d63850;
 }
 .launch-hero-access :focus-visible {
   outline-color: var(--brand-wine);
@@ -339,10 +338,9 @@
 }
 
 .launch-catalog {
-  background: #f8f1ea;
-  color: #211a19;
+  background: radial-gradient(ellipse at 96% 52%, #321622 0%, transparent 62%), #181117;
+  color: #fff3f1;
 }
-.launch-catalog > div,
 .launch-access {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -362,10 +360,10 @@
   margin: 0;
 }
 .launch-tool-group {
-  border-bottom: 1px solid var(--paper-line);
+  border-bottom: 1px solid #624451;
 }
 .launch-tool-group:first-child {
-  border-top: 1px solid var(--paper-line);
+  border-top: 1px solid #624451;
 }
 .launch-tool-group > summary {
   display: flex;
@@ -396,13 +394,13 @@
 .launch-tool-group li svg {
   flex-shrink: 0;
   margin-top: 2px;
-  color: var(--brand-wine);
+  color: #ff99a7;
 }
 .launch-tool-group li strong {
   font-size: 0.875rem;
 }
 .launch-tool-group li p {
-  color: var(--detail-on-paper);
+  color: #e2cbd1;
   margin-top: 3px;
   font-size: 0.84rem;
   line-height: 1.55;
@@ -414,7 +412,10 @@
   margin-top: 17px;
 }
 .launch-footer {
-  border-top: 1px solid var(--paper-line);
+  border-top: 1px solid #50303b;
+  border-bottom: 0;
+  background: #150e15;
+  color: #f8e7e8;
 }
 .launch-footer-layout {
   display: flex;
@@ -423,32 +424,195 @@
   gap: 12px;
   align-items: center;
 }
-.launch-catalog {
-  --mo-from: #150e15;
+.launch-workflow {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  background:
+    radial-gradient(ellipse at 10% 10%, #522034 0%, transparent 52%),
+    linear-gradient(152deg, #281321 0%, #29131f 55%, #181117 100%);
+  color: #fff4f2;
 }
-.launch-catalog :focus-visible {
-  outline-color: var(--brand-wine);
+.launch-workflow-layout,
+.launch-catalog > div {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: clamp(32px, 8vw, 128px);
+  padding-block: clamp(68px, 10vw, 140px);
 }
+.launch-workflow-layout {
+  padding-block: clamp(64px, 9vw, 126px);
+}
+.launch-workflow h2,
+.launch-close h2 {
+  font: 750 clamp(2.1rem, 5vw, 4.55rem)/1.02 var(--font-display);
+  letter-spacing: -0.038em;
+  max-width: 15ch;
+  text-wrap: balance;
+}
+.launch-workflow-copy > p,
+.launch-close p,
 .launch-catalog-lead {
-  max-width: 38ch;
-  color: var(--detail-on-paper);
-  line-height: 1.6;
-  margin-top: 20px;
+  max-width: 42ch;
+  color: #ebd0d7;
+  line-height: 1.65;
+  margin-top: 16px;
 }
-.launch-catalog-path {
-  max-width: 440px;
+.launch-stage-controls {
   margin-top: 28px;
+  display: grid;
+  gap: 7px;
+}
+.launch-stage-controls button {
+  min-height: 53px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  text-align: start;
+  font-weight: 750;
+  color: #f4dce0;
+  padding: 10px 13px;
+  border: 1px solid #734754;
+  border-radius: 9px;
+  transition:
+    background-color 180ms,
+    border-color 180ms,
+    transform 160ms var(--ease-control);
+}
+.launch-stage-controls button svg,
+.launch-workflow-preview-head svg {
+  color: #ffa5b1;
+  flex-shrink: 0;
+}
+.launch-stage-controls button[aria-pressed="true"] {
+  border-color: #fa8c9e;
+  color: #fff;
+  background: #683044;
+}
+.launch-stage-controls button:active {
+  transform: scale(0.985);
+}
+.launch-workflow-preview {
+  align-self: center;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid #956371;
+  background: #21141c;
+}
+.launch-workflow-preview-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 57px;
+  padding: 12px clamp(15px, 3vw, 29px);
+  border-bottom: 1px solid #6c4755;
+  background: #39242e;
+}
+.launch-workflow-preview-body {
+  min-height: 352px;
+  padding: clamp(15px, 3vw, 29px);
+}
+.launch-workflow-preview-body h3 {
+  font: 735 clamp(1.48rem, 3vw, 2.48rem)/1.08 var(--font-display);
+  letter-spacing: -0.025em;
+}
+.launch-workflow-preview-body p {
+  color: #e4cdd2;
+  line-height: 1.55;
+  margin: 10px 0 22px;
+}
+.launch-workflow-preview-body ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.launch-workflow-preview-body li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-block: 10px;
+  border-top: 1px solid #5b3c49;
+}
+.launch-workflow-preview-body li svg {
+  color: #ff9baa;
+  flex-shrink: 0;
+}
+.launch-workflow-preview-body li span {
+  display: block;
+  color: #dec1c9;
+  font-size: 0.83rem;
+}
+.launch-close {
+  background: linear-gradient(108deg, #6c1933, #41182a 61%, #311824);
+  color: #fff4f2;
+}
+.launch-close > div {
+  min-height: 250px;
+  padding-block: clamp(39px, 6.5vw, 80px);
   display: flex;
   flex-wrap: wrap;
-  gap: 9px;
   align-items: center;
-  border-block: 1px solid var(--paper-line);
-  padding-block: 18px;
-  font-size: 0.86rem;
-  font-weight: 700;
+  justify-content: space-between;
+  gap: 21px;
 }
-.launch-catalog-path svg {
-  color: var(--brand-wine);
+.launch-close .saas-button-primary {
+  background: #f8c5cb;
+  color: #2b131c;
+}
+.launch-workflow :focus-visible,
+.launch-catalog :focus-visible,
+.launch-close :focus-visible,
+.launch-footer :focus-visible {
+  outline-color: #ff9eae;
+}
+.launch-footer .launch-brand span {
+  color: #ff8496;
+}
+@media (hover: hover) and (pointer: fine) {
+  .launch-stage-controls button:hover {
+    border-color: #ff9eae;
+  }
+  .launch-close .saas-button-primary:hover {
+    background: #ffe1e3;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .launch-workflow-preview-body {
+    animation: launch-switch 230ms var(--ease-control) both;
+  }
+  .launch-tool-group summary svg {
+    transition: transform 190ms var(--ease-control);
+  }
+  @keyframes launch-switch {
+    from {
+      opacity: 0.68;
+      transform: translateX(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .launch-stage-controls button {
+    transition: none;
+  }
+  .launch-stage-controls button:active {
+    transform: none;
+  }
+}
+@media (max-width: 760px) {
+  .launch-workflow-layout,
+  .launch-catalog > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 27px;
+  }
+  .launch-workflow-preview-body {
+    min-height: 0;
+  }
 }
 .access-form-panel {
   min-width: 0;

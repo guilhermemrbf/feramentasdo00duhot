@@ -1132,7 +1132,21 @@ try {
   await visitor.emulateMedia({ reducedMotion: "reduce" });
   assert.equal(await motion.evaluate((element) => getComputedStyle(element).animationName), "none");
   await visitor.setViewportSize({ width: 390, height: 844 });
-  await visitor.getByRole("link", { name: "Solicitar acesso" }).click();
+  const workflow = visitor.getByRole("region", { name: "Demonstração do produto" });
+  const libraryStage = visitor.getByRole("button", { name: "Organize por perfil", exact: true });
+  await libraryStage.click();
+  await workflow.getByRole("heading", { name: "Uma biblioteca para cada conta" }).waitFor();
+  assert.equal(await libraryStage.getAttribute("aria-pressed"), "true");
+  await visitor.getByRole("button", { name: "Agende e acompanhe", exact: true }).click();
+  await workflow.getByRole("heading", { name: "Da fila ao histórico" }).waitFor();
+  assert.equal(await libraryStage.getAttribute("aria-pressed"), "false");
+  assert.equal(
+    await workflow
+      .locator(".launch-workflow-preview-body")
+      .evaluate((element) => getComputedStyle(element).animationName),
+    "none",
+  );
+  await visitor.locator(".launch-close").getByRole("link", { name: "Solicitar acesso" }).click();
   await visitor.getByLabel("Nome", { exact: true }).fill("Lead de Teste");
   await visitor.getByLabel("E-mail", { exact: true }).fill("new-lead@example.test");
   await visitor.getByLabel("Senha", { exact: true }).fill("fixture-password-only");

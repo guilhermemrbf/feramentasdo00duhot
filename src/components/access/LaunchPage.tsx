@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { AccessForm, type FormMode } from "./AccessForm";
 import { AccessStatusPanel } from "./AccessStatusPanel";
+import { LaunchWorkflow } from "./LaunchWorkflow";
 import { usePlatformAccess } from "./PlatformAccessProvider";
 import { TOOL_CATALOG, CATEGORIES } from "@/lib/tool-catalog";
 import { TOOL_ICONS } from "@/components/AppShell";
@@ -27,9 +28,9 @@ export function PublicBrand() {
 }
 
 const publishSteps = [
-  { name: "Biblioteca de Reels", label: "Vídeos organizados por perfil", icon: FolderOpen },
-  { name: "Agendamento", label: "Datas e horários de publicação", icon: CalendarClock },
-  { name: "Histórico", label: "Acompanhamento das publicações", icon: ListChecks },
+  { name: "Biblioteca de Reels", label: "Uma biblioteca para cada perfil", icon: FolderOpen },
+  { name: "Agendamento", label: "Escolha dias e horários", icon: CalendarClock },
+  { name: "Histórico", label: "Confira o que foi ao ar", icon: ListChecks },
 ];
 
 function PublishingFrame() {
@@ -43,7 +44,7 @@ function PublishingFrame() {
         <MonitorPlay size={18} aria-hidden className="frame-screen" />
       </div>
       <div className="launch-frame-body">
-        <p>Da biblioteca à publicação em 3 etapas</p>
+        <p>Uma operação por perfil</p>
         <ol>
           {publishSteps.map(({ name, label, icon: Icon }) => (
             <li key={name}>
@@ -71,15 +72,6 @@ export function LaunchPage() {
       void navigate({ to: "/painel", replace: true });
     }
   }, [access.status, access.isError, navigate]);
-
-  useEffect(() => {
-    if (access.user || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const script = document.createElement("script");
-    script.type = "module";
-    script.src = "/launch/moments/moments.js";
-    document.head.append(script);
-    return () => script.remove();
-  }, [access.user]);
 
   if (access.user) {
     return (
@@ -125,8 +117,8 @@ export function LaunchPage() {
                 Sua operação digital <span>em um só lugar.</span>
               </h1>
               <p>
-                Prepare fotos e vídeos, organize campanhas e agende Reels para os perfis que você
-                gerencia no Instagram.
+                Cuida de vários perfis? Prepare seus criativos, organize a biblioteca de cada conta
+                e programe os próximos Reels no Instagram.
               </p>
               <div className="launch-actions">
                 <a
@@ -136,8 +128,8 @@ export function LaunchPage() {
                 >
                   Solicitar acesso <ArrowRight size={19} aria-hidden />
                 </a>
-                <a className="launch-nav-link" href="#ferramentas">
-                  Explorar ferramentas <ChevronDown size={16} aria-hidden />
+                <a className="launch-nav-link" href="#fluxo">
+                  Ver como funciona <ChevronDown size={16} aria-hidden />
                 </a>
               </div>
             </div>
@@ -148,26 +140,24 @@ export function LaunchPage() {
                 onModeChange={setFormMode}
                 headingId="launch-access-title"
               />
-              <p className="launch-access-note">Novos cadastros aguardam aprovação.</p>
+              <p className="launch-access-note">Crie sua conta para solicitar acesso.</p>
             </div>
             <PublishingFrame />
           </div>
         </section>
-        <section id="ferramentas" className="launch-catalog" data-moment="iris-opens">
+        <LaunchWorkflow />
+        <section
+          id="ferramentas"
+          className="launch-catalog"
+          aria-labelledby="launch-catalog-heading"
+        >
           <div className="launch-wrap wrap">
             <div>
-              <h2>Ferramentas para cada etapa do conteúdo</h2>
+              <h2 id="launch-catalog-heading">A ferramenta certa para cada tarefa</h2>
               <p className="launch-catalog-lead">
-                Prepare seus arquivos, escolha os perfis que fazem sentido para sua campanha e
-                acompanhe o que foi publicado.
+                Analise perfis antes de planejar uma campanha, trate arquivos em lote e confira a
+                fila de publicação das contas que você gerencia.
               </p>
-              <div className="launch-catalog-path" data-visual aria-label="Fluxo de trabalho">
-                <span>Arquivo</span>
-                <ArrowRight size={15} aria-hidden />
-                <span>Campanha</span>
-                <ArrowRight size={15} aria-hidden />
-                <span>Publicação</span>
-              </div>
             </div>
             <div className="launch-tool-groups">
               {CATEGORIES.map((category) => {
@@ -200,6 +190,24 @@ export function LaunchPage() {
                 );
               })}
             </div>
+          </div>
+        </section>
+        <section className="launch-close" aria-labelledby="launch-close-heading">
+          <div className="launch-wrap wrap">
+            <div>
+              <h2 id="launch-close-heading">Planeje sua próxima semana de conteúdo</h2>
+              <p>
+                Os novos cadastros passam por aprovação. Se recebeu um convite de teste, use o link
+                enviado para o seu e-mail.
+              </p>
+            </div>
+            <a
+              className="saas-button saas-button-primary"
+              href="#acesso"
+              onClick={() => setFormMode("register")}
+            >
+              Solicitar acesso <ArrowRight size={19} aria-hidden />
+            </a>
           </div>
         </section>
       </main>

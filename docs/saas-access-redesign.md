@@ -42,3 +42,9 @@ O Design Taste Frontend encerrou em `GATE: OPEN 7` após três rodadas. As sete 
 ## Revisão da entrada e do acesso rápido
 
 A abertura ganhou fundo escuro, contraste com o formulário claro e animação de entrada com respeito à preferência por movimento reduzido. O teste de navegador verificou o login na primeira dobra a 390×844 e 1440×900, a troca de modo de acesso, o atalho da conta administradora, o foco direto no gerador e a criação do convite. O fluxo de homologação real permanece na seção acima.
+
+## Página de venda
+
+A entrada em `/` usa grafite e vinho até o rodapé. `LaunchPage` mantém o formulário no topo e leva os pedidos de acesso ao modo de cadastro. `LaunchWorkflow` apresenta três etapas da operação, com navegação por botões e uma transição que respeita a preferência por movimento reduzido. O teste de navegador verifica a troca de etapas e o acesso ao cadastro pela chamada no fim da página.
+
+Para retomar a validação da entrega, confira o deploy da branch `feat/saas-access-redesign` na Vercel e siga a homologação acima com o Supabase de teste antes de promover a nova página para o domínio principal.
