@@ -78,20 +78,20 @@ class InputTests(unittest.IsolatedAsyncioTestCase):
         times = []
 
         async def send(body):
-            times.append((json.loads(body)["type"], asyncio.get_running_loop().time()))
+            times.append((json.loads(body)["type"], time.perf_counter()))
             return 200, b"ok"
 
         channel = InputChannel(Mock(_handle_touch=send), Mock())
         await channel.send_touch("contact", 500, 700)
         await channel.send_touch("release", 500, 700)
         self.assertEqual([kind for kind, _ in times], ["contact", "release"])
-        self.assertGreaterEqual(times[1][1] - times[0][1], 0.05)
+        self.assertGreaterEqual(times[1][1] - times[0][1], 0.055)
 
     async def test_fast_drag_keeps_motion_before_lifting(self):
         reports = []
 
         async def send(body):
-            reports.append((json.loads(body), asyncio.get_running_loop().time()))
+            reports.append((json.loads(body), time.perf_counter()))
             return 200, b"ok"
 
         channel = InputChannel(Mock(_handle_touch=send), Mock())
@@ -101,7 +101,7 @@ class InputTests(unittest.IsolatedAsyncioTestCase):
             ("contact", 100, 200), ("contact", 300, 400),
             ("contact", 500, 600), ("release", 500, 600),
         ])
-        self.assertGreaterEqual(reports[-1][1] - reports[-2][1], 0.025)
+        self.assertGreaterEqual(reports[-1][1] - reports[-2][1], 0.030)
 
     async def test_back_uses_a_continuous_left_edge_swipe(self):
         server = Mock(_handle_touch=AsyncMock(return_value=(200, b"ok")))

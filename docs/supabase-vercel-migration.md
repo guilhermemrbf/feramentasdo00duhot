@@ -22,8 +22,12 @@ O GitHub continua como fonte do aplicativo. A Vercel hospeda TanStack Start, o S
 | `INSTAGRAM_OAUTH_STATE_SECRET`                                     | Segredo aleatório de assinatura do estado OAuth, separado entre ambientes.                                                                                                                    |
 | `INSTAGRAM_TOKEN_ENCRYPTION_KEY`                                   | Chave em base64 de 32 bytes. No destino final, é necessária a chave original para decifrar registros copiados. Na homologação use chave separada e dados de teste, sem tokens reais copiados. |
 | `META_APP_ID`, `META_APP_SECRET`, `META_INSTAGRAM_LOGIN_CONFIG_ID` | App da plataforma para as operações legadas. Cadastre o novo callback antes da virada.                                                                                                        |
+| `VITE_CLOUDINARY_CLOUD_NAME`, `VITE_CLOUDINARY_UPLOAD_PRESET`      | Cloud e preset público de upload do Image Links. Use os valores do provedor do ambiente.                                                                                                      |
+| `VITE_TEMP_MAIL_URL`                                             | URL da implantação do Correio Temporário, quando disponível.                                                                                                                                  |
 
 Mantenha segredos do servidor em variáveis sem `VITE_`. Revise demais variáveis usadas pelos módulos ativos em `.env.example`. Ambientes de homologação usam recursos independentes. O código usa Google Auth nativo do Supabase com PKCE. Use o preset Nitro da Vercel no deploy.
+
+Publique um novo deploy depois de salvar variáveis de produção. Na Visão geral do Automatic Post, um vínculo com o app da plataforma e uma configuração de servidor incompleta indicam que o cadastro da operação existe, mas falta configuração no deploy ativo. Confira as três variáveis Meta no ambiente de Produção e teste se **Conectar Instagram** abre a tela oficial de autorização.
 
 ### Agendadores do Automatic Post
 
@@ -64,7 +68,7 @@ O endereço `mausehot.lovable.app` pertence ao provedor anterior. O alias preten
 
 ### Estado do destino
 
-O projeto Supabase `mausehot` (`hibuqeckyklnfjawztzf`, São Paulo) recebeu 34 migrações. A verificação confirmou zero operações e os dois jobs de publicação pausados. A exportação e a reconciliação permanecem pendentes porque o projeto de origem está pausado no Lovable. O alias da Vercel ainda precisa ser atribuído e verificado, assim como o Google Auth, os callbacks da Meta e os segredos do destino.
+O projeto Supabase `mausehot` (`hibuqeckyklnfjawztzf`, São Paulo) recebeu 34 migrações. A aplicação usa o domínio `mausehot.vercel.app` e o login com Google retornou à plataforma. Na verificação de 21/11/2026, havia uma operação administrativa com o vínculo de plataforma restaurado, zero contas de Instagram, zero publicações e zero itens de mídia. A recuperação dos registros e arquivos históricos depende da exportação da origem. Antes de executar a fila, verifique o estado atual dos jobs e conclua o teste real com uma conta autorizada.
 
 ## Verificação da publicação
 

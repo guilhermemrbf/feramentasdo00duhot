@@ -1,6 +1,15 @@
 import asyncio
 import json
 from contextlib import suppress
+from time import perf_counter
+
+
+async def wait_until(deadline):
+    # Windows event loops can wake before a short delay has elapsed.
+    remaining = deadline - perf_counter()
+    while remaining > 0:
+        await asyncio.sleep(max(remaining, 0.001))
+        remaining = deadline - perf_counter()
 
 
 def fit_image_size(original, viewport):
@@ -107,12 +116,12 @@ class InputChannel:
             release_at = self.contact_started + 0.055
             if self.last_motion_sent is not None:
                 release_at = max(release_at, self.last_motion_sent + 0.030)
-            await asyncio.sleep(max(0, release_at - self.loop.time()))
+            await wait_until(release_at)
         await self.send(self.server._handle_touch, {"type": kind, "x": x, "y": y})
         if new_contact:
-            self.contact_started = self.loop.time()
+            self.contact_started = perf_counter()
         if moved:
-            self.last_motion_sent = self.loop.time()
+            self.last_motion_sent = perf_counter()
         if kind == "release":
             self.touch = None
             self.contact_started = None
@@ -125,10 +134,10 @@ class InputChannel:
             if self.last_motion_sent is None:
                 # Windows can deliver a short drag as just press and release.
                 # Preserve the gesture even if no intermediate sample reached the device.
-                await asyncio.sleep(max(0, self.contact_started + 0.025 - self.loop.time()))
+                await wait_until(self.contact_started + 0.025)
                 start_x, start_y = self.touch
                 await self.send_touch("contact", round((start_x + x) / 2), round((start_y + y) / 2))
-                await asyncio.sleep(0.025)
+                await wait_until(perf_counter() + 0.025)
             await self.send_touch("contact", x, y)
         await self.send_touch("release", x, y)
 
