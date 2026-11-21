@@ -12,6 +12,9 @@ const request = (path, init) => app.fetch(new Request(new URL(path, origin), ini
 
 const routes = new Set([
   "/",
+  "/painel",
+  "/aprovacoes",
+  "/convite",
   ...TOOL_CATALOG.map(({ path }) => path),
   "/email-temporario",
   "/privacidade",
@@ -22,7 +25,7 @@ for (const path of routes) {
   const response = await request(path);
   assert.equal(response.status, 200, path);
   const html = await response.text();
-  assert.match(html, /<title>[^<]*MauseHot[^<]*<\/title>/i, path);
+  assert.match(html, /<title>[^<]*M[ao]useHot[^<]*<\/title>/i, path);
   assert.doesNotMatch(html, /Não foi possível abrir esta página/);
   if (path === "/privacidade" || path === "/exclusao-de-dados") {
     assert.ok(html.includes(new URL(path, origin).href), path + " canonical");
@@ -48,6 +51,7 @@ assert.equal(driveCleanup.status, 401);
 
 for (const asset of [
   "brand/mark.png",
+  "brand/compact.webp",
   "hot-profiles-connector.zip",
   "downloads/Mouse-Hot-Downloader-3.0.7.zip",
 ]) {

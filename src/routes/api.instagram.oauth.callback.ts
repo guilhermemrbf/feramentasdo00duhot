@@ -98,6 +98,13 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
           const { workspaceId, userId, mode, analytics, appRevision } =
             await verifyInstagramOAuthState(returnedState);
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const accessDb = supabaseAdmin as unknown as SupabaseClient;
+          const { data: authorized, error: accessError } = await accessDb.rpc("platform_approved_user", {
+            p_user: userId,
+          });
+          if (accessError || authorized !== true) {
+            throw new Error("Workspace access was revoked during Instagram authorization.");
+          }
           const [{ data: workspace }, { data: membership }] = await Promise.all([
             supabaseAdmin.from("workspaces").select("owner_id").eq("id", workspaceId).maybeSingle(),
             supabaseAdmin

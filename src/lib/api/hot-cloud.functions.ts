@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requirePlatformAccess } from "@/integrations/supabase/platform-middleware";
 import { cloudCommandSchema, type CloudReply } from "@/lib/hot-cloud";
 
 export const getHotCloudSetup = createServerFn({ method: "GET" }).handler(async () => {
@@ -8,7 +8,7 @@ export const getHotCloudSetup = createServerFn({ method: "GET" }).handler(async 
 });
 
 export const hotCloudAction = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requirePlatformAccess])
   .validator(cloudCommandSchema)
   .handler(async ({ data, context }): Promise<CloudReply> => {
     const { executeCloudCommand, CloudError } = await import("@/lib/hot-cloud.server");

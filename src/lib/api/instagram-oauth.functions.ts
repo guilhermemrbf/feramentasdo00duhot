@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { setCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requirePlatformAccess } from "@/integrations/supabase/platform-middleware";
 
 export const startInstagramOAuth = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requirePlatformAccess])
   .validator(
     z.object({
       workspaceId: z.string().uuid(),

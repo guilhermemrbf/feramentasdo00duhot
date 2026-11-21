@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requirePlatformAccess } from "@/integrations/supabase/platform-middleware";
 import type { PostkitDatabase } from "@/lib/postkit-database";
 import type { InstagramConnectionProfile } from "@/lib/instagram-connection-profile";
 
@@ -33,7 +33,7 @@ async function requireAccount(
 }
 
 export const verifyInstagramConnection = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requirePlatformAccess])
   .validator(accountInput)
   .handler(async ({ data, context }): Promise<InstagramConnectionCheck> => {
     const client = context.supabase as unknown as SupabaseClient<PostkitDatabase>;
@@ -116,7 +116,7 @@ export const verifyInstagramConnection = createServerFn({ method: "POST" })
   });
 
 export const disconnectInstagramConnection = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requirePlatformAccess])
   .validator(accountInput)
   .handler(async ({ data, context }) => {
     const client = context.supabase as unknown as SupabaseClient<PostkitDatabase>;

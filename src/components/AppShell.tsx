@@ -2,6 +2,8 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowUpRight,
+  Clock3,
+  LogOut,
   ChevronDown,
   CircleHelp,
   Download,
@@ -31,6 +33,9 @@ import {
   type Tool,
 } from "@/lib/tool-catalog";
 import { recordTool, useToolPreferences } from "@/lib/tool-preferences";
+import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { accessForRoute, secondsRemaining } from "@/lib/platform-access";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
@@ -53,16 +58,16 @@ function Brand() {
   return (
     <span className="flex items-center gap-3">
       <img
-        src="/brand/mark.png"
+        src="/brand/compact.webp"
         alt=""
         width={44}
         height={44}
         className="brand-mark size-11 shrink-0 rounded-lg object-contain"
       />
       <span>
-        <strong className="block text-[17px] font-semibold tracking-tight">MauseHot</strong>
+        <strong className="block text-[17px] font-semibold tracking-tight">MouseHot</strong>
         <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">
-          Suas ferramentas, sem complicação
+          Espaço de trabalho
         </span>
       </span>
     </span>
@@ -77,7 +82,10 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const current = findTool(pathname);
   const currentId = current?.id;
-  const isHome = pathname === "/";
+  const isHome = pathname === "/painel";
+  const isAdmin = pathname === "/aprovacoes";
+  const { status, user } = usePlatformAccess();
+  const available = TOOL_CATALOG.filter((tool) => status && accessForRoute(tool.path, status));
   const [mobile, setMobile] = useState(false),
     [query, setQuery] = useState("");
   const dialog = useRef<HTMLDialogElement>(null),
@@ -85,7 +93,7 @@ export function AppShell({
   const desktopSidebar = useRef<HTMLElement>(null);
   const { favorites, recent, toggle } = useToolPreferences();
   const shortcuts = [...new Set([...favorites, ...recent.slice(0, 4)])]
-    .map((id) => TOOL_CATALOG.find((tool) => tool.id === id))
+    .map((id) => available.find((tool) => tool.id === id))
     .filter((tool) => tool !== undefined);
   const openTools = () => {
     if (desktopSidebar.current?.getClientRects().length) {
@@ -154,9 +162,9 @@ export function AppShell({
   const sidebar = (
     <>
       <Link
-        to="/"
+        to="/painel"
         onClick={() => setMobile(false)}
-        aria-label="MauseHot, início"
+        aria-label="MouseHot, início"
         className="border-b border-border px-5 py-5"
       >
         <Brand />
@@ -171,7 +179,7 @@ export function AppShell({
         </button>
         <nav aria-label="Navegação principal">
           <Link
-            to="/"
+            to="/painel"
             onClick={() => setMobile(false)}
             aria-current={isHome ? "page" : undefined}
             className={cn("tool-nav-link mb-4", isHome && "is-active")}
@@ -179,6 +187,16 @@ export function AppShell({
             <Home className="size-[17px]" />
             Visão geral
           </Link>
+          {status === "admin" && (
+            <Link
+              to="/aprovacoes"
+              aria-current={isAdmin ? "page" : undefined}
+              onClick={() => setMobile(false)}
+              className={cn("tool-nav-link mb-4", isAdmin && "is-active")}
+            >
+              <ShieldCheck className="size-[17px]" aria-hidden /> Aprovações e convites
+            </Link>
+          )}
           {shortcuts.length > 0 && (
             <details className="group mb-5 rounded-lg border border-border px-1">
               <summary className="flex min-h-11 list-none items-center gap-2 px-2 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
@@ -190,20 +208,39 @@ export function AppShell({
             </details>
           )}
           {CATEGORIES.filter((category) =>
-            TOOL_CATALOG.some((tool) => tool.category === category),
+            available.some((tool) => tool.category === category),
           ).map((category) => (
             <div key={category} className="mb-5">
               <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {category}
               </p>
-              {TOOL_CATALOG.filter((tool) => tool.category === category).map((tool) => nav(tool))}
+              {available.filter((tool) => tool.category === category).map((tool) => nav(tool))}
             </div>
           ))}
         </nav>
       </div>
       <div className="border-t border-border px-5 py-4 text-xs leading-5 text-muted-foreground">
-        <span className="block font-medium text-foreground">Tudo em um só lugar</span>Conteúdo,
-        preparação e automação.
+        {user && (
+          <div className="workspace-account">
+            <div>
+              <strong>{user.email || "Minha conta"}</strong>
+              <span>
+                {status === "admin"
+                  ? "Administração"
+                  : status === "trial"
+                    ? "Acesso de teste"
+                    : "Conta aprovada"}
+              </span>
+            </div>
+            <button
+              type="button"
+              aria-label="Sair da conta"
+              onClick={() => void supabase.auth.signOut()}
+            >
+              <LogOut size={17} aria-hidden />
+            </button>
+          </div>
+        )}
         <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
           <a href="/privacidade" className="underline underline-offset-4 hover:text-foreground">
             Privacidade
@@ -252,9 +289,9 @@ export function AppShell({
                 {sidebar}
               </SheetContent>
             </Sheet>
-            <Link to="/" aria-label="MauseHot, início" className="shrink-0 sm:hidden">
+            <Link to="/painel" aria-label="MouseHot, início" className="shrink-0 sm:hidden">
               <img
-                src="/brand/mark.png"
+                src="/brand/compact.webp"
                 alt=""
                 width={32}
                 height={32}
@@ -264,7 +301,7 @@ export function AppShell({
             {!isHome && (
               <>
                 <Link
-                  to="/"
+                  to="/painel"
                   className="hidden text-xs text-muted-foreground hover:text-foreground sm:block"
                 >
                   Início
@@ -272,9 +309,12 @@ export function AppShell({
                 <span className="hidden text-muted-foreground/40 sm:block">/</span>
               </>
             )}
-            <span className="truncate text-sm font-semibold">{current?.name || "Visão geral"}</span>
+            <span className="truncate text-sm font-semibold">
+              {current?.name || (isAdmin ? "Aprovações e convites" : "Visão geral")}
+            </span>
           </div>
-          {!isHome && (
+          {status === "trial" && <TrialClock />}
+          {!isHome && status !== "trial" && (
             <button
               onClick={openSearch}
               aria-label="Buscar ferramenta"
@@ -294,8 +334,7 @@ export function AppShell({
           {typeof children === "function" ? children(openTools) : children}
         </div>
         <footer className="workspace-footer">
-          <span>MauseHot · Suas ferramentas, sem complicação</span>
-          <span>Suas ferramentas. Seu ritmo.</span>
+          <span>MouseHot · Sua operação digital em um só lugar</span>
         </footer>
       </div>
       <dialog
@@ -333,31 +372,33 @@ export function AppShell({
           />
         </div>
         <div className="max-h-[60vh] overflow-auto p-2">
-          {searchTools(query).map((tool) => {
-            const Icon = TOOL_ICONS[tool.id];
-            return (
-              <Link
-                key={tool.id}
-                to={tool.path}
-                onClick={() => dialog.current?.close()}
-                className="flex items-start gap-3 rounded-md p-3 hover:bg-accent"
-              >
-                <Icon
-                  className="tool-tone mt-0.5 size-4"
-                  data-tone={normalizeSearch(tool.category)}
-                  aria-hidden
-                />
-                <span className="flex-1">
-                  <span className="block text-sm font-medium">{tool.name}</span>
-                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                    {tool.summary}
+          {searchTools(query)
+            .filter((tool) => available.includes(tool))
+            .map((tool) => {
+              const Icon = TOOL_ICONS[tool.id];
+              return (
+                <Link
+                  key={tool.id}
+                  to={tool.path}
+                  onClick={() => dialog.current?.close()}
+                  className="flex items-start gap-3 rounded-md p-3 hover:bg-accent"
+                >
+                  <Icon
+                    className="tool-tone mt-0.5 size-4"
+                    data-tone={normalizeSearch(tool.category)}
+                    aria-hidden
+                  />
+                  <span className="flex-1">
+                    <span className="block text-sm font-medium">{tool.name}</span>
+                    <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                      {tool.summary}
+                    </span>
                   </span>
-                </span>
-                <ArrowUpRight className="size-4 text-muted-foreground" />
-              </Link>
-            );
-          })}
-          {!searchTools(query).length && (
+                  <ArrowUpRight className="size-4 text-muted-foreground" />
+                </Link>
+              );
+            })}
+          {!searchTools(query).some((tool) => available.includes(tool)) && (
             <p className="p-6 text-sm text-muted-foreground">
               Nenhuma ferramenta encontrada. Tente “vídeo”, “links” ou “trocar links”.
             </p>
@@ -365,6 +406,22 @@ export function AppShell({
         </div>
       </dialog>
     </div>
+  );
+}
+
+function TrialClock() {
+  const { expiresAt, offsetMs } = usePlatformAccess();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const remaining = secondsRemaining(expiresAt, now + offsetMs);
+  return (
+    <span className="trial-clock" aria-label="Tempo restante do teste">
+      <Clock3 size={16} aria-hidden /> {Math.floor(remaining / 60)}:
+      {String(remaining % 60).padStart(2, "0")}
+    </span>
   );
 }
 

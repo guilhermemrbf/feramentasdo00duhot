@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requirePlatformAccess } from "@/integrations/supabase/platform-middleware";
 
 const workspaceInput = z.object({ workspaceId: z.string().uuid() });
 const metaId = z
@@ -17,7 +17,7 @@ const appInput = workspaceInput.extend({
 });
 
 export const getInstagramWorkspaceApp = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requirePlatformAccess])
   .validator(workspaceInput)
   .handler(async ({ data, context }) => {
     const { data: allowed, error } = await context.supabase.rpc("has_workspace_role", {
@@ -59,7 +59,7 @@ export const getInstagramWorkspaceApp = createServerFn({ method: "POST" })
   });
 
 export const registerInstagramWorkspaceApp = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requirePlatformAccess])
   .validator(appInput)
   .handler(async ({ data, context }) => {
     const { data: allowed, error } = await context.supabase.rpc("has_workspace_role", {

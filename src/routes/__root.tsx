@@ -5,10 +5,13 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { PlatformAccessProvider } from "@/components/access/PlatformAccessProvider";
+import { PlatformGate } from "@/components/access/AccessStatusPanel";
 
 import appCss from "../styles.css?url";
 
@@ -91,12 +94,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const isLanding = useRouterState({ select: (state) => state.location.pathname === "/" });
   return (
-    <html lang="pt-BR" className="dark">
+    <html lang="pt-BR" className="dark" data-type="software">
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className={isLanding ? "launch-site" : undefined}>
         {children}
         <Scripts />
       </body>
@@ -109,8 +113,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <PlatformAccessProvider>
+        <PlatformGate>
+          <Outlet />
+        </PlatformGate>
+      </PlatformAccessProvider>
     </QueryClientProvider>
   );
 }

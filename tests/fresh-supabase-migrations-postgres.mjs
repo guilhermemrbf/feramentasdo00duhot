@@ -17,10 +17,16 @@ try {
     create role anon;
     create role authenticated;
     create role service_role bypassrls;
+    create role authenticator;
     create schema extensions;
     create extension pgcrypto with schema extensions;
     create schema auth;
-    create table auth.users(id uuid primary key);
+    create table auth.users(
+      id uuid primary key, email text unique, email_confirmed_at timestamptz, deleted_at timestamptz,
+      created_at timestamptz default now(), raw_user_meta_data jsonb default '{}'::jsonb
+    );
+    insert into auth.users(id, email, email_confirmed_at)
+    values('09000000-1000-4000-8000-100000000004', 'scaleupperformance@gmail.com', now());
     create function auth.uid() returns uuid language sql stable as
       $$select nullif(current_setting('test.user', true), '')::uuid$$;
     create function auth.jwt() returns jsonb language sql stable as
@@ -66,7 +72,116 @@ try {
     }
   }
   const user = "c396b53f-ad8e-4b9a-8b14-3862c546a74a";
-  await db.query("insert into auth.users(id) values($1)", [user]);
+  const admin = "09000000-1000-4000-8000-100000000004";
+  const lead = "09000000-1000-4000-8000-100000000002";
+  const trial = "09000000-1000-4000-8000-100000000003";
+  await db.query(
+    "insert into auth.users(id,email,email_confirmed_at) values($1,'operator@example.test',now()),($2,'lead@example.test',null),($3,'trial@example.test',now())",
+    [user, lead, trial],
+  );
+
+  async function platformActor(userId, role = "authenticated") {
+    await db.exec("reset role");
+    await db.query("select set_config('test.user',$1,false)", [userId]);
+    await db.exec("set role " + role);
+  }
+  async function accessStatus() {
+    return (await db.query("select public.platform_access_status() as access")).rows[0].access;
+  }
+  async function apiRequest(path) {
+    await db.query("select set_config('request.path',$1,false)", [path]);
+    return db.query("select public.platform_data_api_guard()");
+  }
+  await platformActor(lead);
+  assert.equal((await accessStatus()).status, "unverified");
+  await apiRequest("/rpc/platform_access_status");
+  await assert.rejects(apiRequest("/workspaces"), /não foi aprovado/);
+  await assert.rejects(apiRequest("/rpc/ensure_postkit_workspace"), /não foi aprovado/);
+  await assert.rejects(db.query("select public.platform_admin_leads()"), /exclusivo/);
+  await platformActor(lead, "anon");
+  await assert.rejects(apiRequest("/rpc/platform_access_status"), /não foi aprovado/);
+  await platformActor(admin);
+  assert.equal((await accessStatus()).status, "admin");
+  await apiRequest("/rpc/platform_admin_leads");
+  assert.ok(
+    (await db.query("select public.platform_admin_leads() as cards")).rows[0].cards.some(
+      (item) => item.id === lead,
+    ),
+  );
+  await assert.rejects(
+    db.query("select public.platform_admin_decide($1,'approved')", [lead]),
+    /confirmado/,
+  );
+  await db.query("select public.platform_admin_decide($1,'approved')", [user]);
+  const inviteToken = (
+    await db.query("select public.platform_admin_create_invite('trial@example.test') as token")
+  ).rows[0].token;
+  assert.match(inviteToken, /^[a-f0-9]{64}$/);
+  const inviteId = (await db.query("select public.platform_admin_invites() as invites")).rows[0]
+    .invites[0].id;
+
+  await platformActor(lead);
+  await assert.rejects(
+    db.query("select public.platform_start_trial($1)", [inviteToken]),
+    /Confirme/,
+  );
+  await db.exec("reset role");
+  await db.query("update auth.users set email_confirmed_at=now() where id=$1", [lead]);
+  await platformActor(lead);
+  assert.equal((await accessStatus()).status, "pending");
+  await assert.rejects(
+    db.query("select public.platform_start_trial($1)", [inviteToken]),
+    /indisponível/,
+  );
+  await platformActor(trial);
+  assert.equal((await accessStatus()).status, "pending");
+  await apiRequest("/rpc/platform_start_trial");
+  const started = (
+    await db.query("select public.platform_start_trial($1) as access", [inviteToken])
+  ).rows[0].access;
+  assert.equal(started.status, "trial");
+  assert.equal(Date.parse(started.trial_expires_at) - Date.parse(started.server_now), 900000);
+  await assert.rejects(apiRequest("/rpc/schedule_reviewed_instagram_reels"), /não foi aprovado/);
+  const retried = (
+    await db.query("select public.platform_start_trial($1) as access", [inviteToken])
+  ).rows[0].access;
+  assert.equal(retried.trial_expires_at, started.trial_expires_at);
+
+  await platformActor(admin);
+  await db.query("select public.platform_admin_revoke_invite($1)", [inviteId]);
+  await db.query("select public.platform_admin_decide($1,'denied')", [lead]);
+  const secondToken = (
+    await db.query("select public.platform_admin_create_invite('trial@example.test') as token")
+  ).rows[0].token;
+  await platformActor(trial);
+  assert.equal((await accessStatus()).status, "expired");
+  await assert.rejects(
+    db.query("select public.platform_start_trial($1)", [inviteToken]),
+    /indisponível/,
+  );
+  await db.query("select public.platform_start_trial($1)", [secondToken]);
+  await db.exec("reset role");
+  await db.query(
+    "update private.platform_access set trial_expires_at=now() - interval '1 second' where user_id=$1",
+    [trial],
+  );
+  await platformActor(trial);
+  assert.equal((await accessStatus()).status, "expired");
+  await assert.rejects(
+    db.query("select public.platform_start_trial($1)", [secondToken]),
+    /indisponível/,
+  );
+  await platformActor(lead);
+  assert.equal((await accessStatus()).status, "denied");
+  await db.exec("reset role");
+  assert.ok(
+    (
+      await db.query(
+        "select 1 from private.platform_access_audit where subject_id=$1 and decision='denied'",
+        [lead],
+      )
+    ).rows.length,
+  );
   await db.query("select set_config('test.user',$1,false)", [user]);
   await db.exec("set role authenticated");
   const {

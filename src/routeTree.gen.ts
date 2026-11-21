@@ -10,9 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AprovacoesRouteImport } from './routes/aprovacoes'
 import { Route as AutomacaoInstagramRouteImport } from './routes/automacao-instagram'
 import { Route as AutomacaoTiktokRouteImport } from './routes/automacao-tiktok'
 import { Route as ControlHubRouteImport } from './routes/control-hub'
+import { Route as ConviteRouteImport } from './routes/convite'
 import { Route as CriarPaginaRouteImport } from './routes/criar-pagina'
 import { Route as EmailTemporarioRouteImport } from './routes/email-temporario'
 import { Route as ExclusaoDeDadosRouteImport } from './routes/exclusao-de-dados'
@@ -25,6 +27,7 @@ import { Route as InstagramIntelligenceRouteImport } from './routes/instagram-in
 import { Route as LimparMetadadosRouteImport } from './routes/limpar-metadados'
 import { Route as MouseHotDownloaderRouteImport } from './routes/mouse-hot-downloader'
 import { Route as OtimizarCriativosRouteImport } from './routes/otimizar-criativos'
+import { Route as PainelRouteImport } from './routes/painel'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as TelegramSyncRouteImport } from './routes/telegram-sync'
 import { Route as ApiInstagramDriveCleanupRouteImport } from './routes/api.instagram.drive-cleanup'
@@ -34,6 +37,11 @@ import { Route as ApiInstagramOauthCallbackRouteImport } from './routes/api.inst
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AprovacoesRoute = AprovacoesRouteImport.update({
+  id: '/aprovacoes',
+  path: '/aprovacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AutomacaoInstagramRoute = AutomacaoInstagramRouteImport.update({
@@ -49,6 +57,11 @@ const AutomacaoTiktokRoute = AutomacaoTiktokRouteImport.update({
 const ControlHubRoute = ControlHubRouteImport.update({
   id: '/control-hub',
   path: '/control-hub',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConviteRoute = ConviteRouteImport.update({
+  id: '/convite',
+  path: '/convite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CriarPaginaRoute = CriarPaginaRouteImport.update({
@@ -111,6 +124,11 @@ const OtimizarCriativosRoute = OtimizarCriativosRouteImport.update({
   path: '/otimizar-criativos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PainelRoute = PainelRouteImport.update({
+  id: '/painel',
+  path: '/painel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
   id: '/privacidade',
   path: '/privacidade',
@@ -141,9 +159,11 @@ const ApiInstagramOauthCallbackRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/aprovacoes': typeof AprovacoesRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/control-hub': typeof ControlHubRoute
+  '/convite': typeof ConviteRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/email-temporario': typeof EmailTemporarioRoute
   '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
@@ -156,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/mouse-hot-downloader': typeof MouseHotDownloaderRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
+  '/painel': typeof PainelRoute
   '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
   '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
@@ -164,9 +185,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/aprovacoes': typeof AprovacoesRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/control-hub': typeof ControlHubRoute
+  '/convite': typeof ConviteRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/email-temporario': typeof EmailTemporarioRoute
   '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
@@ -179,6 +202,7 @@ export interface FileRoutesByTo {
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/mouse-hot-downloader': typeof MouseHotDownloaderRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
+  '/painel': typeof PainelRoute
   '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
   '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
@@ -188,9 +212,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/aprovacoes': typeof AprovacoesRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/control-hub': typeof ControlHubRoute
+  '/convite': typeof ConviteRoute
   '/criar-pagina': typeof CriarPaginaRoute
   '/email-temporario': typeof EmailTemporarioRoute
   '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
@@ -203,6 +229,7 @@ export interface FileRoutesById {
   '/limpar-metadados': typeof LimparMetadadosRoute
   '/mouse-hot-downloader': typeof MouseHotDownloaderRoute
   '/otimizar-criativos': typeof OtimizarCriativosRoute
+  '/painel': typeof PainelRoute
   '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
   '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
@@ -213,9 +240,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/aprovacoes'
     | '/automacao-instagram'
     | '/automacao-tiktok'
     | '/control-hub'
+    | '/convite'
     | '/criar-pagina'
     | '/email-temporario'
     | '/exclusao-de-dados'
@@ -228,6 +257,7 @@ export interface FileRouteTypes {
     | '/limpar-metadados'
     | '/mouse-hot-downloader'
     | '/otimizar-criativos'
+    | '/painel'
     | '/privacidade'
     | '/telegram-sync'
     | '/api/instagram/drive-cleanup'
@@ -236,9 +266,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/aprovacoes'
     | '/automacao-instagram'
     | '/automacao-tiktok'
     | '/control-hub'
+    | '/convite'
     | '/criar-pagina'
     | '/email-temporario'
     | '/exclusao-de-dados'
@@ -251,6 +283,7 @@ export interface FileRouteTypes {
     | '/limpar-metadados'
     | '/mouse-hot-downloader'
     | '/otimizar-criativos'
+    | '/painel'
     | '/privacidade'
     | '/telegram-sync'
     | '/api/instagram/drive-cleanup'
@@ -259,9 +292,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/aprovacoes'
     | '/automacao-instagram'
     | '/automacao-tiktok'
     | '/control-hub'
+    | '/convite'
     | '/criar-pagina'
     | '/email-temporario'
     | '/exclusao-de-dados'
@@ -274,6 +309,7 @@ export interface FileRouteTypes {
     | '/limpar-metadados'
     | '/mouse-hot-downloader'
     | '/otimizar-criativos'
+    | '/painel'
     | '/privacidade'
     | '/telegram-sync'
     | '/api/instagram/drive-cleanup'
@@ -283,9 +319,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AprovacoesRoute: typeof AprovacoesRoute
   AutomacaoInstagramRoute: typeof AutomacaoInstagramRoute
   AutomacaoTiktokRoute: typeof AutomacaoTiktokRoute
   ControlHubRoute: typeof ControlHubRoute
+  ConviteRoute: typeof ConviteRoute
   CriarPaginaRoute: typeof CriarPaginaRoute
   EmailTemporarioRoute: typeof EmailTemporarioRoute
   ExclusaoDeDadosRoute: typeof ExclusaoDeDadosRoute
@@ -298,6 +336,7 @@ export interface RootRouteChildren {
   LimparMetadadosRoute: typeof LimparMetadadosRoute
   MouseHotDownloaderRoute: typeof MouseHotDownloaderRoute
   OtimizarCriativosRoute: typeof OtimizarCriativosRoute
+  PainelRoute: typeof PainelRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   TelegramSyncRoute: typeof TelegramSyncRoute
   ApiInstagramDriveCleanupRoute: typeof ApiInstagramDriveCleanupRoute
@@ -312,6 +351,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/aprovacoes': {
+      id: '/aprovacoes'
+      path: '/aprovacoes'
+      fullPath: '/aprovacoes'
+      preLoaderRoute: typeof AprovacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/automacao-instagram': {
@@ -333,6 +379,13 @@ declare module '@tanstack/react-router' {
       path: '/control-hub'
       fullPath: '/control-hub'
       preLoaderRoute: typeof ControlHubRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/convite': {
+      id: '/convite'
+      path: '/convite'
+      fullPath: '/convite'
+      preLoaderRoute: typeof ConviteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/criar-pagina': {
@@ -419,6 +472,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OtimizarCriativosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/painel': {
+      id: '/painel'
+      path: '/painel'
+      fullPath: '/painel'
+      preLoaderRoute: typeof PainelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacidade': {
       id: '/privacidade'
       path: '/privacidade'
@@ -459,9 +519,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AprovacoesRoute: AprovacoesRoute,
   AutomacaoInstagramRoute: AutomacaoInstagramRoute,
   AutomacaoTiktokRoute: AutomacaoTiktokRoute,
   ControlHubRoute: ControlHubRoute,
+  ConviteRoute: ConviteRoute,
   CriarPaginaRoute: CriarPaginaRoute,
   EmailTemporarioRoute: EmailTemporarioRoute,
   ExclusaoDeDadosRoute: ExclusaoDeDadosRoute,
@@ -474,6 +536,7 @@ const rootRouteChildren: RootRouteChildren = {
   LimparMetadadosRoute: LimparMetadadosRoute,
   MouseHotDownloaderRoute: MouseHotDownloaderRoute,
   OtimizarCriativosRoute: OtimizarCriativosRoute,
+  PainelRoute: PainelRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   TelegramSyncRoute: TelegramSyncRoute,
   ApiInstagramDriveCleanupRoute: ApiInstagramDriveCleanupRoute,

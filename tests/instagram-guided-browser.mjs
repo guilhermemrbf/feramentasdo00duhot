@@ -40,6 +40,12 @@ let appRow = null;
 let freshAccount = null;
 let remindersUnavailable = false;
 let googleCodeExchanged = false;
+let platformStatus = "approved";
+let platformExpiry = null;
+let createdInvite = false;
+let emailLinkSent = false;
+let newLeadSignedUp = false;
+const fixtureInvite = "e".repeat(64);
 const customerApp = "12345678901";
 const customerConfig = "12345678902";
 const customerSecret = "3".repeat(32);
@@ -55,7 +61,7 @@ const api = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", web);
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "authorization,apikey,content-type,x-client-info,accept-profile,content-profile,prefer,range",
+    "authorization,apikey,content-type,x-client-info,x-supabase-api-version,accept-profile,content-profile,prefer,range",
   );
   res.setHeader("Access-Control-Expose-Headers", "Content-Range");
   res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,POST,PATCH,OPTIONS");
@@ -91,6 +97,55 @@ const api = http.createServer(async (req, res) => {
     body = { Key: key };
   }
 
+  if (name === "platform_access_status") {
+    body = {
+      status: platformStatus,
+      trial_expires_at: platformExpiry,
+      server_now: new Date().toISOString(),
+    };
+  }
+  if (name === "platform_is_approved" || name === "platform_approved_user") {
+    body = ["approved", "admin"].includes(platformStatus);
+  }
+  if (name === "platform_admin_leads") {
+    body = [
+      {
+        id: id(123),
+        name: "Lead Fixture",
+        email: "lead@example.test",
+        decision: "pending",
+        created_at: new Date().toISOString(),
+        verified_at: new Date().toISOString(),
+      },
+    ];
+  }
+  if (name === "platform_admin_invites") body = [];
+  if (name === "platform_admin_create_invite") {
+    assert.equal(input.p_email, "invite@example.test");
+    createdInvite = true;
+    body = fixtureInvite;
+  }
+  if (name === "platform_start_trial") {
+    assert.equal(input.p_token, fixtureInvite);
+    platformStatus = "trial";
+    platformExpiry = new Date(Date.now() + 4800).toISOString();
+    body = {
+      status: platformStatus,
+      trial_expires_at: platformExpiry,
+      server_now: new Date().toISOString(),
+    };
+  }
+  if (name === "signup") {
+    assert.equal(input.email, "new-lead@example.test");
+    assert.equal(input.data.full_name, "Lead de Teste");
+    newLeadSignedUp = true;
+    body = { ...user, email: input.email };
+  }
+  if (name === "otp") {
+    assert.equal(input.email, "new-lead@example.test");
+    emailLinkSent = true;
+    body = {};
+  }
   if (name === "user") body = user;
   if (name === "token" && url.searchParams.get("grant_type") === "pkce") {
     assert.equal(input.auth_code, "google-fixture-code");
@@ -1028,18 +1083,82 @@ try {
     assert.match(query.get("code_challenge") ?? "", /^[a-zA-Z0-9_-]{43}$/);
     const destination = new URL(query.get("redirect_to"));
     assert.equal(destination.origin, web);
-    assert.equal(destination.pathname, "/automacao-instagram");
-    assert.equal(destination.searchParams.get("tab"), "nova-conta");
+    assert.equal(destination.pathname, "/");
+
     destination.searchParams.set("code", "google-fixture-code");
     return route.fulfill({ status: 302, headers: { location: destination.href } });
   });
-  await googlePage.goto(web + "/automacao-instagram?tab=nova-conta");
+  await googlePage.goto(web);
   await googlePage.getByRole("button", { name: "Continuar com Google", exact: true }).click();
+  await googlePage.getByRole("heading", { name: "Visão geral", exact: true }).waitFor();
+  await googlePage.goto(web + "/automacao-instagram?tab=nova-conta");
   await googlePage.getByRole("region", { name: "Passo a passo por conta" }).waitFor();
   assert.equal(googleCodeExchanged, true);
   await googlePage.close();
+
+  const visitor = await browser.newPage({ viewport: { width: 390, height: 844 } });
+
+  await visitor.goto(web);
+  await visitor.getByRole("heading", { name: /Sua operação digital em um só lugar/ }).waitFor();
+  assert.equal(
+    await visitor.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true,
+  );
+  await visitor.waitForFunction(
+    () => !document.querySelector("button.saas-button-primary[type=submit]")?.disabled,
+  );
+  await visitor.getByRole("link", { name: "Solicitar acesso" }).click();
+  await visitor.getByLabel("Nome", { exact: true }).fill("Lead de Teste");
+  await visitor.getByLabel("E-mail", { exact: true }).fill("new-lead@example.test");
+  await visitor.getByLabel("Senha", { exact: true }).fill("fixture-password-only");
+  await visitor.getByRole("button", { name: "Criar minha conta", exact: true }).click();
+  await visitor
+    .getByText(/Verifique seu e-mail para confirmar/)
+    .or(visitor.getByRole("alert"))
+    .waitFor();
+  assert.equal(
+    await visitor.getByRole("alert").count(),
+    0,
+    await visitor.getByRole("alert").allTextContents(),
+  );
+  assert.equal(newLeadSignedUp, true);
+  await visitor.getByRole("button", { name: "Link por e-mail", exact: true }).click();
+  await visitor.getByLabel("E-mail", { exact: true }).fill("new-lead@example.test");
+  await visitor.getByRole("button", { name: "Enviar link de acesso", exact: true }).click();
+  await visitor.getByText(/Enviamos um link de acesso/).waitFor();
+  assert.equal(emailLinkSent, true);
+  await visitor.goto(web + "/automacao-instagram");
+  await visitor.getByRole("heading", { name: "Entre para usar a MouseHot" }).waitFor();
+  await visitor.close();
+
+  platformStatus = "pending";
+  await page.goto(web + "/aprovacoes");
+  await page.getByRole("heading", { name: "Aguardando aprovação do administrador" }).waitFor();
+  assert.equal(await page.getByRole("heading", { name: "Aprovações e convites" }).count(), 0);
+  await page.goto(web + "/convite#" + fixtureInvite);
+  await page.getByRole("button", { name: "Iniciar meus 15 minutos" }).click();
+  await page.getByRole("heading", { name: "Ferramentas do seu teste" }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/painel");
+  assert.equal(await page.getByRole("link", { name: "Automatic Post · Instagram" }).count(), 0);
+  await page.getByRole("heading", { name: "Seu teste terminou" }).waitFor({ timeout: 10_000 });
+
+  platformStatus = "admin";
+  platformExpiry = null;
+  await page.goto(web + "/aprovacoes");
+  await page.getByText("Lead Fixture", { exact: true }).waitFor();
+  await page.getByLabel("E-mail do convidado").fill("invite@example.test");
+  await page.getByRole("button", { name: "Gerar link de teste" }).click();
+  const link = await page.getByLabel("Link do convite").inputValue();
+  assert.equal(link, web + "/convite#" + fixtureInvite);
+  assert.equal(createdInvite, true);
+  if (process.env.INSTAGRAM_BROWSER_SCREENSHOTS) {
+    await page.screenshot({
+      path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "aprovacoes-desktop.png"),
+    });
+  }
+  assert.deepEqual(errors, []);
   console.log(
-    "PASS: native Supabase Google PKCE, Instagram OAuth and onboarding, dashboard, library, scheduling, separate Stories and Reels; fixtures only",
+    "PASS: signup, email link, Google PKCE, access gates, trial expiry, admin invite, Instagram OAuth, library and scheduling; fixtures only",
   );
 } catch (e) {
   console.error(e.stack || e.message);

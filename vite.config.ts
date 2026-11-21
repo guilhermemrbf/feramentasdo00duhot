@@ -45,6 +45,7 @@ export default defineConfig({
   ...(deploymentOrigin
     ? { define: { "import.meta.env.VITE_SITE_ORIGIN": JSON.stringify(deploymentOrigin) } }
     : {}),
+  server: { watch: { ignored: ["**/.taste-skill/**"] } },
   resolve: { dedupe: ["react", "react-dom", "@tanstack/react-router"] },
   optimizeDeps: { exclude: ["@ffmpeg/ffmpeg", "@ffmpeg/core"] },
 });

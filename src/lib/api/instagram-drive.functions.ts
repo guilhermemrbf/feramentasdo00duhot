@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requirePlatformAccess } from "@/integrations/supabase/platform-middleware";
 import { driveFolderId } from "@/lib/instagram-drive";
 import type { PostkitDatabase } from "@/lib/postkit-database";
 
@@ -12,7 +12,7 @@ const commandInput = accountInput.extend({
 });
 
 export const manageInstagramDrive = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requirePlatformAccess])
   .validator(commandInput)
   .handler(async ({ data, context }) => {
     const { data: canEdit, error } = await context.supabase.rpc("has_workspace_role", {
