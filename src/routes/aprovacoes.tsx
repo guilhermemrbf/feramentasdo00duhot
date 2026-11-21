@@ -1,7 +1,7 @@
 import { Clipboard, Clock3, Link2, ShieldCheck, UserRound } from "lucide-react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouterState } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AppShell } from "@/components/AppShell";
 import { platformRpc, rpcData, type Lead, type TrialInvite } from "@/lib/platform-access-client";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
@@ -21,6 +21,14 @@ const emptyInvites: TrialInvite[] = [];
 function ApprovalsPage() {
   const { user } = usePlatformAccess();
   const queryClient = useQueryClient();
+  const hash = useRouterState({ select: (state) => state.location.hash });
+  const inviteSection = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (hash !== "convites") return;
+    inviteSection.current?.scrollIntoView({ block: "nearest" });
+    inviteSection.current?.focus({ preventScroll: true });
+  }, [hash]);
   const key = ["admin-approvals", user?.id];
   const [filter, setFilter] = useState<Lead["decision"] | "all">("pending");
   const [inviteLink, setInviteLink] = useState("");
@@ -184,7 +192,13 @@ function ApprovalsPage() {
               ))}
             </ul>
           </section>
-          <section className="admin-section" aria-labelledby="admin-invites">
+          <section
+            id="convites"
+            ref={inviteSection}
+            tabIndex={-1}
+            className="admin-section admin-invite-section"
+            aria-labelledby="admin-invites"
+          >
             <div className="admin-section-heading">
               <h2 id="admin-invites">
                 <Clock3 size={20} aria-hidden /> Convites de 15 minutos
@@ -197,7 +211,7 @@ function ApprovalsPage() {
               </label>
               <button type="submit" className="tool-action" disabled={invite.isPending}>
                 <Link2 size={17} aria-hidden />{" "}
-                {invite.isPending ? "Gerando…" : "Gerar link de teste"}
+                {invite.isPending ? "Gerando…" : "Gerar link de 15 minutos"}
               </button>
               <p>
                 O link pode ser usado uma vez, em até sete dias. O teste começa quando o convidado
@@ -219,7 +233,7 @@ function ApprovalsPage() {
                 </>
               )}
             </form>
-            {requests.isSuccess && !invites.length && (
+            {requests.isSuccess && !invites.length && !inviteLink && (
               <p className="admin-empty">Nenhum convite criado.</p>
             )}
             <ul className="admin-list">

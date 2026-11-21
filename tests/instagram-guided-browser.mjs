@@ -1107,6 +1107,31 @@ try {
   await visitor.waitForFunction(
     () => !document.querySelector("button.saas-button-primary[type=submit]")?.disabled,
   );
+  const loginControl = visitor.getByRole("button", { name: "Continuar com Google", exact: true });
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ]) {
+    await visitor.setViewportSize(viewport);
+    const box = await loginControl.boundingBox();
+    assert.ok(box && box.y >= 0 && box.y + box.height <= viewport.height, "login above the fold");
+    const submit = await visitor
+      .getByRole("button", { name: "Entrar na MouseHot", exact: true })
+      .boundingBox();
+    assert.ok(
+      submit && submit.y + submit.height <= viewport.height,
+      "sign-in action above the fold",
+    );
+    assert.ok(await visitor.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  }
+  const motion = visitor.locator(".launch-hero-access");
+  assert.equal(
+    await motion.evaluate((element) => getComputedStyle(element).animationName),
+    "launch-enter",
+  );
+  await visitor.emulateMedia({ reducedMotion: "reduce" });
+  assert.equal(await motion.evaluate((element) => getComputedStyle(element).animationName), "none");
+  await visitor.setViewportSize({ width: 390, height: 844 });
   await visitor.getByRole("link", { name: "Solicitar acesso" }).click();
   await visitor.getByLabel("Nome", { exact: true }).fill("Lead de Teste");
   await visitor.getByLabel("E-mail", { exact: true }).fill("new-lead@example.test");
@@ -1144,10 +1169,13 @@ try {
 
   platformStatus = "admin";
   platformExpiry = null;
-  await page.goto(web + "/aprovacoes");
+  await page.goto(web + "/painel");
+  await page.getByRole("link", { name: "Gerar link de 15 minutos", exact: true }).click();
+  await page.waitForURL("**/aprovacoes#convites");
+  await page.waitForFunction(() => document.activeElement?.id === "convites");
   await page.getByText("Lead Fixture", { exact: true }).waitFor();
   await page.getByLabel("E-mail do convidado").fill("invite@example.test");
-  await page.getByRole("button", { name: "Gerar link de teste" }).click();
+  await page.getByRole("button", { name: "Gerar link de 15 minutos" }).click();
   const link = await page.getByLabel("Link do convite").inputValue();
   assert.equal(link, web + "/convite#" + fixtureInvite);
   assert.equal(createdInvite, true);

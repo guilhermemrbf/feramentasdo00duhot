@@ -1,4 +1,4 @@
-import { ArrowUpRight, CalendarClock, FolderOpen, Instagram } from "lucide-react";
+import { ArrowUpRight, CalendarClock, FolderOpen, Instagram, Link2 } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, TOOL_ICONS } from "@/components/AppShell";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
@@ -23,9 +23,14 @@ function WorkspaceHome() {
             <p>Encontre as ferramentas para a próxima etapa do seu conteúdo.</p>
           </div>
           {status === "admin" && (
-            <Link to="/aprovacoes" className="saas-button saas-button-outline">
-              Gerenciar acessos <ArrowUpRight size={17} aria-hidden />
-            </Link>
+            <div className="admin-quick-actions">
+              <Link to="/aprovacoes" hash="convites" className="tool-action">
+                <Link2 size={17} aria-hidden /> Gerar link de 15 minutos
+              </Link>
+              <Link to="/aprovacoes" className="saas-button saas-button-outline">
+                Gerenciar acessos <ArrowUpRight size={17} aria-hidden />
+              </Link>
+            </div>
           )}
         </header>
         {hasPublishing && (

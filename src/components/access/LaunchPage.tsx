@@ -2,8 +2,6 @@ import {
   ArrowRight,
   CalendarClock,
   ChevronDown,
-  ClipboardCheck,
-  KeyRound,
   FolderOpen,
   Instagram,
   ListChecks,
@@ -67,7 +65,7 @@ function PublishingFrame() {
 export function LaunchPage() {
   const access = usePlatformAccess();
   const navigate = useNavigate();
-  const [formMode, setFormMode] = useState<FormMode>("register");
+  const [formMode, setFormMode] = useState<FormMode>("password");
   useEffect(() => {
     if (!access.isError && ["admin", "approved", "trial"].includes(access.status ?? "")) {
       void navigate({ to: "/painel", replace: true });
@@ -98,7 +96,7 @@ export function LaunchPage() {
 
   return (
     <>
-      <header className="nav launch-top">
+      <header className="nav launch-top launch-public-top">
         <a href="#conteudo" className="skip-link">
           Pular para o conteúdo
         </a>
@@ -121,9 +119,10 @@ export function LaunchPage() {
       <main id="conteudo" tabIndex={-1}>
         <section className="launch-hero" aria-labelledby="launch-heading" data-enter>
           <div className="launch-wrap wrap launch-hero-layout">
+            <div className="launch-light" aria-hidden="true" />
             <div className="launch-hero-copy hero-text">
               <h1 id="launch-heading">
-                Sua operação digital em um só lugar<span>.</span>
+                Sua operação digital <span>em um só lugar.</span>
               </h1>
               <p>
                 Prepare fotos e vídeos, organize campanhas e agende Reels para os perfis que você
@@ -141,6 +140,15 @@ export function LaunchPage() {
                   Explorar ferramentas <ChevronDown size={16} aria-hidden />
                 </a>
               </div>
+            </div>
+
+            <div id="acesso" className="launch-hero-access" aria-labelledby="launch-access-title">
+              <AccessForm
+                selectedMode={formMode}
+                onModeChange={setFormMode}
+                headingId="launch-access-title"
+              />
+              <p className="launch-access-note">Novos cadastros aguardam aprovação.</p>
             </div>
             <PublishingFrame />
           </div>
@@ -192,30 +200,6 @@ export function LaunchPage() {
                 );
               })}
             </div>
-          </div>
-        </section>
-        <section id="acesso">
-          <div className="launch-access launch-wrap wrap">
-            <div>
-              <h2>Acesso à MouseHot</h2>
-              <p>
-                Crie sua conta para solicitar acesso. Durante a fase de testes, a equipe analisa
-                cada cadastro antes de liberar a plataforma.
-              </p>
-              <ol className="launch-access-steps" data-visual>
-                <li>
-                  <KeyRound size={20} aria-hidden /> Crie sua conta com Google ou e-mail
-                </li>
-                <li>
-                  <ClipboardCheck size={20} aria-hidden /> Aguarde a análise do seu cadastro
-                </li>
-                <li>
-                  <ArrowRight size={20} aria-hidden /> Abra as ferramentas quando seu acesso for
-                  liberado
-                </li>
-              </ol>
-            </div>
-            <AccessForm selectedMode={formMode} onModeChange={setFormMode} />
           </div>
         </section>
       </main>

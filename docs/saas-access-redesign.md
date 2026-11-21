@@ -2,9 +2,9 @@
 
 ## Fluxo
 
-- A entrada pública está em `/` e apresenta o catálogo e o formulário. Google, senha e link por e-mail usam a implementação de Auth do Supabase.
+- A entrada pública está em `/`. O formulário fica no topo, antes do catálogo. Google, senha e link por e-mail usam a implementação de Auth do Supabase.
 - Um cadastro confirmado começa pendente. O painel consulta o status periodicamente. A aprovação ou recusa fica registrada no Supabase.
-- A conta administradora abre **Aprovações e convites** em `/aprovacoes`. O primeiro vínculo usa o ID imutável da conta verificada Scale Up já cadastrada no Auth.
+- Na conta administradora, **Visão geral → Gerar link de 15 minutos** abre diretamente o formulário em `/aprovacoes#convites`. **Aprovações e convites** também está no menu lateral. O primeiro vínculo usa o ID imutável da conta verificada Scale Up já cadastrada no Auth.
 - Um convite fica vinculado ao e-mail, pode ser resgatado uma vez em até sete dias e libera 15 minutos a partir do botão **Iniciar meus 15 minutos**. A expiração usa o relógio do banco. A plataforma armazena o hash do token. O link é exibido uma vez para cópia.
 - O teste inclui Limpar Metadados, Otimizar Criativos e Gerar Preview. Postagens, conexões externas, Storage privado e dados operacionais exigem acesso aprovado.
 - A migração restringe o Data API do Supabase, a leitura direta das tabelas protegidas, o Storage PostKit e as funções de servidor que atuam em nome de usuários. O worker existente conserva o acesso de serviço.
@@ -35,6 +35,10 @@ on conflict do nothing;
 - `node --experimental-strip-types tests/instagram-guided-browser.mjs`, com Chromium e playwright-core. Usa serviços de teste para o login e as integrações.
 - `npm run build` com `NITRO_PRESET=vercel`, seguido de `node --experimental-strip-types tests/vercel-build-smoke.mjs`. Use variáveis de um ambiente de teste.
 
-## Resultado da revisão visual
+## Resultado da revisão visual inicial
 
 O Design Taste Frontend encerrou em `GATE: OPEN 7` após três rodadas. As sete observações são a ausência de uma imagem adicional na área de cadastro, a altura do recorte na primeira dobra, a pilha da transição do catálogo, duas linhas internas do recorte e as bordas dos dois grupos do rodapé. Cinco exceções foram registradas no relatório local para manter o rodapé compacto, a transição do próprio kit e o recorte centralizado com seu alinhamento interno. As capturas de 1440 px e 390 px foram revisadas. A publicação exige a homologação real descrita acima.
+
+## Revisão da entrada e do acesso rápido
+
+A abertura ganhou fundo escuro, contraste com o formulário claro e animação de entrada com respeito à preferência por movimento reduzido. O teste de navegador verificou o login na primeira dobra a 390×844 e 1440×900, a troca de modo de acesso, o atalho da conta administradora, o foco direto no gerador e a criação do convite. O fluxo de homologação real permanece na seção acima.

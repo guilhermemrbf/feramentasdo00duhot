@@ -9,10 +9,12 @@ export type FormMode = "register" | "password" | "email";
 export function AccessForm({
   invitation = false,
   selectedMode: controlledMode,
+  headingId,
   onModeChange,
 }: {
   invitation?: boolean;
   selectedMode?: FormMode;
+  headingId?: string;
   onModeChange?: (mode: FormMode) => void;
 }) {
   const { isLoading } = usePlatformAccess();
@@ -81,7 +83,7 @@ export function AccessForm({
 
   return (
     <div className="access-form-panel">
-      <h3>{invitation ? "Entre para usar seu convite" : "Acesse sua conta"}</h3>
+      <h2 id={headingId}>{invitation ? "Entre para usar seu convite" : "Acesse sua conta"}</h2>
       <button
         type="button"
         className="saas-button saas-button-outline w-full justify-center"
