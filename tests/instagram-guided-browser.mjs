@@ -155,6 +155,17 @@ const api = http.createServer(async (req, res) => {
     body = {};
   }
   if (name === "user") body = user;
+  if (name === "token" && url.searchParams.get("grant_type") === "password") {
+    assert.equal(input.email, "fixture@example.test");
+    assert.equal(input.password, "fixture-password-only");
+    body = {
+      access_token: token,
+      refresh_token: "fixture",
+      token_type: "bearer",
+      expires_in: 3600,
+      user,
+    };
+  }
   if (name === "token" && url.searchParams.get("grant_type") === "pkce") {
     assert.equal(input.auth_code, "google-fixture-code");
     assert.match(input.code_verifier, /^[a-zA-Z0-9._~-]{43,128}$/);
@@ -1128,168 +1139,106 @@ try {
   await visitor.waitForFunction(
     () => document.querySelector("button.saas-button-primary[type=submit]")?.disabled === false,
   );
-  const showcase = visitor.locator("#ferramentas");
-  for (const [category, tool] of [
-    ["Automação", "Automatic Post · Instagram"],
-    ["Planejamento", "Instagram Intelligence"],
-    ["Ambientes", "Fazenda de Celulares"],
-    ["Planejamento", "Funil"],
-    ["Preparação", "Limpar Metadados"],
-    ["Conteúdo", "Mouse Hot Downloader"],
-  ]) {
-    await showcase.getByRole("button", { name: category, exact: true }).click();
-    await showcase.getByRole("button", { name: tool, exact: true }).click();
-    await showcase.getByRole("heading", { name: tool, exact: true }).waitFor();
-    assert.equal(
-      await showcase.getByRole("button", { name: tool, exact: true }).getAttribute("aria-pressed"),
-      "true",
-    );
-  }
-  await visitor.getByText(/Organize a escala da sua operação no orgânico/).waitFor();
-  await showcase.getByRole("button", { name: "Automação", exact: true }).click();
-  await showcase
-    .getByRole("button", { name: "Criação Automática de Contas — Instagram", exact: true })
-    .click();
-  await showcase.getByText("Indisponível nesta versão", { exact: true }).waitFor();
-  assert.equal(await showcase.locator("#showcase-detail").getByRole("link").count(), 0);
-  const scenarios = visitor.getByRole("group", { name: "Cenários de uso" });
-  await scenarios.getByRole("button", { name: "Tenho uma pasta cheia de arquivos" }).click();
-  await visitor.getByRole("link", { name: "Ver ferramentas de preparação" }).click();
-  assert.equal(
-    await showcase
-      .getByRole("button", { name: "Preparação", exact: true })
-      .getAttribute("aria-pressed"),
-    "true",
-  );
-  assert.equal(
-    await visitor.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-    true,
-  );
-  const loginControl = visitor.getByRole("button", { name: "Continuar com Google", exact: true });
+  const landing = visitor.locator(".organic-landing");
+  const loginControl = landing
+    .locator("#acesso")
+    .getByRole("button", { name: "Continuar com Google" });
+  await landing
+    .getByRole("heading", { name: "Veja a fila rodando ao vivo.", exact: true })
+    .waitFor();
+  await landing
+    .locator("#ferramentas")
+    .getByRole("heading", { name: "Instagram Intelligence" })
+    .waitFor();
+  await landing
+    .locator("#ferramentas")
+    .getByRole("heading", { name: "Fazenda de celulares" })
+    .waitFor();
+  assert.equal(await visitor.getByRole("button", { name: "Continuar com Google" }).count(), 1);
+
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 1024, height: 850 },
     { width: 1440, height: 900 },
   ]) {
     await visitor.setViewportSize(viewport);
-    await visitor.evaluate(() => window.scrollTo(0, 0));
-    const entry = visitor
+    await visitor.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    const entry = landing
       .getByRole("navigation", { name: "Menu público" })
-      .getByRole("link", { name: "Entrar" });
-    const box = await entry.boundingBox();
-    assert.ok(
-      box && box.y >= 0 && box.y + box.height <= viewport.height,
-      "login link above the fold",
+      .getByRole("link", { name: "Criar conta", exact: true });
+    assert.match(
+      await entry.evaluate((element) => getComputedStyle(element).backgroundImage),
+      /linear-gradient/,
     );
+    const box = await entry.boundingBox();
+    assert.ok(box && box.y >= 0 && box.y + box.height <= viewport.height);
     await entry.click();
     await loginControl.waitFor();
-    assert.ok(
-      await visitor
-        .locator("#acesso")
-        .evaluate((el) => el.getBoundingClientRect().top < innerHeight),
+    await visitor.waitForFunction(
+      () => location.hash === "#acesso" && document.activeElement?.id === "acesso",
     );
     assert.ok(await visitor.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   }
-  const orbit = visitor.getByRole("region", { name: "Exemplos de uso da MouseHot" });
-  await orbit.getByRole("button", { name: "Cumprimentar o rato da MouseHot" }).click();
-  await orbit.getByText(/Bora escalar/).waitFor();
-  await orbit.getByRole("button", { name: "Próximo exemplo" }).click();
-  await orbit.getByRole("heading", { name: "Preparar uma pasta inteira" }).waitFor();
-  await orbit.getByRole("button", { name: "Exemplo anterior" }).click();
-  await orbit.getByRole("heading", { name: "Escolher com quem trabalhar" }).waitFor();
-  const orbitCategories = orbit.getByRole("group", { name: "Áreas da operação" });
-  const campaignCategory = orbitCategories.getByRole("button", { name: "Campanhas", exact: true });
-  await campaignCategory.press("Enter");
-  assert.equal(await campaignCategory.getAttribute("aria-pressed"), "true");
-  await orbit.getByRole("heading", { name: "Enxergar cada etapa da campanha" }).waitFor();
-  const motion = visitor.locator(".launch-hero-copy h1");
+  await visitor.mouse.move(100, 1);
+  await visitor.evaluate(() => document.dispatchEvent(new MouseEvent("mouseout", { clientY: 0 })));
+  assert.equal(await visitor.getByText("Antes de ir…", { exact: true }).count(), 0);
+  assert.equal(await visitor.getByRole("dialog").count(), 0);
+
+  const orbit = landing.getByRole("group", { name: "Áreas da operação" });
+  await orbit.getByRole("button", { name: "Perfis", exact: true }).hover();
+  await orbit.getByText("Perfis para analisar e comparar").waitFor();
+  const media = await orbit.getByRole("img", { name: "Mascote MouseHot" }).evaluate((image) => ({
+    loaded: image.complete && image.naturalWidth === 640,
+    local: new URL(image.src).origin === location.origin,
+  }));
+  assert.deepEqual(media, { loaded: true, local: true });
+  const marquee = landing.locator(".animate-marquee");
   assert.equal(
-    await motion.evaluate((element) => getComputedStyle(element).animationName),
-    "launch-enter",
+    await marquee.evaluate((element) => getComputedStyle(element).animationName),
+    "organic-marquee",
   );
-  const publicationStage = visitor.locator(".command-flow-progress");
-  assert.equal(
-    await publicationStage.evaluate((element) => getComputedStyle(element).animationName),
-    "command-fill",
-  );
-  const boardTrack = await visitor.locator(".launch-board-track").elementHandle();
-  await visitor.getByRole("button", { name: "Rever animação do fluxo" }).click();
-  await visitor.waitForFunction((track) => !track.isConnected, boardTrack);
-  const productPreview = visitor.getByRole("region", { name: "Demonstração do produto" });
-  await productPreview.waitFor();
-  await productPreview.scrollIntoViewIfNeeded();
+
+  const queue = landing.getByRole("region", { name: "Demonstração da fila de Reels" });
+  const queuedPost = queue.getByRole("listitem").first();
+  const initialPost = await queuedPost.textContent();
+  await queue.getByRole("button", { name: "+ Agendar" }).click();
   await visitor.waitForFunction(
-    () => document.getElementById("launch-workflow-preview")?.dataset.entered === "true",
+    (previous) =>
+      document.querySelector('[aria-label="Demonstração da fila de Reels"] li')?.textContent !==
+      previous,
+    initialPost,
   );
-  await visitor.getByRole("button", { name: "Organize por conta", exact: true }).click();
-  await productPreview.getByRole("heading", { name: "Uma biblioteca para cada conta" }).waitFor();
-  const mascotButton = visitor.getByRole("button", {
-    name: "Dê um toque no rato para animar o rato da MouseHot",
-  });
-  await mascotButton.click();
-  await visitor.getByText("O rato deu um salve.", { exact: true }).waitFor();
-  await mascotButton.focus();
-  await mascotButton.press("Enter");
-  const trialFaq = visitor.getByText("Como funciona o convite de 15 minutos?", { exact: true });
+  const calculator = landing.locator("#calculadora");
+  const hours = calculator.getByRole("link", { name: /Quero essas/ });
+  const before = await hours.textContent();
+  await calculator.getByRole("slider", { name: /Perfis que você opera/ }).press("End");
+  await visitor.waitForFunction(
+    (previous) =>
+      document.querySelector('#calculadora a[href="#acesso"]')?.textContent !== previous,
+    before,
+  );
+  const compare = landing.getByRole("slider", { name: "Comparar antes e depois" });
+  await compare.press("End");
+  assert.equal(await compare.inputValue(), "100");
+  await landing.getByRole("button", { name: "1 a 2", exact: true }).click();
+  await landing.getByRole("button", { name: "Preparar mídia", exact: true }).click();
+  await landing.getByRole("button", { name: "Escalar vários perfis", exact: true }).click();
+  await landing.getByRole("heading", { name: "Comece pelo Preparo em Lote" }).waitFor();
+
+  const trialFaq = landing.getByRole("button", { name: "Como funciona o convite de 15 minutos?" });
   await trialFaq.click();
-  await visitor.getByText(/O convite pode ser usado uma vez/).waitFor();
-  const pageMotions = [
-    [".launch-hero-copy h1", ""],
-    [".launch-hero", "::before"],
-    ["#launch-heading > span", ""],
-    [".command-flow-progress", ""],
-    [".launch-board-track li", ""],
-    ["#launch-workflow-preview", ""],
-    [".launch-workflow-preview-body", ""],
-    [".launch-mascot-art img", ""],
-    [".launch-mascot-art .launch-mascot-ring", ""],
-    [".launch-mascot-status > span", ""],
-    [".command-faq-item[data-expanded] .command-faq-answer", ""],
-  ];
-  async function readPageMotions() {
-    return visitor.evaluate(
-      (targets) =>
-        targets.map(
-          ([selector, pseudo]) =>
-            getComputedStyle(document.querySelector(selector), pseudo || null).animationName,
-        ),
-      pageMotions,
-    );
-  }
-  assert.ok(new Set((await readPageMotions()).filter((name) => name !== "none")).size >= 5);
+  await landing.getByText(/O convite vale uma vez/).waitFor();
   await visitor.emulateMedia({ reducedMotion: "reduce" });
-  assert.ok((await readPageMotions()).every((name) => name === "none"));
   assert.equal(
-    await orbit
-      .locator(".mouse-orbit-satellite-forward")
-      .evaluate((el) => getComputedStyle(el).animationName),
+    await marquee.evaluate((element) => getComputedStyle(element).animationName),
     "none",
   );
+  const mascotButton = landing.getByRole("button", { name: "Dê um toque no rato" });
   await mascotButton.click();
-  await visitor.getByText("O rato deu um salve.", { exact: true }).waitFor();
-  assert.equal(await motion.evaluate((element) => getComputedStyle(element).animationName), "none");
-  assert.equal(
-    await publicationStage.evaluate((element) => getComputedStyle(element).animationName),
-    "none",
-  );
-  await visitor.setViewportSize({ width: 390, height: 844 });
-  const workflow = visitor.getByRole("region", { name: "Demonstração do produto" });
-  const libraryStage = visitor.getByRole("button", { name: "Organize por conta", exact: true });
-  await libraryStage.click();
-  await workflow.getByRole("heading", { name: "Uma biblioteca para cada conta" }).waitFor();
-  assert.equal(await libraryStage.getAttribute("aria-pressed"), "true");
-  await visitor.getByRole("button", { name: "Agende e acompanhe", exact: true }).click();
-  await workflow.getByRole("heading", { name: "Confira o destino de cada publicação" }).waitFor();
-  assert.equal(await libraryStage.getAttribute("aria-pressed"), "false");
-  assert.equal(
-    await workflow
-      .locator(".launch-workflow-preview-body")
-      .evaluate((element) => getComputedStyle(element).animationName),
-    "none",
-  );
-  await visitor
-    .locator(".launch-close")
-    .getByRole("link", { name: "Criar conta", exact: true })
+  await landing.getByText(/O chefe tá de olho/).waitFor();
+  await landing
+    .locator("#acesso")
+    .getByRole("button", { name: "Criar conta", exact: true })
     .click();
   await visitor.getByLabel("Nome", { exact: true }).fill("Lead de Teste");
   await visitor.getByLabel("E-mail", { exact: true }).fill("new-lead@example.test");
@@ -1312,6 +1261,13 @@ try {
   assert.equal(emailLinkSent, true);
   await visitor.goto(web + "/automacao-instagram");
   await visitor.getByRole("heading", { name: "Entre para usar a MouseHot" }).waitFor();
+  await visitor.goto(web + "/#acesso");
+  const loginForm = visitor.locator("#acesso .access-form-panel");
+  await loginForm.getByRole("button", { name: "Entrar", exact: true }).click();
+  await loginForm.getByLabel("E-mail", { exact: true }).fill("fixture@example.test");
+  await loginForm.getByLabel("Senha", { exact: true }).fill("fixture-password-only");
+  await loginForm.locator("form").getByRole("button", { name: "Entrar", exact: true }).click();
+  await visitor.getByRole("heading", { name: "Visão geral", exact: true }).waitFor();
   await visitor.close();
 
   platformStatus = "pending";
@@ -1378,7 +1334,7 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: signup, email link, Google PKCE, access gates, trial expiry, admin invite, Instagram OAuth, library and scheduling; fixtures only",
+    "PASS: signup, password, email link, Google PKCE, access gates, trial expiry, admin invite, Instagram OAuth, library and scheduling; fixtures only",
   );
 } catch (e) {
   console.error(e.stack || e.message);

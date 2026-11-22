@@ -5,7 +5,6 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -94,13 +93,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
-  const isLanding = useRouterState({ select: (state) => state.location.pathname === "/" });
   return (
     <html lang="pt-BR" className="dark" data-type="software">
       <head>
         <HeadContent />
       </head>
-      <body className={isLanding ? "launch-site" : undefined}>
+      <body>
         {children}
         <Scripts />
       </body>

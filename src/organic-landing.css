@@ -1,0 +1,125 @@
+.organic-landing {
+  --radius: 1rem;
+  --background: oklch(0.11 0.006 25);
+  --foreground: oklch(0.97 0.01 80);
+  --card: oklch(0.16 0.012 25);
+  --card-foreground: oklch(0.97 0.01 80);
+  --primary: oklch(0.6 0.24 27);
+  --primary-foreground: oklch(0.98 0.01 80);
+  --primary-glow: oklch(0.74 0.19 50);
+  --secondary: oklch(0.2 0.012 25);
+  --secondary-foreground: oklch(0.97 0.01 80);
+  --muted: oklch(0.2 0.012 25);
+  --muted-foreground: oklch(0.72 0.015 40);
+  --accent: oklch(0.82 0.15 75);
+  --accent-foreground: oklch(0.15 0.02 40);
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.97 0.01 80);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.7 0.21 38);
+  --surface: oklch(0.19 0.03 27);
+  --surface-foreground: oklch(0.97 0.01 80);
+  --gradient-hot: linear-gradient(120deg, var(--primary), var(--primary-glow));
+  --shadow-glow: 0 20px 60px -15px color-mix(in oklab, var(--primary) 55%, transparent);
+  min-height: 100svh;
+  background: var(--background);
+  color: var(--foreground);
+  font: 17px var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.organic-landing :is(h1, h2, h3) {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.organic-landing) {
+    scroll-behavior: smooth;
+  }
+}
+.organic-landing section[id],
+.organic-access .access-form-panel {
+  scroll-margin-top: 82px;
+}
+.organic-access {
+  --brand-red: #ffa0a9;
+  --brand-wine: #ff9e7e;
+  --detail-on-paper: var(--muted-foreground);
+  --paper-line: var(--border);
+  min-width: 0;
+}
+.organic-access .access-form-panel {
+  border-radius: 24px;
+}
+.organic-access .saas-button-primary {
+  background: var(--gradient-hot);
+}
+.organic-access .access-fields label {
+  display: flex;
+  flex-direction: column-reverse;
+}
+.organic-access .command-access-indicator {
+  display: none;
+}
+
+@theme inline {
+  --color-primary-glow: var(--primary-glow);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+}
+@utility text-gradient-hot {
+  background: var(--gradient-hot);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@utility organic-fill-hot {
+  background: var(--gradient-hot);
+}
+@utility organic-orbit-shade {
+  background: linear-gradient(
+    to top,
+    var(--background),
+    color-mix(in oklab, var(--background) 70%, transparent),
+    transparent
+  );
+}
+@utility organic-reel-shade {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--primary) 30%, transparent),
+    var(--card),
+    var(--background)
+  );
+}
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+@utility bg-grid {
+  background-image:
+    linear-gradient(var(--color-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+@keyframes organic-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@utility animate-marquee {
+  animation: organic-marquee 30s linear infinite;
+}
+@keyframes organic-shine {
+  from {
+    transform: translateX(-120%) skewX(-20deg);
+  }
+  to {
+    transform: translateX(220%) skewX(-20deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .organic-landing .animate-marquee {
+    animation: none !important;
+  }
+}
