@@ -498,7 +498,9 @@ function InstagramWorkspacePage({
     };
   }, [loginWaiting, workspace.id]);
   const [connecting, setConnecting] = useState<InstagramAuthMode | null>(null);
-  const [workerActive, setWorkerActive] = useState<boolean | null>(null);
+  const [workerStatus, setWorkerStatus] = useState<"checking" | "active" | "inactive" | "unknown">(
+    "checking",
+  );
   const [activatingWorker, setActivatingWorker] = useState(false);
   const [selectedVideoIds, setSelectedVideoIds] = useState<string[] | null>(null);
   const [legacySourceId, setLegacySourceId] = useState("");
@@ -1158,13 +1160,12 @@ function InstagramWorkspacePage({
   useEffect(() => {
     setReviewConfirmed(false);
   }, [reviewSignature]);
-  const activationErrors = reviewAutomation({
+  const scheduleErrors = reviewAutomation({
     accountId: selectedAccountId,
     connected: !!reelAccount,
     videoCount: queue.length,
     dailyCount: slotsPerDay,
     previewCurrent: !!queue.length && !previewOutdated,
-    workerActive: workerActive === true,
     stories: storiesChoice,
     storyCount: storyReviewCount,
     confirmed: reviewConfirmed,
@@ -1172,8 +1173,8 @@ function InstagramWorkspacePage({
 
   const saveQueue = async () => {
     if (savingQueue || queueSaved || previewOutdated) return;
-    if (activationErrors.length) {
-      setNotice(activationErrors.join(" "));
+    if (scheduleErrors.length) {
+      setNotice(scheduleErrors.join(" "));
       return;
     }
     if (
@@ -1271,7 +1272,13 @@ function InstagramWorkspacePage({
       }
       setQueueSaved(true);
       setHistoryRefresh((value) => value + 1);
-      setNotice("Programação salva. Acompanhe cada publicação na seção Histórico.");
+      setNotice(
+        workerStatus === "active"
+          ? "Agendamento salvo. Acompanhe cada publicação no Histórico."
+          : workerStatus === "inactive"
+            ? "Agendamento salvo na fila. A publicação automática está desativada."
+            : "Agendamento salvo na fila. O status da publicação automática ainda não foi confirmado.",
+      );
     } catch {
       setNotice(
         "Não foi possível confirmar o salvamento. Reabra os agendamentos antes de tentar novamente.",
@@ -1284,12 +1291,13 @@ function InstagramWorkspacePage({
   useEffect(() => {
     if (tab !== "config" && tab !== "fila") return;
     let current = true;
+    setWorkerStatus("checking");
     void getInstagramWorkerStatus({ data: { workspaceId: workspace.id } })
       .then(({ active }) => {
-        if (current) setWorkerActive(active);
+        if (current) setWorkerStatus(active ? "active" : "inactive");
       })
       .catch(() => {
-        if (current) setWorkerActive(false);
+        if (current) setWorkerStatus("unknown");
       });
     return () => {
       current = false;
@@ -1297,20 +1305,29 @@ function InstagramWorkspacePage({
   }, [tab, workspace.id]);
 
   const activateWorker = async () => {
-    if (activatingWorker || workerActive === true) return;
+    if (activatingWorker || workerStatus === "active" || workerStatus === "checking") return;
     setActivatingWorker(true);
     setNotice("");
     try {
       const result = await enableInstagramWorker({ data: { workspaceId: workspace.id } });
-      setWorkerActive(result.active);
-      setNotice(
-        result.active
-          ? "Processamento automático ativado. A fila será verificada periodicamente; confira cada resultado no Histórico."
-          : "Não foi possível confirmar a ativação do processamento.",
-      );
+      if (result.active) {
+        setWorkerStatus("active");
+        setNotice("Processamento automático ativado. Confira cada resultado no Histórico.");
+      } else if (result.reason === "configuration") {
+        setWorkerStatus("inactive");
+        setNotice("O destino de publicação no Supabase precisa ser configurado ou reativado.");
+      } else if (result.reason === "permission") {
+        setNotice(
+          "Somente o proprietário ou um administrador da operação pode ativar a publicação.",
+        );
+      } else {
+        setWorkerStatus("unknown");
+        setNotice("O servidor não conseguiu ativar a publicação automática. Tente novamente.");
+      }
     } catch {
+      setWorkerStatus("unknown");
       setNotice(
-        "Não foi possível ativar o processamento. Confira se você é administradora do workspace.",
+        "Não foi possível confirmar a ativação. Reabra Configurações para verificar o status.",
       );
     } finally {
       setActivatingWorker(false);
@@ -2693,22 +2710,31 @@ function InstagramWorkspacePage({
                       onConfirm={setReviewConfirmed}
                       disabled={savingQueue || queueSaved}
                     />
-                    {workerActive === false && !queueSaved && (
+                    {workerStatus !== "active" && (
                       <div className="mt-3 rounded-lg border border-amber-500/30 p-3 text-sm">
-                        <p>Ative o processador para publicar os Reels nos horários agendados.</p>
+                        <p>
+                          {workerStatus === "inactive"
+                            ? "A publicação automática está desativada. Você pode salvar o agendamento na fila."
+                            : workerStatus === "checking"
+                              ? "Verificando o status da publicação automática."
+                              : "O status da publicação automática está indisponível. Você pode salvar o agendamento na fila."}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Revise os horários vencidos na fila antes de reativar a publicação.
+                        </p>
                         <button
                           type="button"
                           className="mt-2 rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50"
-                          disabled={activatingWorker}
+                          disabled={activatingWorker || workerStatus === "checking"}
                           onClick={() => void activateWorker()}
                         >
                           {activatingWorker ? "Ativando…" : "Ativar publicação automática"}
                         </button>
                       </div>
                     )}
-                    {!queueSaved && activationErrors.length > 0 && (
+                    {!queueSaved && scheduleErrors.length > 0 && (
                       <ul className="mt-3 space-y-1 text-xs text-amber-200">
-                        {activationErrors.map((error) => (
+                        {scheduleErrors.map((error) => (
                           <li key={error}>{error}</li>
                         ))}
                       </ul>
@@ -2734,7 +2760,7 @@ function InstagramWorkspacePage({
                           onClick={() => void saveQueue()}
                           disabled={
                             savingQueue ||
-                            activationErrors.length > 0 ||
+                            scheduleErrors.length > 0 ||
                             queueSaved ||
                             previewOutdated ||
                             queue.some(
@@ -2748,7 +2774,7 @@ function InstagramWorkspacePage({
                           }
                           className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
                         >
-                          {savingQueue ? "Salvando…" : "Ativar esta programação"}
+                          {savingQueue ? "Salvando…" : "Salvar agendamento"}
                         </button>
                       )}
                     </div>
@@ -2840,34 +2866,38 @@ function InstagramWorkspacePage({
             <Panel title="Publicação automática">
               <div className="flex flex-wrap items-start justify-between gap-4 rounded-md border border-border bg-secondary/30 p-4">
                 <div className="flex min-w-0 items-start gap-3">
-                  {workerActive ? (
+                  {workerStatus === "active" ? (
                     <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-500" />
                   ) : (
                     <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
                   )}
                   <div>
                     <p className="text-sm font-semibold">
-                      {workerActive === null
+                      {workerStatus === "checking"
                         ? "Verificando o status"
-                        : workerActive
+                        : workerStatus === "active"
                           ? "Publicação automática ativa"
-                          : "Publicação automática desativada"}
+                          : workerStatus === "inactive"
+                            ? "Publicação automática desativada"
+                            : "Status da publicação automática indisponível"}
                     </p>
                     <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
-                      Os Reels entram na fila quando você confirma o agendamento. Acompanhe no
-                      Histórico quando cada publicação sair.
+                      Os Reels entram na fila ao salvar o agendamento. Confira os horários vencidos
+                      antes de ativar a publicação e acompanhe os resultados no Histórico.
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => void activateWorker()}
-                  disabled={activatingWorker || workerActive === null || workerActive}
+                  disabled={
+                    activatingWorker || workerStatus === "checking" || workerStatus === "active"
+                  }
                   className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
                 >
                   {activatingWorker
                     ? "Ativando…"
-                    : workerActive
+                    : workerStatus === "active"
                       ? "Ativo"
                       : "Ativar publicação automática"}
                 </button>

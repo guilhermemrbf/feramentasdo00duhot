@@ -30,6 +30,7 @@ const saved = [];
 const calls = [];
 let stories = 0;
 let workerActive = false;
+let workerDestinationEnabled = false;
 let accountVerifiedAt = "2026-11-15T00:00:00Z";
 let accountBDisconnected = false;
 let accountBExpired = false;
@@ -160,8 +161,8 @@ const api = http.createServer(async (req, res) => {
   }
   if (name === "instagram_worker_is_active") body = workerActive;
   if (name === "enable_instagram_worker") {
-    workerActive = true;
-    body = true;
+    workerActive = workerDestinationEnabled;
+    body = workerActive;
   }
   if (name === "instagram_accounts" && firstAccountRead) {
     firstAccountRead = false;
@@ -567,15 +568,15 @@ try {
   await page.getByRole("button", { name: "Próximo: dias e horários", exact: true }).click();
   await page.getByRole("button", { name: "Ordem aleatória", exact: true }).click();
   await page.getByRole("button", { name: "Próximo: revisar Reels", exact: true }).click();
-  const activate = page.getByRole("button", { name: "Ativar esta programação", exact: true });
+  const activate = page.getByRole("button", { name: "Salvar agendamento", exact: true });
   await activate.waitFor();
   assert.equal(await activate.isDisabled(), true);
   await page.getByRole("button", { name: "Ativar publicação automática", exact: true }).click();
   await page
     .getByRole("status")
-    .filter({ hasText: /Processamento autom.*ativado/ })
+    .filter({ hasText: /destino de publicação no Supabase/ })
     .waitFor();
-  assert.equal(workerActive, true);
+  assert.equal(workerActive, false);
   assert.equal(await page.getByLabel("Vou preparar Stories", { exact: false }).count(), 0);
   await page.getByLabel("Conferi a conta, os vídeos", { exact: false }).check();
   await page.waitForTimeout(1500);
@@ -584,10 +585,21 @@ try {
       "Activation disabled: " + (await page.locator("main").innerText()).slice(-5000),
     );
   await activate.click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: /Agendamento salvo.*desativada/ })
+    .waitFor();
   await page.getByRole("button", { name: "Próximo: acompanhar na fila", exact: true }).waitFor();
   assert.equal(saved.length, 1);
   assert.equal(saved[0].p_stories, "skip");
   assert.equal(saved[0].p_posts.length, 20);
+  workerDestinationEnabled = true;
+  await page.getByRole("button", { name: "Ativar publicação automática", exact: true }).click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: /Processamento autom.*ativado/ })
+    .waitFor();
+  assert.equal(workerActive, true);
   assert.ok(
     saved[0].p_posts.every(
       (p) => p.instagram_account_id === id(2) && Number(p.media_asset_id.slice(-12)) < 300,
