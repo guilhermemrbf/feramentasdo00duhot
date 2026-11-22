@@ -4,7 +4,7 @@
 
 - A entrada pública está em `/`. O formulário fica no topo, antes do catálogo. Google, senha e link por e-mail usam a implementação de Auth do Supabase.
 - Um cadastro confirmado começa pendente. O painel consulta o status periodicamente. A aprovação ou recusa fica registrada no Supabase.
-- Na conta administradora, **Visão geral → Convites de 15 minutos** tem o formulário completo. Informe o e-mail do cliente, gere e copie o link na mesma tela. **Aprovações e convites** também está no menu lateral e reúne cadastros, histórico e revogação. O primeiro vínculo usa o ID da conta verificada Scale Up já cadastrada no Auth.
+- Na conta administradora, abra **Aprovações e convites** no menu lateral. Nessa tela, você aprova cadastros, gera links de 15 minutos, consulta o histórico e revoga convites. O primeiro vínculo usa o ID da conta verificada Scale Up já cadastrada no Auth.
 - Um novo convite fica vinculado ao e-mail e pode ser resgatado uma vez em até 15 minutos da geração. O botão **Iniciar meus 15 minutos** libera 15 minutos de uso. As duas expirações usam o relógio do banco. A plataforma armazena o hash do token. A migração altera o prazo dos links novos.
 - O teste inclui Limpar Metadados, Otimizar Criativos e Gerar Preview. Postagens, conexões externas, Storage privado e dados operacionais exigem acesso aprovado.
 - A migração restringe o Data API do Supabase, a leitura direta das tabelas protegidas, o Storage PostKit e as funções de servidor que atuam em nome de usuários. O worker existente conserva o acesso de serviço.
@@ -41,11 +41,11 @@ O Design Taste Frontend encerrou em `GATE: OPEN 7` após três rodadas. As sete 
 
 ## Revisão da entrada e do acesso rápido
 
-A abertura mantém o login na primeira dobra a 390×844 e 1440×900. O gerador de convites fica na própria Visão geral. A rota de aprovações também permite gerar links e continua sendo o local para consultar o histórico e revogar convites.
+A abertura mantém o login na primeira dobra a 390×844 e 1440×900. A tela de Aprovações e convites reúne a geração de links, os cadastros e o histórico de convites.
 
 ## Página de venda
 
-A entrada em `/` combina preto, vermelho e laranja. `LaunchPage` mantém o formulário no topo, destaca as ferramentas de toda a operação e agrupa o catálogo pelo mesmo cadastro usado no painel. `LaunchWorkflow` demonstra planejamento, preparo, biblioteca e publicação. `LaunchDetails` apresenta exemplos, perguntas frequentes e o mascote interativo feito com a arte original da marca. O teste de navegador cobre as animações, movimento reduzido, troca de etapas, cadastro pelo fim da página e geração de convite na Visão geral.
+A entrada em `/` combina preto, vermelho e laranja. `LaunchPage` mantém o formulário no topo, destaca as ferramentas de toda a operação e agrupa o catálogo pelo mesmo cadastro usado no painel. `LaunchWorkflow` demonstra planejamento, preparo, biblioteca e publicação. `LaunchDetails` apresenta exemplos, perguntas frequentes e o mascote interativo feito com a arte original da marca. O teste de navegador cobre as animações, movimento reduzido, troca de etapas, cadastro pelo fim da página e geração de convite em Aprovações e convites.
 
 Para retomar a publicação, confira o deploy da branch `feat/saas-access-redesign` na Vercel. Use as variáveis do ambiente Preview com um Supabase de teste e aplique as duas migrações de acesso antes de validar com a conta Scale Up. Valide cadastro, login pelo link, resgate e expiração antes de promover a versão ao domínio principal.
 

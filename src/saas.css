@@ -912,21 +912,6 @@
 
 .app-workspace {
   color-scheme: dark;
-  --background: #131824;
-  --sidebar: #161d2b;
-  --card: #1e2637;
-  --secondary: #252f45;
-  --accent: #273247;
-  --border: #3b4861;
-  --input: #44516a;
-  --muted-foreground: #c2ccdf;
-  --brand-red: #ffa294;
-}
-.app-workspace .workspace-sidebar {
-  background: var(--sidebar);
-}
-.app-workspace .workspace-topbar {
-  background: #171e2cee;
 }
 .app-workspace .brand-mark {
   border: 0;
@@ -934,8 +919,8 @@
 }
 .app-workspace .tool-nav-link.is-active {
   box-shadow: none;
-  border-color: #79616f;
-  background: #342b3b;
+  border-color: #80434d;
+  background: var(--sidebar-accent);
 }
 .app-workspace .tool-nav-link {
   transition:
@@ -1020,7 +1005,7 @@
   padding: clamp(21px, 4vw, 39px);
   border-radius: 15px;
   border: 1px solid var(--border);
-  background: radial-gradient(ellipse at 94% 4%, #3c4b75, transparent 68%), #212a42;
+  background: radial-gradient(ellipse at 0% 0%, #35212b, transparent 80%), #121216;
   align-items: center;
 }
 .workspace-feature-icon {
@@ -1031,7 +1016,8 @@
   place-items: center;
   margin-bottom: 14px;
   border-radius: 9px;
-  background: #4e344b;
+  background: #ff879213;
+  border: 1px solid #ff87923c;
 }
 .workspace-feature h2,
 .workspace-directory > h2 {
@@ -1048,7 +1034,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid #5a698e;
+  border-top: 1px solid #493540;
 }
 .workspace-feature-flow li {
   display: flex;
@@ -1056,7 +1042,7 @@
   padding-block: 14px;
   font-size: 0.875rem;
   align-items: center;
-  border-bottom: 1px solid #5a698e;
+  border-bottom: 1px solid #493540;
 }
 .workspace-feature-flow svg,
 .workspace-directory svg,
@@ -1210,44 +1196,6 @@
     background: var(--secondary);
   }
 }
-.workspace-invites {
-  margin-bottom: 18px;
-  padding: clamp(17px, 3vw, 29px);
-  border-radius: 14px;
-  background: #203647;
-}
-.workspace-invites-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: start;
-  justify-content: space-between;
-  gap: 10px 24px;
-  margin-bottom: 20px;
-}
-.workspace-invites-heading h2 {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font: 750 clamp(1.18rem, 2.5vw, 1.65rem)/1.15 var(--font-display);
-}
-.workspace-invites-heading h2 svg {
-  color: #aee8d8;
-  flex-shrink: 0;
-}
-.workspace-invites-heading p {
-  margin-top: 7px;
-  color: #d6e4ed;
-  font-size: 0.9rem;
-}
-.workspace-access-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  gap: 7px;
-  color: #d6f6ed;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
 .trial-invite-form {
   gap: 12px;
 }
@@ -1265,18 +1213,11 @@
   min-height: 46px;
   justify-content: center;
 }
-.workspace-invites .trial-invite-submit {
-  color: #142c26;
-  background: #aee8d8;
-}
-.workspace-invites .trial-invite-submit:hover:not(:disabled) {
-  background: #d0f5ea;
-}
 .trial-invite-form [role="alert"] {
   color: #ffd1c8;
 }
 .trial-invite-guidance {
-  color: #d6e4ed;
+  color: var(--muted-foreground);
   font-size: 0.83rem;
 }
 .trial-invite-result {

@@ -44,6 +44,7 @@ let googleCodeExchanged = false;
 let platformStatus = "approved";
 let platformExpiry = null;
 let createdInvite = false;
+let leadDecision = "pending";
 let emailLinkSent = false;
 let newLeadSignedUp = false;
 const fixtureInvite = "e".repeat(64);
@@ -114,11 +115,17 @@ const api = http.createServer(async (req, res) => {
         id: id(123),
         name: "Lead Fixture",
         email: "lead@example.test",
-        decision: "pending",
+        decision: leadDecision,
         created_at: new Date().toISOString(),
         verified_at: new Date().toISOString(),
       },
     ];
+  }
+  if (name === "platform_admin_decide") {
+    assert.equal(input.p_user, id(123));
+    assert.equal(input.p_decision, "approved");
+    leadDecision = input.p_decision;
+    body = null;
   }
   if (name === "platform_admin_invites") body = [];
   if (name === "platform_admin_create_invite") {
@@ -1321,23 +1328,32 @@ try {
   platformStatus = "admin";
   platformExpiry = null;
   await page.goto(web + "/painel");
+  await page.getByRole("heading", { name: "Visão geral", exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Gerar link de 15 minutos" }).count(), 0);
+  assert.equal(
+    await page
+      .locator(".app-workspace")
+      .evaluate((element) => getComputedStyle(element).getPropertyValue("--background").trim()),
+    "#151114",
+  );
+  await page.getByRole("link", { name: "Aprovações e convites", exact: true }).click();
+  await page.getByRole("heading", { name: "Aprovações e convites", exact: true }).waitFor();
+  await page.getByText("Lead Fixture", { exact: true }).waitFor();
   const inviteCard = page.getByRole("region", { name: "Convites de 15 minutos" });
   await inviteCard.getByLabel("E-mail do convidado").fill("invite@example.test");
   await inviteCard.getByRole("button", { name: "Gerar link de 15 minutos" }).click();
   const link = await inviteCard.getByLabel("Link do convite").inputValue();
   assert.equal(link, web + "/convite#" + fixtureInvite);
-  assert.equal(new URL(page.url()).pathname, "/painel");
+  assert.equal(new URL(page.url()).pathname, "/aprovacoes");
   assert.equal(createdInvite, true);
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: web });
   await inviteCard.getByRole("button", { name: "Copiar link" }).click();
   await inviteCard.getByText("Link copiado.", { exact: true }).waitFor();
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), link);
-  if (process.env.INSTAGRAM_BROWSER_SCREENSHOTS) {
-    await page.screenshot({
-      path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "convites-visao-geral.png"),
-    });
-  }
-  await inviteCard.getByRole("link", { name: "Gerenciar acessos" }).click();
+  await page.getByRole("button", { name: "Aprovar", exact: true }).click();
+  await page.getByText("Cadastro aprovado.", { exact: true }).waitFor();
+  assert.equal(leadDecision, "approved");
+  await page.getByLabel("Mostrar").selectOption("approved");
   await page.getByText("Lead Fixture", { exact: true }).waitFor();
   if (process.env.INSTAGRAM_BROWSER_SCREENSHOTS) {
     await page.screenshot({
