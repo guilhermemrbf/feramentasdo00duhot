@@ -14,8 +14,35 @@ import { AccessStatusPanel } from "./AccessStatusPanel";
 import { LaunchFaq, LaunchSetup } from "./LaunchDetails";
 import { LaunchWorkflow } from "./LaunchWorkflow";
 import { usePlatformAccess } from "./PlatformAccessProvider";
-import { TOOL_CATALOG, CATEGORIES } from "@/lib/tool-catalog";
+import { TOOL_CATALOG, CATEGORIES, type Tool } from "@/lib/tool-catalog";
 import { TOOL_ICONS } from "@/components/AppShell";
+
+const toolCopy: Partial<Record<Tool["id"], string>> = {
+  intelligence:
+    "Cole até 1.000 perfis e compare desempenho, subnicho e sinais de risco. Veja as evidências antes de escolher com quem trabalhar.",
+  funnels:
+    "Desenhe o caminho entre o primeiro contato e a oferta. Conecte as etapas e compartilhe o mapa da campanha com a equipe.",
+  downloader:
+    "Separe as fotos e os vídeos que você tem permissão para usar. A extensão salva os arquivos do Instagram e do TikTok direto no computador.",
+  metadata:
+    "Retire metadados de uma foto ou de um lote inteiro de vídeos. Baixe as cópias tratadas e preserve os originais.",
+  creatives:
+    "Escolha a posição e a opacidade da sua marca uma vez e aplique a mesma assinatura aos materiais da campanha.",
+  preview:
+    "Escolha o que revelar. Ajuste o desfoque ou a pixelização e exporte uma prévia para divulgar seu conteúdo.",
+  images:
+    "Gere links públicos diretos para fotos e vídeos. Copie a URL para incluir o arquivo em uma página, mensagem ou prompt.",
+  pages:
+    "Reúna capa, foto e descrição do perfil. Leve um prompt com os materiais organizados para a ferramenta que vai criar a página.",
+  social:
+    "Separe as bibliotecas por conta, programe Reels e Stories e confira no histórico quais publicações chegaram ao Instagram.",
+  telegram:
+    "Mudou o destino de uma campanha? Confira a prévia e atualize os links das publicações que você administra no Telegram.",
+  controlHub:
+    "Conecte seus iPhones por USB e acompanhe as telas pelo Windows. Use mouse e teclado nos aparelhos compatíveis.",
+  tempMail:
+    "Receba mensagens de teste em uma caixa temporária. Acompanhe a chegada dos e-mails e descarte o endereço ao terminar.",
+};
 
 export function PublicBrand() {
   return (
@@ -120,12 +147,16 @@ export function LaunchPage() {
         <section className="launch-hero" aria-labelledby="launch-heading" data-enter>
           <div className="launch-wrap wrap launch-hero-layout">
             <div className="launch-hero-copy hero-text">
+              <div className="launch-signature">
+                <span>Ferramentas para a operação orgânica</span>
+              </div>
               <h1 id="launch-heading">
                 Sua operação digital <span>em um só lugar.</span>
               </h1>
               <p>
-                Baixe e prepare mídias, descubra perfis para suas campanhas e desenhe seus funis. Na
-                hora de publicar, organize os vídeos por conta e programe os próximos Reels.
+                Escolha os perfis da próxima campanha, prepare as mídias em lote e distribua o
+                conteúdo por conta. Da primeira ideia ao acompanhamento dos canais, cada etapa tem
+                sua ferramenta.
               </p>
               <div className="launch-actions">
                 <a
@@ -136,7 +167,7 @@ export function LaunchPage() {
                   Criar conta <ArrowRight size={19} aria-hidden />
                 </a>
                 <a className="launch-nav-link" href="#fluxo">
-                  Ver como funciona <ChevronDown size={16} aria-hidden />
+                  Explorar o fluxo <ChevronDown size={16} aria-hidden />
                 </a>
               </div>
             </div>
@@ -160,10 +191,10 @@ export function LaunchPage() {
         >
           <div className="launch-wrap wrap">
             <div>
-              <h2 id="launch-catalog-heading">Ferramentas para cada etapa do conteúdo</h2>
+              <h2 id="launch-catalog-heading">O que você precisa fazer hoje?</h2>
               <p className="launch-catalog-lead">
-                Tire uma ideia do papel com um funil visual, prepare arquivos para compartilhar e
-                acompanhe suas contas. O catálogo reúne as ferramentas por tipo de trabalho.
+                Abra uma categoria para encontrar sua ferramenta. Dá para começar com um único
+                arquivo, preparar uma campanha inteira ou acompanhar os aparelhos da operação.
               </p>
             </div>
             <div className="launch-tool-groups">
@@ -173,7 +204,11 @@ export function LaunchPage() {
                 return (
                   <details key={category} className="launch-tool-group" open>
                     <summary>
-                      {category} <ChevronDown size={19} aria-hidden />
+                      <span>{category}</span>
+                      <small>
+                        {tools.length} {tools.length === 1 ? "ferramenta" : "ferramentas"}
+                      </small>{" "}
+                      <ChevronDown size={19} aria-hidden />
                     </summary>
                     <ul>
                       {tools.map((tool) => {
@@ -183,7 +218,7 @@ export function LaunchPage() {
                             <Icon size={19} aria-hidden />
                             <div>
                               <strong>{tool.name}</strong>
-                              <p>{tool.summary}</p>
+                              <p>{toolCopy[tool.id] ?? tool.summary}</p>
                             </div>
                           </li>
                         );
@@ -200,10 +235,10 @@ export function LaunchPage() {
         <section className="launch-close" aria-labelledby="launch-close-heading">
           <div className="launch-wrap wrap">
             <div>
-              <h2 id="launch-close-heading">Abra seu espaço na MouseHot</h2>
+              <h2 id="launch-close-heading">Comece pela sua próxima campanha.</h2>
               <p>
-                Crie sua conta para começar. Se já recebeu um convite, abra o link e entre com o
-                e-mail que o administrador usou para convidar você.
+                Cadastre seu e-mail e acompanhe a aprovação do acesso. Recebeu um convite de teste?
+                Abra o link que chegou para você e entre com o e-mail convidado.
               </p>
               <a
                 className="saas-button saas-button-primary"

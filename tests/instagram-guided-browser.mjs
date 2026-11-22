@@ -1209,7 +1209,7 @@ try {
   await workflow.getByRole("heading", { name: "Uma biblioteca para cada conta" }).waitFor();
   assert.equal(await libraryStage.getAttribute("aria-pressed"), "true");
   await visitor.getByRole("button", { name: "Agende e acompanhe", exact: true }).click();
-  await workflow.getByRole("heading", { name: "Da fila ao histórico" }).waitFor();
+  await workflow.getByRole("heading", { name: "Confira o destino de cada publicação" }).waitFor();
   assert.equal(await libraryStage.getAttribute("aria-pressed"), "false");
   assert.equal(
     await workflow

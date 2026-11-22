@@ -1495,3 +1495,143 @@
     transform: none;
   }
 }
+
+/* Public campaign page. Keep the form and its focus states above the artwork. */
+.launch-hero {
+  background:
+    radial-gradient(ellipse at 52% 45%, #68141c 0, transparent 54%),
+    linear-gradient(117deg, #100c10 8%, #2b0d17 59%, #68171c);
+}
+.launch-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  inset: 2% 22% 0 24%;
+  background: url("/brand/mascot.webp") center / contain no-repeat;
+  opacity: 0.14;
+  filter: grayscale(1);
+  mix-blend-mode: luminosity;
+  mask-image: radial-gradient(ellipse closest-side, black 40%, transparent 100%);
+}
+.launch-signature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffc0a0;
+  font: 700 0.86rem/1.3 var(--font-display);
+  margin-bottom: 17px;
+}
+.launch-signature::before {
+  content: "";
+  width: 32px;
+  height: 2px;
+  background: #ff8750;
+}
+.launch-workflow {
+  background: linear-gradient(128deg, #a3222a, #771821 58%, #37101a);
+}
+.launch-tool-group > summary {
+  gap: 12px;
+}
+.launch-tool-group > summary small {
+  margin-left: auto;
+  color: #eebfb4;
+  font: 550 0.78rem/1.2 var(--font-display);
+}
+.launch-tool-group li {
+  padding-block: 14px;
+}
+.launch-tool-group li + li {
+  border-top: 1px solid #ffffff13;
+}
+.launch-tool-group li strong {
+  font-size: 1.02rem;
+}
+.launch-tool-group li p {
+  max-width: 61ch;
+  font-size: 0.94rem;
+}
+.launch-catalog {
+  background: linear-gradient(155deg, #210e16, #140f13 50%, #44151e);
+}
+.launch-site .launch-close {
+  background: radial-gradient(ellipse at 92% 100%, #aa361f, transparent 54%), #701622;
+  color: #fff6ed;
+}
+@media (min-width: 851px) {
+  .launch-catalog > div > div:first-child {
+    position: sticky;
+    top: 44px;
+  }
+}
+@media (max-width: 900px) {
+  .launch-signature {
+    display: none;
+  }
+  .launch-hero-layout {
+    padding-top: 84px;
+    row-gap: 15px;
+  }
+  .launch-hero::after {
+    inset: 25px -14% auto 37%;
+    height: 310px;
+    opacity: 0.1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .launch-public-top .launch-brand img {
+    animation: launch-brand-scout 1s var(--ease-control) both;
+  }
+  .launch-brand:hover img,
+  .launch-brand:focus-visible img {
+    animation: launch-brand-scout 0.55s var(--ease-control);
+  }
+  .launch-tool-group summary:hover > span {
+    transform: translateX(4px);
+  }
+  .launch-tool-group summary > span {
+    transition: transform 180ms var(--ease-control);
+  }
+  @keyframes launch-brand-scout {
+    0% {
+      transform: translateX(-10px) rotate(-15deg);
+    }
+    60% {
+      transform: translateX(2px) rotate(6deg);
+    }
+    100% {
+      transform: none;
+    }
+  }
+  @supports (animation-timeline: view()) {
+    .launch-tool-group {
+      animation: launch-directory-in 1s linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 45%;
+    }
+    .launch-hero::after {
+      animation: launch-art-drift 1s linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 100%;
+    }
+    @keyframes launch-directory-in {
+      from {
+        opacity: 0.68;
+        transform: translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+    @keyframes launch-art-drift {
+      from {
+        transform: none;
+      }
+      to {
+        transform: translateY(13%) rotate(5deg);
+      }
+    }
+  }
+}

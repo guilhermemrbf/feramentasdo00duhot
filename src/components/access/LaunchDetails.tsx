@@ -5,17 +5,17 @@ import { useLaunchEntrance } from "./useLaunchEntrance";
 const setupSteps = [
   {
     icon: GitBranch,
-    title: "Se a campanha ainda está no papel",
+    title: "Tenho uma ideia e preciso escolher os perfis",
     text: "Compare perfis com o Instagram Intelligence e conecte as etapas da campanha no Funil visual.",
   },
   {
     icon: Clapperboard,
-    title: "Se a mídia já está com você",
+    title: "Tenho uma pasta cheia de arquivos",
     text: "Aplique sua marca, limpe metadados em lote e gere uma prévia. Use o Image Links quando quiser compartilhar o arquivo por URL.",
   },
   {
     icon: Radio,
-    title: "Se a operação já está no ar",
+    title: "Tenho campanhas rodando em vários canais",
     text: "Programe Reels por conta, atualize links em canais que você administra com o Telegram Sync e acompanhe seus iPhones pelo Windows.",
   },
 ] as const;
@@ -51,7 +51,7 @@ export function LaunchSetup() {
     <section className="launch-setup" aria-labelledby="launch-setup-heading">
       <div className="launch-wrap wrap launch-setup-layout">
         <div className="launch-setup-copy">
-          <h2 id="launch-setup-heading">O próximo passo da sua operação</h2>
+          <h2 id="launch-setup-heading">Por onde começar? Depende do que já está na sua mão.</h2>
           <ul>
             {setupSteps.map(({ icon: Icon, title, text }) => (
               <li key={title}>
@@ -64,7 +64,12 @@ export function LaunchSetup() {
             ))}
           </ul>
         </div>
-        <div id="mascote" className="launch-mascot" ref={mascot} data-entered={entered || undefined}>
+        <div
+          id="mascote"
+          className="launch-mascot"
+          ref={mascot}
+          data-entered={entered || undefined}
+        >
           <button
             type="button"
             className="launch-mascot-button"

@@ -29,9 +29,9 @@ const stages = [
     id: "preparacao",
     name: "Prepare o conteúdo",
     icon: Clapperboard,
-    title: "Um vídeo pronto para publicar",
+    title: "Do arquivo original à prévia com sua marca",
     description:
-      "Aplique sua marca aos criativos, limpe metadados ou gere uma prévia antes de publicar.",
+      "Guarde o original, exporte a versão com sua marca e crie uma prévia para divulgar. O tratamento acontece no seu navegador.",
     tool: "Preparação de mídia",
     rows: [
       { label: "Otimizar Criativos", detail: "Marca em fotos e vídeos", icon: Clapperboard },
@@ -65,7 +65,7 @@ const stages = [
     id: "publicacao",
     name: "Agende e acompanhe",
     icon: CalendarClock,
-    title: "Da fila ao histórico",
+    title: "Confira o destino de cada publicação",
     description:
       "Escolha os dias e horários, revise a fila e acompanhe o que foi publicado para cada perfil.",
     tool: "Automatic Post",
@@ -87,10 +87,10 @@ export function LaunchWorkflow() {
     <section id="fluxo" className="launch-workflow" aria-labelledby="launch-workflow-heading">
       <div className="launch-wrap wrap launch-workflow-layout">
         <div className="launch-workflow-copy">
-          <h2 id="launch-workflow-heading">Da ideia ao conteúdo publicado</h2>
+          <h2 id="launch-workflow-heading">Veja como uma campanha ganha forma.</h2>
           <p>
-            Explore um fluxo completo. Comece por uma campanha, passe pelo tratamento dos arquivos e
-            chegue à biblioteca e ao calendário de cada conta.
+            Escolha uma etapa para ver como ela funciona. Você pode analisar os perfis hoje e voltar
+            à biblioteca quando os vídeos estiverem prontos.
           </p>
           <div className="launch-stage-controls" role="group" aria-label="Etapas da operação">
             {stages.map(({ id, name, icon: Icon }) => (
