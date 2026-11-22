@@ -1127,18 +1127,30 @@ try {
     { width: 1440, height: 900 },
   ]) {
     await visitor.setViewportSize(viewport);
-    const box = await loginControl.boundingBox();
-    assert.ok(box && box.y >= 0 && box.y + box.height <= viewport.height, "login above the fold");
-    const submit = await visitor
-      .getByRole("button", { name: "Entrar na MouseHot", exact: true })
-      .boundingBox();
+    await visitor.evaluate(() => window.scrollTo(0, 0));
+    const entry = visitor
+      .getByRole("navigation", { name: "Menu público" })
+      .getByRole("link", { name: "Entrar" });
+    const box = await entry.boundingBox();
     assert.ok(
-      submit && submit.y + submit.height <= viewport.height,
-      "sign-in action above the fold",
+      box && box.y >= 0 && box.y + box.height <= viewport.height,
+      "login link above the fold",
+    );
+    await entry.click();
+    await loginControl.waitFor();
+    assert.ok(
+      await visitor
+        .locator("#acesso")
+        .evaluate((el) => el.getBoundingClientRect().top < innerHeight),
     );
     assert.ok(await visitor.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   }
-  const motion = visitor.locator(".launch-hero-access");
+  const orbit = visitor.getByRole("region", { name: "Exemplos de uso da MouseHot" });
+  await orbit.getByRole("button", { name: "Próximo exemplo" }).click();
+  await orbit.getByRole("heading", { name: "Preparar uma pasta inteira" }).waitFor();
+  await orbit.getByRole("button", { name: "Exemplo anterior" }).click();
+  await orbit.getByRole("heading", { name: "Escolher com quem trabalhar" }).waitFor();
+  const motion = visitor.locator(".launch-hero-copy");
   assert.equal(
     await motion.evaluate((element) => getComputedStyle(element).animationName),
     "launch-enter",
@@ -1170,7 +1182,7 @@ try {
   await trialFaq.click();
   await visitor.getByText(/O convite pode ser usado uma vez/).waitFor();
   const pageMotions = [
-    [".launch-hero-access", ""],
+    [".launch-hero-copy", ""],
     [".launch-hero", "::before"],
     ["#launch-heading > span", ""],
     [".launch-board-track", "::before"],

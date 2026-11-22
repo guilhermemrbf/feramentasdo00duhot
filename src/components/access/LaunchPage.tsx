@@ -12,6 +12,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { AccessForm, type FormMode } from "./AccessForm";
 import { AccessStatusPanel } from "./AccessStatusPanel";
 import { LaunchFaq, LaunchSetup } from "./LaunchDetails";
+import { MouseOrbit } from "./MouseOrbit";
 import { LaunchWorkflow } from "./LaunchWorkflow";
 import { usePlatformAccess } from "./PlatformAccessProvider";
 import { TOOL_CATALOG, CATEGORIES, type Tool } from "@/lib/tool-catalog";
@@ -159,27 +160,16 @@ export function LaunchPage() {
                 sua ferramenta.
               </p>
               <div className="launch-actions">
-                <a
-                  className="saas-button saas-button-primary"
-                  href="#acesso"
-                  onClick={() => setFormMode("register")}
-                >
-                  Criar conta <ArrowRight size={19} aria-hidden />
+                <a className="saas-button saas-button-primary" href="#fluxo">
+                  Ver como funciona <ArrowRight size={19} aria-hidden />
                 </a>
-                <a className="launch-nav-link" href="#fluxo">
-                  Explorar o fluxo <ChevronDown size={16} aria-hidden />
+                <a className="launch-nav-link" href="#ferramentas">
+                  Explorar ferramentas <ChevronDown size={16} aria-hidden />
                 </a>
               </div>
             </div>
 
-            <div id="acesso" className="launch-hero-access" aria-labelledby="launch-access-title">
-              <AccessForm
-                selectedMode={formMode}
-                onModeChange={setFormMode}
-                headingId="launch-access-title"
-              />
-              <p className="launch-access-note">Novas contas passam por aprovação.</p>
-            </div>
+            <MouseOrbit />
             <ContentFlow />
           </div>
         </section>
@@ -235,10 +225,11 @@ export function LaunchPage() {
         <section className="launch-close" aria-labelledby="launch-close-heading">
           <div className="launch-wrap wrap">
             <div>
-              <h2 id="launch-close-heading">Comece pela sua próxima campanha.</h2>
-              <p>
-                Cadastre seu e-mail e acompanhe a aprovação do acesso. Recebeu um convite de teste?
-                Abra o link que chegou para você e entre com o e-mail convidado.
+              <h2 id="launch-close-heading">A MouseHot faz sentido para sua operação?</h2>
+              <p className="launch-close-heading-copy">
+                Se você já sabe qual ferramenta quer usar primeiro, crie sua conta. O acesso ao
+                painel é liberado após a aprovação. Se recebeu um convite de teste, entre pelo link
+                do convite.
               </p>
               <a
                 className="saas-button saas-button-primary"
@@ -247,6 +238,19 @@ export function LaunchPage() {
               >
                 Criar conta <ArrowRight size={19} aria-hidden />
               </a>
+            </div>
+            <div
+              id="acesso"
+              tabIndex={-1}
+              className="launch-hero-access"
+              aria-labelledby="launch-access-title"
+            >
+              <AccessForm
+                selectedMode={formMode}
+                onModeChange={setFormMode}
+                headingId="launch-access-title"
+              />
+              <p className="launch-access-note">Novas contas passam por aprovação.</p>
             </div>
           </div>
         </section>

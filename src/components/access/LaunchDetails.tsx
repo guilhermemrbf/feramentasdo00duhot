@@ -39,7 +39,7 @@ const questions = [
   {
     question: "Posso criar uma conta sem convite?",
     answer:
-      "Sim. Crie sua conta no topo da página, confirme o e-mail e aguarde a aprovação para entrar no painel.",
+      "Sim. Escolha Criar conta no final da página, confirme o e-mail e aguarde a aprovação para entrar no painel.",
   },
 ] as const;
 

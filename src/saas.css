@@ -439,7 +439,7 @@
   text-wrap: balance;
 }
 .launch-workflow-copy > p,
-.launch-close p,
+.launch-close-heading-copy,
 .launch-catalog-lead {
   max-width: 44ch;
   color: #f6ddd2;
@@ -1723,6 +1723,135 @@
         opacity: 1;
         translate: 0 0;
       }
+    }
+  }
+}
+
+/* Editorial opening with an interactive product example beside the brand. */
+.launch-hero:has(.mouse-orbit)::after {
+  display: none;
+}
+.launch-hero-layout:has(.mouse-orbit) {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-areas: "copy orbit" "flow orbit";
+  align-items: center;
+}
+.mouse-orbit {
+  grid-area: orbit;
+  min-width: 0;
+  overflow: hidden;
+  border-block: 1px solid #a35c50;
+  background: repeating-linear-gradient(132deg, transparent 0 7px, #ffac8214 8px);
+}
+.mouse-orbit-art {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1.25;
+  background: radial-gradient(ellipse at center, #bb4534, #5b1823 49%, transparent 73%);
+}
+.mouse-orbit-art img {
+  width: 78%;
+  height: 94%;
+  object-fit: contain;
+  mix-blend-mode: lighten;
+  mask-image: radial-gradient(ellipse closest-side, black 80%, transparent 100%);
+}
+.mouse-orbit-track {
+  position: absolute;
+  inset: 19% 4%;
+  border: 1px solid #fa926673;
+  border-radius: 50%;
+  transform: rotate(-23deg);
+  z-index: -1;
+}
+.mouse-orbit-track::before {
+  content: "";
+  position: absolute;
+  top: 49%;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffb87f;
+}
+.mouse-orbit-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 104px;
+  border-top: 1px solid #8d4841;
+  padding: 15px 4px;
+}
+.mouse-orbit-story h2 {
+  font: 730 clamp(1.12rem, 2vw, 1.6rem)/1.15 var(--font-display);
+}
+.mouse-orbit-story p {
+  margin-top: 5px;
+  font-size: 0.9rem;
+  line-height: 1.48;
+  color: #efd4ca;
+}
+.mouse-orbit-controls {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
+.mouse-orbit-controls button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #a66a60;
+  border-radius: 50%;
+  color: #fff0df;
+}
+.mouse-orbit-controls button:is(:hover, :focus-visible) {
+  background: #64252a;
+}
+.launch-close > .launch-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 432px);
+  grid-template-areas: "intro access";
+  align-items: center;
+  gap: clamp(24px, 6vw, 90px);
+}
+.launch-close .access-form-panel .saas-button-primary {
+  margin-top: 0;
+}
+@media (max-width: 900px) {
+  .launch-hero-layout:has(.mouse-orbit) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "copy" "orbit" "flow";
+  }
+  .mouse-orbit-art {
+    max-height: 330px;
+  }
+}
+@media (max-width: 700px) {
+  .launch-close > .launch-wrap {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "intro" "access";
+  }
+  .mouse-orbit-art {
+    max-height: 260px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mouse-orbit-track {
+    animation: orbit-settle 650ms var(--ease-control) both;
+  }
+  .mouse-orbit-story {
+    animation: launch-switch 230ms var(--ease-control) both;
+  }
+  @keyframes orbit-settle {
+    from {
+      transform: rotate(-42deg);
+    }
+    to {
+      transform: rotate(-23deg);
     }
   }
 }
