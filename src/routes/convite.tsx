@@ -86,7 +86,8 @@ function InvitePage() {
           </h1>
           <p>
             Você tem 15 minutos para experimentar as ferramentas de preparação de conteúdo. O tempo
-            começa quando você inicia o teste.
+            começa quando você inicia o teste. Use o e-mail do convite para criar sua conta ou
+            entrar.
           </p>
         </div>
         {token === undefined || access.isLoading ? (
@@ -95,8 +96,8 @@ function InvitePage() {
           <div className="access-form-panel">
             <h2>Abra o link do seu convite</h2>
             <p>Use o endereço que recebeu do administrador para habilitar o teste.</p>
-            <Link to="/" hash="acesso" className="saas-button saas-button-outline">
-              Solicitar acesso
+            <Link to="/" className="saas-button saas-button-outline">
+              Voltar à página inicial
             </Link>
           </div>
         ) : !access.user ? (

@@ -1,10 +1,11 @@
-import { Clipboard, Clock3, Link2, ShieldCheck, UserRound } from "lucide-react";
+import { Clock3, ShieldCheck, UserRound } from "lucide-react";
 import { createFileRoute, useRouterState } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { platformRpc, rpcData, type Lead, type TrialInvite } from "@/lib/platform-access-client";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { TrialInviteForm } from "@/components/access/TrialInviteForm";
 
 export const Route = createFileRoute("/aprovacoes")({
   head: () => ({
@@ -31,7 +32,7 @@ function ApprovalsPage() {
   }, [hash]);
   const key = ["admin-approvals", user?.id];
   const [filter, setFilter] = useState<Lead["decision"] | "all">("pending");
-  const [inviteLink, setInviteLink] = useState("");
+  const [formRevision, setFormRevision] = useState(0);
   const [notice, setNotice] = useState("");
   const requests = useQuery({
     queryKey: key,
@@ -54,27 +55,11 @@ function ApprovalsPage() {
       ),
     onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
-  const invite = useMutation({
-    mutationFn: async (email: string) => {
-      const token = await rpcData(
-        platformRpc.rpc("platform_admin_create_invite", { p_email: email }),
-      );
-      if (!token) throw new Error("Convite indisponível.");
-      return new URL("/convite#" + token, window.location.origin).href;
-    },
-    onSuccess: (link) => {
-      setInviteLink(link);
-      setNotice("Convite criado. Copie o link para enviar ao lead.");
-    },
-    onError: () =>
-      setNotice("Não foi possível gerar o convite. Confira o e-mail e tente novamente."),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
-  });
   const revoke = useMutation({
     mutationFn: (id: string) =>
       rpcData(platformRpc.rpc("platform_admin_revoke_invite", { p_id: id })),
     onSuccess: () => {
-      setInviteLink("");
+      setFormRevision((revision) => revision + 1);
       setNotice("Convite revogado.");
     },
     onError: () => setNotice("Não foi possível revogar o convite."),
@@ -85,21 +70,6 @@ function ApprovalsPage() {
   const invites = requests.data?.invites ?? emptyInvites;
   const visibleLeads = leads.filter((lead) => filter === "all" || lead.decision === filter);
   const pending = leads.filter((lead) => lead.decision === "pending").length;
-
-  function generate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setInviteLink("");
-    invite.mutate(String(new FormData(event.currentTarget).get("email")).trim());
-  }
-
-  async function copyInvite() {
-    try {
-      await navigator.clipboard.writeText(inviteLink);
-      setNotice("Link copiado.");
-    } catch {
-      setNotice("Selecione o link no campo e copie manualmente.");
-    }
-  }
 
   return (
     <AppShell>
@@ -204,36 +174,10 @@ function ApprovalsPage() {
                 <Clock3 size={20} aria-hidden /> Convites de 15 minutos
               </h2>
             </div>
-            <form className="admin-invite-form access-fields" onSubmit={generate}>
-              <label>
-                E-mail do convidado
-                <input name="email" type="email" required maxLength={254} autoComplete="off" />
-              </label>
-              <button type="submit" className="tool-action" disabled={invite.isPending}>
-                <Link2 size={17} aria-hidden />{" "}
-                {invite.isPending ? "Gerando…" : "Gerar link de 15 minutos"}
-              </button>
-              <p>
-                O link pode ser usado uma vez, em até sete dias. O teste começa quando o convidado
-                clica em iniciar.
-              </p>
-              {inviteLink && (
-                <>
-                  <label>
-                    Link do convite
-                    <input value={inviteLink} readOnly onFocus={(event) => event.target.select()} />
-                  </label>
-                  <button
-                    className="saas-button saas-button-outline"
-                    type="button"
-                    onClick={() => void copyInvite()}
-                  >
-                    <Clipboard size={16} aria-hidden /> Copiar link
-                  </button>
-                </>
-              )}
-            </form>
-            {requests.isSuccess && !invites.length && !inviteLink && (
+            <div className="admin-invite-form">
+              <TrialInviteForm key={formRevision} />
+            </div>
+            {requests.isSuccess && !invites.length && (
               <p className="admin-empty">Nenhum convite criado.</p>
             )}
             <ul className="admin-list">

@@ -1,5 +1,5 @@
 # MouseHot
 
-A entrada pública usa grafite, vinho e vermelho, com um painel claro para o acesso no topo. A primeira dobra reúne o slogan, o formulário e um recorte da operação por perfil. A demonstração interativa mostra o fluxo da preparação à publicação. O catálogo agrupa as ferramentas por etapa do trabalho, e a chamada final leva ao cadastro.
+A entrada pública apresenta a operação do Instagram sobre azul-noite, com coral para as ações e menta para a publicação concluída. Uma superfície pêssego destaca a demonstração interativa, o catálogo volta ao azul escuro e a chamada final leva ao cadastro. O formulário de acesso fica na primeira dobra. A faixa de publicação se anima da biblioteca ao histórico e respeita a preferência por movimento reduzido.
 
-O espaço de trabalho usa grafite, textos brancos e vermelho para ações principais. Linhas finas diferenciam regiões. O menu organiza ferramentas pelo catálogo e a visão geral encaminha às tarefas. Formulários e tabelas compartilham densidade, hierarquia e estados. O movimento acontece na entrada pública e no retorno de ações, respeitando a preferência por movimento reduzido.
+O espaço de trabalho usa grafite azulado, textos claros e vermelho para ações principais das ferramentas. O gerador administrativo de convites fica na Visão geral, sobre uma superfície azul-petróleo com ação menta. Formulários e tabelas compartilham densidade, hierarquia e estados.

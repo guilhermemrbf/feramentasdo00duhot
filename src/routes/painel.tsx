@@ -1,7 +1,8 @@
-import { ArrowUpRight, CalendarClock, FolderOpen, Instagram, Link2 } from "lucide-react";
+import { ArrowUpRight, CalendarClock, Clock3, FolderOpen, Instagram } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, TOOL_ICONS } from "@/components/AppShell";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { TrialInviteForm } from "@/components/access/TrialInviteForm";
 import { accessForRoute } from "@/lib/platform-access";
 import { CATEGORIES, TOOL_CATALOG } from "@/lib/tool-catalog";
 
@@ -20,19 +21,25 @@ function WorkspaceHome() {
         <header className="operate-heading">
           <div>
             <h1>Visão geral</h1>
-            <p>Encontre as ferramentas para a próxima etapa do seu conteúdo.</p>
+            <p>Prepare seus arquivos, planeje publicações e gerencie suas contas.</p>
           </div>
-          {status === "admin" && (
-            <div className="admin-quick-actions">
-              <Link to="/aprovacoes" hash="convites" className="tool-action">
-                <Link2 size={17} aria-hidden /> Gerar link de 15 minutos
-              </Link>
-              <Link to="/aprovacoes" className="saas-button saas-button-outline">
-                Gerenciar acessos <ArrowUpRight size={17} aria-hidden />
+        </header>
+        {status === "admin" && (
+          <section className="workspace-invites" aria-labelledby="workspace-invites-title">
+            <div className="workspace-invites-heading">
+              <div>
+                <h2 id="workspace-invites-title">
+                  <Clock3 size={21} aria-hidden /> Convites de 15 minutos
+                </h2>
+                <p>Gere um link individual para enviar ao cliente.</p>
+              </div>
+              <Link to="/aprovacoes" className="workspace-access-link">
+                Gerenciar acessos <ArrowUpRight size={16} aria-hidden />
               </Link>
             </div>
-          )}
-        </header>
+            <TrialInviteForm />
+          </section>
+        )}
         {hasPublishing && (
           <section className="workspace-feature" aria-labelledby="workspace-publishing">
             <div>

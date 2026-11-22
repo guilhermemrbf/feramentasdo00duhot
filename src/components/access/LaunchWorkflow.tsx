@@ -7,7 +7,7 @@ import {
   Scan,
   Tags,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const stages = [
   {
@@ -64,17 +64,33 @@ const stages = [
 
 export function LaunchWorkflow() {
   const [stageId, setStageId] = useState<(typeof stages)[number]["id"]>("preparacao");
+  const [entered, setEntered] = useState(false);
+  const preview = useRef<HTMLDivElement>(null);
   const stage = stages.find((entry) => entry.id === stageId) ?? stages[0];
   const StageIcon = stage.icon;
+
+  useEffect(() => {
+    if (!preview.current || !("IntersectionObserver" in window)) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setEntered(true);
+        observer.disconnect();
+      },
+      { threshold: 0.35 },
+    );
+    observer.observe(preview.current);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <section id="fluxo" className="launch-workflow" aria-labelledby="launch-workflow-heading">
       <div className="launch-wrap wrap launch-workflow-layout">
         <div className="launch-workflow-copy">
-          <h2 id="launch-workflow-heading">Do criativo ao Reel publicado</h2>
+          <h2 id="launch-workflow-heading">Do Google Drive à fila de publicação</h2>
           <p>
-            Veja como o trabalho passa da preparação à biblioteca e chega ao calendário de cada
-            conta.
+            Veja o que acontece em cada etapa. Da preparação dos arquivos ao histórico de
+            publicação, cada perfil tem sua própria biblioteca e fila.
           </p>
           <div className="launch-stage-controls" role="group" aria-label="Etapas da operação">
             {stages.map(({ id, name, icon: Icon }) => (
@@ -94,6 +110,8 @@ export function LaunchWorkflow() {
         <div
           id="launch-workflow-preview"
           className="launch-workflow-preview"
+          ref={preview}
+          data-entered={entered || undefined}
           role="region"
           aria-label="Demonstração do produto"
           aria-live="polite"

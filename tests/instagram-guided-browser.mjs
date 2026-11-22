@@ -1101,6 +1101,20 @@ try {
   await visitor.goto(web);
   await visitor.getByRole("heading", { name: /Sua operação digital em um só lugar/ }).waitFor();
   assert.equal(
+    await visitor.getByRole("link", { name: "Solicitar acesso", exact: true }).count(),
+    0,
+  );
+  for (const tool of [
+    "Automatic Post · Instagram",
+    "Instagram Intelligence",
+    "Fazenda de Celulares",
+    "Funil",
+    "Limpar Metadados",
+    "Mouse Hot Downloader",
+  ]) {
+    await visitor.locator("#ferramentas").getByText(tool, { exact: true }).waitFor();
+  }
+  assert.equal(
     await visitor.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     true,
   );
@@ -1129,8 +1143,20 @@ try {
     await motion.evaluate((element) => getComputedStyle(element).animationName),
     "launch-enter",
   );
+  const publicationStage = visitor.locator(".launch-board-track li").first();
+  assert.equal(
+    await publicationStage.evaluate((element) => getComputedStyle(element).animationName),
+    "launch-board-arrival",
+  );
+  const boardTrack = await visitor.locator(".launch-board-track").elementHandle();
+  await visitor.getByRole("button", { name: "Rever animação do fluxo" }).click();
+  await visitor.waitForFunction((track) => !track.isConnected, boardTrack);
   await visitor.emulateMedia({ reducedMotion: "reduce" });
   assert.equal(await motion.evaluate((element) => getComputedStyle(element).animationName), "none");
+  assert.equal(
+    await publicationStage.evaluate((element) => getComputedStyle(element).animationName),
+    "none",
+  );
   await visitor.setViewportSize({ width: 390, height: 844 });
   const workflow = visitor.getByRole("region", { name: "Demonstração do produto" });
   const libraryStage = visitor.getByRole("button", { name: "Organize por perfil", exact: true });
@@ -1146,7 +1172,10 @@ try {
       .evaluate((element) => getComputedStyle(element).animationName),
     "none",
   );
-  await visitor.locator(".launch-close").getByRole("link", { name: "Solicitar acesso" }).click();
+  await visitor
+    .locator(".launch-close")
+    .getByRole("link", { name: "Criar conta", exact: true })
+    .click();
   await visitor.getByLabel("Nome", { exact: true }).fill("Lead de Teste");
   await visitor.getByLabel("E-mail", { exact: true }).fill("new-lead@example.test");
   await visitor.getByLabel("Senha", { exact: true }).fill("fixture-password-only");
@@ -1184,15 +1213,24 @@ try {
   platformStatus = "admin";
   platformExpiry = null;
   await page.goto(web + "/painel");
-  await page.getByRole("link", { name: "Gerar link de 15 minutos", exact: true }).click();
-  await page.waitForURL("**/aprovacoes#convites");
-  await page.waitForFunction(() => document.activeElement?.id === "convites");
-  await page.getByText("Lead Fixture", { exact: true }).waitFor();
-  await page.getByLabel("E-mail do convidado").fill("invite@example.test");
-  await page.getByRole("button", { name: "Gerar link de 15 minutos" }).click();
-  const link = await page.getByLabel("Link do convite").inputValue();
+  const inviteCard = page.getByRole("region", { name: "Convites de 15 minutos" });
+  await inviteCard.getByLabel("E-mail do convidado").fill("invite@example.test");
+  await inviteCard.getByRole("button", { name: "Gerar link de 15 minutos" }).click();
+  const link = await inviteCard.getByLabel("Link do convite").inputValue();
   assert.equal(link, web + "/convite#" + fixtureInvite);
+  assert.equal(new URL(page.url()).pathname, "/painel");
   assert.equal(createdInvite, true);
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: web });
+  await inviteCard.getByRole("button", { name: "Copiar link" }).click();
+  await inviteCard.getByText("Link copiado.", { exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), link);
+  if (process.env.INSTAGRAM_BROWSER_SCREENSHOTS) {
+    await page.screenshot({
+      path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "convites-visao-geral.png"),
+    });
+  }
+  await inviteCard.getByRole("link", { name: "Gerenciar acessos" }).click();
+  await page.getByText("Lead Fixture", { exact: true }).waitFor();
   if (process.env.INSTAGRAM_BROWSER_SCREENSHOTS) {
     await page.screenshot({
       path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "aprovacoes-desktop.png"),

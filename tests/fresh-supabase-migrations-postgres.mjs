@@ -117,8 +117,10 @@ try {
     await db.query("select public.platform_admin_create_invite('trial@example.test') as token")
   ).rows[0].token;
   assert.match(inviteToken, /^[a-f0-9]{64}$/);
-  const inviteId = (await db.query("select public.platform_admin_invites() as invites")).rows[0]
-    .invites[0].id;
+  const invitation = (await db.query("select public.platform_admin_invites() as invites")).rows[0]
+    .invites[0];
+  const inviteId = invitation.id;
+  assert.equal(Date.parse(invitation.expires_at) - Date.parse(invitation.created_at), 900000);
 
   await platformActor(lead);
   await assert.rejects(
@@ -169,6 +171,20 @@ try {
   assert.equal((await accessStatus()).status, "expired");
   await assert.rejects(
     db.query("select public.platform_start_trial($1)", [secondToken]),
+    /indisponível/,
+  );
+  await platformActor(admin);
+  const elapsedToken = (
+    await db.query("select public.platform_admin_create_invite('trial@example.test') as token")
+  ).rows[0].token;
+  await db.exec("reset role");
+  await db.query(
+    "update private.platform_trial_invites set created_at=now() - interval '16 minutes', expires_at=now() - interval '1 minute' where token_hash=sha256(convert_to($1, 'UTF8'))",
+    [elapsedToken],
+  );
+  await platformActor(trial);
+  await assert.rejects(
+    db.query("select public.platform_start_trial($1)", [elapsedToken]),
     /indisponível/,
   );
   await platformActor(lead);
