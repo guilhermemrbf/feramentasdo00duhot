@@ -49,6 +49,20 @@ select private.configure_instagram_worker_destination('https://host.exemplo', tr
 
 O destino gera a autorização de execução no próprio Vault quando necessário. Para verificar a saúde, confira os status dos dois jobs, as respostas HTTP e o resultado de um Reel de teste. Certifique-se de que a Vercel permite que as chamadas do Supabase cheguem à rota do worker, mantendo a autenticação da aplicação. Em um ambiente de homologação, use dados e credenciais de teste.
 
+O painel salva os agendamentos revisados mesmo com a publicação automática desativada. Se o botão de ativação informar que o destino do Supabase precisa de configuração, confira o registro de destino e os dois jobs no banco da operação. Antes de reativar a publicação, revise os Reels vencidos em todas as operações, pois o processador pode retomar os itens pendentes. Esta consulta verifica o estado sem iniciar o processamento.
+
+```sql
+select origin, enabled from private.instagram_worker_destination where singleton;
+select jobname, active from cron.job
+where jobname in ('00duhot-instagram-worker', '00duhot-instagram-analytics');
+select count(*) from public.posts
+where content_type = 'reel'
+  and status in ('scheduled', 'processing')
+  and scheduled_at <= now();
+```
+
+Confirme o destino do worker de produção em `https://mausehot.vercel.app`. Para retomar o teste, confira a configuração do destino no SQL Editor e confirme no painel que a ativação passou. A fila indica agendamentos salvos. O Histórico confirma o resultado de cada publicação.
+
 ## Transferência da operação existente
 
 1. **Origem.** Reative o banco do Lovable e exporte o banco completo e os objetos dos buckets pelo fluxo oficial. Verifique a disponibilidade da chave original de criptografia do Instagram em seu gerenciador de segredos. Sem ela, usuários podem ter de reconectar as contas e redigitar segredos de apps Meta. Não envie arquivos ou segredos pelo chat.

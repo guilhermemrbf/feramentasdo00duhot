@@ -5,7 +5,6 @@ export function reviewAutomation(input: {
   videoCount: number;
   dailyCount: number;
   previewCurrent: boolean;
-  workerActive: boolean;
   stories: StoriesChoice;
   storyCount: number;
   confirmed: boolean;
@@ -17,7 +16,6 @@ export function reviewAutomation(input: {
   if (!Number.isInteger(input.dailyCount) || input.dailyCount < 1 || input.dailyCount > 10)
     errors.push("Escolha de 1 a 10 Reels por dia.");
   if (!input.previewCurrent) errors.push("Atualize a prévia dos horários.");
-  if (!input.workerActive) errors.push("Ative o processamento em Configurações.");
   if (!["skip", "planned"].includes(input.stories))
     errors.push("Decida se vai preparar Stories para esta conta.");
   if (input.stories === "planned" && input.storyCount < 1)
