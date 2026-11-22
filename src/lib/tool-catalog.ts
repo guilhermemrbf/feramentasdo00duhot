@@ -23,16 +23,18 @@ const ALL_TOOLS = [
     name: "Fazenda de Celulares",
     category: "Ambientes",
     mode: "Aplicativo Windows",
-    summary: "Espelhe a tela do iPhone no Windows e controle aparelhos compatíveis por USB.",
-    input: "Um iPhone conectado com cabo USB de dados.",
-    output: "Tela do iPhone no computador, com mouse e teclado no iOS 27 ou superior.",
+    summary:
+      "Conecte múltiplos celulares via USB ao seu computador Windows e gerencie os dispositivos em um único ambiente, com mais organização e controle para sua operação digital.",
+    input: "iPhones compatíveis e cabos USB de dados.",
+    output:
+      "Lista de iPhones conectados e tela do aparelho selecionado, com mouse e teclado em versões compatíveis.",
     steps: [
       "Baixe e instale a Fazenda de Celulares no Windows.",
-      "Conecte o iPhone desbloqueado por USB e confirme a confiança no aparelho.",
+      "Conecte os iPhones desbloqueados por USB e confirme a confiança nos aparelhos.",
       "Selecione o iPhone e clique em Conectar e abrir tela.",
     ],
     requirement:
-      "Windows 10/11 de 64 bits, conexão USB e Modo de Desenvolvedor ativo. O controle requer iOS 27 ou superior.",
+      "Windows 10/11 de 64 bits. A janela exibe um iPhone por vez. Para usar mouse e teclado, o aparelho precisa de iOS 27 ou superior e Modo de Desenvolvedor ativo.",
   },
   {
     id: "tempMail",

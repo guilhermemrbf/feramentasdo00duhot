@@ -8,13 +8,14 @@ import {
   Scan,
   Tags,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ProductMockup } from "./ProductMockup";
 import { useLaunchEntrance } from "./useLaunchEntrance";
 
 const stages = [
   {
     id: "planejamento",
-    name: "Planeje a campanha",
+    name: "Planeje com dados",
     icon: GitBranch,
     title: "Escolha os perfis e desenhe o funil",
     description:
@@ -27,7 +28,7 @@ const stages = [
   },
   {
     id: "preparacao",
-    name: "Prepare o conteúdo",
+    name: "Prepare em lote",
     icon: Clapperboard,
     title: "Do arquivo original à prévia com sua marca",
     description:
@@ -41,7 +42,7 @@ const stages = [
   },
   {
     id: "biblioteca",
-    name: "Organize por perfil",
+    name: "Organize por conta",
     icon: FolderOpen,
     title: "Uma biblioteca para cada conta",
     description:
@@ -80,65 +81,127 @@ const stages = [
 export function LaunchWorkflow() {
   const [stageId, setStageId] = useState<(typeof stages)[number]["id"]>("planejamento");
   const { ref: preview, entered } = useLaunchEntrance<HTMLDivElement>();
+  const steps = useRef<HTMLOListElement>(null);
   const stage = stages.find((entry) => entry.id === stageId) ?? stages[0];
   const StageIcon = stage.icon;
 
+  useEffect(() => {
+    if (!steps.current || !("IntersectionObserver" in window)) return;
+    const layout = window.matchMedia(
+      "(min-width: 1000px) and (prefers-reduced-motion: no-preference)",
+    );
+    const elements = [...steps.current.children];
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!layout.matches) return;
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const index = elements.indexOf(entry.target);
+          if (index >= 0) setStageId(stages[index].id);
+        }
+      },
+      { rootMargin: "-38% 0px -60% 0px" },
+    );
+    elements.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <section id="fluxo" className="launch-workflow" aria-labelledby="launch-workflow-heading">
-      <div className="launch-wrap wrap launch-workflow-layout">
-        <div className="launch-workflow-copy">
-          <h2 id="launch-workflow-heading">Veja como uma campanha ganha forma.</h2>
+    <section
+      id="fluxo"
+      className="launch-workflow premium-workflow"
+      aria-labelledby="launch-workflow-heading"
+    >
+      <div className="launch-wrap">
+        <div className="premium-section-heading">
+          <h2 id="launch-workflow-heading">Da ideia ao post no ar, em 4 passos.</h2>
           <p>
-            Escolha uma etapa para ver como ela funciona. Você pode analisar os perfis hoje e voltar
-            à biblioteca quando os vídeos estiverem prontos.
+            Acompanhe o caminho de uma campanha da escolha dos perfis até a conferência do que foi
+            publicado.
           </p>
-          <div className="launch-stage-controls" role="group" aria-label="Etapas da operação">
-            {stages.map(({ id, name, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={stageId === id}
-                aria-controls="launch-workflow-preview"
-                onClick={() => setStageId(id)}
-              >
-                <Icon size={19} aria-hidden />
-                <span>{name}</span>
-              </button>
-            ))}
-          </div>
         </div>
-        <div
-          id="launch-workflow-preview"
-          className="launch-workflow-preview"
-          ref={preview}
-          data-entered={entered || undefined}
-          role="region"
-          aria-label="Demonstração do produto"
-          aria-live="polite"
-        >
-          <div className="launch-workflow-preview-head">
-            <StageIcon size={20} aria-hidden />
-            <strong>{stage.tool}</strong>
-            <span className="launch-stage-position" aria-hidden="true">
-              {stages.map(({ id }) => (
-                <i key={id} data-current={stage.id === id || undefined} />
-              ))}
-            </span>
-          </div>
-          <div key={stage.id} className="launch-workflow-preview-body">
-            <h3>{stage.title}</h3>
-            <p>{stage.description}</p>
-            <ul>
-              {stage.rows.map(({ label, detail, icon: Icon }) => (
-                <li key={label}>
+        <div className="launch-workflow-layout premium-story-layout">
+          <ol
+            className="launch-stage-controls premium-story-steps"
+            style={
+              {
+                "--campaign-progress": (stages.indexOf(stage) + 1) / stages.length,
+              } as React.CSSProperties
+            }
+            ref={steps}
+            aria-label="Etapas da operação"
+          >
+            {stages.map(({ id, name, icon: Icon, title, description }, index) => (
+              <li key={id} data-current={stageId === id || undefined}>
+                <button
+                  type="button"
+                  aria-pressed={stageId === id}
+                  aria-controls="launch-workflow-preview"
+                  onClick={(event) => {
+                    setStageId(id);
+                    if (
+                      window.matchMedia(
+                        "(min-width: 1000px) and (prefers-reduced-motion: no-preference)",
+                      ).matches
+                    ) {
+                      const top = event.currentTarget.closest("li")!.getBoundingClientRect().top;
+                      window.scrollTo({
+                        top: window.scrollY + top - window.innerHeight * 0.36,
+                        behavior: "instant",
+                      });
+                    }
+                  }}
+                >
                   <Icon size={19} aria-hidden />
-                  <div>
-                    <strong>{label}</strong>
-                    <span>{detail}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  <span>{name}</span>
+                  <small aria-hidden="true">
+                    {index + 1}/{stages.length}
+                  </small>
+                </button>
+                <div className="premium-story-copy" aria-hidden={stageId !== id}>
+                  <h3>{title}</h3>
+                  <p>{description}</p>
+                </div>
+                <div className="command-mobile-mock">
+                  <ProductMockup stage={id} />
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div
+            id="launch-workflow-preview"
+            className="launch-workflow-preview"
+            ref={preview}
+            data-entered={entered || undefined}
+            role="region"
+            aria-label="Demonstração do produto"
+          >
+            <div className="launch-workflow-preview-head">
+              <StageIcon size={20} aria-hidden />
+              <strong>{stage.tool}</strong>
+              <span className="premium-demo-label">Demonstração</span>
+              <span className="launch-stage-position" aria-hidden="true">
+                {stages.map(({ id }) => (
+                  <i key={id} data-current={stage.id === id || undefined} />
+                ))}
+              </span>
+            </div>
+            <div key={stage.id} className="launch-workflow-preview-body" data-stage={stage.id}>
+              <h3>{stage.title}</h3>
+              <p>{stage.description}</p>
+              <ProductMockup stage={stage.id} />
+              <ul>
+                {stage.rows.map(({ label, detail, icon: Icon }) => (
+                  <li key={label}>
+                    <Icon size={19} aria-hidden />
+                    <div>
+                      <strong>{label}</strong>
+                      <span>{detail}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </div>

@@ -1708,8 +1708,7 @@
     }
   }
   @supports (animation-timeline: view()) {
-    .launch-setup-copy li,
-    .launch-close h2 {
+    .launch-setup-copy li {
       animation: launch-scroll-rise linear both;
       animation-timeline: view();
       animation-range: entry 0% entry 100%;

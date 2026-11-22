@@ -6,44 +6,22 @@ import {
   GitBranch,
   RotateCcw,
   CalendarClock,
+  Check,
+  ShieldCheck,
+  Timer,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { AccessForm, type FormMode } from "./AccessForm";
 import { AccessStatusPanel } from "./AccessStatusPanel";
-import { LaunchFaq, LaunchSetup } from "./LaunchDetails";
+import { LaunchBenefits, LaunchFaq, LaunchSetup } from "./LaunchDetails";
 import { MouseOrbit } from "./MouseOrbit";
 import { LaunchWorkflow } from "./LaunchWorkflow";
 import { usePlatformAccess } from "./PlatformAccessProvider";
-import { TOOL_CATALOG, CATEGORIES, type Tool } from "@/lib/tool-catalog";
-import { TOOL_ICONS } from "@/components/AppShell";
-
-const toolCopy: Partial<Record<Tool["id"], string>> = {
-  intelligence:
-    "Cole até 1.000 perfis e compare desempenho, subnicho e sinais de risco. Veja as evidências antes de escolher com quem trabalhar.",
-  funnels:
-    "Desenhe o caminho entre o primeiro contato e a oferta. Conecte as etapas e compartilhe o mapa da campanha com a equipe.",
-  downloader:
-    "Separe as fotos e os vídeos que você tem permissão para usar. A extensão salva os arquivos do Instagram e do TikTok direto no computador.",
-  metadata:
-    "Retire metadados de uma foto ou de um lote inteiro de vídeos. Baixe as cópias tratadas e preserve os originais.",
-  creatives:
-    "Escolha a posição e a opacidade da sua marca uma vez e aplique a mesma assinatura aos materiais da campanha.",
-  preview:
-    "Escolha o que revelar. Ajuste o desfoque ou a pixelização e exporte uma prévia para divulgar seu conteúdo.",
-  images:
-    "Gere links públicos diretos para fotos e vídeos. Copie a URL para incluir o arquivo em uma página, mensagem ou prompt.",
-  pages:
-    "Reúna capa, foto e descrição do perfil. Leve um prompt com os materiais organizados para a ferramenta que vai criar a página.",
-  social:
-    "Separe as bibliotecas por conta, programe Reels e Stories e confira no histórico quais publicações chegaram ao Instagram.",
-  telegram:
-    "Mudou o destino de uma campanha? Confira a prévia e atualize os links das publicações que você administra no Telegram.",
-  controlHub:
-    "Conecte seus iPhones por USB e acompanhe as telas pelo Windows. Use mouse e teclado nos aparelhos compatíveis.",
-  tempMail:
-    "Receba mensagens de teste em uma caixa temporária. Acompanhe a chegada dos e-mails e descarte o endereço ao terminar.",
-};
+import { useLaunchScroll } from "./useLaunchScroll";
+import { useVisibleMotion } from "./useVisibleMotion";
+import { LaunchProof } from "./LaunchProof";
+import { LaunchShowcase, type ShowcaseCategory } from "./LaunchShowcase";
 
 export function PublicBrand() {
   return (
@@ -65,8 +43,11 @@ const contentSteps = [
 
 function ContentFlow() {
   const [run, setRun] = useState(0);
+  const { ref, running } = useVisibleMotion<HTMLDivElement>();
   return (
     <div
+      ref={ref}
+      data-running={running || undefined}
       className="launch-board app-frame"
       aria-label="Demonstração do fluxo de conteúdo"
       data-visual
@@ -84,6 +65,7 @@ function ContentFlow() {
           <RotateCcw size={17} aria-hidden />
         </button>
       </div>
+      <div className="command-flow-progress" key={`progress-${run}`} aria-hidden="true" />
       <ol className="launch-board-track" key={run}>
         {contentSteps.map(({ name, label, icon: Icon }) => (
           <li key={name}>
@@ -91,6 +73,7 @@ function ContentFlow() {
             <div>
               <strong>{name}</strong>
               <small>{label}</small>
+              <Check className="command-flow-check" size={12} aria-hidden />
             </div>
           </li>
         ))}
@@ -102,6 +85,8 @@ function ContentFlow() {
 export function LaunchPage() {
   const access = usePlatformAccess();
   const navigate = useNavigate();
+  const scroll = useLaunchScroll(!access.user);
+  const [category, setCategory] = useState<ShowcaseCategory>("Planejamento");
   const [formMode, setFormMode] = useState<FormMode>("password");
   useEffect(() => {
     if (!access.isError && ["admin", "approved", "trial"].includes(access.status ?? "")) {
@@ -124,22 +109,40 @@ export function LaunchPage() {
 
   return (
     <>
-      <header className="nav launch-top launch-public-top">
+      <header
+        className="nav launch-top launch-public-top premium-nav"
+        ref={scroll.header}
+        data-raised={scroll.raised || undefined}
+        data-hidden={scroll.hidden || undefined}
+      >
         <a href="#conteudo" className="skip-link">
           Pular para o conteúdo
         </a>
         <div className="launch-wrap wrap launch-top-layout">
           <PublicBrand />
           <nav aria-label="Menu público">
+            <a className="launch-nav-link premium-nav-flow" href="#fluxo">
+              Como funciona
+            </a>
             <a className="launch-nav-link" href="#ferramentas">
               Ferramentas
             </a>
+            <a className="launch-nav-link command-nav-faq" href="#perguntas">
+              Perguntas
+            </a>
             <a
-              className="saas-button saas-button-outline"
+              className="launch-nav-link command-nav-login"
               href="#acesso"
               onClick={() => setFormMode("password")}
             >
               Entrar
+            </a>
+            <a
+              className="saas-button saas-button-outline command-nav-register"
+              href="#acesso"
+              onClick={() => setFormMode("register")}
+            >
+              Criar conta
             </a>
           </nav>
         </div>
@@ -148,88 +151,69 @@ export function LaunchPage() {
         <section className="launch-hero" aria-labelledby="launch-heading" data-enter>
           <div className="launch-wrap wrap launch-hero-layout">
             <div className="launch-hero-copy hero-text">
-              <div className="launch-signature">
-                <span>Ferramentas para a operação orgânica</span>
-              </div>
-              <h1 id="launch-heading">
-                Sua operação digital <span>em um só lugar.</span>
+              <p className="command-eyebrow">
+                <i aria-hidden="true" /> Operação orgânica em escala
+              </p>
+              <h1 id="launch-heading" aria-label="Sua operação digital em um só lugar.">
+                {["Sua", "operação", "digital", "em", "um", "só", "lugar."].map((word, index) => (
+                  <span
+                    key={word}
+                    aria-hidden="true"
+                    data-accent={index >= 3 || undefined}
+                    style={{ animationDelay: `${index * 60}ms` }}
+                  >
+                    <span>{word}</span>{" "}
+                  </span>
+                ))}
               </h1>
-              <p>
-                Escolha os perfis da próxima campanha, prepare as mídias em lote e distribua o
-                conteúdo por conta. Da primeira ideia ao acompanhamento dos canais, cada etapa tem
-                sua ferramenta.
+              <p className="command-hero-summary">
+                Organize a escala da sua operação no orgânico. Planeje campanhas, compare perfis,
+                prepare vídeos em lote e programe Reels com uma biblioteca para cada conta.
               </p>
               <div className="launch-actions">
-                <a className="saas-button saas-button-primary" href="#fluxo">
-                  Ver como funciona <ArrowRight size={19} aria-hidden />
+                <a
+                  className="saas-button saas-button-primary"
+                  href="#acesso"
+                  onClick={() => setFormMode("register")}
+                >
+                  Criar minha conta <ArrowRight size={19} aria-hidden />
                 </a>
-                <a className="launch-nav-link" href="#ferramentas">
-                  Explorar ferramentas <ChevronDown size={16} aria-hidden />
+                <a className="saas-button saas-button-outline" href="#fluxo">
+                  Ver como funciona <ChevronDown size={16} aria-hidden />
                 </a>
               </div>
+              <ul className="command-trust">
+                <li>
+                  <Timer size={16} aria-hidden /> Teste de 15 minutos por convite
+                </li>
+                <li>
+                  <ShieldCheck size={16} aria-hidden /> Preparo de mídia no navegador
+                </li>
+              </ul>
             </div>
 
-            <MouseOrbit />
-            <ContentFlow />
+            <div className="premium-hero-product">
+              <MouseOrbit />
+              <ContentFlow />
+            </div>
           </div>
+          <a className="command-scroll-cue" href="#fluxo" hidden={!scroll.nearTop}>
+            Role para explorar <ChevronDown size={17} aria-hidden />
+          </a>
         </section>
         <LaunchWorkflow />
-        <section
-          id="ferramentas"
-          className="launch-catalog"
-          aria-labelledby="launch-catalog-heading"
-        >
-          <div className="launch-wrap wrap">
-            <div>
-              <h2 id="launch-catalog-heading">O que você precisa fazer hoje?</h2>
-              <p className="launch-catalog-lead">
-                Abra uma categoria para encontrar sua ferramenta. Dá para começar com um único
-                arquivo, preparar uma campanha inteira ou acompanhar os aparelhos da operação.
-              </p>
-            </div>
-            <div className="launch-tool-groups">
-              {CATEGORIES.map((category) => {
-                const tools = TOOL_CATALOG.filter((tool) => tool.category === category);
-                if (!tools.length) return null;
-                return (
-                  <details key={category} className="launch-tool-group" open>
-                    <summary>
-                      <span>{category}</span>
-                      <small>
-                        {tools.length} {tools.length === 1 ? "ferramenta" : "ferramentas"}
-                      </small>{" "}
-                      <ChevronDown size={19} aria-hidden />
-                    </summary>
-                    <ul>
-                      {tools.map((tool) => {
-                        const Icon = TOOL_ICONS[tool.id];
-                        return (
-                          <li key={tool.id}>
-                            <Icon size={19} aria-hidden />
-                            <div>
-                              <strong>{tool.name}</strong>
-                              <p>{toolCopy[tool.id] ?? tool.summary}</p>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </details>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-        <LaunchSetup />
+        <LaunchShowcase category={category} onCategoryChange={setCategory} />
+        <LaunchBenefits onRegister={() => setFormMode("register")} />
+        <LaunchSetup onExplore={setCategory} />
+        <LaunchProof />
         <LaunchFaq />
         <section className="launch-close" aria-labelledby="launch-close-heading">
           <div className="launch-wrap wrap">
             <div>
-              <h2 id="launch-close-heading">A MouseHot faz sentido para sua operação?</h2>
+              <h2 id="launch-close-heading">Sua próxima operação começa com mais controle.</h2>
               <p className="launch-close-heading-copy">
-                Se você já sabe qual ferramenta quer usar primeiro, crie sua conta. O acesso ao
-                painel é liberado após a aprovação. Se recebeu um convite de teste, entre pelo link
-                do convite.
+                Crie sua conta e dê o primeiro passo para organizar o orgânico hoje. Se recebeu um
+                convite de teste, abra o link que chegou para você.
               </p>
               <a
                 className="saas-button saas-button-primary"
@@ -245,19 +229,44 @@ export function LaunchPage() {
               className="launch-hero-access"
               aria-labelledby="launch-access-title"
             >
+              <img
+                className="command-form-mascot"
+                src="/brand/compact.webp"
+                width={70}
+                height={70}
+                loading="lazy"
+                decoding="async"
+                alt=""
+              />
               <AccessForm
                 selectedMode={formMode}
                 onModeChange={setFormMode}
                 headingId="launch-access-title"
               />
-              <p className="launch-access-note">Novas contas passam por aprovação.</p>
+              <p className="launch-access-note">
+                Após o cadastro, acompanhe a liberação do acesso ao entrar.
+              </p>
             </div>
           </div>
         </section>
       </main>
+      {scroll.mobileAction && (
+        <div className="command-mobile-cta">
+          <a
+            className="saas-button saas-button-primary"
+            href="#acesso"
+            onClick={() => setFormMode("register")}
+          >
+            Criar minha conta <ArrowRight size={17} aria-hidden />
+          </a>
+        </div>
+      )}
       <footer className="closing launch-footer">
         <div className="launch-wrap wrap launch-footer-layout">
-          <PublicBrand />
+          <div className="premium-footer-brand">
+            <PublicBrand />
+            <span>Sua operação digital em um só lugar.</span>
+          </div>
           <nav aria-label="Informações legais">
             <Link to="/privacidade">Privacidade</Link>
             <Link to="/exclusao-de-dados">Exclusão de dados</Link>

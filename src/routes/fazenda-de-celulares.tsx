@@ -10,7 +10,7 @@ export const Route = createFileRoute("/fazenda-de-celulares")({
       { title: "Fazenda de Celulares — MauseHot" },
       {
         name: "description",
-        content: "Baixe o instalador Windows da Fazenda de Celulares e controle seu iPhone por USB.",
+        content: "Baixe a Fazenda de Celulares para Windows e gerencie iPhones conectados por USB.",
       },
     ],
   }),
@@ -33,8 +33,9 @@ function FazendaDeCelulares() {
             Fazenda de Celulares
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-            Veja a tela do seu iPhone por USB e use o mouse e o teclado do computador. O controle
-            está disponível no iOS 27 ou mais recente, com o Modo de Desenvolvedor ativo.
+            Conecte seus iPhones por USB e selecione qual tela quer acompanhar. A janela exibe um
+            aparelho por vez. Use o mouse e o teclado no iOS 27 ou mais recente, com o Modo de
+            Desenvolvedor ativo.
           </p>
           <Button asChild size="lg" className="mt-7 min-h-12 w-full sm:w-auto">
             <a href={download.url}>

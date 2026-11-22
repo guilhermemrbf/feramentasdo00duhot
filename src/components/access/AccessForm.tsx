@@ -1,3 +1,4 @@
+import { motion, useReducedMotion } from "motion/react";
 import { ArrowRight, KeyRound, Mail } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,7 @@ export function AccessForm({
 }) {
   const { isLoading } = usePlatformAccess();
   const [localMode, setLocalMode] = useState<FormMode>("register");
+  const reducedMotion = useReducedMotion();
   const mode = controlledMode ?? localMode;
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
@@ -111,6 +113,20 @@ export function AccessForm({
               setMessage(null);
             }}
           >
+            {mode === value && (
+              <motion.span
+                className="command-access-indicator"
+                layoutId={
+                  reducedMotion
+                    ? undefined
+                    : invitation
+                      ? "invite-access-mode"
+                      : "landing-access-mode"
+                }
+                aria-hidden
+                transition={{ duration: reducedMotion ? 0 : 0.22 }}
+              />
+            )}
             {label}
           </button>
         ))}
@@ -118,24 +134,32 @@ export function AccessForm({
       <form onSubmit={authenticate} className="access-fields">
         {mode === "register" && (
           <label>
-            Nome
-            <input name="name" autoComplete="name" maxLength={120} required />
+            <input name="name" autoComplete="name" maxLength={120} required placeholder=" " />
+            <span>Nome</span>
           </label>
         )}
         <label>
-          E-mail
-          <input name="email" type="email" autoComplete="email" maxLength={254} required />
+          <input
+            name="email"
+            type="email"
+            autoComplete="email"
+            maxLength={254}
+            required
+            placeholder=" "
+          />
+          <span>E-mail</span>
         </label>
         {mode !== "email" && (
           <label>
-            Senha
             <input
               name="password"
               type="password"
+              placeholder=" "
               autoComplete={mode === "register" ? "new-password" : "current-password"}
               minLength={mode === "register" ? 8 : undefined}
               required
             />
+            <span>Senha</span>
           </label>
         )}
         <button
@@ -148,7 +172,7 @@ export function AccessForm({
             : mode === "register"
               ? "Criar minha conta"
               : mode === "password"
-                ? "Entrar na MouseHot"
+                ? "Entrar"
                 : "Enviar link de acesso"}
           {mode === "email" ? (
             <Mail size={17} aria-hidden />
