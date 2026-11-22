@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LaunchPage } from "@/components/access/LaunchPage";
 
 const description =
-  "Importe vídeos do Google Drive, organize a biblioteca de cada perfil e agende Reels para várias contas do Instagram com a MouseHot.";
+  "Baixe e prepare mídia, analise perfis, planeje funis e agende Reels. A MouseHot reúne as ferramentas da sua operação de conteúdo.";
 
 export const Route = createFileRoute("/")({
   head: () => ({

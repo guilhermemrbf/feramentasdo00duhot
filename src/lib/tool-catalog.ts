@@ -23,7 +23,7 @@ const ALL_TOOLS = [
     name: "Fazenda de Celulares",
     category: "Ambientes",
     mode: "Aplicativo Windows",
-    summary: "Veja e controle iPhones por USB no Windows.",
+    summary: "Espelhe a tela do iPhone no Windows e controle aparelhos compatíveis por USB.",
     input: "Um iPhone conectado com cabo USB de dados.",
     output: "Tela do iPhone no computador, com mouse e teclado no iOS 27 ou superior.",
     steps: [
@@ -58,7 +58,7 @@ const ALL_TOOLS = [
     name: "Telegram Sync",
     category: "Conteúdo",
     mode: "Aplicativo Windows",
-    summary: "Troque os links de posts existentes em um canal que você administra.",
+    summary: "Revise e substitua links em publicações de um canal que você administra.",
     input: "Sua conta Telegram, seu canal e o novo link de destino.",
     output: "Edição dos links com prévia, acompanhamento e backup local.",
     steps: [
@@ -93,7 +93,7 @@ const ALL_TOOLS = [
     name: "Image Links",
     category: "Conteúdo",
     mode: "Hospedagem pública",
-    summary: "Transforme imagens e vídeos em links prontos para compartilhar.",
+    summary: "Gere links públicos de imagens e vídeos para usar em páginas, posts ou mensagens.",
     input: "Imagens ou vídeos nos formatos aceitos.",
     output: "URLs diretas, Markdown, HTML ou referências para prompts.",
     steps: [
@@ -110,7 +110,7 @@ const ALL_TOOLS = [
     name: "Criar Tela Privacy",
     category: "Conteúdo",
     mode: "Gerador de prompt",
-    summary: "Organize dados e imagens para gerar o prompt da sua página.",
+    summary: "Reúna o nome, a descrição e as imagens do perfil em um prompt para criar sua página.",
     input: "Fotos de perfil e capa, nome, usuário e descrição.",
     output: "Prompt completo e instruções complementares para sua IA programadora.",
     steps: [
@@ -128,7 +128,7 @@ const ALL_TOOLS = [
     name: "Limpar Metadados",
     category: "Preparação",
     mode: "No navegador",
-    summary: "Remova dados incorporados em fotos e vídeos, individualmente ou em lote.",
+    summary: "Limpe os metadados de fotos e vídeos no navegador, em um arquivo ou em lote.",
     input: "Fotos e vídeos compatíveis com seu navegador.",
     output: "Novos arquivos processados; a área de lote também exporta ZIP.",
     steps: [
@@ -146,7 +146,8 @@ const ALL_TOOLS = [
     name: "Otimizar Criativos",
     category: "Preparação",
     mode: "No navegador",
-    summary: "Adicione sua marca a fotos e vídeos e baixe novas versões.",
+    summary:
+      "Aplique sua marca em fotos e vídeos e escolha a posição e a opacidade da sobreposição.",
     input: "Criativos e, se desejar, uma imagem ou texto de marca.",
     output: "Imagens WEBP e vídeos WEBM com sua marca aplicada.",
     steps: [
@@ -179,10 +180,10 @@ const ALL_TOOLS = [
     action: "Programar no Instagram",
     path: "/automacao-instagram",
     name: "Automatic Post · Instagram",
+    aliases: "Hot Profiles Stories",
     category: "Automação",
     mode: "Instagram Reels",
-    summary:
-      "Hot Profiles e Automatic Post juntos: conecte contas, organize bibliotecas e programe Reels e Stories.",
+    summary: "Separe os vídeos por conta, programe Reels e confira o resultado no histórico.",
     input: "Vídeos, legendas, horários e conta profissional do Instagram autorizada no workspace.",
     output: "Programações salvas de Reels e acompanhamento das confirmações no Histórico.",
     steps: [
@@ -201,7 +202,7 @@ const ALL_TOOLS = [
     category: "Planejamento",
     mode: "Análise de perfis",
     summary:
-      "Analise lotes privados de até 1.000 perfis e compare potencial, desempenho e conformidade.",
+      "Compare desempenho, potencial e conformidade de até 1.000 perfis em uma análise privada.",
     input: "Perfis do Instagram e métricas de fontes autorizadas.",
     output: "Perfis aprovados e não aprovados, com notas e justificativas disponíveis.",
     steps: [
@@ -219,7 +220,7 @@ const ALL_TOOLS = [
     name: "Funil",
     category: "Planejamento",
     mode: "Workspace local",
-    summary: "Desenhe, conecte e organize as etapas da sua operação.",
+    summary: "Desenhe o caminho de uma campanha e conecte as decisões em um quadro visual.",
     input: "Etapas, textos, imagens e conexões do fluxo.",
     output: "Um board editável com opções de organização, exportação e compartilhamento.",
     steps: [
@@ -279,7 +280,7 @@ export function searchTools(query: string, category = "Todas") {
       (category === "Todas" || tool.category === category) &&
       terms.every((term) =>
         normalizeSearch(
-          `${tool.name} ${tool.action} ${tool.summary} ${tool.category} ${tool.mode} ${tool.input} ${tool.output} ${tool.requirement}`,
+          `${tool.name} ${tool.action} ${tool.summary} ${tool.category} ${tool.mode} ${tool.input} ${tool.output} ${tool.requirement} ${"aliases" in tool ? tool.aliases : ""}`,
         ).includes(term),
       ),
   );

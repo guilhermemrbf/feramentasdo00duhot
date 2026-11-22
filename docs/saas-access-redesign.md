@@ -45,7 +45,7 @@ A abertura mantém o login na primeira dobra a 390×844 e 1440×900. O gerador d
 
 ## Página de venda
 
-A entrada em `/` alterna azul-noite, pêssego e coral. `LaunchPage` mantém o formulário no topo e usa uma faixa animada para mostrar as etapas do Automatic Post. `LaunchWorkflow` apresenta a preparação, biblioteca e publicação. O teste de navegador cobre movimento reduzido, troca de etapas, cadastro pelo fim da página e geração de convite na Visão geral.
+A entrada em `/` combina preto, vermelho e laranja. `LaunchPage` mantém o formulário no topo, destaca as ferramentas de toda a operação e agrupa o catálogo pelo mesmo cadastro usado no painel. `LaunchWorkflow` demonstra planejamento, preparo, biblioteca e publicação. `LaunchDetails` apresenta exemplos, perguntas frequentes e o mascote interativo feito com a arte original da marca. O teste de navegador cobre as animações, movimento reduzido, troca de etapas, cadastro pelo fim da página e geração de convite na Visão geral.
 
 Para retomar a publicação, confira o deploy da branch `feat/saas-access-redesign` na Vercel. Use as variáveis do ambiente Preview com um Supabase de teste e aplique as duas migrações de acesso antes de validar com a conta Scale Up. Valide cadastro, login pelo link, resgate e expiração antes de promover a versão ao domínio principal.
 

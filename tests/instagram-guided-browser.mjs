@@ -1151,7 +1151,52 @@ try {
   const boardTrack = await visitor.locator(".launch-board-track").elementHandle();
   await visitor.getByRole("button", { name: "Rever animação do fluxo" }).click();
   await visitor.waitForFunction((track) => !track.isConnected, boardTrack);
+  const productPreview = visitor.getByRole("region", { name: "Demonstração do produto" });
+  await productPreview
+    .getByRole("heading", { name: "Escolha os perfis e desenhe o funil" })
+    .waitFor();
+  await productPreview.scrollIntoViewIfNeeded();
+  await visitor.waitForFunction(
+    () => document.getElementById("launch-workflow-preview")?.dataset.entered === "true",
+  );
+  await visitor.getByRole("button", { name: "Organize por perfil", exact: true }).click();
+  await productPreview.getByRole("heading", { name: "Uma biblioteca para cada conta" }).waitFor();
+  const mascotButton = visitor.getByRole("button", { name: "Animar o rato da MouseHot" });
+  await mascotButton.click();
+  await visitor.getByText("O rato deu um salve.", { exact: true }).waitFor();
+  await mascotButton.focus();
+  await mascotButton.press("Enter");
+  const trialFaq = visitor.getByText("Como funciona o convite de 15 minutos?", { exact: true });
+  await trialFaq.click();
+  await visitor.getByText(/O convite pode ser usado uma vez/).waitFor();
+  const pageMotions = [
+    [".launch-hero-access", ""],
+    [".launch-hero", "::before"],
+    ["#launch-heading > span", ""],
+    [".launch-board-track", "::before"],
+    [".launch-board-track li", ""],
+    ["#launch-workflow-preview", ""],
+    [".launch-workflow-preview-body", ""],
+    [".launch-mascot-art img", ""],
+    [".launch-mascot-art .launch-mascot-ring", ""],
+    [".launch-mascot-status > span", ""],
+    [".launch-faq-item[open] > div", ""],
+  ];
+  async function readPageMotions() {
+    return visitor.evaluate(
+      (targets) =>
+        targets.map(
+          ([selector, pseudo]) =>
+            getComputedStyle(document.querySelector(selector), pseudo || null).animationName,
+        ),
+      pageMotions,
+    );
+  }
+  assert.ok(new Set((await readPageMotions()).filter((name) => name !== "none")).size >= 7);
   await visitor.emulateMedia({ reducedMotion: "reduce" });
+  assert.ok((await readPageMotions()).every((name) => name === "none"));
+  await mascotButton.click();
+  await visitor.getByText("O rato deu um salve.", { exact: true }).waitFor();
   assert.equal(await motion.evaluate((element) => getComputedStyle(element).animationName), "none");
   assert.equal(
     await publicationStage.evaluate((element) => getComputedStyle(element).animationName),

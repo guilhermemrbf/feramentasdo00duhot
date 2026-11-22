@@ -1,16 +1,17 @@
 import {
   ArrowRight,
-  CalendarClock,
   ChevronDown,
-  FolderOpen,
-  Instagram,
-  ListChecks,
+  Clapperboard,
+  Download,
+  GitBranch,
   RotateCcw,
+  CalendarClock,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { AccessForm, type FormMode } from "./AccessForm";
 import { AccessStatusPanel } from "./AccessStatusPanel";
+import { LaunchFaq, LaunchSetup } from "./LaunchDetails";
 import { LaunchWorkflow } from "./LaunchWorkflow";
 import { usePlatformAccess } from "./PlatformAccessProvider";
 import { TOOL_CATALOG, CATEGORIES } from "@/lib/tool-catalog";
@@ -27,19 +28,24 @@ export function PublicBrand() {
   );
 }
 
-const publishSteps = [
-  { name: "Na biblioteca", label: "Pasta do Google Drive", icon: FolderOpen },
-  { name: "Na fila", label: "Perfil e horário definidos", icon: CalendarClock },
-  { name: "No ar", label: "Publicação no histórico", icon: ListChecks },
+const contentSteps = [
+  { name: "Reúna", label: "Baixe e organize a mídia", icon: Download },
+  { name: "Prepare", label: "Edite e trate em lote", icon: Clapperboard },
+  { name: "Planeje", label: "Analise perfis e funis", icon: GitBranch },
+  { name: "Publique", label: "Agende e acompanhe", icon: CalendarClock },
 ];
 
-function PublishingFrame() {
+function ContentFlow() {
   const [run, setRun] = useState(0);
   return (
-    <div className="launch-board app-frame" aria-label="Demonstração do Automatic Post" data-visual>
+    <div
+      className="launch-board app-frame"
+      aria-label="Demonstração do fluxo de conteúdo"
+      data-visual
+    >
       <div className="launch-board-header">
-        <Instagram size={20} aria-hidden />
-        <strong>Automatic Post</strong>
+        <GitBranch size={20} aria-hidden />
+        <strong>Fluxo de conteúdo</strong>
         <span>Demonstração</span>
         <button
           type="button"
@@ -51,7 +57,7 @@ function PublishingFrame() {
         </button>
       </div>
       <ol className="launch-board-track" key={run}>
-        {publishSteps.map(({ name, label, icon: Icon }) => (
+        {contentSteps.map(({ name, label, icon: Icon }) => (
           <li key={name}>
             <Icon size={19} aria-hidden />
             <div>
@@ -118,8 +124,8 @@ export function LaunchPage() {
                 Sua operação digital <span>em um só lugar.</span>
               </h1>
               <p>
-                Prepare seus criativos, traga vídeos do Google Drive e monte a fila de Reels de cada
-                conta do Instagram. Acompanhe na MouseHot o que ainda falta e o que já foi ao ar.
+                Baixe e prepare mídias, descubra perfis para suas campanhas e desenhe seus funis. Na
+                hora de publicar, organize os vídeos por conta e programe os próximos Reels.
               </p>
               <div className="launch-actions">
                 <a
@@ -141,9 +147,9 @@ export function LaunchPage() {
                 onModeChange={setFormMode}
                 headingId="launch-access-title"
               />
-              <p className="launch-access-note">O cadastro passa por aprovação.</p>
+              <p className="launch-access-note">Novas contas passam por aprovação.</p>
             </div>
-            <PublishingFrame />
+            <ContentFlow />
           </div>
         </section>
         <LaunchWorkflow />
@@ -154,11 +160,10 @@ export function LaunchPage() {
         >
           <div className="launch-wrap wrap">
             <div>
-              <h2 id="launch-catalog-heading">Ferramentas para antes e depois de publicar</h2>
+              <h2 id="launch-catalog-heading">Ferramentas para cada etapa do conteúdo</h2>
               <p className="launch-catalog-lead">
-                Analise os perfis da campanha, aplique sua marca aos arquivos e limpe metadados em
-                lote no navegador. Quando os vídeos estiverem prontos, programe o que entra na fila
-                de cada conta.
+                Tire uma ideia do papel com um funil visual, prepare arquivos para compartilhar e
+                acompanhe suas contas. O catálogo reúne as ferramentas por tipo de trabalho.
               </p>
             </div>
             <div className="launch-tool-groups">
@@ -190,13 +195,15 @@ export function LaunchPage() {
             </div>
           </div>
         </section>
+        <LaunchSetup />
+        <LaunchFaq />
         <section className="launch-close" aria-labelledby="launch-close-heading">
           <div className="launch-wrap wrap">
             <div>
-              <h2 id="launch-close-heading">Monte sua primeira fila de Reels</h2>
+              <h2 id="launch-close-heading">Abra seu espaço na MouseHot</h2>
               <p>
-                Comece pelo cadastro. Se recebeu um convite de teste, abra o link e entre com o
-                e-mail indicado no convite.
+                Crie sua conta para começar. Se já recebeu um convite, abra o link e entre com o
+                e-mail que o administrador usou para convidar você.
               </p>
               <a
                 className="saas-button saas-button-primary"
