@@ -36,6 +36,11 @@ create table private.platform_access_audit (
   happened_at timestamptz not null default now()
 );
 
+alter table private.platform_access enable row level security;
+alter table private.platform_administrators enable row level security;
+alter table private.platform_trial_invites enable row level security;
+alter table private.platform_access_audit enable row level security;
+
 revoke all on private.platform_access, private.platform_administrators,
   private.platform_trial_invites, private.platform_access_audit from public, anon, authenticated;
 
