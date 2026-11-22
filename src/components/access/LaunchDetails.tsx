@@ -74,6 +74,27 @@ export function LaunchSetup() {
             type="button"
             className="launch-mascot-button"
             aria-label="Animar o rato da MouseHot"
+            onPointerMove={(event) => {
+              if (
+                event.pointerType !== "mouse" ||
+                !window.matchMedia("(prefers-reduced-motion: no-preference)").matches
+              )
+                return;
+              const button = event.currentTarget;
+              const bounds = button.getBoundingClientRect();
+              button.style.setProperty(
+                "--look-x",
+                ((event.clientX - bounds.left) / bounds.width - 0.5) * 12 + "px",
+              );
+              button.style.setProperty(
+                "--look-y",
+                ((event.clientY - bounds.top) / bounds.height - 0.5) * 10 + "px",
+              );
+            }}
+            onPointerLeave={(event) => {
+              event.currentTarget.style.removeProperty("--look-x");
+              event.currentTarget.style.removeProperty("--look-y");
+            }}
             onClick={() => setSalute((previous) => previous + 1)}
           >
             <span className="launch-mascot-art" key={salute} data-salute={salute > 0 || undefined}>

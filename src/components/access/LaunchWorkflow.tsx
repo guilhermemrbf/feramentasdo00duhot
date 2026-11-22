@@ -119,6 +119,11 @@ export function LaunchWorkflow() {
           <div className="launch-workflow-preview-head">
             <StageIcon size={20} aria-hidden />
             <strong>{stage.tool}</strong>
+            <span className="launch-stage-position" aria-hidden="true">
+              {stages.map(({ id }) => (
+                <i key={id} data-current={stage.id === id || undefined} />
+              ))}
+            </span>
           </div>
           <div key={stage.id} className="launch-workflow-preview-body">
             <h3>{stage.title}</h3>
