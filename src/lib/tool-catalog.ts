@@ -25,6 +25,10 @@ const ALL_TOOLS = [
     mode: "Aplicativo Windows",
     summary:
       "Conecte múltiplos celulares via USB ao seu computador Windows e gerencie os dispositivos em um único ambiente, com mais organização e controle para sua operação digital.",
+    overview: {
+      title: "Controle seus celulares pelo Windows",
+      highlights: ["Conexão de vários iPhones via USB", "Tela e controle em aparelhos compatíveis"],
+    },
     input: "iPhones compatíveis e cabos USB de dados.",
     output:
       "Lista de iPhones conectados e tela do aparelho selecionado, com mouse e teclado em versões compatíveis.",
@@ -44,6 +48,10 @@ const ALL_TOOLS = [
     category: "Ambientes",
     mode: "Caixa de entrada",
     summary: "Receba mensagens em um endereço de e-mail descartável.",
+    overview: {
+      title: "Receba mensagens em um e-mail temporário",
+      highlights: ["Caixa de entrada privada", "Expiração automática"],
+    },
     input: "Um endereço temporário gerado para seu navegador.",
     output: "Mensagens em uma caixa privada com atualização ao vivo e expiração.",
     steps: [
@@ -61,6 +69,10 @@ const ALL_TOOLS = [
     category: "Conteúdo",
     mode: "Aplicativo Windows",
     summary: "Revise e substitua links em publicações de um canal que você administra.",
+    overview: {
+      title: "Atualize links no seu canal do Telegram",
+      highlights: ["Prévia antes de aplicar", "Backup local"],
+    },
     input: "Sua conta Telegram, seu canal e o novo link de destino.",
     output: "Edição dos links com prévia, acompanhamento e backup local.",
     steps: [
@@ -79,6 +91,10 @@ const ALL_TOOLS = [
     category: "Conteúdo",
     mode: "Extensão para Chrome",
     summary: "Baixe fotos, vídeos e Reels do Instagram e do TikTok, direto no computador.",
+    overview: {
+      title: "Salve as mídias que você precisa",
+      highlights: ["Extensão para Chrome", "Arquivos salvos no computador"],
+    },
     input: "Um perfil ou publicação que você tem permissão para baixar.",
     output: "Arquivos salvos na pasta Downloads do Chrome, um por vez.",
     steps: [
@@ -96,6 +112,10 @@ const ALL_TOOLS = [
     category: "Conteúdo",
     mode: "Hospedagem pública",
     summary: "Gere links públicos de imagens e vídeos para usar em páginas, posts ou mensagens.",
+    overview: {
+      title: "Transforme seus arquivos em links",
+      highlights: ["Hospedagem de imagens e vídeos", "Links diretos, Markdown e HTML"],
+    },
     input: "Imagens ou vídeos nos formatos aceitos.",
     output: "URLs diretas, Markdown, HTML ou referências para prompts.",
     steps: [
@@ -113,6 +133,10 @@ const ALL_TOOLS = [
     category: "Conteúdo",
     mode: "Gerador de prompt",
     summary: "Reúna o nome, a descrição e as imagens do perfil em um prompt para criar sua página.",
+    overview: {
+      title: "Prepare sua página de perfil",
+      highlights: ["Foto, capa e descrição", "Prompt pronto para copiar"],
+    },
     input: "Fotos de perfil e capa, nome, usuário e descrição.",
     output: "Prompt completo e instruções complementares para sua IA programadora.",
     steps: [
@@ -131,6 +155,10 @@ const ALL_TOOLS = [
     category: "Preparação",
     mode: "No navegador",
     summary: "Limpe os metadados de fotos e vídeos no navegador, em um arquivo ou em lote.",
+    overview: {
+      title: "Remova os metadados dos seus arquivos",
+      highlights: ["Processamento local no navegador", "Exportação em ZIP para lotes"],
+    },
     input: "Fotos e vídeos compatíveis com seu navegador.",
     output: "Novos arquivos processados; a área de lote também exporta ZIP.",
     steps: [
@@ -150,6 +178,10 @@ const ALL_TOOLS = [
     mode: "No navegador",
     summary:
       "Aplique sua marca em fotos e vídeos e escolha a posição e a opacidade da sobreposição.",
+    overview: {
+      title: "Coloque sua marca nos criativos",
+      highlights: ["Sobreposição de texto ou imagem", "Processamento local no navegador"],
+    },
     input: "Criativos e, se desejar, uma imagem ou texto de marca.",
     output: "Imagens WEBP e vídeos WEBM com sua marca aplicada.",
     steps: [
@@ -167,6 +199,10 @@ const ALL_TOOLS = [
     category: "Preparação",
     mode: "No navegador",
     summary: "Crie prévias com desfoque ou pixelização na intensidade escolhida.",
+    overview: {
+      title: "Gere uma prévia antes de compartilhar",
+      highlights: ["Efeitos para fotos e vídeos", "Intensidade ajustável"],
+    },
     input: "Fotos ou vídeos, efeito e intensidade.",
     output: "Uma nova mídia com o efeito aplicado.",
     steps: [
@@ -186,6 +222,10 @@ const ALL_TOOLS = [
     category: "Automação",
     mode: "Instagram Reels",
     summary: "Separe os vídeos por conta, programe Reels e confira o resultado no histórico.",
+    overview: {
+      title: "Sua operação no Instagram",
+      highlights: ["Biblioteca de Reels", "Fila de publicações"],
+    },
     input: "Vídeos, legendas, horários e conta profissional do Instagram autorizada no workspace.",
     output: "Programações salvas de Reels e acompanhamento das confirmações no Histórico.",
     steps: [
@@ -205,6 +245,10 @@ const ALL_TOOLS = [
     mode: "Análise de perfis",
     summary:
       "Compare desempenho, potencial e conformidade de até 1.000 perfis em uma análise privada.",
+    overview: {
+      title: "Compare perfis antes de decidir",
+      highlights: ["Notas e justificativas", "Análise com as métricas disponíveis"],
+    },
     input: "Perfis do Instagram e métricas de fontes autorizadas.",
     output: "Perfis aprovados e não aprovados, com notas e justificativas disponíveis.",
     steps: [
@@ -223,6 +267,10 @@ const ALL_TOOLS = [
     category: "Planejamento",
     mode: "Workspace local",
     summary: "Desenhe o caminho de uma campanha e conecte as decisões em um quadro visual.",
+    overview: {
+      title: "Monte o caminho da sua campanha",
+      highlights: ["Quadro visual editável", "Exportação e compartilhamento"],
+    },
     input: "Etapas, textos, imagens e conexões do fluxo.",
     output: "Um board editável com opções de organização, exportação e compartilhamento.",
     steps: [
@@ -241,6 +289,10 @@ const ALL_TOOLS = [
     category: "Automação",
     mode: "Preparação de perfis",
     summary: "Prepare e organize novos perfis para o agendamento de conteúdo no Instagram.",
+    overview: {
+      title: "Organize a preparação dos seus perfis",
+      highlights: ["Fichas de perfil", "Agendas de Reels e Stories"],
+    },
     input: "Nome, @, foto, bio, link do produto e seleção dos primeiros Reels.",
     output: "Fichas em etapas com acesso às agendas de Reels e Stories.",
     steps: [

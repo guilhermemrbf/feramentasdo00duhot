@@ -1,9 +1,9 @@
-import { ArrowUpRight, CalendarClock, FolderOpen, Instagram } from "lucide-react";
+import { ArrowUpRight, Check } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, TOOL_ICONS } from "@/components/AppShell";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import { accessForRoute } from "@/lib/platform-access";
-import { CATEGORIES, TOOL_CATALOG } from "@/lib/tool-catalog";
+import { CATEGORIES, TOOL_CATALOG, type Tool } from "@/lib/tool-catalog";
 
 export const Route = createFileRoute("/painel")({
   head: () => ({ meta: [{ title: "Visão geral | MouseHot" }] }),
@@ -12,8 +12,11 @@ export const Route = createFileRoute("/painel")({
 
 function WorkspaceHome() {
   const { status } = usePlatformAccess();
-  const tools = TOOL_CATALOG.filter((tool) => status && accessForRoute(tool.path, status));
-  const hasPublishing = tools.some((tool) => tool.id === "social");
+  const tools = TOOL_CATALOG.filter((tool) => status && accessForRoute(tool.path, status)).sort(
+    (first, second) =>
+      Number(second.id === "social") - Number(first.id === "social") ||
+      CATEGORIES.indexOf(first.category) - CATEGORIES.indexOf(second.category),
+  );
   return (
     <AppShell>
       <main className="workspace-overview mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-9">
@@ -23,62 +26,48 @@ function WorkspaceHome() {
             <p>Prepare seus arquivos, planeje publicações e gerencie suas contas.</p>
           </div>
         </header>
-        {hasPublishing && (
-          <section className="workspace-feature" aria-labelledby="workspace-publishing">
-            <div>
-              <div className="workspace-feature-icon">
-                <Instagram size={26} aria-hidden />
-              </div>
-              <h2 id="workspace-publishing">Sua operação no Instagram</h2>
-              <p>Organize os Reels de cada perfil, agende publicações e acompanhe o histórico.</p>
-              <Link to="/automacao-instagram" className="tool-action">
-                Abrir Automatic Post <ArrowUpRight size={17} aria-hidden />
-              </Link>
-            </div>
-            <ul className="workspace-feature-flow">
-              <li>
-                <FolderOpen size={19} aria-hidden />
-                <span>Biblioteca de Reels</span>
-              </li>
-              <li>
-                <CalendarClock size={19} aria-hidden />
-                <span>Fila de publicações</span>
-              </li>
-            </ul>
-          </section>
-        )}
         <section className="workspace-directory" aria-labelledby="workspace-tools">
           <h2 id="workspace-tools">
             {status === "trial" ? "Ferramentas do seu teste" : "Todas as ferramentas"}
           </h2>
-          {CATEGORIES.map((category) => {
-            const group = tools.filter((tool) => tool.category === category);
-            if (!group.length) return null;
-            return (
-              <section className="workspace-directory-group" key={category} aria-label={category}>
-                <h3>{category}</h3>
-                <ul>
-                  {group.map((tool) => {
-                    const Icon = TOOL_ICONS[tool.id];
-                    return (
-                      <li key={tool.id}>
-                        <Link to={tool.path}>
-                          <Icon size={20} aria-hidden />
-                          <span>
-                            <strong>{tool.name}</strong>
-                            <small>{tool.summary}</small>
-                          </span>
-                          <ArrowUpRight className="directory-arrow" size={17} aria-hidden />
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            );
-          })}
+          <div className="workspace-directory-cards">
+            {tools.map((tool) => (
+              <ToolOverviewCard key={tool.id} tool={tool} />
+            ))}
+          </div>
         </section>
       </main>
     </AppShell>
+  );
+}
+
+function ToolOverviewCard({ tool }: { tool: Tool }) {
+  const Icon = TOOL_ICONS[tool.id];
+  const headingId = `workspace-tool-${tool.id}`;
+
+  return (
+    <article className="workspace-feature" aria-labelledby={headingId}>
+      <div>
+        <div className="workspace-feature-brand">
+          <span className="workspace-feature-icon">
+            <Icon size={25} aria-hidden />
+          </span>
+          <h3 id={headingId}>{tool.name}</h3>
+        </div>
+        <p className="workspace-feature-title">{tool.overview.title}</p>
+        <p className="workspace-feature-description">{tool.summary}</p>
+        <Link to={tool.path} className="tool-action" aria-label={`Abrir ${tool.name}`}>
+          Abrir <ArrowUpRight size={17} aria-hidden />
+        </Link>
+      </div>
+      <ul className="workspace-feature-flow">
+        {tool.overview.highlights.map((highlight) => (
+          <li key={highlight}>
+            <Check size={18} aria-hidden />
+            {highlight}
+          </li>
+        ))}
+      </ul>
+    </article>
   );
 }

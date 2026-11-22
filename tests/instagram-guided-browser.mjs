@@ -1322,6 +1322,13 @@ try {
   await page.getByRole("button", { name: "Iniciar meus 15 minutos" }).click();
   await page.getByRole("heading", { name: "Ferramentas do seu teste" }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/painel");
+  const overview = page.locator(".workspace-overview");
+  assert.deepEqual(
+    await overview
+      .getByRole("link", { name: /^Abrir / })
+      .evaluateAll((links) => links.map((link) => link.getAttribute("href")).sort()),
+    ["/gerar-preview", "/limpar-metadados", "/otimizar-criativos"],
+  );
   assert.equal(await page.getByRole("link", { name: "Automatic Post · Instagram" }).count(), 0);
   await page.getByRole("heading", { name: "Seu teste terminou" }).waitFor({ timeout: 10_000 });
 
@@ -1329,6 +1336,15 @@ try {
   platformExpiry = null;
   await page.goto(web + "/painel");
   await page.getByRole("heading", { name: "Visão geral", exact: true }).waitFor();
+  const publishingCard = overview.getByRole("article", { name: "Automatic Post · Instagram" });
+  assert.equal(await publishingCard.count(), 1);
+  await publishingCard.getByText("Sua operação no Instagram", { exact: true }).waitFor();
+  assert.equal(
+    await publishingCard
+      .getByRole("link", { name: "Abrir Automatic Post · Instagram" })
+      .getAttribute("href"),
+    "/automacao-instagram",
+  );
   assert.equal(await page.getByRole("button", { name: "Gerar link de 15 minutos" }).count(), 0);
   assert.equal(
     await page

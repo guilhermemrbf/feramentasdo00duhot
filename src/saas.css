@@ -1008,27 +1008,40 @@
   background: radial-gradient(ellipse at 0% 0%, #35212b, transparent 80%), #121216;
   align-items: center;
 }
+.workspace-feature-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.workspace-feature-brand h3 {
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
 .workspace-feature-icon {
   width: 44px;
   height: 44px;
   color: #fac5cb;
   display: grid;
+  flex-shrink: 0;
   place-items: center;
-  margin-bottom: 14px;
   border-radius: 9px;
   background: #ff879213;
   border: 1px solid #ff87923c;
 }
-.workspace-feature h2,
-.workspace-directory > h2 {
+.workspace-feature-title {
   font: 725 clamp(1.6rem, 3vw, 2.55rem)/1.1 var(--font-display);
   letter-spacing: -0.027em;
+  text-wrap: balance;
 }
-.workspace-feature p {
+.workspace-feature-description {
   color: var(--muted-foreground);
   margin: 8px 0 20px;
-  max-width: 45ch;
+  max-width: 54ch;
   line-height: 1.6;
+}
+.workspace-feature .tool-action {
+  min-width: 112px;
 }
 .workspace-feature-flow {
   margin: 0;
@@ -1045,56 +1058,17 @@
   border-bottom: 1px solid #493540;
 }
 .workspace-feature-flow svg,
-.workspace-directory svg,
 .admin-section h2 svg {
   color: var(--brand-red);
   flex-shrink: 0;
 }
-.workspace-directory {
-  margin-top: 38px;
+.workspace-directory > h2 {
+  font: 690 1.2rem/1.2 var(--font-display);
+  margin-bottom: 14px;
 }
-.workspace-directory-group {
+.workspace-directory-cards {
   display: grid;
-  grid-template-columns: minmax(110px, 0.26fr) minmax(0, 1fr);
-  gap: 18px;
-  border-top: 1px solid var(--border);
-  padding-block: 14px;
-  margin-top: 12px;
-}
-.workspace-directory-group h3 {
-  font: 690 1.13rem var(--font-display);
-  margin-top: 10px;
-}
-.workspace-directory-group ul {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
-  gap: 5px;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-.workspace-directory-group a {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  min-height: 56px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  transition:
-    background-color 160ms,
-    transform 160ms var(--ease-control);
-}
-.workspace-directory-group a strong,
-.workspace-directory-group a small {
-  display: block;
-}
-.workspace-directory-group a small {
-  color: var(--muted-foreground);
-  line-height: 1.5;
-  margin-top: 3px;
-}
-.workspace-directory-group .directory-arrow {
-  margin-left: auto;
+  gap: 16px;
 }
 .admin-columns {
   display: grid;
@@ -1187,10 +1161,6 @@
   .launch-nav-link:hover,
   .launch-footer nav a:hover {
     text-decoration: underline;
-  }
-  .workspace-directory-group a:hover {
-    background: var(--card);
-    transform: translateY(-2px);
   }
   .workspace-account button:hover {
     background: var(--secondary);
@@ -1394,8 +1364,7 @@
     margin-top: 14px;
   }
   .launch-catalog > div,
-  .launch-access,
-  .workspace-feature {
+  .launch-access {
     grid-template-columns: 1fr;
   }
   .launch-catalog > div,
@@ -1406,10 +1375,12 @@
     gap: 12px;
     margin-top: 18px;
   }
-  .workspace-directory-group {
-    grid-template-columns: 1fr;
-    gap: 4px;
-    padding-block: 7px;
+  .workspace-feature {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .workspace-feature .tool-action {
+    width: 100%;
   }
 }
 @media (max-width: 365px) {
@@ -1429,10 +1400,10 @@
   .launch-board-replay {
     display: none;
   }
-  :is(.saas-button, .tool-action, .workspace-directory a) {
+  :is(.saas-button, .tool-action) {
     transition-duration: 0s;
   }
-  :is(.saas-button, .tool-action, .workspace-directory a):is(:hover, :active) {
+  :is(.saas-button, .tool-action):is(:hover, :active) {
     transform: none;
   }
 }
