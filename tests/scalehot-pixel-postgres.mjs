@@ -57,8 +57,17 @@ try {
     $$;
     grant usage on schema auth to authenticated;
   `);
-  for (const migration of ["20261122213000_scalehot_sales","20261123140000_scalehot_pixel"]) {
-    await db.exec(await readFile(new URL("../supabase/migrations/" + migration + ".sql", import.meta.url), "utf8"));
+  for (const migration of [
+    "20261122213000_scalehot_sales",
+    "20261123140000_scalehot_pixel",
+    "20261123183000_sales_dashboard_disputes",
+  ]) {
+    await db.exec(
+      await readFile(
+        new URL("../supabase/migrations/" + migration + ".sql", import.meta.url),
+        "utf8",
+      ),
+    );
   }
   await db.query(
     "insert into scalehot_meta_pixels(id,user_id,label,dataset_id,checkout_origin,checkout_key_hash,meta_token,syncpay_secret) values ($1,$2,'Loja','123','https://loja.example',$3,'sealed-meta','sealed-sync')",
@@ -89,6 +98,19 @@ try {
   assert.equal(job.fbc, "fb.1.1795445000000.fixture");
   assert.equal((await db.query("select * from scalehot_meta_claim()")).rows.length, 0);
   await db.query("select scalehot_meta_finish($1,$2,'sent')", [job.id, job.lease]);
+  assert.equal(await pay(oldOrder, "dispute"), "recorded");
+  assert.equal(await pay(oldOrder, "dispute"), "duplicate");
+  await db.exec("reset role");
+  await db.query("select set_config('test.user_id',$1,false)", [owner]);
+  await db.exec("set role authenticated");
+  const open = await call("select sales_overview(30,null,'all') as result");
+  assert.equal(open.refund_or_dispute_count, 1);
+  assert.equal(open.reversed_cents, 0);
+  assert.equal(
+    open.series.reduce((sum, row) => sum + row.cents, 0),
+    2990,
+  );
+  await db.exec("reset role; set role service_role");
   assert.equal(await pay(oldOrder, "refund"), "recorded");
   assert.equal(await pay(oldOrder, "cashin"), "recorded");
   assert.equal(await bind(oldOrder, click), "bound");
@@ -104,9 +126,21 @@ try {
     campaigns: [{ campaign_id: "123", ad_id: "789", sales: 1, gross: 29.9 }],
   });
   assert.equal((await report(other)).attributed, 0);
+  await db.query("select set_config('test.user_id',$1,false)", [owner]);
+  await db.exec("set role authenticated");
+  const settled = await call("select sales_overview(30,null,'all') as result");
+  assert.equal(settled.refund_or_dispute_count, 1);
+  assert.equal(settled.reversed_cents, 2990);
+  assert.equal(settled.gross_cents, 5980);
+  assert.equal(
+    settled.series.reduce((sum, row) => sum + row.cents, 0),
+    2990,
+  );
+  assert.equal(settled.recent.filter(({ kind }) => kind === "disputed").length, 1);
+  await db.exec("reset role");
   assert.equal(
     (await db.query("select count(*)::int as count from sales_events")).rows[0].count,
-    3,
+    4,
   );
   console.log(
     "ScaleHot SQL: deduplication, delayed binding, refund before approval, queue and tenant isolation passed",

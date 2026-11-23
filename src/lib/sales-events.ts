@@ -22,7 +22,7 @@ export const SALES_PERIODS = [
   { key: "all", label: "Total" },
 ] as const;
 export type SalesPeriod = (typeof SALES_PERIODS)[number]["key"];
-export type SaleKind = "approved" | "reversed";
+export type SaleKind = "approved" | "reversed" | "disputed";
 export type SaleEvent = {
   externalId: string;
   kind: SaleKind;
@@ -101,7 +101,7 @@ const adapters: Record<SalesProvider, (body: Fields) => ProviderEvent | null> = 
       if (event !== "TRANSACTION.UPDATED") return null;
       const transaction = fields(body.transaction);
       const state = status(transaction.status);
-      if (state !== "COMPLETED" && state !== "REFUNDED" && state !== "CHARGEBACK") return null;
+      if (!["COMPLETED", "REFUNDED", "CHARGEBACK", "MED"].includes(state)) return null;
       if (
         typeof transaction.origin !== "string" ||
         !syncpaySaleOrigins.has(transaction.origin) ||
@@ -116,8 +116,9 @@ const adapters: Record<SalesProvider, (body: Fields) => ProviderEvent | null> = 
           : null;
       const paid = state === "COMPLETED";
       const date =
-        timestamp(paid ? transaction.paid_at : transaction.refunded_at) ??
-        timestamp(body.occurred_at);
+        timestamp(
+          paid ? transaction.paid_at : state === "REFUNDED" ? transaction.refunded_at : null,
+        ) ?? timestamp(body.occurred_at);
       if (!date) return null;
       return {
         id,
@@ -239,7 +240,7 @@ const eventStates: Record<SalesProvider, [approved: string[], reversed: string[]
   omegapay: [["TRANSACTION_PAID"], ["TRANSACTION_REFUNDED", "TRANSACTION_CHARGED_BACK"]],
   syncpay: [
     ["PAID", "PAID_OUT", "COMPLETED"],
-    ["MED", "REFUNDED", "REFUND", "CHARGEBACK"],
+    ["REFUNDED", "REFUND", "CHARGEBACK"],
   ],
   wiinpay: [["PAYMENT.APPROVED"], ["PAYMENT.REFUNDED", "PAYMENT.CHARGEBACK"]],
   hotmart: [["PURCHASE_APPROVED"], ["PURCHASE_REFUNDED", "PURCHASE_CHARGEBACK"]],
@@ -258,11 +259,14 @@ export function parseSaleEvent(
   const data = adapters[provider](fields(payload));
   if (!data) return { result: "ignored" };
   const [approved, reversed] = eventStates[provider];
-  const kind = approved.includes(data.status)
-    ? "approved"
-    : reversed.includes(data.status)
-      ? "reversed"
-      : null;
+  const kind =
+    provider === "syncpay" && data.status === "MED"
+      ? "disputed"
+      : approved.includes(data.status)
+        ? "approved"
+        : reversed.includes(data.status)
+          ? "reversed"
+          : null;
   if (!kind) return { result: "ignored" };
   const currency = status(data.currency);
   if (currency && currency !== "BRL") return { result: "ignored" };
@@ -283,7 +287,10 @@ export function parseSaleEvent(
       kind,
       amountCents,
       netCents:
-        provider === "omegapay" && netCents !== null && netCents > amountCents ? null : netCents,
+        kind === "disputed" ||
+        (provider === "omegapay" && netCents !== null && netCents > amountCents)
+          ? null
+          : netCents,
       occurredAt: timestamp(data.date),
     },
   };

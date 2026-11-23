@@ -137,6 +137,17 @@ test("SyncPay records completed API Pix from transaction.updated and uses the re
     "2026-11-24T01:02:03.000Z",
   );
   assert.equal(parse({ status: "refunded" }).event.kind, "reversed");
+  assert.equal(parse({ status: "chargeback" }).event.kind, "reversed");
+  assert.deepEqual(parse({ status: "med", refunded_at: "2026-11-24T01:02:03Z" }), {
+    result: "event",
+    event: {
+      externalId: reference,
+      kind: "disputed",
+      amountCents: 200,
+      netCents: null,
+      occurredAt: "2026-11-23T21:04:26.000Z",
+    },
+  });
 });
 
 test("ignores pending, foreign currency and cash-out, rejects missing identifiers", () => {

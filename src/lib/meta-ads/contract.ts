@@ -92,7 +92,10 @@ export function parseSyncpayTransaction(input: unknown, now = Date.now()) {
   const amount = transaction.amount;
   const net = transaction.net_amount;
   if (
-    (status !== "completed" && status !== "refunded") ||
+    (status !== "completed" &&
+      status !== "refunded" &&
+      status !== "chargeback" &&
+      status !== "med") ||
     transaction.origin !== "checkout" ||
     transaction.currency !== "BRL" ||
     typeof reference !== "string" ||
@@ -104,18 +107,33 @@ export function parseSyncpayTransaction(input: unknown, now = Date.now()) {
     typeof body.occurred_at !== "string"
   )
     return null;
-  const paid =
-    status === "completed" && typeof transaction.paid_at === "string"
+  const effectiveAt =
+    status === "completed"
       ? transaction.paid_at
-      : body.occurred_at;
-  const millis = Date.parse(paid);
-  if (!Number.isFinite(millis) || millis > now + 300_000 || !/(Z|[+-]\d\d:\d\d)$/i.test(paid))
+      : status === "refunded"
+        ? transaction.refunded_at
+        : null;
+  const occurredAt = typeof effectiveAt === "string" ? effectiveAt : body.occurred_at;
+  const millis = Date.parse(occurredAt);
+  if (!Number.isFinite(millis) || millis > now + 300_000 || !/(Z|[+-]\d\d:\d\d)$/i.test(occurredAt))
     return null;
   return {
     reference: reference.toLowerCase(),
-    type: status === "completed" ? ("cashin" as const) : ("refund" as const),
+    type:
+      status === "completed"
+        ? ("cashin" as const)
+        : status === "med"
+          ? ("dispute" as const)
+          : ("refund" as const),
     amount,
-    net: typeof net === "number" && Number.isFinite(net) && net >= 0 && net <= amount ? net : null,
+    net:
+      status !== "med" &&
+      typeof net === "number" &&
+      Number.isFinite(net) &&
+      net >= 0 &&
+      net <= amount
+        ? net
+        : null,
     occurredAt: new Date(Math.min(millis, now)).toISOString(),
   };
 }

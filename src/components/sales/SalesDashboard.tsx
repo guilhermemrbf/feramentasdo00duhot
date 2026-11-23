@@ -8,6 +8,7 @@ import {
   Megaphone,
   Percent,
   RotateCcw,
+  ShieldAlert,
   Trophy,
   Wallet,
 } from "lucide-react";
@@ -167,40 +168,21 @@ export function SalesDashboard({
 }
 
 function salesMetricCards(data?: SalesOverview): DashboardMetric[] {
-  const received = Boolean(
-    data?.approved || data?.reversed || data?.links.some(({ last_event_at }) => last_event_at),
-  );
-  const amounts = data && received ? salesDashboardAmounts(data) : null;
-  const net = amounts?.net ?? null;
+  const amounts = data ? salesDashboardAmounts(data) : null;
   const deductions = amounts?.deductions ?? null;
   const beforeCosts = amounts?.beforeCosts ?? null;
-  const waiting = data?.links.some(({ active }) => active)
-    ? "Aguardando eventos do gateway"
-    : "Sem dados de vendas";
-  const missingNet = data?.approved ? "Líquido incompleto no webhook" : waiting;
   return [
     {
-      label: "Faturamento Líquido",
-      value: net !== null ? salesMoney(net) : "—",
-      hint:
-        data && received
-          ? `Bruto: ${salesMoney(data.gross_cents)}${net === null ? " · líquido incompleto" : ""}`
-          : waiting,
-      title: "Soma do líquido informado para as vendas aprovadas no período, antes dos estornos.",
+      label: "Faturamento",
+      value: data ? salesMoney(data.gross_cents) : "—",
+      hint: "",
       icon: Wallet,
       iconColor: "text-sky-300",
     },
     {
-      label: "Lucro antes de custos",
+      label: "Lucro",
       value: beforeCosts === null ? "—" : salesMoney(beforeCosts),
-      hint:
-        beforeCosts === null
-          ? missingNet
-          : data?.reversed
-            ? "Líquido menos estornos brutos"
-            : "Antes de anúncios, impostos e outras despesas",
-      title:
-        "Resultado operacional estimado. Subtrai do líquido o valor bruto dos estornos no período.",
+      hint: "",
       icon: Trophy,
       iconColor: "text-success",
       valueColor:
@@ -209,21 +191,15 @@ function salesMetricCards(data?: SalesOverview): DashboardMetric[] {
     {
       label: "Taxas e descontos",
       value: deductions === null ? "—" : salesMoney(deductions),
-      hint:
-        deductions !== null
-          ? "Diferença entre bruto e líquido"
-          : net === null
-            ? missingNet
-            : "Bruto e líquido inconsistentes",
-      title:
-        "Diferença entre o valor bruto e o repasse do gateway. Pode incluir taxas, comissões e outros descontos.",
+      hint: "",
       icon: Percent,
       iconColor: "text-amber-300",
     },
     {
       label: "Vendas Reembolsadas",
-      value: received && data ? String(data.reversed) : "—",
-      hint: received ? "Total no período" : waiting,
+      value: data ? String(data.refund_or_dispute_count ?? data.reversed) : "—",
+      hint: "",
+      title: "Vendas com estorno, chargeback ou MED no período. Cada venda conta uma vez.",
       icon: RotateCcw,
       iconColor: "text-rose-300",
     },
@@ -231,10 +207,10 @@ function salesMetricCards(data?: SalesOverview): DashboardMetric[] {
 }
 
 function DashboardCards({ data }: { data?: SalesOverview }) {
-  const [net, profit, fees, refunds] = salesMetricCards(data);
+  const [revenue, profit, fees, refunds] = salesMetricCards(data);
   const unavailable = "Sem dados na MouseHot";
   const cards: DashboardMetric[] = [
-    net,
+    revenue,
     profit,
     { label: "ROI", value: "—", hint: unavailable, icon: Activity, iconColor: "text-emerald-400" },
     {
@@ -259,13 +235,16 @@ function DashboardCards({ data }: { data?: SalesOverview }) {
       aria-label="Indicadores de vendas"
       className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
     >
-      {cards.map(({ label, value, hint, icon: Icon, iconColor, valueColor }) => (
+      {cards.map(({ label, value, hint, title, icon: Icon, iconColor, valueColor }) => (
         <div
           key={label}
           className="sales-panel flex min-h-29 items-start justify-between gap-3 p-5"
         >
           <div className="min-w-0 space-y-1">
-            <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            <p
+              title={title}
+              className="text-xs font-medium tracking-wider text-muted-foreground uppercase"
+            >
               {label}
             </p>
             <p
@@ -512,7 +491,7 @@ function LiveSales({
         {embedded ? "Últimas transações" : "Últimas Transmissões"}
       </h2>
       <p className="mt-1 mb-4 text-xs text-muted-foreground">
-        Vendas e reembolsos recebidos no período.
+        Vendas, estornos e contestações recebidos no período.
       </p>
       {!events ? (
         <p className="py-6 text-sm text-muted-foreground" role="status">
@@ -527,8 +506,31 @@ function LiveSales({
       ) : (
         <ul className="space-y-2">
           {events.map((event) => {
-            const approved = event.kind === "approved";
-            const Icon = approved ? CircleCheck : RotateCcw;
+            const {
+              icon: Icon,
+              label,
+              color,
+              prefix,
+            } = {
+              approved: {
+                icon: CircleCheck,
+                label: "Venda aprovada",
+                color: "text-success",
+                prefix: "",
+              },
+              reversed: {
+                icon: RotateCcw,
+                label: "Estorno",
+                color: "text-destructive",
+                prefix: "− ",
+              },
+              disputed: {
+                icon: ShieldAlert,
+                label: "MED em contestação",
+                color: "text-amber-300",
+                prefix: "",
+              },
+            }[event.kind];
             return (
               <li
                 key={event.id}
@@ -538,20 +540,15 @@ function LiveSales({
                   <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
-                      {SALES_PROVIDERS[event.provider]} · {approved ? "Venda aprovada" : "Estorno"}
+                      {SALES_PROVIDERS[event.provider]} · {label}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {event.external_id} · {date.format(new Date(event.occurred_at))}
                     </p>
                   </div>
                 </div>
-                <p
-                  className={cn(
-                    "shrink-0 text-sm font-bold tabular-nums",
-                    approved ? "text-success" : "text-destructive",
-                  )}
-                >
-                  {approved ? "" : "− "}
+                <p className={cn("shrink-0 text-sm font-bold tabular-nums", color)}>
+                  {prefix}
                   {salesMoney(event.amount_cents)}
                 </p>
               </li>

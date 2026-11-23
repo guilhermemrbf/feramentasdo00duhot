@@ -5,6 +5,7 @@ import {
   SALES_CONNECTION_PROVIDERS,
   SALES_PERIODS,
   SALES_PROVIDERS,
+  type SaleKind,
   type SalesPeriod,
   type SalesProvider,
 } from "@/lib/sales-events";
@@ -25,6 +26,7 @@ export type SalesOverview = {
   reported_net_cents: number | null;
   reversed_cents: number;
   reversed: number;
+  refund_or_dispute_count: number;
   with_net: number;
   devices: number;
   series: { day: string; cents: number }[];
@@ -35,7 +37,7 @@ export type SalesOverview = {
     id: string;
     provider: SalesProvider;
     external_id: string;
-    kind: "approved" | "reversed";
+    kind: SaleKind;
     amount_cents: number;
     occurred_at: string;
   }[];

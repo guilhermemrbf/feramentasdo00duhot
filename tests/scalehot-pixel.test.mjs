@@ -79,6 +79,11 @@ test("extracts a confirmed BRL payment, skips pending and treats refunds separat
     ).type,
     "refund",
   );
+  assert.equal(
+    parseSyncpayTransaction({ ...event, transaction: { ...event.transaction, status: "med" } }, now)
+      .type,
+    "dispute",
+  );
 });
 
 test("accepts consented Meta campaign metadata on the configured origin", () => {
