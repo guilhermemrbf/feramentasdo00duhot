@@ -105,13 +105,14 @@ export function SalesDashboard({
           </button>
         </div>
       )}
+      {embedded && <WeeklySales />}
       {data && (
         <>
           {!embedded && <DashboardCards data={data} />}
           <SalesCharts data={data} period={period} embedded={embedded} />
         </>
       )}
-      {data && <LiveSales events={data.recent} embedded={embedded} />}
+      <LiveSales events={data?.recent} embedded={embedded} failed={query.isError} />
       {children}
       {data && <SalesGoal current={data.month_gross_cents} target={data.goal_cents} />}
       <section
@@ -411,7 +412,57 @@ function ChartEmpty() {
   );
 }
 
-function LiveSales({ events, embedded }: { events: SalesOverview["recent"]; embedded: boolean }) {
+function WeeklySales() {
+  const query = useSalesOverview(7, null);
+  const week = query.data;
+  return (
+    <section className="sales-panel mt-4 p-5" aria-labelledby="weekly-sales-title">
+      <h2 id="weekly-sales-title" className="font-display text-lg font-bold">
+        Resumo da semana
+      </h2>
+      <p className="mt-1 text-sm text-muted-foreground">�ltimos 7 dias, incluindo hoje.</p>
+      {week ? (
+        <dl className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+          {[
+            ["Vendas aprovadas", week.approved],
+            ["Faturamento bruto", salesMoney(week.gross_cents)],
+            ["Valor estornado", salesMoney(week.reversed_cents)],
+            ["Bruto ap�s estornos", salesMoney(week.gross_cents - week.reversed_cents)],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-sm text-muted-foreground">{label}</dt>
+              <dd className="mt-1 text-lg font-bold tabular-nums">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : query.isError ? (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <span>Dados da semana indispon�veis.</span>
+          <button
+            className="sales-button sales-button-outline"
+            onClick={() => void query.refetch()}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      ) : (
+        <p role="status" className="mt-4">
+          Carregando a semana�
+        </p>
+      )}
+    </section>
+  );
+}
+
+function LiveSales({
+  events,
+  embedded,
+  failed,
+}: {
+  events?: SalesOverview["recent"];
+  embedded: boolean;
+  failed: boolean;
+}) {
   return (
     <section className={cn("sales-panel p-5", embedded ? "mt-4" : "mt-8")}>
       <h2 className="flex items-center gap-2 font-display text-xl font-bold">
@@ -421,7 +472,13 @@ function LiveSales({ events, embedded }: { events: SalesOverview["recent"]; embe
       <p className="mt-1 mb-4 text-xs text-muted-foreground">
         Vendas e reembolsos recebidos no período.
       </p>
-      {events.length === 0 ? (
+      {!events ? (
+        <p className="py-6 text-sm text-muted-foreground" role="status">
+          {failed
+            ? "Hist�rico indispon�vel. Tente carregar as vendas novamente."
+            : "Carregando �ltimas vendas� "}
+        </p>
+      ) : events.length === 0 ? (
         <p className="grid min-h-28 place-items-center text-sm text-muted-foreground">
           Nenhuma transação recebida neste período.
         </p>
