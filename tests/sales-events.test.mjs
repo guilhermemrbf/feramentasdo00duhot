@@ -150,6 +150,37 @@ test("SyncPay records completed API Pix from transaction.updated and uses the re
   });
 });
 
+test("custom credentials normalize checkout orders and skip test traffic", () => {
+  const order = {
+    orderId: "loja-42",
+    status: "paid",
+    approvedDate: "2026-11-23 18:00:00",
+    refundedAt: "2026-11-23 21:00:00",
+    commission: { totalPriceInCents: 400, userCommissionInCents: 350, currency: "BRL" },
+  };
+  assert.deepEqual(parseSaleEvent("custom", order), {
+    result: "event",
+    event: {
+      externalId: "loja-42",
+      kind: "approved",
+      amountCents: 400,
+      netCents: 350,
+      occurredAt: "2026-11-23T18:00:00.000Z",
+    },
+  });
+  const refund = parseSaleEvent("custom", { ...order, status: "chargedback" });
+  assert.equal(refund.event.externalId, "loja-42");
+  assert.equal(refund.event.kind, "reversed");
+  assert.equal(refund.event.occurredAt, "2026-11-23T21:00:00.000Z");
+  assert.equal(parseSaleEvent("custom", { ...order, isTest: true }).result, "ignored");
+  assert.equal(parseSaleEvent("custom", { ...order, status: "waiting_payment" }).result, "ignored");
+  assert.equal(
+    parseSaleEvent("custom", { ...order, commission: { ...order.commission, currency: "USD" } })
+      .result,
+    "ignored",
+  );
+});
+
 test("ignores pending, foreign currency and cash-out, rejects missing identifiers", () => {
   assert.equal(
     parseSaleEvent("syncpay", { status: "COMPLETED", type: "cash_out", id: "payout", amount: 90 })

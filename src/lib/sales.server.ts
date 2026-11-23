@@ -118,6 +118,13 @@ export async function limitedJson(request: Request, maxBytes = 128 * 1024) {
   }
 }
 
+export function salesWebhookToken(headers: Headers) {
+  const bearer = headers.get("authorization");
+  return bearer === null
+    ? (headers.get("x-api-token") ?? "")
+    : (/^Bearer ([A-Za-z0-9_-]{43})$/i.exec(bearer)?.[1] ?? "");
+}
+
 export async function receiveSalesWebhook(request: Request, key: string) {
   if (!/^[A-Za-z0-9_-]{43}$/.test(key))
     return Response.json({ error: "Invalid connection" }, { status: 401 });

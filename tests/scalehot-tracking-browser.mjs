@@ -72,10 +72,19 @@ const api = createServer(async (request, response) => {
     case "sales_webhook_links": {
       if (request.method === "POST") {
         assert.equal(input.user_id, user.id);
+        assert.equal(input.provider, "custom");
         webhook = { ...input, id: "00000000-0000-4000-8000-000000000004", active: true };
+      } else if (request.method === "PATCH") {
+        assert.equal(input.active, false);
+        webhook.active = false;
+        body = { id: webhook.id };
       } else {
         const key = new URL(request.url, "http://localhost").searchParams.get("secret_hash");
-        body = key ? (key === "eq." + webhook?.secret_hash ? [webhook] : []) : [{ id: gateway }];
+        body = key
+          ? key === "eq." + webhook?.secret_hash && webhook?.active
+            ? [webhook]
+            : []
+          : [{ id: gateway }];
       }
       break;
     }
@@ -391,8 +400,8 @@ try {
   await page.getByRole("heading", { name: "Credenciais de API" }).waitFor({ timeout: 90000 });
   await page.getByRole("button", { name: "Adicionar credencial" }).click();
   await page.getByLabel("Nome da credencial").fill("Minha loja");
-  await page.getByRole("combobox", { name: "Gateway", exact: true }).selectOption("syncpay");
-  await page.getByRole("button", { name: "Gerar token" }).click();
+  assert.equal(await page.getByRole("dialog").getByRole("combobox").count(), 0);
+  await page.getByRole("button", { name: "Criar credencial", exact: true }).click();
   const tokenInput = page.getByRole("textbox", { name: "Token de API" });
   await tokenInput.waitFor();
   const apiToken = await tokenInput.inputValue();
@@ -403,17 +412,27 @@ try {
     .inputValue();
   assert.equal(hookEndpoint, web + "/api/vendas/webhook");
   assert.equal(webhook.secret_hash, hash(apiToken));
-  const sendHook = (value) =>
+  const sendHook = (value, method = "token") =>
     fetch(hookEndpoint, {
       method: "POST",
-      headers: { authorization: "Bearer " + value, "content-type": "application/json" },
+      headers: {
+        ...(method === "token" ? { "x-api-token": value } : { authorization: "Bearer " + value }),
+        "content-type": "application/json",
+      },
       body: JSON.stringify({
-        data: { idtransaction: "pedido-estorno", status: "REFUNDED", amount: 4 },
+        transaction_id: "pedido-estorno",
+        status: "refunded",
+        currency: "BRL",
+        amount_cents: 400,
       }),
     });
   assert.equal((await sendHook("x".repeat(43))).status, 401);
   assert.equal((await sendHook(apiToken)).status, 201);
+  assert.equal((await sendHook(apiToken, "bearer")).status, 201);
   await page.getByRole("button", { name: "Concluir" }).click();
+  await page.getByRole("button", { name: "Desativar credencial Minha loja" }).click();
+  await page.getByText("Desativada", { exact: true }).waitFor();
+  assert.equal((await sendHook(apiToken)).status, 401);
   await page.getByRole("link", { name: "Pixels", exact: true }).click();
   await page.getByRole("button", { name: "Adicionar pixel" }).click();
   await page.getByRole("button", { name: "Meta Ads", exact: true }).click();

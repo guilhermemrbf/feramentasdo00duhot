@@ -76,7 +76,7 @@ export const createSalesWebhook = createServerFn({ method: "POST" })
   .middleware([requirePlatformAccess])
   .validator(
     z.object({
-      provider: z.enum(SALES_CONNECTION_PROVIDERS),
+      provider: z.enum([...SALES_CONNECTION_PROVIDERS, "custom"]).default("custom"),
       label: z.string().trim().min(1).max(80),
     }),
   )

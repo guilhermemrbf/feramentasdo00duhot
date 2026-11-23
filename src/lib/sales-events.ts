@@ -78,7 +78,29 @@ function timestamp(value: unknown) {
   if (typeof value !== "number" && typeof value !== "string") return null;
   if (typeof value === "string" && !/(?:Z|[+-]\d\d:\d\d)$/i.test(value)) return null;
   const ms = typeof value === "number" ? value : Date.parse(value);
-  return Number.isFinite(ms) && ms >= Date.UTC(2000, 0, 1) ? new Date(ms).toISOString() : null;
+  return Number.isFinite(ms) && ms >= Date.UTC(2000, 0, 1) && ms <= 8_640_000_000_000_000
+    ? new Date(ms).toISOString()
+    : null;
+}
+
+function checkoutOrder(body: Fields): ProviderEvent {
+  const commission = fields(body.commission);
+  const state = status(body.status);
+  const date = state === "PAID" ? body.approvedDate : body.refundedAt;
+  // The checkout order format represents dates without an offset in UTC.
+  const utcDate =
+    typeof date === "string" && /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(date)
+      ? date.replace(" ", "T") + "Z"
+      : date;
+  return {
+    id: body.orderId,
+    status: state === "PAID" ? "APPROVED" : state === "CHARGEDBACK" ? "CHARGEBACK" : state,
+    amount: commission.totalPriceInCents,
+    net: commission.userCommissionInCents,
+    currency: commission.currency,
+    units: "cents",
+    date: utcDate,
+  };
 }
 
 const adapters: Record<SalesProvider, (body: Fields) => ProviderEvent | null> = {
@@ -224,6 +246,8 @@ const adapters: Record<SalesProvider, (body: Fields) => ProviderEvent | null> = 
     };
   },
   custom(body) {
+    if (body.isTest === true) return null;
+    if ("orderId" in body && "commission" in body) return checkoutOrder(body);
     return {
       id: body.transaction_id,
       status: status(body.status),
@@ -260,7 +284,7 @@ export function parseSaleEvent(
   if (!data) return { result: "ignored" };
   const [approved, reversed] = eventStates[provider];
   const kind =
-    provider === "syncpay" && data.status === "MED"
+    (provider === "syncpay" || provider === "custom") && data.status === "MED"
       ? "disputed"
       : approved.includes(data.status)
         ? "approved"
@@ -288,7 +312,9 @@ export function parseSaleEvent(
       amountCents,
       netCents:
         kind === "disputed" ||
-        (provider === "omegapay" && netCents !== null && netCents > amountCents)
+        ((provider === "omegapay" || provider === "custom") &&
+          netCents !== null &&
+          netCents > amountCents)
           ? null
           : netCents,
       occurredAt: timestamp(data.date),
