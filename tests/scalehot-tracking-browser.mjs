@@ -264,6 +264,8 @@ try {
     headless: true,
   });
   page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  page.on("pageerror", error => {output += "\n" + error.message;});
+  page.on("requestfailed", request => {output += "\n" + new URL(request.url()).pathname + " " + request.failure()?.errorText;});
   page.on("response", (response) => {
     if (response.url().startsWith(apiUrl) || response.url().includes("/_serverFn/")) {
       requests.push([new URL(response.url()).pathname, response.status()]);
@@ -284,6 +286,13 @@ try {
     },
     { token, user, now },
   );
+  await page.goto(web + "/vendas/integracoes");
+  await page.getByRole("heading", { name: "Cadastrar Pixel" }).waitFor({timeout: 90000});
+  if (process.env.SCALEHOT_PIXEL_PREVIEW) {
+    await page.locator("#pixels").screenshot({ path: process.env.SCALEHOT_PIXEL_PREVIEW });
+  }
+  await page.getByLabel("ID do Pixel ou dataset").fill("123456");
+  await page.getByLabel("Token da API de Conversões").waitFor();
   await page.goto(web + "/vendas/rastreamento");
   await page.getByRole("link", { name: "Integrações", exact: true }).click();
   assert.equal(

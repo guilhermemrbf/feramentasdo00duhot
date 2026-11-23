@@ -37,8 +37,11 @@ import { Route as VendasNotificacoesRouteImport } from './routes/vendas.notifica
 import { Route as VendasRastreamentoRouteImport } from './routes/vendas.rastreamento'
 import { Route as ApiInstagramDriveCleanupRouteImport } from './routes/api.instagram.drive-cleanup'
 import { Route as ApiInstagramWorkerRouteImport } from './routes/api.instagram.worker'
+import { Route as ApiPublicMetaProcessRouteImport } from './routes/api.public.meta-process'
 import { Route as ApiVendasProcessarRouteImport } from './routes/api.vendas.processar'
 import { Route as ApiInstagramOauthCallbackRouteImport } from './routes/api.instagram.oauth.callback'
+import { Route as ApiPublicMetaCheckoutPixelRouteImport } from './routes/api.public.meta-checkout.$pixel'
+import { Route as ApiPublicMetaSyncpayPixelRouteImport } from './routes/api.public.meta-syncpay.$pixel'
 import { Route as ApiVendasTrackingSourceRouteImport } from './routes/api.vendas.tracking.$source'
 import { Route as ApiVendasWebhookConnectionRouteImport } from './routes/api.vendas.webhook.$connection'
 import { Route as ApiVendasAdsMetaCallbackRouteImport } from './routes/api.vendas.ads.meta.callback'
@@ -184,6 +187,11 @@ const ApiInstagramWorkerRoute = ApiInstagramWorkerRouteImport.update({
   path: '/api/instagram/worker',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMetaProcessRoute = ApiPublicMetaProcessRouteImport.update({
+  id: '/api/public/meta-process',
+  path: '/api/public/meta-process',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiVendasProcessarRoute = ApiVendasProcessarRouteImport.update({
   id: '/api/vendas/processar',
   path: '/api/vendas/processar',
@@ -193,6 +201,18 @@ const ApiInstagramOauthCallbackRoute =
   ApiInstagramOauthCallbackRouteImport.update({
     id: '/api/instagram/oauth/callback',
     path: '/api/instagram/oauth/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicMetaCheckoutPixelRoute =
+  ApiPublicMetaCheckoutPixelRouteImport.update({
+    id: '/api/public/meta-checkout/$pixel',
+    path: '/api/public/meta-checkout/$pixel',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicMetaSyncpayPixelRoute =
+  ApiPublicMetaSyncpayPixelRouteImport.update({
+    id: '/api/public/meta-syncpay/$pixel',
+    path: '/api/public/meta-syncpay/$pixel',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiVendasTrackingSourceRoute = ApiVendasTrackingSourceRouteImport.update({
@@ -242,8 +262,11 @@ export interface FileRoutesByFullPath {
   '/vendas/': typeof VendasIndexRoute
   '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
+  '/api/public/meta-process': typeof ApiPublicMetaProcessRoute
   '/api/vendas/processar': typeof ApiVendasProcessarRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
+  '/api/public/meta-checkout/$pixel': typeof ApiPublicMetaCheckoutPixelRoute
+  '/api/public/meta-syncpay/$pixel': typeof ApiPublicMetaSyncpayPixelRoute
   '/api/vendas/tracking/$source': typeof ApiVendasTrackingSourceRoute
   '/api/vendas/webhook/$connection': typeof ApiVendasWebhookConnectionRoute
   '/api/vendas/ads/meta/callback': typeof ApiVendasAdsMetaCallbackRoute
@@ -276,8 +299,11 @@ export interface FileRoutesByTo {
   '/vendas': typeof VendasIndexRoute
   '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
+  '/api/public/meta-process': typeof ApiPublicMetaProcessRoute
   '/api/vendas/processar': typeof ApiVendasProcessarRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
+  '/api/public/meta-checkout/$pixel': typeof ApiPublicMetaCheckoutPixelRoute
+  '/api/public/meta-syncpay/$pixel': typeof ApiPublicMetaSyncpayPixelRoute
   '/api/vendas/tracking/$source': typeof ApiVendasTrackingSourceRoute
   '/api/vendas/webhook/$connection': typeof ApiVendasWebhookConnectionRoute
   '/api/vendas/ads/meta/callback': typeof ApiVendasAdsMetaCallbackRoute
@@ -312,8 +338,11 @@ export interface FileRoutesById {
   '/vendas/': typeof VendasIndexRoute
   '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
+  '/api/public/meta-process': typeof ApiPublicMetaProcessRoute
   '/api/vendas/processar': typeof ApiVendasProcessarRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
+  '/api/public/meta-checkout/$pixel': typeof ApiPublicMetaCheckoutPixelRoute
+  '/api/public/meta-syncpay/$pixel': typeof ApiPublicMetaSyncpayPixelRoute
   '/api/vendas/tracking/$source': typeof ApiVendasTrackingSourceRoute
   '/api/vendas/webhook/$connection': typeof ApiVendasWebhookConnectionRoute
   '/api/vendas/ads/meta/callback': typeof ApiVendasAdsMetaCallbackRoute
@@ -349,8 +378,11 @@ export interface FileRouteTypes {
     | '/vendas/'
     | '/api/instagram/drive-cleanup'
     | '/api/instagram/worker'
+    | '/api/public/meta-process'
     | '/api/vendas/processar'
     | '/api/instagram/oauth/callback'
+    | '/api/public/meta-checkout/$pixel'
+    | '/api/public/meta-syncpay/$pixel'
     | '/api/vendas/tracking/$source'
     | '/api/vendas/webhook/$connection'
     | '/api/vendas/ads/meta/callback'
@@ -383,8 +415,11 @@ export interface FileRouteTypes {
     | '/vendas'
     | '/api/instagram/drive-cleanup'
     | '/api/instagram/worker'
+    | '/api/public/meta-process'
     | '/api/vendas/processar'
     | '/api/instagram/oauth/callback'
+    | '/api/public/meta-checkout/$pixel'
+    | '/api/public/meta-syncpay/$pixel'
     | '/api/vendas/tracking/$source'
     | '/api/vendas/webhook/$connection'
     | '/api/vendas/ads/meta/callback'
@@ -418,8 +453,11 @@ export interface FileRouteTypes {
     | '/vendas/'
     | '/api/instagram/drive-cleanup'
     | '/api/instagram/worker'
+    | '/api/public/meta-process'
     | '/api/vendas/processar'
     | '/api/instagram/oauth/callback'
+    | '/api/public/meta-checkout/$pixel'
+    | '/api/public/meta-syncpay/$pixel'
     | '/api/vendas/tracking/$source'
     | '/api/vendas/webhook/$connection'
     | '/api/vendas/ads/meta/callback'
@@ -450,8 +488,11 @@ export interface RootRouteChildren {
   VendasRoute: typeof VendasRouteWithChildren
   ApiInstagramDriveCleanupRoute: typeof ApiInstagramDriveCleanupRoute
   ApiInstagramWorkerRoute: typeof ApiInstagramWorkerRoute
+  ApiPublicMetaProcessRoute: typeof ApiPublicMetaProcessRoute
   ApiVendasProcessarRoute: typeof ApiVendasProcessarRoute
   ApiInstagramOauthCallbackRoute: typeof ApiInstagramOauthCallbackRoute
+  ApiPublicMetaCheckoutPixelRoute: typeof ApiPublicMetaCheckoutPixelRoute
+  ApiPublicMetaSyncpayPixelRoute: typeof ApiPublicMetaSyncpayPixelRoute
   ApiVendasTrackingSourceRoute: typeof ApiVendasTrackingSourceRoute
   ApiVendasWebhookConnectionRoute: typeof ApiVendasWebhookConnectionRoute
   ApiVendasAdsMetaCallbackRoute: typeof ApiVendasAdsMetaCallbackRoute
@@ -655,6 +696,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInstagramWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/meta-process': {
+      id: '/api/public/meta-process'
+      path: '/api/public/meta-process'
+      fullPath: '/api/public/meta-process'
+      preLoaderRoute: typeof ApiPublicMetaProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/vendas/processar': {
       id: '/api/vendas/processar'
       path: '/api/vendas/processar'
@@ -667,6 +715,20 @@ declare module '@tanstack/react-router' {
       path: '/api/instagram/oauth/callback'
       fullPath: '/api/instagram/oauth/callback'
       preLoaderRoute: typeof ApiInstagramOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/meta-checkout/$pixel': {
+      id: '/api/public/meta-checkout/$pixel'
+      path: '/api/public/meta-checkout/$pixel'
+      fullPath: '/api/public/meta-checkout/$pixel'
+      preLoaderRoute: typeof ApiPublicMetaCheckoutPixelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/meta-syncpay/$pixel': {
+      id: '/api/public/meta-syncpay/$pixel'
+      path: '/api/public/meta-syncpay/$pixel'
+      fullPath: '/api/public/meta-syncpay/$pixel'
+      preLoaderRoute: typeof ApiPublicMetaSyncpayPixelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/vendas/tracking/$source': {
@@ -735,8 +797,11 @@ const rootRouteChildren: RootRouteChildren = {
   VendasRoute: VendasRouteWithChildren,
   ApiInstagramDriveCleanupRoute: ApiInstagramDriveCleanupRoute,
   ApiInstagramWorkerRoute: ApiInstagramWorkerRoute,
+  ApiPublicMetaProcessRoute: ApiPublicMetaProcessRoute,
   ApiVendasProcessarRoute: ApiVendasProcessarRoute,
   ApiInstagramOauthCallbackRoute: ApiInstagramOauthCallbackRoute,
+  ApiPublicMetaCheckoutPixelRoute: ApiPublicMetaCheckoutPixelRoute,
+  ApiPublicMetaSyncpayPixelRoute: ApiPublicMetaSyncpayPixelRoute,
   ApiVendasTrackingSourceRoute: ApiVendasTrackingSourceRoute,
   ApiVendasWebhookConnectionRoute: ApiVendasWebhookConnectionRoute,
   ApiVendasAdsMetaCallbackRoute: ApiVendasAdsMetaCallbackRoute,

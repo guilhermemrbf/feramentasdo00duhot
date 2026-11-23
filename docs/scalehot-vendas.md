@@ -67,3 +67,12 @@ A versão inicial consulta o gasto agregado sob demanda. Para ligar o gasto a ca
 - `npm test` cobre a validação do clique e a leitura de anúncios com respostas Meta controladas.
 - `node tests/scalehot-attribution-postgres.mjs` verifica isolamento, atribuição, webhook já recebido, estorno, revogação e consumo único do state OAuth com PGlite.
 - `node tests/scalehot-tracking-browser.mjs` usa Chrome e uma API local de teste. O guia de validação real exige separadamente um gateway, checkout e uma conta Meta reais.
+
+
+## Pixel da Meta e vendas atribuídas
+
+Em **ScaleHot → Integrações e Pixels**, cadastre o ID do dataset, o token da API de Conversões e a origem HTTPS do checkout. O piloto usa o webhook assinado de transações Syncpay. Configure o produto para enviar ao endereço do Pixel e cadastre no formulário o segredo fornecido pela Syncpay. Use um único webhook financeiro por produto. OmegaPay e Wiinpay continuam no financeiro.
+
+No servidor da loja, envie POST ao endpoint de checkout exibido, com a chave descartável de exibição em `Authorization: Bearer <chave>`. Ao obter consentimento, envie `{action:"click", advertisingConsent:true, landingUrl}` com a URL de chegada. Guarde o clickToken na sessão. Ao criar o pedido envie `{action:"bind", clickToken, referenceId, checkoutUrl}`, usando o reference_id da Syncpay. Sem fbclid a compra não é enviada por este conector à Meta. O relatório do Pixel mostra separadamente os eventos de teste.
+
+Aplique a migration 20261123140000_scalehot_pixel depois das migrations de vendas. No servidor configure SCALEHOT_META_ENCRYPTION_KEY (32 bytes em base64) e SCALEHOT_META_WORKER_SECRET (32 bytes aleatórios em base64url sem padding), além dos existentes APP_BASE_URL e META_GRAPH_API_VERSION. Agende POST /api/public/meta-process a cada minuto com Authorization: Bearer e o segredo do worker. Confira uma compra piloto em Testar eventos antes de remover o código de teste.

@@ -188,6 +188,13 @@ function TrackingPage() {
               )}
             </section>
             <MetaAdsConnection result={meta} />
+            <Link
+              to="/vendas/integracoes"
+              hash="pixels"
+              className="sales-button sales-button-outline"
+            >
+              Configurar Pixel da Meta
+            </Link>
           </div>
           <section className="sales-panel min-w-0 self-start p-5" aria-labelledby="tracking-setup">
             <h2 className="flex items-center gap-2 text-lg font-semibold" id="tracking-setup">

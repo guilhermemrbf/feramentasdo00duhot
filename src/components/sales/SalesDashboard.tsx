@@ -1,3 +1,4 @@
+import { MetaSalesSummary } from "./MetaSalesSummary";
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -78,6 +79,9 @@ export function SalesDashboard({
             <Megaphone size={17} aria-hidden="true" />
             Rastreamento de vendas
           </Link>
+          <Link to="/vendas/integracoes" className="sales-button sales-button-outline mb-6">
+            Integrações e Pixels
+          </Link>
         </div>
       )}
       {query.isPending && (
@@ -106,13 +110,12 @@ export function SalesDashboard({
         </div>
       )}
       {embedded && <WeeklySales />}
-      {data && (
-        <>
-          {!embedded && <DashboardCards data={data} />}
-          <SalesCharts data={data} period={period} embedded={embedded} />
-        </>
+      {!embedded && <DashboardCards data={data} />}
+      {(data || !embedded) && (
+        <SalesCharts data={data} period={period} embedded={embedded} failed={query.isError} />
       )}
       <LiveSales events={data?.recent} embedded={embedded} failed={query.isError} />
+      {!embedded && <MetaSalesSummary period={period} />}
       {children}
       {data && <SalesGoal current={data.month_gross_cents} target={data.goal_cents} />}
       <section
@@ -202,7 +205,7 @@ function salesMetricCards(data?: SalesOverview): DashboardMetric[] {
   ];
 }
 
-function DashboardCards({ data }: { data: SalesOverview }) {
+function DashboardCards({ data }: { data?: SalesOverview }) {
   const [net, profit, fees, refunds] = salesMetricCards(data);
   const unavailable = "Sem dados na MouseHot";
   const cards: DashboardMetric[] = [
@@ -268,8 +271,10 @@ function SalesCharts({
   data,
   period,
   embedded,
+  failed,
 }: {
-  data: SalesOverview;
+  failed: boolean;
+  data?: SalesOverview;
   period: SalesPeriod;
   embedded: boolean;
 }) {
@@ -295,10 +300,10 @@ function SalesCharts({
         <div
           className={cn(
             "min-w-0 overflow-hidden",
-            !data.series.length ? "h-32" : embedded ? "h-64 sm:h-80" : "h-52 sm:h-72",
+            !data?.series.length ? "h-32" : embedded ? "h-64 sm:h-80" : "h-52 sm:h-72",
           )}
         >
-          {data.series.length ? (
+          {data?.series.length ? (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={data.series}
@@ -336,13 +341,21 @@ function SalesCharts({
                   stroke={color}
                   strokeWidth={2}
                   fill="url(#scalehot-daily)"
-                  dot={data.series.length === 1}
+                  dot={data?.series.length === 1}
                   isAnimationActive={false}
                 />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <ChartEmpty />
+            <ChartEmpty
+              status={
+                data
+                  ? "Sem registros ainda."
+                  : failed
+                    ? "Dados indisponíveis."
+                    : "Carregando vendas…"
+              }
+            />
           )}
         </div>
       </section>
@@ -353,7 +366,7 @@ function SalesCharts({
             <span className="text-xs text-muted-foreground">Bruto vs líquido informado</span>
           </div>
           <div className="h-52 min-w-0 overflow-hidden sm:h-72">
-            {data.monthly.length ? (
+            {data?.monthly.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={data.monthly}
@@ -395,7 +408,15 @@ function SalesCharts({
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <ChartEmpty />
+              <ChartEmpty
+                status={
+                  data
+                    ? "Sem registros ainda."
+                    : failed
+                      ? "Dados indisponíveis."
+                      : "Carregando vendas…"
+                }
+              />
             )}
           </div>
         </section>
@@ -404,12 +425,8 @@ function SalesCharts({
   );
 }
 
-function ChartEmpty() {
-  return (
-    <p className="grid h-full place-items-center text-sm text-muted-foreground">
-      Sem registros ainda.
-    </p>
-  );
+function ChartEmpty({ status }: { status: string }) {
+  return <p className="grid h-full place-items-center text-sm text-muted-foreground">{status}</p>;
 }
 
 function WeeklySales() {
