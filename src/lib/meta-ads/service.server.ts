@@ -18,9 +18,19 @@ import {
 
 export const metaDb = supabaseAdmin as unknown as SupabaseClient;
 
-export function encryptionKey() {
+async function deploymentSecret(purpose: "worker" | "encryption") {
+  const configured =
+    purpose === "worker"
+      ? process.env.SCALEHOT_META_WORKER_SECRET
+      : process.env.SCALEHOT_META_ENCRYPTION_KEY;
+  if (configured) return configured;
+  const { data, error } = await metaDb.rpc("scalehot_pixel_runtime_secret", { p_purpose: purpose });
+  return !error && typeof data === "string" ? data : "";
+}
+
+export async function encryptionKey() {
   try {
-    const key = decode(process.env.SCALEHOT_META_ENCRYPTION_KEY ?? "");
+    const key = decode(await deploymentSecret("encryption"));
     if (key.length === 32) return key;
   } catch {
     // Report missing configuration without exposing the configured value.
@@ -44,8 +54,8 @@ export function pixelEndpoints(origin: string, id: string) {
   };
 }
 
-export function sealCredential(id: string, purpose: "meta" | "syncpay", value: string) {
-  return seal(value, encryptionKey(), id + ":" + purpose);
+export async function sealCredential(id: string, purpose: "meta" | "syncpay", value: string) {
+  return seal(value, await encryptionKey(), id + ":" + purpose);
 }
 
 function reply(status: number, body: object) {
@@ -164,7 +174,7 @@ export async function receiveMetaSyncpay(request: Request, id: string) {
   const body = await requestBytes(request, 64 * 1024);
   if (!body) return reply(413, { error: "invalid_body" });
   try {
-    const secret = await unseal(source.syncpay_secret, encryptionKey(), id + ":syncpay");
+    const secret = await unseal(source.syncpay_secret, await encryptionKey(), id + ":syncpay");
     if (!(await verifySyncpay(signature, body, secret)))
       return reply(401, { error: "unauthorized" });
   } catch {
@@ -225,21 +235,18 @@ async function deliver(job: ConversionJob, version: string, key: Uint8Array<Arra
 }
 
 export async function processMetaQueue(request: Request) {
-  const secret = process.env.SCALEHOT_META_WORKER_SECRET;
+  const provided = request.headers.get("authorization")?.match(/^Bearer (\S+)$/i)?.[1];
+  if (!provided || !opaqueToken.test(provided)) return reply(401, { error: "unauthorized" });
+  const secret = await deploymentSecret("worker");
   const version = process.env.META_GRAPH_API_VERSION;
   if (!secret || !opaqueToken.test(secret) || !version || !/^v\d+\.\d+$/.test(version)) {
     return reply(503, { error: "not_configured" });
   }
-  const provided = request.headers.get("authorization")?.match(/^Bearer (\S+)$/i)?.[1];
-  if (
-    !provided ||
-    !opaqueToken.test(provided) ||
-    (await digest(provided)) !== (await digest(secret))
-  ) {
+  if ((await digest(provided)) !== (await digest(secret))) {
     return reply(401, { error: "unauthorized" });
   }
   try {
-    const key = encryptionKey();
+    const key = await encryptionKey();
     const claimed = await metaDb.rpc("scalehot_meta_claim");
     if (claimed.error) return reply(503, { error: "unavailable" });
     const jobs = (claimed.data ?? []) as ConversionJob[];
