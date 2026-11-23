@@ -24,6 +24,7 @@ import {
   Send,
   ShieldCheck,
   Scan,
+  Settings2,
   Star,
   X,
 } from "lucide-react";
@@ -60,6 +61,7 @@ export const TOOL_ICONS = {
 };
 
 const SALES_TABS = [
+  { path: "/vendas/conexoes", title: "Integrações", icon: Settings2 },
   { path: "/vendas/integracoes", title: "Gateways", icon: Plug },
   { path: "/vendas/notificacoes", title: "Notificações", icon: Bell },
 ] as const;

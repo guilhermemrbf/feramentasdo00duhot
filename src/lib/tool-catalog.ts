@@ -240,7 +240,7 @@ const ALL_TOOLS = [
     id: "sales",
     action: "Acompanhar vendas",
     path: "/vendas",
-    name: "ScaleHot · Vendas",
+    name: "ScaleHot",
     category: "Automação",
     mode: "Webhooks de vendas",
     summary:
@@ -252,7 +252,7 @@ const ALL_TOOLS = [
     input: "Eventos enviados por um gateway conectado ao seu webhook.",
     output: "Métricas em reais, histórico e notificações nos dispositivos ativados.",
     steps: [
-      "Abra Integrações no ScaleHot, escolha um gateway e copie a URL.",
+      "Abra Integrações no ScaleHot, vá a Webhooks e gere uma credencial para seu gateway.",
       "Cole a URL na plataforma de pagamento e selecione os eventos de vendas e estornos.",
       "Ative os alertas no seu dispositivo e envie uma notificação de teste.",
     ],

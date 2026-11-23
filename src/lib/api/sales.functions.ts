@@ -95,7 +95,11 @@ export const createSalesWebhook = createServerFn({ method: "POST" })
       secret_hash: hashSalesKey(token),
     });
     if (error) throw new Error("Não foi possível criar o endereço de webhook.");
-    return { url: new URL("/api/vendas/webhook/" + token, baseUrl.origin).href };
+    return {
+      url: new URL("/api/vendas/webhook/" + token, baseUrl.origin).href,
+      endpoint: new URL("/api/vendas/webhook", baseUrl.origin).href,
+      token,
+    };
   });
 
 export const saveSalesGoal = createServerFn({ method: "POST" })

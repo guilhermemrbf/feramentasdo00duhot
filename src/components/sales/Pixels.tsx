@@ -17,7 +17,7 @@ import {
   listMetaPixels,
 } from "@/lib/meta-ads/functions";
 
-export function Pixels() {
+export function Pixels({ showCreate }: { showCreate: boolean }) {
   const { user } = usePlatformAccess();
   const load = useServerFn(listMetaPixels);
   const create = useServerFn(createMetaPixel);
@@ -53,83 +53,97 @@ export function Pixels() {
   }
 
   return (
-    <section id="pixels" className="my-8 scroll-mt-20" aria-labelledby="pixels-heading">
-      <h2 id="pixels-heading" className="font-display text-2xl font-bold">
+    <section
+      id="pixels"
+      className="sales-panel min-w-0 scroll-mt-20 p-5 sm:p-6"
+      aria-labelledby="pixels-heading"
+    >
+      <h2 id="pixels-heading" className="text-lg font-semibold">
         Pixel da Meta
       </h2>
-      <p className="mb-4 text-muted-foreground">
+      <p className="mb-4 mt-1 text-sm text-muted-foreground">
         Vincule o checkout Syncpay ao Pixel para atribuir vendas aos anúncios e enviar compras
         confirmadas à Meta.
       </p>
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
-        <Card className="bg-gradient-card p-5 self-start">
-          <h2 className="font-display text-lg font-bold mb-4">Cadastrar Pixel</h2>
-          {mutation.data ? (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Configure o endpoint e a chave no servidor da loja. A chave aparece só uma vez.
-              </p>
-              <CopyField label="Endpoint do checkout" value={mutation.data.checkoutUrl} />
-              <CopyField label="Chave do checkout" value={mutation.data.key} />
-              <CopyField label="Webhook Syncpay" value={mutation.data.webhookUrl} />
-              <Button variant="outline" onClick={() => mutation.reset()}>
-                Fechar credenciais
-              </Button>
-            </div>
-          ) : (
-            <form className="space-y-4" onSubmit={register}>
-              <div className="space-y-1">
-                <Label htmlFor="pixel-label">Nome</Label>
-                <Input id="pixel-label" name="label" required maxLength={80} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="pixel-dataset">ID do Pixel ou dataset</Label>
-                <Input
-                  id="pixel-dataset"
-                  name="dataset"
-                  inputMode="numeric"
-                  pattern="[0-9]{1,32}"
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="pixel-domain">Domínio da loja</Label>
-                <Input
-                  id="pixel-domain"
-                  name="domain"
-                  type="url"
-                  placeholder="https://sualoja.com.br"
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="pixel-token">Token da API de Conversões</Label>
-                <Input id="pixel-token" name="token" type="password" autoComplete="off" required />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="pixel-test-code">Código de eventos de teste (opcional)</Label>
-                <Input id="pixel-test-code" name="testCode" maxLength={32} />
-              </div>
-              <Button type="submit" disabled={mutation.isPending || !user}>
-                {mutation.isPending ? "Cadastrando…" : "Cadastrar Pixel"}
-              </Button>
-              {mutation.isError && (
-                <p role="alert" className="text-sm text-destructive">
-                  {mutation.error.message}
+      <div className={showCreate || mutation.data ? "grid gap-5 lg:grid-cols-2" : "grid gap-5"}>
+        {(showCreate || mutation.data) && (
+          <Card className="bg-gradient-card p-5 self-start">
+            <h2 className="font-display text-lg font-bold mb-4">Cadastrar Pixel</h2>
+            {mutation.data ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Configure o endpoint e a chave no servidor da loja. A chave aparece só uma vez.
                 </p>
-              )}
-            </form>
-          )}
-        </Card>
-        <div className="space-y-4 min-w-0">
-          <Card className="bg-gradient-card p-5">
-            <h2 className="font-display text-lg font-bold">Links dos anúncios</h2>
-            <p className="mb-3 mt-1 text-sm text-muted-foreground">
-              Cole no campo Parâmetros de URL dos anúncios. O checkout precisa vincular o clique à
-              referência da transação.
-            </p>
-            <CopyField label="Parâmetros de URL da Meta" value={metaUrlParameters} />
+                <CopyField label="Endpoint do checkout" value={mutation.data.checkoutUrl} />
+                <CopyField label="Chave do checkout" value={mutation.data.key} />
+                <CopyField label="Webhook Syncpay" value={mutation.data.webhookUrl} />
+                <Button variant="outline" onClick={() => mutation.reset()}>
+                  Fechar credenciais
+                </Button>
+              </div>
+            ) : (
+              <form className="space-y-4" onSubmit={register}>
+                <div className="space-y-1">
+                  <Label htmlFor="pixel-label">Nome</Label>
+                  <Input id="pixel-label" name="label" required maxLength={80} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="pixel-dataset">ID do Pixel ou dataset</Label>
+                  <Input
+                    id="pixel-dataset"
+                    name="dataset"
+                    inputMode="numeric"
+                    pattern="[0-9]{1,32}"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="pixel-domain">Domínio da loja</Label>
+                  <Input
+                    id="pixel-domain"
+                    name="domain"
+                    type="url"
+                    placeholder="https://sualoja.com.br"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="pixel-token">Token da API de Conversões</Label>
+                  <Input
+                    id="pixel-token"
+                    name="token"
+                    type="password"
+                    autoComplete="off"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="pixel-test-code">Código de eventos de teste (opcional)</Label>
+                  <Input id="pixel-test-code" name="testCode" maxLength={32} />
+                </div>
+                <Button type="submit" disabled={mutation.isPending || !user}>
+                  {mutation.isPending ? "Cadastrando…" : "Cadastrar Pixel"}
+                </Button>
+                {mutation.isError && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {mutation.error.message}
+                  </p>
+                )}
+              </form>
+            )}
           </Card>
+        )}
+        <div className="space-y-4 min-w-0">
+          {(showCreate || Boolean(query.data?.length)) && (
+            <Card className="bg-gradient-card p-5">
+              <h2 className="font-display text-lg font-bold">Links dos anúncios</h2>
+              <p className="mb-3 mt-1 text-sm text-muted-foreground">
+                Cole no campo Parâmetros de URL dos anúncios. O checkout precisa vincular o clique à
+                referência da transação.
+              </p>
+              <CopyField label="Parâmetros de URL da Meta" value={metaUrlParameters} />
+            </Card>
+          )}
           {query.isPending && user && (
             <p role="status" className="text-muted-foreground">
               Carregando Pixels…

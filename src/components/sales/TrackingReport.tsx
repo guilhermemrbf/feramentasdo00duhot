@@ -160,7 +160,7 @@ export function TrackingReport({
             ) : (
               <div className="tracking-empty tracking-chart-empty">
                 <p>Nenhuma venda aprovada neste período.</p>
-                <Link to="/vendas/rastreamento" search={{ view: "integracoes" }}>
+                <Link to="/vendas/conexoes" search={{ aba: "webhooks" }}>
                   Ver fontes de rastreamento
                 </Link>
               </div>

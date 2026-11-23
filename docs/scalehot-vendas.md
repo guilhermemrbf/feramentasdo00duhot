@@ -58,7 +58,15 @@ A captura inicial usa integração servidor a servidor com uma loja sob seu cont
 
 1. Aplique também `20261123121000_scalehot_meta_ads.sql`. Na Meta, habilite a Marketing API e autorize a leitura `ads_read` para a conta piloto. Cadastre o callback exato `https://<seu-domínio>/api/vendas/ads/meta/callback` na configuração do login de anúncios. [Autorização da Marketing API](https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/authorization)
 2. Configure `SCALEHOT_META_ADS_ENCRYPTION_KEY` com 32 bytes aleatórios em Base64 e guarde o valor no cofre da hospedagem. O conector usa `META_APP_ID`, `META_APP_SECRET` e `META_GRAPH_API_VERSION` por padrão. Para um app separado, preencha o par `SCALEHOT_META_ADS_APP_ID` e `SCALEHOT_META_ADS_APP_SECRET`. Habilite `SCALEHOT_META_ADS_ENABLED=1` só depois de validar a configuração.
-3. Em **ScaleHot → Rastreamento de vendas → Meta Ads**, conecte, autorize e escolha uma conta de anúncios. Compare gasto, cliques e impressões com o Ads Manager nos mesmos dias completos, moeda e fuso. Desconectar apaga a credencial da MouseHot. A revogação abrangente do app fica nas configurações da Meta, pois ela também pode afetar o Automatic Post quando as duas funções usam o mesmo app.
+3. Em **Integrações → Anúncios → Meta Ads**, conecte, autorize e escolha uma conta de anúncios. Compare gasto, cliques e impressões com o Ads Manager nos mesmos dias completos, moeda e fuso. Desconectar apaga a credencial da MouseHot. A revogação abrangente do app fica nas configurações da Meta, pois ela também pode afetar o Automatic Post quando as duas funções usam o mesmo app.
+
+### Google Ads e Webhooks
+
+Aplique `20261124123000_scalehot_google_integrations.sql`. Para **Integrações → Anúncios → Google Ads**, habilite a Google Ads API, cadastre `https://<seu-domínio>/api/vendas/ads/google/callback` no cliente OAuth Web e configure os valores `SCALEHOT_GOOGLE_ADS_*` de `.env.example`. Use um token de desenvolvedor liberado para o ambiente da conta e uma versão ativa da API. O login Google da MouseHot usa outra configuração e não autoriza o acesso a contas de anúncios. [Autorização do Google Ads](https://developers.google.com/google-ads/api/rest/auth)
+
+Em **Integrações → Webhooks**, associe a credencial a OmegaPay, Syncpay ou Wiinpay. Para provedores que aceitam um token separado, copie a URL do webhook e envie o token no cabeçalho `Authorization: Bearer <token>`. Para provedores que aceitam somente uma URL, copie a URL com token. O token é exibido uma vez. Desative a credencial em **Gateways** se precisar revogá-la. As conexões existentes continuam nos mesmos endereços.
+
+Em **Integrações → Pixels**, escolha **Adicionar pixel → Google Ads** e cadastre o ID e o rótulo de uma ação de conversão do seu Google Ads. Use os valores no checkout e dispare a conversão após o pagamento confirmado, com valor, moeda e identificador único do pedido. Confirme o recebimento no Google Ads ou no Tag Assistant. [Instalar e verificar a tag do Google Ads](https://support.google.com/google-ads/answer/6331314)
 
 A versão inicial consulta o gasto agregado sob demanda. Para ligar o gasto a campanhas e anúncios, persistir o histórico, calcular CPA/ROAS, enviar eventos de conversão e ampliar para Google/TikTok, seguir o [plano do ScaleHot](./superpowers/plans/2026-11-23-scalehot-atribuicao.md).
 
@@ -71,7 +79,7 @@ A versão inicial consulta o gasto agregado sob demanda. Para ligar o gasto a ca
 
 ## Pixel da Meta e vendas atribuídas
 
-Em **ScaleHot → Integrações e Pixels**, cadastre o ID do dataset, o token da API de Conversões e a origem HTTPS do checkout. O piloto usa o webhook assinado de transações Syncpay. Configure o produto para enviar ao endereço do Pixel e cadastre no formulário o segredo fornecido pela Syncpay. Use um único webhook financeiro por produto. OmegaPay e Wiinpay continuam no financeiro.
+Em **Integrações → Pixels → Adicionar pixel → Meta Ads**, cadastre o ID do dataset, o token da API de Conversões e a origem HTTPS do checkout. O piloto usa o webhook assinado de transações Syncpay. Configure o produto para enviar ao endereço do Pixel e cadastre no formulário o segredo fornecido pela Syncpay. Use um único webhook financeiro por produto. OmegaPay e Wiinpay continuam no financeiro.
 
 No servidor da loja, envie POST ao endpoint de checkout exibido, com a chave descartável de exibição em `Authorization: Bearer <chave>`. Ao obter consentimento, envie `{action:"click", advertisingConsent:true, landingUrl}` com a URL de chegada. Guarde o clickToken na sessão. Ao criar o pedido envie `{action:"bind", clickToken, referenceId, checkoutUrl}`, usando o reference_id da Syncpay. Sem fbclid a compra não é enviada por este conector à Meta. O relatório do Pixel mostra separadamente os eventos de teste.
 

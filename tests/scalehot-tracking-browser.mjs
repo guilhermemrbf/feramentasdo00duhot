@@ -31,6 +31,9 @@ let source;
 let click;
 let binding;
 let meta;
+let google;
+let webhook;
+let googleTag;
 let authorizeState;
 const api = createServer(async (request, response) => {
   response.setHeader("Access-Control-Allow-Origin", web);
@@ -60,11 +63,26 @@ const api = createServer(async (request, response) => {
       break;
     case "sales_overview":
       body = {
-        links: [{ id: gateway, label: "Gateway de teste", provider: "syncpay", active: true }],
+        links: [
+          { id: gateway, label: "Gateway de teste", provider: "syncpay", active: true },
+          ...(webhook ? [webhook] : []),
+        ],
       };
       break;
-    case "sales_webhook_links":
-      body = [{ id: gateway }];
+    case "sales_webhook_links": {
+      if (request.method === "POST") {
+        assert.equal(input.user_id, user.id);
+        webhook = { ...input, id: "00000000-0000-4000-8000-000000000004", active: true };
+      } else {
+        const key = new URL(request.url, "http://localhost").searchParams.get("secret_hash");
+        body = key ? (key === "eq." + webhook?.secret_hash ? [webhook] : []) : [{ id: gateway }];
+      }
+      break;
+    }
+    case "sales_record_event":
+      assert.equal(input.p_hash, webhook.secret_hash);
+      assert.equal(input.p_kind, "reversed");
+      body = [{ outcome: "recorded" }];
       break;
     case "sales_tracking_sources": {
       if (request.method === "POST") {
@@ -73,7 +91,7 @@ const api = createServer(async (request, response) => {
         source = { ...input, id: sourceId, active: true };
       }
       if (request.method === "PATCH") source.active = false;
-      const rows = source && source.active ? [source] : [];
+      const rows = source && (source.active || request.method === "PATCH") ? [source] : [];
       body = object ? { id: sourceId } : rows;
       break;
     }
@@ -163,17 +181,87 @@ const api = createServer(async (request, response) => {
         };
       break;
     }
+    case "sales_google_ads_connections": {
+      if (request.method === "POST") google = { ...google, ...input };
+      if (request.method === "DELETE") google = undefined;
+      if (request.method === "GET") body = google ? [google] : [];
+      break;
+    }
+    case "sales_google_ads_claim_state": {
+      body = google?.state_hash === input.p_hash && !google.state_claimed_at ? user.id : null;
+      if (body) google.state_claimed_at = new Date().toISOString();
+      break;
+    }
+    case "sales_google_ads_finish_state": {
+      body = google?.state_hash === input.p_hash && Boolean(google.state_claimed_at);
+      if (body)
+        google = {
+          user_id: input.p_owner,
+          client_id: input.p_client,
+          refresh_ciphertext: input.p_refresh,
+          accounts: input.p_accounts,
+          connected_at: new Date().toISOString(),
+        };
+      break;
+    }
+    case "sales_google_conversion_tags": {
+      if (request.method === "POST") {
+        assert.equal(input.user_id, user.id);
+        googleTag = { ...input, id: "00000000-0000-4000-8000-000000000005" };
+      }
+      if (request.method === "DELETE") {
+        body = googleTag;
+        googleTag = undefined;
+      }
+      if (request.method === "GET") body = googleTag ? [googleTag] : [];
+      break;
+    }
   }
   response.end(JSON.stringify(body));
 });
 await new Promise((done) => api.listen(0, "127.0.0.1", done));
 const apiUrl = "http://127.0.0.1:" + api.address().port;
-function metaProviderFixture() {
+function adsProviderFixture() {
   const original = globalThis.fetch;
   globalThis.fetch = (target, options) => {
     const url = new URL(target instanceof Request ? target.url : target);
-    if (url.hostname !== "graph.facebook.com") return original(target, options);
     const auth = new Headers(options?.headers).get("Authorization");
+    if (url.hostname === "oauth2.googleapis.com") {
+      const data = options.body;
+      if (data.get("code") === "google-auth-fixture" && data.get("code_verifier")?.length === 43)
+        return Promise.resolve(
+          Response.json({ access_token: "google-access", refresh_token: "google-refresh" }),
+        );
+      if (data.get("refresh_token") === "google-refresh")
+        return Promise.resolve(Response.json({ access_token: "google-access" }));
+      return Promise.resolve(Response.json({ error: "invalid_grant" }, { status: 400 }));
+    }
+    if (url.hostname === "googleads.googleapis.com" && auth === "Bearer google-access") {
+      if (url.pathname.endsWith("/customers:listAccessibleCustomers"))
+        return Promise.resolve(Response.json({ resourceNames: ["customers/1234567890"] }));
+      const { query } = JSON.parse(options.body);
+      if (query.startsWith("SELECT customer.id"))
+        return Promise.resolve(
+          Response.json({
+            results: [
+              {
+                customer: {
+                  id: "1234567890",
+                  descriptiveName: "Conta Google piloto",
+                  currencyCode: "BRL",
+                  timeZone: "America/Sao_Paulo",
+                },
+              },
+            ],
+          }),
+        );
+      return Promise.resolve(
+        Response.json({
+          results: [{ metrics: { costMicros: "5430000", impressions: "30", clicks: "3" } }],
+        }),
+      );
+    }
+    if (url.hostname !== "graph.facebook.com") return original(target, options);
     if (url.pathname.endsWith("/oauth/access_token")) {
       if (url.searchParams.get("code") === "authorized-fixture")
         return Promise.resolve(Response.json({ access_token: "short-fixture" }));
@@ -214,7 +302,7 @@ const vite = spawn(
   process.execPath,
   [
     "--import=data:text/javascript;base64," +
-      Buffer.from("(" + metaProviderFixture.toString() + ")()").toString("base64"),
+      Buffer.from("(" + adsProviderFixture.toString() + ")()").toString("base64"),
     "node_modules/vite/bin/vite.js",
     "--host",
     "127.0.0.1",
@@ -237,6 +325,11 @@ const vite = spawn(
       SCALEHOT_META_ADS_APP_ID: "123",
       SCALEHOT_META_ADS_APP_SECRET: "fixture-secret",
       SCALEHOT_META_ADS_ENCRYPTION_KEY: Buffer.alloc(32, 4).toString("base64"),
+      SCALEHOT_GOOGLE_ADS_CLIENT_ID: "google-client-fixture",
+      SCALEHOT_GOOGLE_ADS_CLIENT_SECRET: "google-secret-fixture",
+      SCALEHOT_GOOGLE_ADS_DEVELOPER_TOKEN: "google-developer-fixture",
+      SCALEHOT_GOOGLE_ADS_API_VERSION: "v26",
+      SCALEHOT_GOOGLE_ADS_ENCRYPTION_KEY: Buffer.alloc(32, 5).toString("base64"),
       META_GRAPH_API_VERSION: "v27.0",
     },
   },
@@ -264,8 +357,13 @@ try {
     headless: true,
   });
   page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  page.on("pageerror", error => {output += "\n" + error.message;});
-  page.on("requestfailed", request => {output += "\n" + new URL(request.url()).pathname + " " + request.failure()?.errorText;});
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: web });
+  page.on("pageerror", (error) => {
+    output += "\n" + error.message;
+  });
+  page.on("requestfailed", (request) => {
+    output += "\n" + new URL(request.url()).pathname + " " + request.failure()?.errorText;
+  });
   page.on("response", (response) => {
     if (response.url().startsWith(apiUrl) || response.url().includes("/_serverFn/")) {
       requests.push([new URL(response.url()).pathname, response.status()]);
@@ -287,26 +385,61 @@ try {
     { token, user, now },
   );
   await page.goto(web + "/vendas/integracoes");
-  await page.getByRole("heading", {name:"Gateways", exact:true}).waitFor({timeout:90000});
-  assert.equal(await page.locator("#pixels").count(),0);
-  await page.goto(web + "/vendas/rastreamento");
-  await page.getByRole("link", { name: "Integrações", exact: true }).click();
-  await page.getByRole("heading", { name: "Cadastrar Pixel" }).waitFor({timeout: 90000});
+  await page.getByRole("heading", { name: "Gateways", exact: true }).waitFor({ timeout: 90000 });
+  assert.equal(await page.locator("#pixels").count(), 0);
+  await page.goto(web + "/vendas/rastreamento?view=integracoes");
+  await page.getByRole("heading", { name: "Credenciais de API" }).waitFor({ timeout: 90000 });
+  await page.getByRole("button", { name: "Adicionar credencial" }).click();
+  await page.getByLabel("Nome da credencial").fill("Minha loja");
+  await page.getByRole("combobox", { name: "Gateway", exact: true }).selectOption("syncpay");
+  await page.getByRole("button", { name: "Gerar token" }).click();
+  const tokenInput = page.getByRole("textbox", { name: "Token de API" });
+  await tokenInput.waitFor();
+  const apiToken = await tokenInput.inputValue();
+  await page.getByRole("button", { name: "Copiar Token de API" }).click();
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), apiToken);
+  const hookEndpoint = await page
+    .getByRole("textbox", { name: "URL do webhook", exact: true })
+    .inputValue();
+  assert.equal(hookEndpoint, web + "/api/vendas/webhook");
+  assert.equal(webhook.secret_hash, hash(apiToken));
+  const sendHook = (value) =>
+    fetch(hookEndpoint, {
+      method: "POST",
+      headers: { authorization: "Bearer " + value, "content-type": "application/json" },
+      body: JSON.stringify({
+        data: { idtransaction: "pedido-estorno", status: "REFUNDED", amount: 4 },
+      }),
+    });
+  assert.equal((await sendHook("x".repeat(43))).status, 401);
+  assert.equal((await sendHook(apiToken)).status, 201);
+  await page.getByRole("button", { name: "Concluir" }).click();
+  await page.getByRole("link", { name: "Pixels", exact: true }).click();
+  await page.getByRole("button", { name: "Adicionar pixel" }).click();
+  await page.getByRole("button", { name: "Meta Ads", exact: true }).click();
+  await page.getByRole("heading", { name: "Cadastrar Pixel" }).waitFor({ timeout: 90000 });
   if (process.env.SCALEHOT_PIXEL_PREVIEW) {
     await page.locator("#pixels").screenshot({ path: process.env.SCALEHOT_PIXEL_PREVIEW });
   }
   await page.getByLabel("ID do Pixel ou dataset").fill("123456");
   await page.getByLabel("Token da API de Conversões").waitFor();
-  assert.equal(
-    await page.getByRole("link", { name: "Integrações", exact: true }).getAttribute("aria-current"),
-    "page",
-  );
-  assert.equal(
-    await page.getByRole("link", { name: "Desempenho", exact: true }).getAttribute("aria-current"),
-    null,
-  );
+  await page.getByRole("button", { name: "Google Ads", exact: true }).click();
+  await page.getByLabel("Nome", { exact: true }).fill("Compras");
+  await page.getByLabel("ID de conversão").fill("AW-123456789");
+  await page.getByLabel("Rótulo da conversão").fill("label-1");
+  await page.getByRole("button", { name: "Cadastrar tag" }).click();
+  await page.getByRole("heading", { name: "Compras" }).waitFor();
+  assert.equal(googleTag.destination, "AW-123456789/label-1");
+  await page.getByRole("button", { name: "Remover tag Compras" }).click();
+  await page.getByText("Nenhuma tag cadastrada.").waitFor();
+  await page.getByRole("link", { name: "Webhooks", exact: true }).click();
+  await page.getByText("Vincular uma loja para rastrear campanhas").click();
   await page.getByLabel("Gateway", { exact: true }).selectOption(gateway, { timeout: 25000 });
-  await page.locator("#tracking-setup").locator("..").getByLabel("Domínio da loja").fill("https://loja.example");
+  await page
+    .locator("#tracking-setup")
+    .locator("..")
+    .getByLabel("Domínio da loja")
+    .fill("https://loja.example");
   await page.getByRole("button", { name: "Gerar credenciais da loja" }).click();
   const endpoint = await page.getByRole("textbox", { name: "URL", exact: true }).inputValue();
   const key = await page.getByRole("textbox", { name: "Chave", exact: true }).inputValue();
@@ -332,7 +465,7 @@ try {
   const bind = { action: "bind", clickToken, externalId: "pedido-42" };
   assert.equal((await send(bind)).status, 200);
   assert.equal((await send(bind)).status, 200);
-  await page.getByRole("link", { name: "Desempenho", exact: true }).click();
+  await page.goto(web + "/vendas/rastreamento");
   await page.getByRole("rowheader", { name: /Piloto/ }).waitFor();
   await page.getByRole("button", { name: "7 dias", exact: true }).click();
   await page.getByRole("rowheader", { name: /Piloto/ }).waitFor();
@@ -343,7 +476,9 @@ try {
   await page.getByRole("rowheader", { name: /Anúncio 456/ }).waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-  await page.getByRole("link", { name: "Integrações", exact: true }).click();
+  await page.getByRole("link", { name: "Configurar integrações" }).click();
+  await page.getByRole("link", { name: "Webhooks", exact: true }).click();
+  await page.getByText("Vincular uma loja para rastrear campanhas").click();
   await page.getByRole("button", { name: "Desativar https://loja.example" }).click();
   await page.getByText(/Gateway de teste · Desativado/).waitFor();
   assert.equal((await send(capture)).status, 401);
@@ -355,11 +490,12 @@ try {
     const stale = new URL(callback);
     stale.searchParams.set("state", "x".repeat(43));
     const staleResult = await page.request.get(stale.href, { maxRedirects: 0 });
-    assert.equal(staleResult.headers().location, "/vendas/rastreamento?meta=session");
+    assert.equal(staleResult.headers().location, "/vendas/conexoes?meta=session");
     callback.searchParams.set("state", authorizeState);
     callback.searchParams.set("code", "authorized-fixture");
     return route.fulfill({ status: 302, headers: { Location: callback.href } });
   });
+  await page.getByRole("link", { name: "Anúncios", exact: true }).click();
   await page.getByRole("button", { name: "Conectar Meta Ads", exact: true }).click();
   await page.getByLabel("Conta de anúncios", { exact: true }).selectOption("act_1");
   assert.equal(meta.user_id, user.id);
@@ -369,14 +505,32 @@ try {
     web + "/api/vendas/ads/meta/callback?state=" + authorizeState + "&code=authorized-fixture",
     { redirect: "manual" },
   );
-  assert.equal(replay.headers.get("location"), "/vendas/rastreamento?meta=session");
+  assert.equal(replay.headers.get("location"), "/vendas/conexoes?meta=session");
   await page.getByRole("button", { name: "Consultar", exact: true }).click();
   await page.getByText(/R\$\s*12,30/).waitFor();
   await page.getByRole("button", { name: "Desconectar", exact: true }).click();
   await page.getByRole("button", { name: "Conectar Meta Ads", exact: true }).waitFor();
   assert.equal(meta, undefined);
+  await page.route("https://accounts.google.com/**", async (route) => {
+    const url = new URL(route.request().url());
+    assert.equal(url.searchParams.get("scope"), "https://www.googleapis.com/auth/adwords");
+    assert.equal(url.searchParams.get("code_challenge_method"), "S256");
+    const callback = new URL(url.searchParams.get("redirect_uri"));
+    callback.searchParams.set("state", url.searchParams.get("state"));
+    callback.searchParams.set("code", "google-auth-fixture");
+    return route.fulfill({ status: 302, headers: { Location: callback.href } });
+  });
+  await page.getByRole("button", { name: "Conectar Google Ads", exact: true }).click();
+  await page.getByLabel("Conta do Google Ads", { exact: true }).selectOption("1234567890");
+  assert.match(google.refresh_ciphertext, /^v1\./);
+  assert.equal(JSON.stringify(google).includes("google-refresh"), false);
+  await page.getByRole("button", { name: "Consultar Google Ads", exact: true }).click();
+  await page.getByText(/R\$\s*5,43/).waitFor();
+  await page.getByRole("button", { name: "Desconectar Google Ads", exact: true }).click();
+  await page.getByRole("button", { name: "Conectar Google Ads", exact: true }).waitFor();
+  assert.equal(google, undefined);
   console.log(
-    "ScaleHot browser passed: source setup, capture, binding, mobile report, revocation, Meta OAuth, spend and disconnect (fixtures).",
+    "ScaleHot browser passed: webhooks, clipboard, store attribution, mobile report, Google tag, Meta and Google OAuth, spend and disconnect (fixtures).",
   );
 } catch (error) {
   console.error(output.slice(-2200));

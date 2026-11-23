@@ -57,6 +57,7 @@ try {
     "20261123120000_scalehot_attribution.sql",
     "20261123121000_scalehot_meta_ads.sql",
     "20261123122000_scalehot_tracking_report.sql",
+    "20261124123000_scalehot_google_integrations.sql",
   ]) {
     await db.exec(
       await readFile(new URL("../supabase/migrations/" + filename, import.meta.url), "utf8"),
@@ -169,6 +170,45 @@ try {
     [metaState],
   );
   assert.equal(await claim(), null);
+  await db.exec("reset role");
+  const googleState = "8".repeat(64);
+  await db.query(
+    "insert into sales_google_ads_connections(user_id,state_hash,state_expires_at) values ($1,$2,now()+interval '10 minutes')",
+    [owner, googleState],
+  );
+  await db.exec("set role authenticated");
+  await assert.rejects(db.query("select * from sales_google_ads_connections"), /permission denied/);
+  await assert.rejects(db.query("select * from sales_google_conversion_tags"), /permission denied/);
+  await assert.rejects(
+    db.query("select sales_google_ads_claim_state($1)", [googleState]),
+    /permission denied/,
+  );
+  await db.exec("set role service_role");
+  const claimGoogle = async () =>
+    (await db.query("select sales_google_ads_claim_state($1) as owner", [googleState])).rows[0]
+      .owner;
+  const finishGoogle = async (who) =>
+    (
+      await db.query(
+        "select sales_google_ads_finish_state($1,$2,'google-client','v1.fixture','[]'::jsonb) as saved",
+        [who, googleState],
+      )
+    ).rows[0].saved;
+  assert.equal(await finishGoogle(owner), false);
+  assert.equal(await claimGoogle(), owner);
+  assert.equal(await claimGoogle(), null);
+  assert.equal(await finishGoogle(other), false);
+  assert.equal(await finishGoogle(owner), true);
+  assert.equal(await finishGoogle(owner), false);
+  const saveTag = (who, tag) =>
+    db.query(
+      "insert into sales_google_conversion_tags(user_id,label,destination) values ($1,'Compras',$2)",
+      [who, tag],
+    );
+  await saveTag(owner, "AW-123456789/label");
+  await saveTag(other, "AW-123456789/label");
+  await assert.rejects(saveTag(owner, "AW-123456789/label"), /duplicate key/);
+  await assert.rejects(saveTag(other, "invalid"), /check constraint/);
   await db.exec("reset role");
   console.log(
     "ScaleHot attribution PostgreSQL: ownership, late binding, duplicate, refund, expiry and revocation passed",

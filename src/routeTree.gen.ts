@@ -32,6 +32,7 @@ import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as TelegramSyncRouteImport } from './routes/telegram-sync'
 import { Route as VendasRouteImport } from './routes/vendas'
 import { Route as VendasIndexRouteImport } from './routes/vendas.index'
+import { Route as VendasConexoesRouteImport } from './routes/vendas.conexoes'
 import { Route as VendasIntegracoesRouteImport } from './routes/vendas.integracoes'
 import { Route as VendasNotificacoesRouteImport } from './routes/vendas.notificacoes'
 import { Route as VendasRastreamentoRouteImport } from './routes/vendas.rastreamento'
@@ -43,7 +44,9 @@ import { Route as ApiInstagramOauthCallbackRouteImport } from './routes/api.inst
 import { Route as ApiPublicMetaCheckoutPixelRouteImport } from './routes/api.public.meta-checkout.$pixel'
 import { Route as ApiPublicMetaSyncpayPixelRouteImport } from './routes/api.public.meta-syncpay.$pixel'
 import { Route as ApiVendasTrackingSourceRouteImport } from './routes/api.vendas.tracking.$source'
+import { Route as ApiVendasWebhookIndexRouteImport } from './routes/api.vendas.webhook.index'
 import { Route as ApiVendasWebhookConnectionRouteImport } from './routes/api.vendas.webhook.$connection'
+import { Route as ApiVendasAdsGoogleCallbackRouteImport } from './routes/api.vendas.ads.google.callback'
 import { Route as ApiVendasAdsMetaCallbackRouteImport } from './routes/api.vendas.ads.meta.callback'
 
 const IndexRoute = IndexRouteImport.update({
@@ -161,6 +164,11 @@ const VendasIndexRoute = VendasIndexRouteImport.update({
   path: '/',
   getParentRoute: () => VendasRoute,
 } as any)
+const VendasConexoesRoute = VendasConexoesRouteImport.update({
+  id: '/conexoes',
+  path: '/conexoes',
+  getParentRoute: () => VendasRoute,
+} as any)
 const VendasIntegracoesRoute = VendasIntegracoesRouteImport.update({
   id: '/integracoes',
   path: '/integracoes',
@@ -220,10 +228,21 @@ const ApiVendasTrackingSourceRoute = ApiVendasTrackingSourceRouteImport.update({
   path: '/api/vendas/tracking/$source',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiVendasWebhookIndexRoute = ApiVendasWebhookIndexRouteImport.update({
+  id: '/api/vendas/webhook/',
+  path: '/api/vendas/webhook/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiVendasWebhookConnectionRoute =
   ApiVendasWebhookConnectionRouteImport.update({
     id: '/api/vendas/webhook/$connection',
     path: '/api/vendas/webhook/$connection',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiVendasAdsGoogleCallbackRoute =
+  ApiVendasAdsGoogleCallbackRouteImport.update({
+    id: '/api/vendas/ads/google/callback',
+    path: '/api/vendas/ads/google/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiVendasAdsMetaCallbackRoute =
@@ -256,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
   '/vendas': typeof VendasRouteWithChildren
+  '/vendas/conexoes': typeof VendasConexoesRoute
   '/vendas/integracoes': typeof VendasIntegracoesRoute
   '/vendas/notificacoes': typeof VendasNotificacoesRoute
   '/vendas/rastreamento': typeof VendasRastreamentoRoute
@@ -269,6 +289,8 @@ export interface FileRoutesByFullPath {
   '/api/public/meta-syncpay/$pixel': typeof ApiPublicMetaSyncpayPixelRoute
   '/api/vendas/tracking/$source': typeof ApiVendasTrackingSourceRoute
   '/api/vendas/webhook/$connection': typeof ApiVendasWebhookConnectionRoute
+  '/api/vendas/webhook/': typeof ApiVendasWebhookIndexRoute
+  '/api/vendas/ads/google/callback': typeof ApiVendasAdsGoogleCallbackRoute
   '/api/vendas/ads/meta/callback': typeof ApiVendasAdsMetaCallbackRoute
 }
 export interface FileRoutesByTo {
@@ -293,6 +315,7 @@ export interface FileRoutesByTo {
   '/painel': typeof PainelRoute
   '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
+  '/vendas/conexoes': typeof VendasConexoesRoute
   '/vendas/integracoes': typeof VendasIntegracoesRoute
   '/vendas/notificacoes': typeof VendasNotificacoesRoute
   '/vendas/rastreamento': typeof VendasRastreamentoRoute
@@ -306,6 +329,8 @@ export interface FileRoutesByTo {
   '/api/public/meta-syncpay/$pixel': typeof ApiPublicMetaSyncpayPixelRoute
   '/api/vendas/tracking/$source': typeof ApiVendasTrackingSourceRoute
   '/api/vendas/webhook/$connection': typeof ApiVendasWebhookConnectionRoute
+  '/api/vendas/webhook': typeof ApiVendasWebhookIndexRoute
+  '/api/vendas/ads/google/callback': typeof ApiVendasAdsGoogleCallbackRoute
   '/api/vendas/ads/meta/callback': typeof ApiVendasAdsMetaCallbackRoute
 }
 export interface FileRoutesById {
@@ -332,6 +357,7 @@ export interface FileRoutesById {
   '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
   '/vendas': typeof VendasRouteWithChildren
+  '/vendas/conexoes': typeof VendasConexoesRoute
   '/vendas/integracoes': typeof VendasIntegracoesRoute
   '/vendas/notificacoes': typeof VendasNotificacoesRoute
   '/vendas/rastreamento': typeof VendasRastreamentoRoute
@@ -345,6 +371,8 @@ export interface FileRoutesById {
   '/api/public/meta-syncpay/$pixel': typeof ApiPublicMetaSyncpayPixelRoute
   '/api/vendas/tracking/$source': typeof ApiVendasTrackingSourceRoute
   '/api/vendas/webhook/$connection': typeof ApiVendasWebhookConnectionRoute
+  '/api/vendas/webhook/': typeof ApiVendasWebhookIndexRoute
+  '/api/vendas/ads/google/callback': typeof ApiVendasAdsGoogleCallbackRoute
   '/api/vendas/ads/meta/callback': typeof ApiVendasAdsMetaCallbackRoute
 }
 export interface FileRouteTypes {
@@ -372,6 +400,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/telegram-sync'
     | '/vendas'
+    | '/vendas/conexoes'
     | '/vendas/integracoes'
     | '/vendas/notificacoes'
     | '/vendas/rastreamento'
@@ -385,6 +414,8 @@ export interface FileRouteTypes {
     | '/api/public/meta-syncpay/$pixel'
     | '/api/vendas/tracking/$source'
     | '/api/vendas/webhook/$connection'
+    | '/api/vendas/webhook/'
+    | '/api/vendas/ads/google/callback'
     | '/api/vendas/ads/meta/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -409,6 +440,7 @@ export interface FileRouteTypes {
     | '/painel'
     | '/privacidade'
     | '/telegram-sync'
+    | '/vendas/conexoes'
     | '/vendas/integracoes'
     | '/vendas/notificacoes'
     | '/vendas/rastreamento'
@@ -422,6 +454,8 @@ export interface FileRouteTypes {
     | '/api/public/meta-syncpay/$pixel'
     | '/api/vendas/tracking/$source'
     | '/api/vendas/webhook/$connection'
+    | '/api/vendas/webhook'
+    | '/api/vendas/ads/google/callback'
     | '/api/vendas/ads/meta/callback'
   id:
     | '__root__'
@@ -447,6 +481,7 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/telegram-sync'
     | '/vendas'
+    | '/vendas/conexoes'
     | '/vendas/integracoes'
     | '/vendas/notificacoes'
     | '/vendas/rastreamento'
@@ -460,6 +495,8 @@ export interface FileRouteTypes {
     | '/api/public/meta-syncpay/$pixel'
     | '/api/vendas/tracking/$source'
     | '/api/vendas/webhook/$connection'
+    | '/api/vendas/webhook/'
+    | '/api/vendas/ads/google/callback'
     | '/api/vendas/ads/meta/callback'
   fileRoutesById: FileRoutesById
 }
@@ -495,6 +532,8 @@ export interface RootRouteChildren {
   ApiPublicMetaSyncpayPixelRoute: typeof ApiPublicMetaSyncpayPixelRoute
   ApiVendasTrackingSourceRoute: typeof ApiVendasTrackingSourceRoute
   ApiVendasWebhookConnectionRoute: typeof ApiVendasWebhookConnectionRoute
+  ApiVendasWebhookIndexRoute: typeof ApiVendasWebhookIndexRoute
+  ApiVendasAdsGoogleCallbackRoute: typeof ApiVendasAdsGoogleCallbackRoute
   ApiVendasAdsMetaCallbackRoute: typeof ApiVendasAdsMetaCallbackRoute
 }
 
@@ -661,6 +700,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendasIndexRouteImport
       parentRoute: typeof VendasRoute
     }
+    '/vendas/conexoes': {
+      id: '/vendas/conexoes'
+      path: '/conexoes'
+      fullPath: '/vendas/conexoes'
+      preLoaderRoute: typeof VendasConexoesRouteImport
+      parentRoute: typeof VendasRoute
+    }
     '/vendas/integracoes': {
       id: '/vendas/integracoes'
       path: '/integracoes'
@@ -738,11 +784,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVendasTrackingSourceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/vendas/webhook/': {
+      id: '/api/vendas/webhook/'
+      path: '/api/vendas/webhook'
+      fullPath: '/api/vendas/webhook/'
+      preLoaderRoute: typeof ApiVendasWebhookIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/vendas/webhook/$connection': {
       id: '/api/vendas/webhook/$connection'
       path: '/api/vendas/webhook/$connection'
       fullPath: '/api/vendas/webhook/$connection'
       preLoaderRoute: typeof ApiVendasWebhookConnectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/vendas/ads/google/callback': {
+      id: '/api/vendas/ads/google/callback'
+      path: '/api/vendas/ads/google/callback'
+      fullPath: '/api/vendas/ads/google/callback'
+      preLoaderRoute: typeof ApiVendasAdsGoogleCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/vendas/ads/meta/callback': {
@@ -756,6 +816,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface VendasRouteChildren {
+  VendasConexoesRoute: typeof VendasConexoesRoute
   VendasIntegracoesRoute: typeof VendasIntegracoesRoute
   VendasNotificacoesRoute: typeof VendasNotificacoesRoute
   VendasRastreamentoRoute: typeof VendasRastreamentoRoute
@@ -763,6 +824,7 @@ interface VendasRouteChildren {
 }
 
 const VendasRouteChildren: VendasRouteChildren = {
+  VendasConexoesRoute: VendasConexoesRoute,
   VendasIntegracoesRoute: VendasIntegracoesRoute,
   VendasNotificacoesRoute: VendasNotificacoesRoute,
   VendasRastreamentoRoute: VendasRastreamentoRoute,
@@ -804,6 +866,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMetaSyncpayPixelRoute: ApiPublicMetaSyncpayPixelRoute,
   ApiVendasTrackingSourceRoute: ApiVendasTrackingSourceRoute,
   ApiVendasWebhookConnectionRoute: ApiVendasWebhookConnectionRoute,
+  ApiVendasWebhookIndexRoute: ApiVendasWebhookIndexRoute,
+  ApiVendasAdsGoogleCallbackRoute: ApiVendasAdsGoogleCallbackRoute,
   ApiVendasAdsMetaCallbackRoute: ApiVendasAdsMetaCallbackRoute,
 }
 export const routeTree = rootRouteImport

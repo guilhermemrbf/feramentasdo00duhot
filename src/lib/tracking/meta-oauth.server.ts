@@ -85,7 +85,7 @@ export async function finishMetaAds(request: Request) {
     new Response(null, {
       status: 303,
       headers: {
-        Location: "/vendas/rastreamento?meta=" + result,
+        Location: "/vendas/conexoes?meta=" + result,
         "Cache-Control": "no-store",
         "Referrer-Policy": "no-referrer",
       },
