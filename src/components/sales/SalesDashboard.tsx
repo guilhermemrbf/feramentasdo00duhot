@@ -79,7 +79,7 @@ export function SalesDashboard({
             <Megaphone size={17} aria-hidden="true" />
             Rastreamento de vendas
           </Link>
-          <Link to="/vendas/integracoes" className="sales-button sales-button-outline mb-6">
+          <Link to="/vendas/rastreamento" search={{ view: "integracoes" }} className="sales-button sales-button-outline mb-6">
             Integrações e Pixels
           </Link>
         </div>

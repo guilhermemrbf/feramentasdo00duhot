@@ -287,14 +287,16 @@ try {
     { token, user, now },
   );
   await page.goto(web + "/vendas/integracoes");
+  await page.getByRole("heading", {name:"Gateways", exact:true}).waitFor({timeout:90000});
+  assert.equal(await page.locator("#pixels").count(),0);
+  await page.goto(web + "/vendas/rastreamento");
+  await page.getByRole("link", { name: "Integrações", exact: true }).click();
   await page.getByRole("heading", { name: "Cadastrar Pixel" }).waitFor({timeout: 90000});
   if (process.env.SCALEHOT_PIXEL_PREVIEW) {
     await page.locator("#pixels").screenshot({ path: process.env.SCALEHOT_PIXEL_PREVIEW });
   }
   await page.getByLabel("ID do Pixel ou dataset").fill("123456");
   await page.getByLabel("Token da API de Conversões").waitFor();
-  await page.goto(web + "/vendas/rastreamento");
-  await page.getByRole("link", { name: "Integrações", exact: true }).click();
   assert.equal(
     await page.getByRole("link", { name: "Integrações", exact: true }).getAttribute("aria-current"),
     "page",
@@ -304,7 +306,7 @@ try {
     null,
   );
   await page.getByLabel("Gateway", { exact: true }).selectOption(gateway, { timeout: 25000 });
-  await page.getByLabel("Domínio da loja").fill("https://loja.example");
+  await page.locator("#tracking-setup").locator("..").getByLabel("Domínio da loja").fill("https://loja.example");
   await page.getByRole("button", { name: "Gerar credenciais da loja" }).click();
   const endpoint = await page.getByRole("textbox", { name: "URL", exact: true }).inputValue();
   const key = await page.getByRole("textbox", { name: "Chave", exact: true }).inputValue();

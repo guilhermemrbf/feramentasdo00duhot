@@ -1,3 +1,4 @@
+import { Pixels } from "@/components/sales/Pixels";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -188,13 +189,7 @@ function TrackingPage() {
               )}
             </section>
             <MetaAdsConnection result={meta} />
-            <Link
-              to="/vendas/integracoes"
-              hash="pixels"
-              className="sales-button sales-button-outline"
-            >
-              Configurar Pixel da Meta
-            </Link>
+
           </div>
           <section className="sales-panel min-w-0 self-start p-5" aria-labelledby="tracking-setup">
             <h2 className="flex items-center gap-2 text-lg font-semibold" id="tracking-setup">
@@ -294,6 +289,7 @@ function TrackingPage() {
               </div>
             )}
           </section>
+          <div className="lg:col-span-2"><Pixels /></div>
         </div>
       )}
     </div>

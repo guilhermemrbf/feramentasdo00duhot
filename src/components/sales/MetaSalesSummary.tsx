@@ -39,7 +39,7 @@ export function MetaSalesSummary({ period }: { period: SalesPeriod }) {
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
-          <Link to="/vendas/integracoes" hash="pixels">
+          <Link to="/vendas/rastreamento" search={{ view: "integracoes" }} hash="pixels">
             Configurar Pixels
           </Link>
         </Button>

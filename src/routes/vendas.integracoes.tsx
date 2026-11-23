@@ -1,4 +1,3 @@
-import { Pixels } from "@/components/sales/Pixels";
 import { createFileRoute } from "@tanstack/react-router";
 import { SalesConnections } from "@/components/sales/SalesConnections";
 import { SalesPageHeader } from "@/components/sales/SalesLayout";
@@ -14,7 +13,7 @@ function SalesIntegrations() {
   return (
     <>
       <SalesPageHeader
-        title="Integrações"
+        title="Gateways"
         subtitle="Conecte seus gateways e receba vendas automaticamente no dashboard."
       />
       {query.isPending && (
@@ -37,7 +36,6 @@ function SalesIntegrations() {
         </div>
       )}
       {query.data && <SalesConnections links={query.data.links} />}
-      <Pixels />
     </>
   );
 }
