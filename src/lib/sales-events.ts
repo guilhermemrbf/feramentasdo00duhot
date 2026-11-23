@@ -72,12 +72,15 @@ function timestamp(value: unknown) {
 const adapters: Record<SalesProvider, (body: Fields) => ProviderEvent | null> = {
   omegapay(body) {
     const tx = fields(body.transaction);
+    const event = status(body.event);
+    const originalCurrency = status(tx.originalCurrency);
     return {
       id: tx.id ?? tx.identifier,
-      status: status(body.event),
-      amount: tx.amount ?? tx.originalAmount,
-      net: tx.commissionAmount,
+      status: event,
+      amount: tx.amount ?? (originalCurrency === "BRL" ? tx.originalAmount : undefined),
+      net: event === "TRANSACTION_PAID" ? tx.commissionAmount : undefined,
       currency: tx.currency,
+      date: event === "TRANSACTION_PAID" ? tx.payedAt : undefined,
     };
   },
   syncpay(body) {
@@ -225,6 +228,10 @@ export function parseSaleEvent(
   const amountCents = cents(data.amount, data.units);
   if (!id || id.length > 160 || amountCents === null || amountCents === 0)
     return { result: "invalid" };
+  const netCents =
+    status(data.netCurrency) && status(data.netCurrency) !== "BRL"
+      ? null
+      : cents(data.net, data.units);
   return {
     result: "event",
     event: {
@@ -232,11 +239,25 @@ export function parseSaleEvent(
       kind,
       amountCents,
       netCents:
-        status(data.netCurrency) && status(data.netCurrency) !== "BRL"
-          ? null
-          : cents(data.net, data.units),
+        provider === "omegapay" && netCents !== null && netCents > amountCents ? null : netCents,
       occurredAt: timestamp(data.date),
     },
+  };
+}
+
+export function salesDashboardAmounts(data: {
+  approved: number;
+  with_net: number;
+  gross_cents: number;
+  reported_net_cents: number | null;
+  reversed_cents: number;
+}) {
+  const reported = data.reported_net_cents;
+  const net = data.approved === 0 ? 0 : data.with_net === data.approved ? reported : null;
+  return {
+    net,
+    deductions: net === null || net > data.gross_cents ? null : data.gross_cents - net,
+    beforeCosts: net === null ? null : net - data.reversed_cents,
   };
 }
 

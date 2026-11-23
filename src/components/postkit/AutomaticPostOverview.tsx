@@ -64,17 +64,21 @@ export function AutomaticPostOverview({
   };
   const metrics = [
     {
-      label: period === "today" ? "Visualizações hoje" : "Visualizações de Reels",
+      label: "Visualizações de Reels",
       value: displayNumber(data?.views),
       hint:
         data?.views == null
-          ? "Sem visualizações coletadas"
-          : `${displayNumber(data.measured)} de ${displayNumber(data.reels)} Reels · acumuladas`,
-      title: "Total acumulado dos Reels publicados no período, até a última coleta do Instagram.",
+          ? waiting
+            ? "Carregando métricas…"
+            : performance.isError || workspaceQuery.isError
+              ? "Coleta indisponível"
+              : "Sem visualizações coletadas no período"
+          : `${displayNumber(data.measured)} de ${displayNumber(data.reels)} Reels com dados`,
+      title: "Visualizações acumuladas até a última coleta dos Reels publicados no período.",
       icon: Eye,
     },
     {
-      label: "Publicados",
+      label: "Reels publicados",
       value: displayNumber(noWorkspace ? 0 : data?.published),
       hint: "Publicados pelo Automatic Post",
       icon: Check,
@@ -86,13 +90,13 @@ export function AutomaticPostOverview({
         data?.connected == null && !noWorkspace
           ? "Contas com publicações no período"
           : `De ${displayNumber(noWorkspace ? 0 : data?.connected)} conectadas`,
-      title: "Contas conectadas que publicaram pelo Automatic Post no período.",
+      title: "Contas atualmente conectadas que publicaram pelo Automatic Post no período.",
       icon: Instagram,
     },
     {
       label: "Posts na fila",
       value: displayNumber(noWorkspace ? 0 : queue?.queued),
-      hint: "Agendados ou em processamento",
+      hint: "Fila atual · agendados ou em processamento",
       icon: Clock3,
     },
   ];
@@ -117,7 +121,6 @@ export function AutomaticPostOverview({
       {(workspaceQuery.isError ||
         performance.isError ||
         queued.isError ||
-        data?.incomplete ||
         queue?.scheduleUnavailable) && (
         <p
           role="status"
@@ -209,7 +212,7 @@ export function AutomaticPostOverview({
           {data?.ranking.length ? (
             <>
               <p className="px-4 pt-3 text-xs text-muted-foreground">
-                Views acumuladas no histórico coletado
+                Visualizações acumuladas dos Reels publicados no período
               </p>
               <ol className="max-h-72 divide-y divide-border overflow-y-auto px-4">
                 {data.ranking.map(({ id, username, views }, index) => (
@@ -230,9 +233,9 @@ export function AutomaticPostOverview({
             <p className="grid min-h-36 place-items-center px-4 py-6 text-center text-sm text-muted-foreground">
               {waiting
                 ? "Carregando métricas…"
-                : workspaceQuery.isError || performance.isError || data?.analyticsUnavailable
+                : workspaceQuery.isError || performance.isError
                   ? "Métricas indisponíveis agora."
-                  : "Nenhuma conta com visualizações coletadas."}
+                  : "Nenhuma conta com visualizações coletadas no período."}
             </p>
           )}
         </section>

@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { InstagramAnalyticsReport } from "@/components/postkit/InstagramAnalytics";
 import { supabase } from "@/integrations/supabase/client";
 import type { PostkitDatabase } from "@/lib/postkit-database";
 
@@ -94,70 +93,23 @@ export async function readPostkitQueue(workspaceId: string, limit = 5) {
   };
 }
 
-export async function readPostkitPerformance(workspaceId: string, range: PostkitDashboardRange) {
-  let posts = database
-    .from("posts")
-    .select("id", { count: "exact", head: true })
-    .eq("workspace_id", workspaceId)
-    .eq("status", "published");
-  let active = database
-    .from("instagram_accounts")
-    .select("id,published_posts:posts!posts_instagram_account_id_workspace_id_fkey!inner()", {
-      count: "exact",
-      head: true,
-    })
-    .eq("workspace_id", workspaceId)
-    .eq("connection_status", "connected")
-    .eq("published_posts.status", "published");
-  if (range.start) {
-    posts = posts.gte("published_at", range.start);
-    active = active.gte("published_posts.published_at", range.start);
-  }
-  if (range.end) {
-    posts = posts.lt("published_at", range.end);
-    active = active.lt("published_posts.published_at", range.end);
-  }
+type PostkitPerformance = {
+  published: number;
+  active: number;
+  connected: number;
+  views: number | null;
+  measured: number;
+  reels: number;
+  accountNames: Record<string, string>;
+  ranking: { id: string; username: string; views: number }[];
+};
 
-  const [published, activeAccounts, connected, analytics] = await Promise.all([
-    posts,
-    active,
-    database
-      .from("instagram_accounts")
-      .select("id", { count: "exact", head: true })
-      .eq("workspace_id", workspaceId)
-      .eq("connection_status", "connected"),
-    database.rpc("get_instagram_analytics", {
-      p_workspace: workspaceId,
-      p_account: null,
-      p_start: range.start,
-      p_end: range.end,
-      p_page: 0,
-    }),
-  ]);
-  const report = analytics.data as unknown as InstagramAnalyticsReport | null;
-  const reels = report?.totals.find(({ kind }) => kind === "reel");
-  const ranking = (report?.profiles ?? [])
-    .flatMap(({ id, username, reel_views, measured, reels }) =>
-      reel_views == null ? [] : [{ id, username, views: reel_views, measured, reels }],
-    )
-    .sort(
-      (first, second) =>
-        second.views - first.views || first.username.localeCompare(second.username, "pt-BR"),
-    );
-  return {
-    published: published.count,
-    active: activeAccounts.count,
-    connected: connected.count,
-    views: reels?.views ?? null,
-    measured: reels?.measured,
-    reels: reels?.publications,
-    accountNames: Object.fromEntries(
-      (report?.accounts ?? []).map(({ id, username }) => [id, username]),
-    ),
-    ranking,
-    analyticsUnavailable: Boolean(analytics.error),
-    incomplete: [published, activeAccounts, connected, analytics].some((result) =>
-      Boolean(result.error),
-    ),
-  };
+export async function readPostkitPerformance(workspaceId: string, range: PostkitDashboardRange) {
+  const { data, error } = await database.rpc("get_postkit_dashboard_performance", {
+    p_workspace: workspaceId,
+    p_start: range.start,
+    p_end: range.end,
+  });
+  if (error) throw error;
+  return data as PostkitPerformance;
 }

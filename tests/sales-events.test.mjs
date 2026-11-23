@@ -1,10 +1,67 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseSaleEvent, SALES_CONNECTION_PROVIDERS } from "../src/lib/sales-events.ts";
+import {
+  parseSaleEvent,
+  SALES_CONNECTION_PROVIDERS,
+  salesDashboardAmounts,
+} from "../src/lib/sales-events.ts";
 import { validPushEndpoint } from "../src/lib/sales-push.ts";
 
 test("offers new connections only for the three ScaleHot gateways", () => {
   assert.deepEqual([...SALES_CONNECTION_PROVIDERS], ["omegapay", "syncpay", "wiinpay"]);
+});
+
+test("OmegaPay uses producer currency, net commission and actual payment date", () => {
+  const transaction = {
+    id: "omega-test",
+    amount: 100,
+    commissionAmount: 88,
+    originalAmount: 20,
+    originalCurrency: "USD",
+    currency: "BRL",
+    createdAt: "2026-11-22T21:00:00Z",
+    payedAt: "2026-11-23T15:00:00-03:00",
+  };
+  const parse = (overrides = {}, event = "TRANSACTION_PAID") =>
+    parseSaleEvent("omegapay", { event, transaction: { ...transaction, ...overrides } });
+  assert.deepEqual(parse().event, {
+    externalId: "omega-test",
+    kind: "approved",
+    amountCents: 10000,
+    netCents: 8800,
+    occurredAt: "2026-11-23T18:00:00.000Z",
+  });
+  assert.equal(parse({ amount: null }).result, "invalid");
+  assert.equal(parse({ commissionAmount: null }).event.netCents, null);
+  assert.equal(parse({ commissionAmount: 101 }).event.netCents, null);
+  assert.equal(parse({ commissionAmount: 0 }).event.netCents, 0);
+  assert.equal(parse({}, "TRANSACTION_REFUNDED").event.occurredAt, null);
+});
+
+test("dashboard distinguishes gross sales from repasses, deductions and the result before costs", () => {
+  const twoSales = {
+    approved: 2,
+    with_net: 2,
+    gross_cents: 20000,
+    reported_net_cents: 17600,
+    reversed_cents: 0,
+  };
+  assert.deepEqual(salesDashboardAmounts(twoSales), {
+    net: 17600,
+    deductions: 2400,
+    beforeCosts: 17600,
+  });
+  assert.deepEqual(salesDashboardAmounts({ ...twoSales, reversed_cents: 10000 }), {
+    net: 17600,
+    deductions: 2400,
+    beforeCosts: 7600,
+  });
+  assert.deepEqual(salesDashboardAmounts({ ...twoSales, with_net: 1, reported_net_cents: 8800 }), {
+    net: null,
+    deductions: null,
+    beforeCosts: null,
+  });
+  assert.equal(salesDashboardAmounts({ ...twoSales, reported_net_cents: 20000 }).deductions, 0);
 });
 
 test("adapts all eight checkout formats with explicit paid states", () => {

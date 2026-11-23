@@ -28,7 +28,13 @@ import type { DashboardMetric } from "@/components/DashboardMetrics";
 import { SalesPageHeader } from "@/components/sales/SalesLayout";
 import { SalesGoal } from "@/components/sales/SalesGoal";
 import { useSalesOverview } from "@/components/sales/SalesSummary";
-import { SALES_PERIODS, SALES_PROVIDERS, salesMoney, type SalesPeriod } from "@/lib/sales-events";
+import {
+  SALES_PERIODS,
+  SALES_PROVIDERS,
+  salesDashboardAmounts,
+  salesMoney,
+  type SalesPeriod,
+} from "@/lib/sales-events";
 import type { SalesOverview } from "@/lib/api/sales.functions";
 import { cn } from "@/lib/utils";
 import "./scalehot.css";
@@ -79,7 +85,11 @@ export function SalesDashboard({
             <Megaphone size={17} aria-hidden="true" />
             Rastreamento de vendas
           </Link>
-          <Link to="/vendas/rastreamento" search={{ view: "integracoes" }} className="sales-button sales-button-outline mb-6">
+          <Link
+            to="/vendas/rastreamento"
+            search={{ view: "integracoes" }}
+            className="sales-button sales-button-outline mb-6"
+          >
             Integrações e Pixels
           </Link>
         </div>
@@ -157,41 +167,56 @@ export function SalesDashboard({
 }
 
 function salesMetricCards(data?: SalesOverview): DashboardMetric[] {
-  const approved = data?.approved ?? 0;
-  const net = data && data.with_net === approved ? data.reported_net_cents : null;
-  const fees = data && net !== null ? data.gross_cents - net : null;
   const received = Boolean(
-    approved || data?.reversed || data?.links.some(({ last_event_at }) => last_event_at),
+    data?.approved || data?.reversed || data?.links.some(({ last_event_at }) => last_event_at),
   );
-  const empty = received && approved === 0;
+  const amounts = data && received ? salesDashboardAmounts(data) : null;
+  const net = amounts?.net ?? null;
+  const deductions = amounts?.deductions ?? null;
+  const beforeCosts = amounts?.beforeCosts ?? null;
   const waiting = data?.links.some(({ active }) => active)
     ? "Aguardando eventos do gateway"
     : "Sem dados de vendas";
+  const missingNet = data?.approved ? "Líquido incompleto no webhook" : waiting;
   return [
     {
       label: "Faturamento Líquido",
-      value: net !== null ? salesMoney(net) : empty ? salesMoney(0) : "—",
-      hint: net !== null ? "Informado pelos gateways" : empty ? "Sem vendas no período" : waiting,
+      value: net !== null ? salesMoney(net) : "—",
+      hint:
+        data && received
+          ? `Bruto: ${salesMoney(data.gross_cents)}${net === null ? " · líquido incompleto" : ""}`
+          : waiting,
+      title: "Soma do líquido informado para as vendas aprovadas no período, antes dos estornos.",
       icon: Wallet,
       iconColor: "text-sky-300",
     },
     {
-      label: "Lucro",
-      value: "—",
-      hint: "Depende dos custos da operação",
+      label: "Lucro antes de custos",
+      value: beforeCosts === null ? "—" : salesMoney(beforeCosts),
+      hint:
+        beforeCosts === null
+          ? missingNet
+          : data?.reversed
+            ? "Líquido menos estornos brutos"
+            : "Antes de anúncios, impostos e outras despesas",
+      title:
+        "Resultado operacional estimado. Subtrai do líquido o valor bruto dos estornos no período.",
       icon: Trophy,
       iconColor: "text-success",
-      valueColor: "text-success",
+      valueColor:
+        beforeCosts === null ? undefined : beforeCosts < 0 ? "text-destructive" : "text-success",
     },
     {
-      label: "Total de Taxas",
-      value: fees !== null && fees >= 0 ? salesMoney(fees) : empty ? salesMoney(0) : "—",
+      label: "Taxas e descontos",
+      value: deductions === null ? "—" : salesMoney(deductions),
       hint:
-        fees !== null && fees >= 0
+        deductions !== null
           ? "Diferença entre bruto e líquido"
-          : empty
-            ? "Sem vendas no período"
-            : waiting,
+          : net === null
+            ? missingNet
+            : "Bruto e líquido inconsistentes",
+      title:
+        "Diferença entre o valor bruto e o repasse do gateway. Pode incluir taxas, comissões e outros descontos.",
       icon: Percent,
       iconColor: "text-amber-300",
     },
@@ -437,14 +462,14 @@ function WeeklySales() {
       <h2 id="weekly-sales-title" className="font-display text-lg font-bold">
         Resumo da semana
       </h2>
-      <p className="mt-1 text-sm text-muted-foreground">�ltimos 7 dias, incluindo hoje.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Últimos 7 dias, incluindo hoje.</p>
       {week ? (
         <dl className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
           {[
             ["Vendas aprovadas", week.approved],
             ["Faturamento bruto", salesMoney(week.gross_cents)],
             ["Valor estornado", salesMoney(week.reversed_cents)],
-            ["Bruto ap�s estornos", salesMoney(week.gross_cents - week.reversed_cents)],
+            ["Bruto após estornos", salesMoney(week.gross_cents - week.reversed_cents)],
           ].map(([label, value]) => (
             <div key={label}>
               <dt className="text-sm text-muted-foreground">{label}</dt>
@@ -454,7 +479,7 @@ function WeeklySales() {
         </dl>
       ) : query.isError ? (
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <span>Dados da semana indispon�veis.</span>
+          <span>Dados da semana indisponíveis.</span>
           <button
             className="sales-button sales-button-outline"
             onClick={() => void query.refetch()}
@@ -464,7 +489,7 @@ function WeeklySales() {
         </div>
       ) : (
         <p role="status" className="mt-4">
-          Carregando a semana�
+          Carregando a semana…
         </p>
       )}
     </section>
@@ -492,8 +517,8 @@ function LiveSales({
       {!events ? (
         <p className="py-6 text-sm text-muted-foreground" role="status">
           {failed
-            ? "Hist�rico indispon�vel. Tente carregar as vendas novamente."
-            : "Carregando �ltimas vendas� "}
+            ? "Histórico indisponível. Tente carregar as vendas novamente."
+            : "Carregando últimas vendas…"}
         </p>
       ) : events.length === 0 ? (
         <p className="grid min-h-28 place-items-center text-sm text-muted-foreground">

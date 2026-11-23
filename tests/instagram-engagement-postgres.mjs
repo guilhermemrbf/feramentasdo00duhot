@@ -44,7 +44,8 @@ try {
     );
     create table public.posts (
       workspace_id uuid, instagram_account_id uuid, status text,
-      published_at timestamptz, scheduled_at timestamptz, created_at timestamptz
+      published_at timestamptz, scheduled_at timestamptz, created_at timestamptz,
+      content_type text
     );
   `);
   await db.query("select set_config('test.workspace', $1, false)", [workspace]);
@@ -170,6 +171,57 @@ try {
   ).rows[0];
   assert.equal(Number(viewRecord.views), 9000);
   assert.equal(viewRecord.deferred, true);
+
+  await db.exec(await loadMigration("20261123153000_postkit_dashboard_performance.sql"));
+  await db.query(
+    `insert into public.posts (workspace_id,instagram_account_id,status,published_at,content_type)
+       values ($1,$3,'published','2020-11-22T02:59:59Z','reel'),
+              ($1,$3,'published','2020-11-22T03:00:00Z','reel'),
+              ($1,$3,'published','2020-11-22T04:00:00Z','reel'),
+              ($1,$4,'published','2020-11-22T04:00:00Z','story'),
+              ($1,$4,'published','2020-11-23T03:00:00Z','reel'),
+              ($1,$4,'scheduled',null,'reel'),
+              ($2,$5,'published','2020-11-22T04:00:00Z','reel')`,
+    [workspace, otherWorkspace, accountA, accountB, otherAccount],
+  );
+  await db.query(
+    `insert into private.instagram_analytics_media (account_id,media_id,kind,published_at,views)
+       values ($1,'boundary-start','reel','2020-11-22T03:00:00Z',12),
+              ($2,'boundary-end','reel','2020-11-23T03:00:00Z',100),
+              ($2,'within-zero','reel','2020-11-22T05:00:00Z',0),
+              ($2,'within-missing','reel','2020-11-22T05:00:00Z',null),
+              ($3,'within-other','reel','2020-11-22T05:00:00Z',999)`,
+    [accountA, accountB, otherAccount],
+  );
+  await db.exec("set role authenticated");
+  const dashboard = async (id, start, end) =>
+    (
+      await db.query("select public.get_postkit_dashboard_performance($1,$2,$3) as report", [
+        id,
+        start,
+        end,
+      ])
+    ).rows[0].report;
+  const report = await dashboard(workspace, "2020-11-22T03:00:00Z", "2020-11-23T03:00:00Z");
+  assert.equal(report.published, 2);
+  assert.equal(report.active, 2);
+  assert.equal(report.connected, 2);
+  assert.equal(report.views, 12);
+  assert.equal(report.reels, 3);
+  assert.equal(report.measured, 2);
+  assert.deepEqual(
+    report.ranking.map(({ username, views }) => [username, views]),
+    [
+      ["perfil_a", 12],
+      ["perfil_b", 0],
+    ],
+  );
+  const empty = await dashboard(workspace, "2020-11-21T03:00:00Z", "2020-11-21T04:00:00Z");
+  assert.equal(empty.views, null);
+  assert.equal(empty.published, 0);
+  assert.equal(empty.active, 0);
+  assert.deepEqual(empty.ranking, []);
+  await assert.rejects(dashboard(otherWorkspace, null, null), /workspace_access/);
   console.log(
     "PASS: ranking by engagement, nullable metrics, top 10, scopes, follower totals, existing view retention and catalog advancement.",
   );

@@ -231,6 +231,10 @@ export type PostkitDatabase = Omit<Database, "public"> & {
         };
         Returns: Json;
       };
+      get_postkit_dashboard_performance: {
+        Args: { p_workspace: string; p_start: string | null; p_end: string | null };
+        Returns: Json;
+      };
       get_instagram_top_posts: {
         Args: { p_workspace: string; p_account: string | null };
         Returns: Json;
