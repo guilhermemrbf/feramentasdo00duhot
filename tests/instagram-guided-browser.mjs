@@ -1120,7 +1120,7 @@ try {
   });
   await googlePage.goto(web);
   await googlePage.getByRole("button", { name: "Continuar com Google", exact: true }).click();
-  await googlePage.getByRole("heading", { name: "Visão geral", exact: true }).waitFor();
+  await googlePage.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)(?:, .+)?!$/ }).waitFor();
   await googlePage.goto(web + "/automacao-instagram?tab=nova-conta");
   await googlePage.getByRole("region", { name: "Passo a passo por conta" }).waitFor();
   assert.equal(googleCodeExchanged, true);
@@ -1267,7 +1267,7 @@ try {
   await loginForm.getByLabel("E-mail", { exact: true }).fill("fixture@example.test");
   await loginForm.getByLabel("Senha", { exact: true }).fill("fixture-password-only");
   await loginForm.locator("form").getByRole("button", { name: "Entrar", exact: true }).click();
-  await visitor.getByRole("heading", { name: "Visão geral", exact: true }).waitFor();
+  await visitor.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)(?:, .+)?!$/ }).waitFor();
   await visitor.close();
 
   platformStatus = "pending";
@@ -1291,7 +1291,7 @@ try {
   platformStatus = "admin";
   platformExpiry = null;
   await page.goto(web + "/painel");
-  await page.getByRole("heading", { name: "Visão geral", exact: true }).waitFor();
+  await page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)(?:, .+)?!$/ }).waitFor();
   const publishingCard = overview.getByRole("article", { name: "Automatic Post · Instagram" });
   assert.equal(await publishingCard.count(), 1);
   await publishingCard.getByText("Sua operação no Instagram", { exact: true }).waitFor();

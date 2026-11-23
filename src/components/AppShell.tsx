@@ -2,10 +2,12 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowUpRight,
+  Bell,
   Clock3,
   LogOut,
   ChevronDown,
   CircleHelp,
+  ChartNoAxesCombined,
   Download,
   FileKey,
   GitBranch,
@@ -17,6 +19,7 @@ import {
   Menu,
   MonitorSmartphone,
   PanelTop,
+  Plug,
   Search,
   Send,
   ShieldCheck,
@@ -50,15 +53,28 @@ export const TOOL_ICONS = {
   creatives: ShieldCheck,
   preview: Scan,
   social: Instagram,
+  sales: ChartNoAxesCombined,
   funnels: GitBranch,
   profiles: MonitorSmartphone,
   tempMail: Mail,
 };
+
+const SALES_TABS = [
+  { path: "/vendas/integracoes", title: "Gateways", icon: Plug },
+  { path: "/vendas/notificacoes", title: "Notificações", icon: Bell },
+] as const;
+const SIDEBAR_CATEGORIES = [
+  "Automação",
+  ...CATEGORIES.filter((category) => category !== "Automação"),
+] as const;
+const BRAND_MARK = "/brand/compact.webp";
+const BRAND_SLOGAN = "Sua operação digital em um só lugar";
+
 function Brand() {
   return (
     <span className="flex items-center gap-3">
       <img
-        src="/brand/compact.webp"
+        src={BRAND_MARK}
         alt=""
         width={44}
         height={44}
@@ -66,8 +82,8 @@ function Brand() {
       />
       <span>
         <strong className="block text-[17px] font-semibold tracking-tight">MouseHot</strong>
-        <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">
-          Espaço de trabalho
+        <span className="mt-0.5 block text-[11px] leading-snug font-medium text-muted-foreground">
+          {BRAND_SLOGAN}
         </span>
       </span>
     </span>
@@ -81,6 +97,7 @@ export function AppShell({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const current = findTool(pathname);
+  const salesTab = SALES_TABS.find(({ path }) => path === pathname);
   const currentId = current?.id;
   const isHome = pathname === "/painel";
   const isAdmin = pathname === "/aprovacoes";
@@ -185,7 +202,7 @@ export function AppShell({
             className={cn("tool-nav-link mb-4", isHome && "is-active")}
           >
             <Home className="size-[17px]" />
-            Visão geral
+            Dashboard
           </Link>
           {status === "admin" && (
             <Link
@@ -207,7 +224,7 @@ export function AppShell({
               <div className="pb-1">{shortcuts.map((tool) => nav(tool, true))}</div>
             </details>
           )}
-          {CATEGORIES.filter((category) =>
+          {SIDEBAR_CATEGORIES.filter((category) =>
             available.some((tool) => tool.category === category),
           ).map((category) => (
             <div key={category} className="mb-5">
@@ -215,6 +232,26 @@ export function AppShell({
                 {category}
               </p>
               {available.filter((tool) => tool.category === category).map((tool) => nav(tool))}
+              {category === "Automação" &&
+                status &&
+                SALES_TABS.filter(({ path }) => accessForRoute(path, status)).map(
+                  ({ path, title, icon: Icon }) => (
+                    <Link
+                      key={path}
+                      to={path}
+                      onClick={() => setMobile(false)}
+                      aria-current={pathname === path ? "page" : undefined}
+                      className={cn("tool-nav-link gap-2.5", pathname === path && "is-active")}
+                    >
+                      <Icon
+                        className="tool-tone size-[17px] shrink-0"
+                        data-tone="automacao"
+                        aria-hidden
+                      />
+                      {title}
+                    </Link>
+                  ),
+                )}
             </div>
           ))}
         </nav>
@@ -291,7 +328,7 @@ export function AppShell({
             </Sheet>
             <Link to="/painel" aria-label="MouseHot, início" className="shrink-0 sm:hidden">
               <img
-                src="/brand/compact.webp"
+                src={BRAND_MARK}
                 alt=""
                 width={32}
                 height={32}
@@ -310,9 +347,23 @@ export function AppShell({
               </>
             )}
             <span className="truncate text-sm font-semibold">
-              {current?.name || (isAdmin ? "Aprovações e convites" : "Visão geral")}
+              {current?.name ||
+                salesTab?.title ||
+                (isAdmin ? "Aprovações e convites" : "Dashboard")}
             </span>
           </div>
+          {isHome && status !== "trial" && (
+            <span className="flex max-w-34 items-center gap-2 text-right text-[11px] leading-snug text-muted-foreground sm:max-w-none sm:text-xs">
+              <img
+                src={BRAND_MARK}
+                alt=""
+                width={28}
+                height={28}
+                className="hidden size-7 shrink-0 rounded-md object-contain sm:block"
+              />
+              {BRAND_SLOGAN}
+            </span>
+          )}
           {status === "trial" && <TrialClock />}
           {!isHome && status !== "trial" && (
             <button
@@ -334,7 +385,7 @@ export function AppShell({
           {typeof children === "function" ? children(openTools) : children}
         </div>
         <footer className="workspace-footer">
-          <span>MouseHot · Sua operação digital em um só lugar</span>
+          <span>MouseHot · {BRAND_SLOGAN}</span>
         </footer>
       </div>
       <dialog

@@ -97,12 +97,15 @@ const postkit = supabase as unknown as SupabaseClient<PostkitDatabase>;
 export const Route = createFileRoute("/automacao-instagram")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { tab?: "perfis" | "contas" | "nova-conta" | "stories" } => ({
+  ): { tab?: "perfis" | "contas" | "nova-conta" | "stories" | "publicacoes" | "fila" | "analytics" } => ({
     tab:
       search.tab === "perfis" ||
       search.tab === "contas" ||
       search.tab === "nova-conta" ||
-      search.tab === "stories"
+      search.tab === "stories" ||
+      search.tab === "publicacoes" ||
+      search.tab === "fila" ||
+      search.tab === "analytics"
         ? search.tab
         : undefined,
   }),

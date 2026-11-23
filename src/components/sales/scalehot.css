@@ -1,0 +1,89 @@
+@font-face {
+  font-family: "ScaleHot Inter";
+  src: url("/fonts/scalehot-inter.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "ScaleHot Space Grotesk";
+  src: url("/fonts/scalehot-space-grotesk.woff2") format("woff2");
+  font-weight: 500 700;
+  font-display: swap;
+}
+
+.scalehot-theme {
+  --background: oklch(0.08 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.13 0.015 270);
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.72 0.21 290);
+  --primary-foreground: #fff;
+  --secondary: oklch(0.2 0.035 285);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.17 0.02 270);
+  --muted-foreground: oklch(0.73 0.02 270);
+  --accent: oklch(0.24 0.09 285);
+  --accent-foreground: var(--foreground);
+  --border: oklch(0.25 0.028 270);
+  --input: var(--border);
+  --ring: var(--primary);
+  --destructive: oklch(0.73 0.17 24);
+  --success: oklch(0.76 0.17 158);
+  --sales-action: linear-gradient(135deg, #7635da, #5423ad);
+  font-family: "ScaleHot Inter", "Segoe UI", sans-serif;
+}
+
+.scalehot-theme .font-display {
+  font-family: "ScaleHot Space Grotesk", "Segoe UI", sans-serif;
+}
+
+.scalehot-workspace {
+  background:
+    radial-gradient(ellipse at top, oklch(0.6 0.25 285 / 0.15), transparent 75%), var(--background);
+  color: var(--foreground);
+}
+
+.sales-panel {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--card);
+}
+
+.scalehot-theme .sales-panel {
+  background: linear-gradient(135deg, oklch(0.16 0.025 270), var(--card));
+}
+
+.mousehot-finance .sales-period-button[aria-pressed="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.sales-button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: var(--sales-action, var(--primary));
+  color: var(--primary-foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.sales-button:hover:not(:disabled) {
+  filter: brightness(1.16);
+}
+.sales-button:disabled {
+  opacity: 0.52;
+}
+.sales-button-outline {
+  background: var(--background);
+  border-color: var(--border);
+  color: var(--foreground);
+}

@@ -1,43 +1,98 @@
-import { ArrowUpRight, Check } from "lucide-react";
+import { ArrowUpRight, ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, TOOL_ICONS } from "@/components/AppShell";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { dashboardGreeting } from "@/lib/dashboard-greeting";
 import { accessForRoute } from "@/lib/platform-access";
 import { CATEGORIES, TOOL_CATALOG, type Tool } from "@/lib/tool-catalog";
+import { SalesDashboard } from "@/components/sales/SalesDashboard";
+import { AutomaticPostOverview } from "@/components/postkit/AutomaticPostOverview";
 
 export const Route = createFileRoute("/painel")({
-  head: () => ({ meta: [{ title: "Visão geral | MouseHot" }] }),
+  head: () => ({ meta: [{ title: "Dashboard | MouseHot" }] }),
   component: WorkspaceHome,
 });
 
 function WorkspaceHome() {
-  const { status } = usePlatformAccess();
+  const { status, user, offsetMs } = usePlatformAccess();
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const refresh = () => setNow(Date.now());
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
   const tools = TOOL_CATALOG.filter((tool) => status && accessForRoute(tool.path, status)).sort(
     (first, second) =>
       Number(second.id === "social") - Number(first.id === "social") ||
       CATEGORIES.indexOf(first.category) - CATEGORIES.indexOf(second.category),
   );
+  const directory = <ToolDirectory tools={tools} trial={status === "trial"} />;
   return (
     <AppShell>
       <main className="workspace-overview mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-9">
         <header className="operate-heading">
           <div>
-            <h1>Visão geral</h1>
-            <p>Prepare seus arquivos, planeje publicações e gerencie suas contas.</p>
+            <h1>{dashboardGreeting(new Date(now + offsetMs), user, status === "admin")}</h1>
+            <p>Acompanhe sua operação e abra as ferramentas da MouseHot.</p>
           </div>
         </header>
-        <section className="workspace-directory" aria-labelledby="workspace-tools">
-          <h2 id="workspace-tools">
-            {status === "trial" ? "Ferramentas do seu teste" : "Todas as ferramentas"}
-          </h2>
-          <div className="workspace-directory-cards">
-            {tools.map((tool) => (
-              <ToolOverviewCard key={tool.id} tool={tool} />
-            ))}
-          </div>
-        </section>
+        {status === "admin" || status === "approved" ? (
+          <SalesDashboard
+            embedded
+            renderOverview={(period, salesMetrics) => (
+              <AutomaticPostOverview period={period} salesMetrics={salesMetrics} />
+            )}
+          >
+            {directory}
+          </SalesDashboard>
+        ) : (
+          directory
+        )}
       </main>
     </AppShell>
+  );
+}
+
+function ToolDirectory({ tools, trial }: { tools: Tool[]; trial: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const expansion = useRef<HTMLLIElement>(null);
+  const firstExtra = 3;
+  return (
+    <section className="workspace-directory mt-8" aria-labelledby="workspace-tools">
+      <h2 id="workspace-tools">{trial ? "Ferramentas do seu teste" : "Ferramentas"}</h2>
+      <ul className="workspace-directory-cards" id="workspace-tool-grid">
+        {tools.map((tool, index) => (
+          <li
+            key={tool.id}
+            hidden={!expanded && index >= firstExtra}
+            ref={index === firstExtra ? expansion : undefined}
+          >
+            <ToolOverviewCard tool={tool} />
+          </li>
+        ))}
+      </ul>
+      {tools.length > firstExtra && (
+        <button
+          type="button"
+          className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold hover:bg-muted"
+          aria-expanded={expanded}
+          aria-controls="workspace-tool-grid"
+          onClick={() => {
+            setExpanded(!expanded);
+            if (!expanded)
+              requestAnimationFrame(() => expansion.current?.querySelector("a")?.focus());
+          }}
+        >
+          {expanded ? "Mostrar menos ferramentas" : "Ver todas as ferramentas"}
+          <ChevronDown size={17} className={expanded ? "rotate-180" : undefined} aria-hidden />
+        </button>
+      )}
+    </section>
   );
 }
 
@@ -47,27 +102,16 @@ function ToolOverviewCard({ tool }: { tool: Tool }) {
 
   return (
     <article className="workspace-feature" aria-labelledby={headingId}>
-      <div>
-        <div className="workspace-feature-brand">
-          <span className="workspace-feature-icon">
-            <Icon size={25} aria-hidden />
-          </span>
-          <h3 id={headingId}>{tool.name}</h3>
-        </div>
-        <p className="workspace-feature-title">{tool.overview.title}</p>
-        <p className="workspace-feature-description">{tool.summary}</p>
-        <Link to={tool.path} className="tool-action" aria-label={`Abrir ${tool.name}`}>
-          Abrir <ArrowUpRight size={17} aria-hidden />
-        </Link>
+      <div className="workspace-feature-brand">
+        <span className="workspace-feature-icon">
+          <Icon size={19} aria-hidden />
+        </span>
+        <h3 id={headingId}>{tool.name}</h3>
       </div>
-      <ul className="workspace-feature-flow">
-        {tool.overview.highlights.map((highlight) => (
-          <li key={highlight}>
-            <Check size={18} aria-hidden />
-            {highlight}
-          </li>
-        ))}
-      </ul>
+      <p className="workspace-feature-description">{tool.summary}</p>
+      <Link to={tool.path} className="workspace-feature-open" aria-label={`Abrir ${tool.name}`}>
+        Abrir <ArrowUpRight size={16} aria-hidden />
+      </Link>
     </article>
   );
 }

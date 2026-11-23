@@ -23,6 +23,7 @@ import type { InstagramConnectionDetailsAccount } from "./InstagramConnectionDet
 import { supabase } from "@/integrations/supabase/client";
 import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
 import type { PostkitDatabase } from "@/lib/postkit-database";
+import { readPostkitQueue, type UpcomingPostkitPublication } from "@/lib/postkit-dashboard-data";
 
 const database = supabase as unknown as SupabaseClient<PostkitDatabase>;
 const numbers = new Intl.NumberFormat("pt-BR");
@@ -37,19 +38,9 @@ const periods = [
 ] as const;
 type Period = (typeof periods)[number] | { id: "custom"; start: string; end: string };
 
-type UpcomingPublication = {
-  key: string;
-  scheduledAt: string | null;
-  kind: "Reel" | "Story" | "Lembrete de Story";
-  username?: string;
-  filename?: string;
-  processing: boolean;
-  isReminder: boolean;
-  accountId?: string;
-};
 type DashboardData = {
   period: string;
-  upcoming: UpcomingPublication[];
+  upcoming: UpcomingPostkitPublication[];
   scheduleUnavailable: boolean;
   queued: number | null;
   reminderCount: number | null;
@@ -157,8 +148,7 @@ export function InstagramDashboard({
           .gte("published_at", start)
           .lt("published_at", end);
       const [
-        upcoming,
-        reminders,
+        schedule,
         published,
         allPublished,
         reelsPublished,
@@ -167,26 +157,7 @@ export function InstagramDashboard({
         reelInventory,
         analytics,
       ] = await Promise.all([
-        posts()
-          .select(
-            "id,scheduled_at,status,content_type,instagram_accounts!posts_instagram_account_id_workspace_id_fkey(username),media_assets!posts_media_asset_id_workspace_id_fkey(original_filename)",
-            {
-              count: "exact",
-            },
-          )
-          .eq("workspace_id", workspaceId)
-          .in("status", ["scheduled", "processing"])
-          .order("scheduled_at", { ascending: true, nullsFirst: false })
-          .order("id")
-          .limit(5),
-        database
-          .from("instagram_story_reminders")
-          .select("id,scheduled_at,filename,instagram_account_id", { count: "exact" })
-          .eq("workspace_id", workspaceId)
-          .eq("state", "pending")
-          .order("scheduled_at")
-          .order("id")
-          .limit(5),
+        readPostkitQueue(workspaceId),
         publishedInPeriod(),
         posts()
           .select("id", { count: "exact", head: true })
@@ -220,40 +191,9 @@ export function InstagramDashboard({
         }),
       ]);
       if (!active) return;
-      const schedule: UpcomingPublication[] = [
-        ...(upcoming.data ?? []).map(
-          (post): UpcomingPublication => ({
-            key: "post-" + post.id,
-            scheduledAt: post.scheduled_at,
-            kind: post.content_type === "story" ? "Story" : "Reel",
-            username: post.instagram_accounts?.username,
-            filename: post.media_assets?.original_filename,
-            processing: post.status === "processing",
-            isReminder: false,
-          }),
-        ),
-        ...(reminders.data ?? []).map(
-          (reminder): UpcomingPublication => ({
-            key: "reminder-" + reminder.id,
-            scheduledAt: reminder.scheduled_at,
-            kind: "Lembrete de Story",
-            accountId: reminder.instagram_account_id,
-            filename: reminder.filename,
-            processing: false,
-            isReminder: true,
-          }),
-        ),
-      ];
-      const sortDate = (value: string | null) => (value ? Date.parse(value) : Infinity);
-      schedule.sort(
-        (a, b) => sortDate(a.scheduledAt) - sortDate(b.scheduledAt) || a.key.localeCompare(b.key),
-      );
       setData({
         period: periodKey,
-        upcoming: schedule.slice(0, 5),
-        scheduleUnavailable: Boolean(upcoming.error || reminders.error),
-        queued: upcoming.count,
-        reminderCount: reminders.count,
+        ...schedule,
         published: published.count,
         allPublished: allPublished.count,
         reelsPublished: reelsPublished.count,
@@ -267,8 +207,6 @@ export function InstagramDashboard({
       });
       setError(
         [
-          upcoming,
-          reminders,
           published,
           allPublished,
           reelsPublished,
@@ -276,7 +214,7 @@ export function InstagramDashboard({
           accountInventory,
           reelInventory,
           analytics,
-        ].some(({ error }) => Boolean(error)),
+        ].some(({ error }) => Boolean(error)) || schedule.scheduleUnavailable,
       );
     };
     const refresh = () => {

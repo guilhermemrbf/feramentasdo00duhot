@@ -237,6 +237,28 @@ const ALL_TOOLS = [
       "Conta profissional do Instagram autorizada; a conexão via Facebook exige uma Página vinculada. O serviço de publicação precisa estar ativo para executar os horários salvos. Agendar não confirma uma publicação: confira o Histórico.",
   },
   {
+    id: "sales",
+    action: "Acompanhar vendas",
+    path: "/vendas",
+    name: "ScaleHot · Vendas",
+    category: "Automação",
+    mode: "Webhooks de vendas",
+    summary:
+      "Acompanhe as vendas recebidas dos seus gateways e receba alertas quando uma nova venda for aprovada.",
+    overview: {
+      title: "Acompanhe as vendas da sua operação",
+      highlights: ["Faturamento e histórico", "Webhooks e notificações"],
+    },
+    input: "Eventos enviados por um gateway conectado ao seu webhook.",
+    output: "Métricas em reais, histórico e notificações nos dispositivos ativados.",
+    steps: [
+      "Abra Integrações no ScaleHot, escolha um gateway e copie a URL.",
+      "Cole a URL na plataforma de pagamento e selecione os eventos de vendas e estornos.",
+      "Ative os alertas no seu dispositivo e envie uma notificação de teste.",
+    ],
+    requirement: "Conta MouseHot aprovada e eventos enviados por um gateway configurado.",
+  },
+  {
     id: "intelligence",
     action: "Analisar perfis",
     path: "/instagram-intelligence",

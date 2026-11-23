@@ -30,9 +30,18 @@ import { Route as OtimizarCriativosRouteImport } from './routes/otimizar-criativ
 import { Route as PainelRouteImport } from './routes/painel'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as TelegramSyncRouteImport } from './routes/telegram-sync'
+import { Route as VendasRouteImport } from './routes/vendas'
+import { Route as VendasIndexRouteImport } from './routes/vendas.index'
+import { Route as VendasIntegracoesRouteImport } from './routes/vendas.integracoes'
+import { Route as VendasNotificacoesRouteImport } from './routes/vendas.notificacoes'
+import { Route as VendasRastreamentoRouteImport } from './routes/vendas.rastreamento'
 import { Route as ApiInstagramDriveCleanupRouteImport } from './routes/api.instagram.drive-cleanup'
 import { Route as ApiInstagramWorkerRouteImport } from './routes/api.instagram.worker'
+import { Route as ApiVendasProcessarRouteImport } from './routes/api.vendas.processar'
 import { Route as ApiInstagramOauthCallbackRouteImport } from './routes/api.instagram.oauth.callback'
+import { Route as ApiVendasTrackingSourceRouteImport } from './routes/api.vendas.tracking.$source'
+import { Route as ApiVendasWebhookConnectionRouteImport } from './routes/api.vendas.webhook.$connection'
+import { Route as ApiVendasAdsMetaCallbackRouteImport } from './routes/api.vendas.ads.meta.callback'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -139,6 +148,31 @@ const TelegramSyncRoute = TelegramSyncRouteImport.update({
   path: '/telegram-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VendasRoute = VendasRouteImport.update({
+  id: '/vendas',
+  path: '/vendas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VendasIndexRoute = VendasIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VendasRoute,
+} as any)
+const VendasIntegracoesRoute = VendasIntegracoesRouteImport.update({
+  id: '/integracoes',
+  path: '/integracoes',
+  getParentRoute: () => VendasRoute,
+} as any)
+const VendasNotificacoesRoute = VendasNotificacoesRouteImport.update({
+  id: '/notificacoes',
+  path: '/notificacoes',
+  getParentRoute: () => VendasRoute,
+} as any)
+const VendasRastreamentoRoute = VendasRastreamentoRouteImport.update({
+  id: '/rastreamento',
+  path: '/rastreamento',
+  getParentRoute: () => VendasRoute,
+} as any)
 const ApiInstagramDriveCleanupRoute =
   ApiInstagramDriveCleanupRouteImport.update({
     id: '/api/instagram/drive-cleanup',
@@ -150,10 +184,32 @@ const ApiInstagramWorkerRoute = ApiInstagramWorkerRouteImport.update({
   path: '/api/instagram/worker',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiVendasProcessarRoute = ApiVendasProcessarRouteImport.update({
+  id: '/api/vendas/processar',
+  path: '/api/vendas/processar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiInstagramOauthCallbackRoute =
   ApiInstagramOauthCallbackRouteImport.update({
     id: '/api/instagram/oauth/callback',
     path: '/api/instagram/oauth/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiVendasTrackingSourceRoute = ApiVendasTrackingSourceRouteImport.update({
+  id: '/api/vendas/tracking/$source',
+  path: '/api/vendas/tracking/$source',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiVendasWebhookConnectionRoute =
+  ApiVendasWebhookConnectionRouteImport.update({
+    id: '/api/vendas/webhook/$connection',
+    path: '/api/vendas/webhook/$connection',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiVendasAdsMetaCallbackRoute =
+  ApiVendasAdsMetaCallbackRouteImport.update({
+    id: '/api/vendas/ads/meta/callback',
+    path: '/api/vendas/ads/meta/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -179,9 +235,18 @@ export interface FileRoutesByFullPath {
   '/painel': typeof PainelRoute
   '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
+  '/vendas': typeof VendasRouteWithChildren
+  '/vendas/integracoes': typeof VendasIntegracoesRoute
+  '/vendas/notificacoes': typeof VendasNotificacoesRoute
+  '/vendas/rastreamento': typeof VendasRastreamentoRoute
+  '/vendas/': typeof VendasIndexRoute
   '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
+  '/api/vendas/processar': typeof ApiVendasProcessarRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
+  '/api/vendas/tracking/$source': typeof ApiVendasTrackingSourceRoute
+  '/api/vendas/webhook/$connection': typeof ApiVendasWebhookConnectionRoute
+  '/api/vendas/ads/meta/callback': typeof ApiVendasAdsMetaCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -205,9 +270,17 @@ export interface FileRoutesByTo {
   '/painel': typeof PainelRoute
   '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
+  '/vendas/integracoes': typeof VendasIntegracoesRoute
+  '/vendas/notificacoes': typeof VendasNotificacoesRoute
+  '/vendas/rastreamento': typeof VendasRastreamentoRoute
+  '/vendas': typeof VendasIndexRoute
   '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
+  '/api/vendas/processar': typeof ApiVendasProcessarRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
+  '/api/vendas/tracking/$source': typeof ApiVendasTrackingSourceRoute
+  '/api/vendas/webhook/$connection': typeof ApiVendasWebhookConnectionRoute
+  '/api/vendas/ads/meta/callback': typeof ApiVendasAdsMetaCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -232,9 +305,18 @@ export interface FileRoutesById {
   '/painel': typeof PainelRoute
   '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
+  '/vendas': typeof VendasRouteWithChildren
+  '/vendas/integracoes': typeof VendasIntegracoesRoute
+  '/vendas/notificacoes': typeof VendasNotificacoesRoute
+  '/vendas/rastreamento': typeof VendasRastreamentoRoute
+  '/vendas/': typeof VendasIndexRoute
   '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
+  '/api/vendas/processar': typeof ApiVendasProcessarRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
+  '/api/vendas/tracking/$source': typeof ApiVendasTrackingSourceRoute
+  '/api/vendas/webhook/$connection': typeof ApiVendasWebhookConnectionRoute
+  '/api/vendas/ads/meta/callback': typeof ApiVendasAdsMetaCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -260,9 +342,18 @@ export interface FileRouteTypes {
     | '/painel'
     | '/privacidade'
     | '/telegram-sync'
+    | '/vendas'
+    | '/vendas/integracoes'
+    | '/vendas/notificacoes'
+    | '/vendas/rastreamento'
+    | '/vendas/'
     | '/api/instagram/drive-cleanup'
     | '/api/instagram/worker'
+    | '/api/vendas/processar'
     | '/api/instagram/oauth/callback'
+    | '/api/vendas/tracking/$source'
+    | '/api/vendas/webhook/$connection'
+    | '/api/vendas/ads/meta/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -286,9 +377,17 @@ export interface FileRouteTypes {
     | '/painel'
     | '/privacidade'
     | '/telegram-sync'
+    | '/vendas/integracoes'
+    | '/vendas/notificacoes'
+    | '/vendas/rastreamento'
+    | '/vendas'
     | '/api/instagram/drive-cleanup'
     | '/api/instagram/worker'
+    | '/api/vendas/processar'
     | '/api/instagram/oauth/callback'
+    | '/api/vendas/tracking/$source'
+    | '/api/vendas/webhook/$connection'
+    | '/api/vendas/ads/meta/callback'
   id:
     | '__root__'
     | '/'
@@ -312,9 +411,18 @@ export interface FileRouteTypes {
     | '/painel'
     | '/privacidade'
     | '/telegram-sync'
+    | '/vendas'
+    | '/vendas/integracoes'
+    | '/vendas/notificacoes'
+    | '/vendas/rastreamento'
+    | '/vendas/'
     | '/api/instagram/drive-cleanup'
     | '/api/instagram/worker'
+    | '/api/vendas/processar'
     | '/api/instagram/oauth/callback'
+    | '/api/vendas/tracking/$source'
+    | '/api/vendas/webhook/$connection'
+    | '/api/vendas/ads/meta/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -339,9 +447,14 @@ export interface RootRouteChildren {
   PainelRoute: typeof PainelRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   TelegramSyncRoute: typeof TelegramSyncRoute
+  VendasRoute: typeof VendasRouteWithChildren
   ApiInstagramDriveCleanupRoute: typeof ApiInstagramDriveCleanupRoute
   ApiInstagramWorkerRoute: typeof ApiInstagramWorkerRoute
+  ApiVendasProcessarRoute: typeof ApiVendasProcessarRoute
   ApiInstagramOauthCallbackRoute: typeof ApiInstagramOauthCallbackRoute
+  ApiVendasTrackingSourceRoute: typeof ApiVendasTrackingSourceRoute
+  ApiVendasWebhookConnectionRoute: typeof ApiVendasWebhookConnectionRoute
+  ApiVendasAdsMetaCallbackRoute: typeof ApiVendasAdsMetaCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -493,6 +606,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TelegramSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vendas': {
+      id: '/vendas'
+      path: '/vendas'
+      fullPath: '/vendas'
+      preLoaderRoute: typeof VendasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vendas/': {
+      id: '/vendas/'
+      path: '/'
+      fullPath: '/vendas/'
+      preLoaderRoute: typeof VendasIndexRouteImport
+      parentRoute: typeof VendasRoute
+    }
+    '/vendas/integracoes': {
+      id: '/vendas/integracoes'
+      path: '/integracoes'
+      fullPath: '/vendas/integracoes'
+      preLoaderRoute: typeof VendasIntegracoesRouteImport
+      parentRoute: typeof VendasRoute
+    }
+    '/vendas/notificacoes': {
+      id: '/vendas/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/vendas/notificacoes'
+      preLoaderRoute: typeof VendasNotificacoesRouteImport
+      parentRoute: typeof VendasRoute
+    }
+    '/vendas/rastreamento': {
+      id: '/vendas/rastreamento'
+      path: '/rastreamento'
+      fullPath: '/vendas/rastreamento'
+      preLoaderRoute: typeof VendasRastreamentoRouteImport
+      parentRoute: typeof VendasRoute
+    }
     '/api/instagram/drive-cleanup': {
       id: '/api/instagram/drive-cleanup'
       path: '/api/instagram/drive-cleanup'
@@ -507,6 +655,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInstagramWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/vendas/processar': {
+      id: '/api/vendas/processar'
+      path: '/api/vendas/processar'
+      fullPath: '/api/vendas/processar'
+      preLoaderRoute: typeof ApiVendasProcessarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/instagram/oauth/callback': {
       id: '/api/instagram/oauth/callback'
       path: '/api/instagram/oauth/callback'
@@ -514,8 +669,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInstagramOauthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/vendas/tracking/$source': {
+      id: '/api/vendas/tracking/$source'
+      path: '/api/vendas/tracking/$source'
+      fullPath: '/api/vendas/tracking/$source'
+      preLoaderRoute: typeof ApiVendasTrackingSourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/vendas/webhook/$connection': {
+      id: '/api/vendas/webhook/$connection'
+      path: '/api/vendas/webhook/$connection'
+      fullPath: '/api/vendas/webhook/$connection'
+      preLoaderRoute: typeof ApiVendasWebhookConnectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/vendas/ads/meta/callback': {
+      id: '/api/vendas/ads/meta/callback'
+      path: '/api/vendas/ads/meta/callback'
+      fullPath: '/api/vendas/ads/meta/callback'
+      preLoaderRoute: typeof ApiVendasAdsMetaCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
+
+interface VendasRouteChildren {
+  VendasIntegracoesRoute: typeof VendasIntegracoesRoute
+  VendasNotificacoesRoute: typeof VendasNotificacoesRoute
+  VendasRastreamentoRoute: typeof VendasRastreamentoRoute
+  VendasIndexRoute: typeof VendasIndexRoute
+}
+
+const VendasRouteChildren: VendasRouteChildren = {
+  VendasIntegracoesRoute: VendasIntegracoesRoute,
+  VendasNotificacoesRoute: VendasNotificacoesRoute,
+  VendasRastreamentoRoute: VendasRastreamentoRoute,
+  VendasIndexRoute: VendasIndexRoute,
+}
+
+const VendasRouteWithChildren =
+  VendasRoute._addFileChildren(VendasRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -539,9 +732,14 @@ const rootRouteChildren: RootRouteChildren = {
   PainelRoute: PainelRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   TelegramSyncRoute: TelegramSyncRoute,
+  VendasRoute: VendasRouteWithChildren,
   ApiInstagramDriveCleanupRoute: ApiInstagramDriveCleanupRoute,
   ApiInstagramWorkerRoute: ApiInstagramWorkerRoute,
+  ApiVendasProcessarRoute: ApiVendasProcessarRoute,
   ApiInstagramOauthCallbackRoute: ApiInstagramOauthCallbackRoute,
+  ApiVendasTrackingSourceRoute: ApiVendasTrackingSourceRoute,
+  ApiVendasWebhookConnectionRoute: ApiVendasWebhookConnectionRoute,
+  ApiVendasAdsMetaCallbackRoute: ApiVendasAdsMetaCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { WorkspaceSelect } from "@/components/ui/workspace-select";
 import type { PostkitDatabase } from "@/lib/postkit-database";
+import { postkitWorkspaceStorageKey as STORAGE_KEY } from "@/lib/postkit-dashboard-data";
 import {
   createPostkitInvitation,
   getPostkitSession,
@@ -13,7 +14,6 @@ import {
 } from "@/lib/postkit-access";
 
 export type Workspace = { id: string; name: string; timezone: string; owner_id: string };
-const STORAGE_KEY = "postkit.workspace";
 const PENDING_INVITE_KEY = "postkit.pending-invite";
 const client = () => supabase as unknown as SupabaseClient<PostkitDatabase>;
 let opening: {

@@ -1,0 +1,223 @@
+import { createCipheriv, createDecipheriv, createHmac, randomBytes } from "node:crypto";
+
+export type MetaAdsConfig = { appId: string; secret: string; version: string; redirect: string };
+export type MetaAdAccount = {
+  id: string;
+  name: string;
+  currency: string;
+  timezone: string;
+  active: boolean;
+};
+type Provider = (url: URL, init?: RequestInit) => Promise<Response>;
+type GraphError = { error?: { code?: number } };
+
+export function adsAuthorizationUrl(config: MetaAdsConfig, state: string) {
+  const url = new URL("/" + config.version + "/dialog/oauth", "https://www.facebook.com");
+  url.search = new URLSearchParams({
+    client_id: config.appId,
+    redirect_uri: config.redirect,
+    response_type: "code",
+    scope: "ads_read",
+    state,
+  }).toString();
+  return url;
+}
+
+async function graph<T extends object>(
+  config: MetaAdsConfig,
+  path: string,
+  fields: Record<string, string>,
+  request: Provider,
+  token?: string,
+) {
+  const url = new URL("/" + config.version + "/" + path, "https://graph.facebook.com");
+  const proof = token ? createHmac("sha256", config.secret).update(token).digest("hex") : undefined;
+  url.search = new URLSearchParams(
+    proof && path !== "debug_token" ? { ...fields, appsecret_proof: proof } : fields,
+  ).toString();
+  let response: Response;
+  let body: T & GraphError;
+  try {
+    response = await request(url, {
+      headers: token ? { Authorization: "Bearer " + token } : {},
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(8000),
+    });
+    body = await response.json();
+  } catch {
+    throw new Error("unavailable");
+  }
+  if (!body || typeof body !== "object") throw new Error("unavailable");
+  if (!response.ok || body.error) {
+    const code = body.error?.code;
+    if (code === 190) throw new Error("expired");
+    if (code === 10 || code === 200 || response.status === 403) throw new Error("permission");
+    if (code === 4 || code === 17 || code === 80004 || response.status === 429)
+      throw new Error("rate_limit");
+    throw new Error("unavailable");
+  }
+  return body;
+}
+
+export async function exchangeMetaAdsGrant(
+  config: MetaAdsConfig,
+  code: string,
+  request: Provider = fetch,
+  now = Date.now(),
+) {
+  const app = { client_id: config.appId, client_secret: config.secret };
+  const exchange = (fields: Record<string, string>) =>
+    graph<{ access_token?: string }>(config, "oauth/access_token", { ...app, ...fields }, request);
+  const short = await exchange({ redirect_uri: config.redirect, code });
+  if (!short.access_token) throw new Error("unavailable");
+  const long = await exchange({
+    grant_type: "fb_exchange_token",
+    fb_exchange_token: short.access_token,
+  });
+  if (!long.access_token) throw new Error("unavailable");
+  const { data } = await graph<{
+    data?: {
+      app_id?: string;
+      is_valid?: boolean;
+      scopes?: string[];
+      expires_at?: number;
+      data_access_expires_at?: number;
+    };
+  }>(
+    config,
+    "debug_token",
+    { input_token: long.access_token },
+    request,
+    config.appId + "|" + config.secret,
+  );
+  if (!data?.is_valid || data.app_id !== config.appId || !data.scopes?.includes("ads_read")) {
+    throw new Error("permission");
+  }
+  if (!data.expires_at) throw new Error("unavailable");
+  const end = Math.min(data.expires_at, data.data_access_expires_at || data.expires_at) * 1000;
+  if (!Number.isFinite(end) || end <= now) throw new Error("expired");
+  return { token: long.access_token, expiresAt: new Date(end).toISOString() };
+}
+
+export const metaAdAccountId = /^act_[0-9]{1,32}$/;
+
+export async function listMetaAdAccounts(
+  config: MetaAdsConfig,
+  token: string,
+  request: Provider = fetch,
+) {
+  const accounts = new Map<string, MetaAdAccount>();
+  const cursors = new Set<string>();
+  const fields = { fields: "id,name,currency,timezone_name,account_status", limit: "100" };
+  let after: string | undefined;
+  for (let page = 0; page < 5; page++) {
+    const result: {
+      data?: {
+        id: string;
+        name: string;
+        currency: string;
+        timezone_name: string;
+        account_status: number;
+      }[];
+      paging?: { next?: string; cursors?: { after?: string } };
+    } = await graph(config, "me/adaccounts", after ? { ...fields, after } : fields, request, token);
+    if (!Array.isArray(result.data)) throw new Error("unavailable");
+    for (const row of result.data) {
+      if (
+        !row ||
+        !metaAdAccountId.test(row.id) ||
+        typeof row.name !== "string" ||
+        typeof row.currency !== "string" ||
+        !/^[A-Z]{3}$/.test(row.currency) ||
+        typeof row.timezone_name !== "string"
+      )
+        continue;
+      accounts.set(row.id, {
+        id: row.id,
+        name: row.name.slice(0, 160),
+        currency: row.currency,
+        timezone: row.timezone_name.slice(0, 80),
+        active: row.account_status === 1,
+      });
+    }
+    if (!result.paging?.next) return [...accounts.values()];
+    after = result.paging.cursors?.after;
+    if (!after || cursors.has(after)) throw new Error("unavailable");
+    cursors.add(after);
+  }
+  throw new Error("account_limit");
+}
+
+export async function readMetaAdSpend(
+  config: MetaAdsConfig,
+  token: string,
+  account: string,
+  period: { since: string; until: string },
+  request: Provider = fetch,
+) {
+  if (!metaAdAccountId.test(account)) throw new Error("permission");
+  const result = await graph<{
+    data?: { spend?: string; impressions?: string; clicks?: string }[];
+  }>(
+    config,
+    account + "/insights",
+    {
+      fields: "spend,impressions,clicks",
+      level: "account",
+      time_range: JSON.stringify(period),
+    },
+    request,
+    token,
+  );
+  if (!Array.isArray(result.data) || result.data.length > 1) throw new Error("unavailable");
+  const row = result.data[0];
+  if (!row) return null;
+  if (
+    !row.spend ||
+    !/^\d+(?:\.\d+)?$/.test(row.spend) ||
+    !row.impressions ||
+    !/^\d+$/.test(row.impressions) ||
+    !row.clicks ||
+    !/^\d+$/.test(row.clicks)
+  ) {
+    throw new Error("unavailable");
+  }
+  const spend = Number(row.spend);
+  const impressions = Number(row.impressions);
+  const clicks = Number(row.clicks);
+  if (
+    !Number.isFinite(spend) ||
+    !Number.isSafeInteger(impressions) ||
+    !Number.isSafeInteger(clicks)
+  ) {
+    throw new Error("unavailable");
+  }
+  return { spend, impressions, clicks };
+}
+
+export function sealMetaAdsToken(token: string, key: Buffer, accountBinding: string) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  cipher.setAAD(Buffer.from(accountBinding));
+  const data = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
+  return [
+    "v1",
+    iv.toString("base64url"),
+    cipher.getAuthTag().toString("base64url"),
+    data.toString("base64url"),
+  ].join(".");
+}
+
+export function openMetaAdsToken(value: string, key: Buffer, accountBinding: string) {
+  const [version, iv, tag, data, extra] = value.split(".");
+  if (version !== "v1" || !iv || !tag || !data || extra !== undefined)
+    throw new Error("unavailable");
+  const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64url"));
+  decipher.setAAD(Buffer.from(accountBinding));
+  decipher.setAuthTag(Buffer.from(tag, "base64url"));
+  return Buffer.concat([
+    decipher.update(Buffer.from(data, "base64url")),
+    decipher.final(),
+  ]).toString();
+}
