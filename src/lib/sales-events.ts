@@ -43,6 +43,18 @@ type ProviderEvent = {
   units?: "cents";
 };
 
+const syncpaySaleOrigins = new Set([
+  "api",
+  "vega",
+  "luna",
+  "checkout",
+  "painel",
+  "payment_link",
+  "bot",
+  "subscription",
+  "event",
+]);
+
 function fields(value: unknown): Fields {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Fields) : {};
 }
@@ -84,6 +96,38 @@ const adapters: Record<SalesProvider, (body: Fields) => ProviderEvent | null> = 
     };
   },
   syncpay(body) {
+    const event = status(body.event);
+    if (event.startsWith("TRANSACTION.")) {
+      if (event !== "TRANSACTION.UPDATED") return null;
+      const transaction = fields(body.transaction);
+      const state = status(transaction.status);
+      if (state !== "COMPLETED" && state !== "REFUNDED" && state !== "CHARGEBACK") return null;
+      if (
+        typeof transaction.origin !== "string" ||
+        !syncpaySaleOrigins.has(transaction.origin) ||
+        status(transaction.currency) !== "BRL"
+      )
+        return null;
+      const reference = transaction.reference_id;
+      const id =
+        typeof reference === "string" &&
+        /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(reference)
+          ? reference.toLowerCase()
+          : null;
+      const paid = state === "COMPLETED";
+      const date =
+        timestamp(paid ? transaction.paid_at : transaction.refunded_at) ??
+        timestamp(body.occurred_at);
+      if (!date) return null;
+      return {
+        id,
+        status: state,
+        amount: transaction.amount,
+        net: paid ? transaction.net_amount : undefined,
+        currency: transaction.currency,
+        date,
+      };
+    }
     const source = body.data ? fields(body.data) : body;
     if (
       /cash[_\s-]?out|withdraw|saque|payout|transfer/i.test(

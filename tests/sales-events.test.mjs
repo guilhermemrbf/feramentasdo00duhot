@@ -91,6 +91,54 @@ test("adapts all eight checkout formats with explicit paid states", () => {
   }
 });
 
+test("SyncPay records completed API Pix from transaction.updated and uses the reference for deduplication", () => {
+  const reference = "f0c93a71-2d64-4b8e-9a10-5c7e3b21d908";
+  const transaction = {
+    reference_id: reference,
+    status: "completed",
+    origin: "api",
+    amount: 2,
+    net_amount: 0.65,
+    currency: "BRL",
+    paid_at: "2026-11-23T21:04:25Z",
+  };
+  const payload = {
+    event: "transaction.updated",
+    event_id: "df3ac6a0-1659-4c41-8076-d9768ca3241c",
+    occurred_at: "2026-11-23T21:04:26Z",
+    transaction,
+  };
+  const parse = (values = {}, envelope = {}) =>
+    parseSaleEvent("syncpay", {
+      ...payload,
+      ...envelope,
+      transaction: { ...transaction, ...values },
+    });
+  assert.deepEqual(parse(), {
+    result: "event",
+    event: {
+      externalId: reference,
+      kind: "approved",
+      amountCents: 200,
+      netCents: 65,
+      occurredAt: "2026-11-23T21:04:25.000Z",
+    },
+  });
+  assert.equal(parse({ origin: "checkout" }).result, "event");
+  assert.equal(parse({ origin: "payment_link" }).result, "event");
+  assert.equal(parse({ origin: "cashout" }).result, "ignored");
+  assert.equal(parse({ currency: "USD" }).result, "ignored");
+  assert.equal(parse({ reference_id: null }).result, "invalid");
+  assert.equal(parse({ status: "pending" }).result, "ignored");
+  assert.equal(parse({}, { event: "transaction.created" }).result, "ignored");
+  assert.equal(parse({}, { event: "cashout.updated", operation: "cashout" }).result, "ignored");
+  assert.equal(
+    parse({ status: "refunded", refunded_at: "2026-11-24T01:02:03Z" }).event.occurredAt,
+    "2026-11-24T01:02:03.000Z",
+  );
+  assert.equal(parse({ status: "refunded" }).event.kind, "reversed");
+});
+
 test("ignores pending, foreign currency and cash-out, rejects missing identifiers", () => {
   assert.equal(
     parseSaleEvent("syncpay", { status: "COMPLETED", type: "cash_out", id: "payout", amount: 90 })
