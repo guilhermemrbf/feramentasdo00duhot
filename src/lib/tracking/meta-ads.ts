@@ -107,7 +107,7 @@ export async function exchangeMetaAdsGrant(
 ) {
   const app = { client_id: config.appId, client_secret: config.secret };
   const exchange = (operation: MetaAdsOperation, fields: Record<string, string>) =>
-    graph<{ access_token?: string }>(
+    graph<{ access_token?: string; expires_in?: number }>(
       config,
       operation,
       "oauth/access_token",
@@ -115,12 +115,16 @@ export async function exchangeMetaAdsGrant(
       request,
     );
   const short = await exchange("exchange_code", { redirect_uri: config.redirect, code });
-  if (!short.access_token) throw new Error("unavailable");
+  if (typeof short.access_token !== "string" || !short.access_token) {
+    throw new MetaAdsProviderError("missing_token", "exchange_code");
+  }
   const long = await exchange("extend_token", {
     grant_type: "fb_exchange_token",
     fb_exchange_token: short.access_token,
   });
-  if (!long.access_token) throw new Error("unavailable");
+  if (typeof long.access_token !== "string" || !long.access_token) {
+    throw new MetaAdsProviderError("missing_token", "extend_token");
+  }
   const { data } = await graph<{
     data?: {
       app_id?: string;
@@ -138,12 +142,22 @@ export async function exchangeMetaAdsGrant(
     config.appId + "|" + config.secret,
   );
   if (!data?.is_valid || data.app_id !== config.appId || !data.scopes?.includes("ads_read")) {
-    throw new Error("permission");
+    throw new MetaAdsProviderError("permission", "inspect_token");
   }
-  if (!data.expires_at) throw new Error("unavailable");
-  const end = Math.min(data.expires_at, data.data_access_expires_at || data.expires_at) * 1000;
-  if (!Number.isFinite(end) || end <= now) throw new Error("expired");
-  return { token: long.access_token, expiresAt: new Date(end).toISOString() };
+
+  const expiries = [data.expires_at, data.data_access_expires_at]
+    .filter((value): value is number => typeof value === "number" && value > 0)
+    .map((value) => value * 1000);
+  if (typeof long.expires_in === "number" && long.expires_in > 0) {
+    expiries.push(now + long.expires_in * 1000);
+  }
+  // An inspected token without a declared expiry still requires periodic reauthorization.
+  const end = expiries.length ? Math.min(...expiries) : now + 60 * 60 * 1000;
+  const expiry = new Date(end);
+  if (!Number.isFinite(expiry.getTime()) || end <= now) {
+    throw new MetaAdsProviderError("expired", "inspect_token");
+  }
+  return { token: long.access_token, expiresAt: expiry.toISOString() };
 }
 
 export const metaAdAccountId = /^act_[0-9]{1,32}$/;

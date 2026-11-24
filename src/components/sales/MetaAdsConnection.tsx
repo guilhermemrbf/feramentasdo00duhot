@@ -26,13 +26,20 @@ export function MetaAdsConnection({ result }: { result?: string }) {
   const begin = useServerFn(beginMetaAdsConnection);
   const disconnect = useServerFn(disconnectMetaAds);
   const fetchSpend = useServerFn(getMetaAdSpend);
-  const [account, setAccount] = useState("");
+  const [selectedAccount, setSelectedAccount] = useState("");
   const [days, setDays] = useState<7 | 30>(7);
   const status = useQuery({
     queryKey: ["scalehot-meta-ads", user?.id],
     queryFn: () => load(),
     enabled: Boolean(user),
   });
+  const connection = status.data;
+  const accounts = connection?.status === "connected" ? connection.accounts : [];
+  const account = accounts.some(({ id }) => id === selectedAccount)
+    ? selectedAccount
+    : accounts.length === 1
+      ? accounts[0].id
+      : "";
   const start = useMutation({
     mutationFn: () => begin(),
     onSuccess: (url) => window.location.assign(url),
@@ -41,12 +48,11 @@ export function MetaAdsConnection({ result }: { result?: string }) {
   const revoke = useMutation({
     mutationFn: () => disconnect(),
     onSuccess: () => {
-      setAccount("");
+      setSelectedAccount("");
       report.reset();
       void status.refetch();
     },
   });
-  const connection = status.data;
   const reportError = start.error ?? report.error ?? revoke.error;
   const totals = report.data?.totals;
   const totalsLabel =
@@ -126,6 +132,13 @@ export function MetaAdsConnection({ result }: { result?: string }) {
         </p>
       )}
       {connection?.status === "connected" && (
+        <p role="status" className="text-sm text-muted-foreground">
+          {accounts.length === 1
+            ? "Meta Ads conectado. Uma conta de anúncios identificada."
+            : `Meta Ads conectado. ${accounts.length} contas de anúncios identificadas.`}
+        </p>
+      )}
+      {connection?.status === "connected" && (
         <form
           className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
           onSubmit={(event) => {
@@ -144,12 +157,12 @@ export function MetaAdsConnection({ result }: { result?: string }) {
               disabled={report.isPending}
               required
               onChange={(event) => {
-                setAccount(event.target.value);
+                setSelectedAccount(event.target.value);
                 report.reset();
               }}
             >
-              <option value="">Selecione</option>
-              {connection.accounts.map((item) => (
+              {accounts.length !== 1 && <option value="">Selecione</option>}
+              {accounts.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name} · {item.currency}
                 </option>

@@ -544,7 +544,8 @@ try {
   });
   await page.getByRole("link", { name: "Anúncios", exact: true }).click();
   await page.getByRole("button", { name: "Conectar Meta Ads", exact: true }).click();
-  await page.getByLabel("Conta de anúncios", { exact: true }).selectOption("act_1");
+  await page.getByText("Meta Ads conectado. Uma conta de anúncios identificada.").waitFor();
+  assert.equal(await page.getByLabel("Conta de anúncios", { exact: true }).inputValue(), "act_1");
   assert.equal(meta.user_id, user.id);
   assert.match(meta.token_ciphertext, /^v1\./);
   assert.equal(JSON.stringify(meta).includes("long-fixture"), false);

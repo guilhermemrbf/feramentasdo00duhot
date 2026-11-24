@@ -106,6 +106,25 @@ test("retains only operation and numeric Meta error metadata for OAuth diagnosis
   );
 });
 
+test("uses the earliest valid Meta expiry even when the absolute token expiry is absent", async () => {
+  const now = 1000;
+  const grant = (data, lifetime) =>
+    exchangeMetaAdsGrant(
+      config,
+      "code",
+      async (url) =>
+        url.pathname.endsWith("debug_token")
+          ? Response.json({ data: { ...data, app_id: "123", is_valid: true, scopes: ["ads_read"] } })
+          : Response.json({ access_token: "token", expires_in: lifetime }),
+      now,
+    );
+  assert.equal((await grant({ expires_at: 0, data_access_expires_at: 100 }, 200)).expiresAt,
+    new Date(100_000).toISOString());
+  assert.equal((await grant({}, 200)).expiresAt, new Date(201_000).toISOString());
+  assert.equal((await grant({})).expiresAt, new Date(now + 3_600_000).toISOString());
+  await assert.rejects(grant({ data_access_expires_at: 1 }, 200), { message: "expired" });
+});
+
 test("converts spend and distinguishes missing insights from an error", async () => {
   const period = { since: "2026-11-17", until: "2026-11-23" };
   const provider = async (url) => {

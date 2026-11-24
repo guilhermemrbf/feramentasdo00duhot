@@ -133,6 +133,7 @@ export async function finishMetaAds(request: Request) {
       stage,
       ...(error instanceof MetaAdsProviderError && {
         operation: error.operation,
+        reason: error.message,
         status: error.httpStatus,
         code: error.providerCode,
         subcode: error.providerSubcode,
