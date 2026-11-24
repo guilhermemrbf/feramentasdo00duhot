@@ -19,6 +19,7 @@ import { Route as CriarPaginaRouteImport } from './routes/criar-pagina'
 import { Route as EmailTemporarioRouteImport } from './routes/email-temporario'
 import { Route as ExclusaoDeDadosRouteImport } from './routes/exclusao-de-dados'
 import { Route as FazendaDeCelularesRouteImport } from './routes/fazenda-de-celulares'
+import { Route as FerramentasRouteImport } from './routes/ferramentas'
 import { Route as FunilRouteImport } from './routes/funil'
 import { Route as GerarPreviewRouteImport } from './routes/gerar-preview'
 import { Route as HotProfilesRouteImport } from './routes/hot-profiles'
@@ -97,6 +98,11 @@ const ExclusaoDeDadosRoute = ExclusaoDeDadosRouteImport.update({
 const FazendaDeCelularesRoute = FazendaDeCelularesRouteImport.update({
   id: '/fazenda-de-celulares',
   path: '/fazenda-de-celulares',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FerramentasRoute = FerramentasRouteImport.update({
+  id: '/ferramentas',
+  path: '/ferramentas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FunilRoute = FunilRouteImport.update({
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/email-temporario': typeof EmailTemporarioRoute
   '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
   '/fazenda-de-celulares': typeof FazendaDeCelularesRoute
+  '/ferramentas': typeof FerramentasRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
@@ -304,6 +311,7 @@ export interface FileRoutesByTo {
   '/email-temporario': typeof EmailTemporarioRoute
   '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
   '/fazenda-de-celulares': typeof FazendaDeCelularesRoute
+  '/ferramentas': typeof FerramentasRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
@@ -345,6 +353,7 @@ export interface FileRoutesById {
   '/email-temporario': typeof EmailTemporarioRoute
   '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
   '/fazenda-de-celulares': typeof FazendaDeCelularesRoute
+  '/ferramentas': typeof FerramentasRoute
   '/funil': typeof FunilRoute
   '/gerar-preview': typeof GerarPreviewRoute
   '/hot-profiles': typeof HotProfilesRoute
@@ -388,6 +397,7 @@ export interface FileRouteTypes {
     | '/email-temporario'
     | '/exclusao-de-dados'
     | '/fazenda-de-celulares'
+    | '/ferramentas'
     | '/funil'
     | '/gerar-preview'
     | '/hot-profiles'
@@ -429,6 +439,7 @@ export interface FileRouteTypes {
     | '/email-temporario'
     | '/exclusao-de-dados'
     | '/fazenda-de-celulares'
+    | '/ferramentas'
     | '/funil'
     | '/gerar-preview'
     | '/hot-profiles'
@@ -469,6 +480,7 @@ export interface FileRouteTypes {
     | '/email-temporario'
     | '/exclusao-de-dados'
     | '/fazenda-de-celulares'
+    | '/ferramentas'
     | '/funil'
     | '/gerar-preview'
     | '/hot-profiles'
@@ -511,6 +523,7 @@ export interface RootRouteChildren {
   EmailTemporarioRoute: typeof EmailTemporarioRoute
   ExclusaoDeDadosRoute: typeof ExclusaoDeDadosRoute
   FazendaDeCelularesRoute: typeof FazendaDeCelularesRoute
+  FerramentasRoute: typeof FerramentasRoute
   FunilRoute: typeof FunilRoute
   GerarPreviewRoute: typeof GerarPreviewRoute
   HotProfilesRoute: typeof HotProfilesRoute
@@ -607,6 +620,13 @@ declare module '@tanstack/react-router' {
       path: '/fazenda-de-celulares'
       fullPath: '/fazenda-de-celulares'
       preLoaderRoute: typeof FazendaDeCelularesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ferramentas': {
+      id: '/ferramentas'
+      path: '/ferramentas'
+      fullPath: '/ferramentas'
+      preLoaderRoute: typeof FerramentasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/funil': {
@@ -845,6 +865,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailTemporarioRoute: EmailTemporarioRoute,
   ExclusaoDeDadosRoute: ExclusaoDeDadosRoute,
   FazendaDeCelularesRoute: FazendaDeCelularesRoute,
+  FerramentasRoute: FerramentasRoute,
   FunilRoute: FunilRoute,
   GerarPreviewRoute: GerarPreviewRoute,
   HotProfilesRoute: HotProfilesRoute,

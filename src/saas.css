@@ -1014,7 +1014,7 @@
   align-items: center;
   gap: 9px;
 }
-.workspace-feature-brand h3 {
+.workspace-feature-brand h2 {
   font-size: 0.9375rem;
   font-weight: 700;
   line-height: 1.25;
@@ -1057,10 +1057,6 @@
 .admin-section h2 svg {
   color: var(--brand-red);
   flex-shrink: 0;
-}
-.workspace-directory > h2 {
-  font: 690 1.2rem/1.2 var(--font-display);
-  margin-bottom: 14px;
 }
 .workspace-directory-cards {
   display: grid;

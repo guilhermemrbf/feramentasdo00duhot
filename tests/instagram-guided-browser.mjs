@@ -109,6 +109,36 @@ const api = http.createServer(async (req, res) => {
   if (name === "platform_is_approved" || name === "platform_approved_user") {
     body = ["approved", "admin"].includes(platformStatus);
   }
+  if (name === "sales_overview") {
+    body = {
+      approved: 0,
+      gross_cents: 0,
+      reported_net_cents: null,
+      reversed_cents: 0,
+      reversed: 0,
+      refund_or_dispute_count: 0,
+      with_net: 0,
+      devices: 0,
+      series: [],
+      monthly: [],
+      goal_cents: null,
+      month_gross_cents: 0,
+      recent: [],
+      links: [],
+    };
+  }
+  if (name === "get_postkit_dashboard_performance") {
+    body = {
+      published: 0,
+      active: 0,
+      connected: 0,
+      views: null,
+      measured: 0,
+      reels: 0,
+      accountNames: {},
+      ranking: [],
+    };
+  }
   if (name === "platform_admin_leads") {
     body = [
       {
@@ -136,7 +166,7 @@ const api = http.createServer(async (req, res) => {
   if (name === "platform_start_trial") {
     assert.equal(input.p_token, fixtureInvite);
     platformStatus = "trial";
-    platformExpiry = new Date(Date.now() + 4800).toISOString();
+    platformExpiry = new Date(Date.now() + 8000).toISOString();
     body = {
       status: platformStatus,
       trial_expires_at: platformExpiry,
@@ -693,6 +723,13 @@ try {
       path: resolve(process.env.INSTAGRAM_BROWSER_SCREENSHOTS, "automatic-post-mobile.png"),
       fullPage: true,
     });
+  await page.getByRole("button", { name: "Abrir menu de ferramentas", exact: true }).click();
+  const mobileNav = page.getByRole("dialog", { name: "Menu de ferramentas", exact: true });
+  await mobileNav
+    .getByRole("navigation", { name: "Seções da automação Instagram" })
+    .getByRole("button", { name: "Visão geral", exact: true })
+    .click();
+  await mobileNav.waitFor({ state: "hidden" });
   const isolated = await browser.newContext();
   const resultPage = await isolated.newPage();
   await resultPage.goto(web + "/api/instagram/oauth/callback?error=access_denied");
@@ -1119,6 +1156,12 @@ try {
     return route.fulfill({ status: 302, headers: { location: destination.href } });
   });
   await googlePage.goto(web);
+  await googlePage.waitForFunction(() =>
+    [...document.querySelectorAll("button")].some((button) =>
+      button.textContent.trim() === "Continuar com Google" &&
+      Object.keys(button).some((key) => key.startsWith("__reactProps")),
+    ),
+  );
   await googlePage.getByRole("button", { name: "Continuar com Google", exact: true }).click();
   await googlePage.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)(?:, .+)?!$/ }).waitFor();
   await googlePage.goto(web + "/automacao-instagram?tab=nova-conta");
@@ -1276,8 +1319,11 @@ try {
   assert.equal(await page.getByRole("heading", { name: "Aprovações e convites" }).count(), 0);
   await page.goto(web + "/convite#" + fixtureInvite);
   await page.getByRole("button", { name: "Iniciar meus 15 minutos" }).click();
-  await page.getByRole("heading", { name: "Ferramentas do seu teste" }).waitFor();
+  const toolsLink = page.getByRole("link", { name: "Ver todas as ferramentas", exact: true });
+  await toolsLink.waitFor();
   assert.equal(new URL(page.url()).pathname, "/painel");
+  await toolsLink.click();
+  await page.getByRole("heading", { name: "Ferramentas do seu teste" }).waitFor();
   const overview = page.locator(".workspace-overview");
   assert.deepEqual(
     await overview
@@ -1285,16 +1331,17 @@ try {
       .evaluateAll((links) => links.map((link) => link.getAttribute("href")).sort()),
     ["/gerar-preview", "/limpar-metadados", "/otimizar-criativos"],
   );
-  assert.equal(await page.getByRole("link", { name: "Automatic Post · Instagram" }).count(), 0);
-  await page.getByRole("heading", { name: "Seu teste terminou" }).waitFor({ timeout: 10_000 });
+  assert.equal(await page.getByRole("link", { name: "Automatic Post", exact: true }).count(), 0);
+  await page.getByRole("heading", { name: "Seu teste terminou" }).waitFor({ timeout: 15_000 });
 
   platformStatus = "admin";
   platformExpiry = null;
   await page.goto(web + "/painel");
   await page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)(?:, .+)?!$/ }).waitFor();
   const publishingCard = overview.getByRole("article", { name: "Automatic Post · Instagram" });
-  assert.equal(await publishingCard.count(), 1);
-  await publishingCard.getByText("Sua operação no Instagram", { exact: true }).waitFor();
+  assert.equal(await publishingCard.count(), 0);
+  await toolsLink.click();
+  await publishingCard.waitFor();
   assert.equal(
     await publishingCard
       .getByRole("link", { name: "Abrir Automatic Post · Instagram" })

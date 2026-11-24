@@ -34,6 +34,7 @@ import {
   type Ref,
 } from "react";
 import { WorkspaceGate, type Workspace } from "@/components/postkit/WorkspaceGate";
+import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { InstagramLocalLogin } from "@/components/postkit/InstagramLocalLogin";
 import { InstagramProfessionalSetup } from "@/components/postkit/InstagramProfessionalSetup";
@@ -97,7 +98,9 @@ const postkit = supabase as unknown as SupabaseClient<PostkitDatabase>;
 export const Route = createFileRoute("/automacao-instagram")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { tab?: "perfis" | "contas" | "nova-conta" | "stories" | "publicacoes" | "fila" | "analytics" } => ({
+  ): {
+    tab?: "perfis" | "contas" | "nova-conta" | "stories" | "publicacoes" | "fila" | "analytics";
+  } => ({
     tab:
       search.tab === "perfis" ||
       search.tab === "contas" ||
@@ -254,8 +257,13 @@ function AutomacaoInstagram() {
   const { tab } = Route.useSearch();
   return (
     <WorkspaceGate>
-      {(workspace) => (
-        <InstagramWorkspaceEntry key={workspace.id} workspace={workspace} initialTab={tab} />
+      {(workspace, workspaceControls) => (
+        <InstagramWorkspaceEntry
+          key={workspace.id}
+          workspace={workspace}
+          workspaceControls={workspaceControls}
+          initialTab={tab}
+        />
       )}
     </WorkspaceGate>
   );
@@ -263,9 +271,11 @@ function AutomacaoInstagram() {
 
 function InstagramWorkspaceEntry({
   workspace,
+  workspaceControls,
   initialTab,
 }: {
   workspace: Workspace;
+  workspaceControls: ReactNode;
   initialTab?: Tab;
 }) {
   const [app, setApp] = useState<WorkspaceAppStatus>();
@@ -294,6 +304,7 @@ function InstagramWorkspaceEntry({
     return (
       <InstagramWorkspacePage
         workspace={workspace}
+        workspaceControls={workspaceControls}
         initialTab={entryTab}
         app={app}
         onEditApp={app.mode === "own" && app.canManage ? openSetup : undefined}
@@ -302,74 +313,79 @@ function InstagramWorkspaceEntry({
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl space-y-4 px-4 py-5 sm:px-6">
-      <header className="tool-section-heading rounded-xl border border-border px-4 py-4 sm:px-5">
-        <p className="mb-1 text-xs font-semibold text-brand-red">Automação Instagram</p>
-        <h1 className="font-display text-2xl font-semibold">
-          {setup ? "Apps da Meta" : "Visão geral"}
-        </h1>
-      </header>
-      {app && setup ? (
-        <InstagramWorkspaceSetup
-          key={app.mode}
-          workspaceId={workspace.id}
-          app={app}
-          initialGuideStep={setup.guideStep}
-          onBack={() => {
-            setEntryTab("dashboard");
-            setSetup(undefined);
-          }}
-          onConnect={() => {
-            setEntryTab("nova-conta");
-            setSetup(undefined);
-          }}
-          onSaved={async (continueGuide) => {
-            const registered = await getInstagramWorkspaceApp({
-              data: { workspaceId: workspace.id },
-            });
-            setApp(registered);
-            setSetup(continueGuide && app.mode === "missing" ? { guideStep: 6 } : undefined);
-          }}
-        />
-      ) : app ? (
-        <InstagramDashboard
-          workspaceId={workspace.id}
-          timezone={workspace.timezone}
-          accounts={[]}
-          refreshKey={0}
-          appMode={app.mode}
-          onAppSetup={app.canManage ? openSetup : undefined}
-        />
-      ) : loadingError ? (
-        <div role="alert" className="rounded-xl border border-border bg-card p-4 text-sm">
-          Não foi possível verificar a configuração da sua operação.
-          <button
-            type="button"
-            className="ml-2 min-h-10 font-semibold text-brand-red underline"
-            onClick={() => {
-              setLoadingError(false);
-              setAttempt((value) => value + 1);
+    <AppShell>
+      {workspaceControls}
+      <main className="mx-auto w-full max-w-5xl space-y-4 px-4 py-5 sm:px-6">
+        <header className="tool-section-heading rounded-xl border border-border px-4 py-4 sm:px-5">
+          <p className="mb-1 text-xs font-semibold text-brand-red">Automação Instagram</p>
+          <h1 className="font-display text-2xl font-semibold">
+            {setup ? "Apps da Meta" : "Visão geral"}
+          </h1>
+        </header>
+        {app && setup ? (
+          <InstagramWorkspaceSetup
+            key={app.mode}
+            workspaceId={workspace.id}
+            app={app}
+            initialGuideStep={setup.guideStep}
+            onBack={() => {
+              setEntryTab("dashboard");
+              setSetup(undefined);
             }}
-          >
-            Tentar novamente
-          </button>
-        </div>
-      ) : (
-        <p role="status" className="text-sm text-muted-foreground">
-          Abrindo sua operação…
-        </p>
-      )}
-    </main>
+            onConnect={() => {
+              setEntryTab("nova-conta");
+              setSetup(undefined);
+            }}
+            onSaved={async (continueGuide) => {
+              const registered = await getInstagramWorkspaceApp({
+                data: { workspaceId: workspace.id },
+              });
+              setApp(registered);
+              setSetup(continueGuide && app.mode === "missing" ? { guideStep: 6 } : undefined);
+            }}
+          />
+        ) : app ? (
+          <InstagramDashboard
+            workspaceId={workspace.id}
+            timezone={workspace.timezone}
+            accounts={[]}
+            refreshKey={0}
+            appMode={app.mode}
+            onAppSetup={app.canManage ? openSetup : undefined}
+          />
+        ) : loadingError ? (
+          <div role="alert" className="rounded-xl border border-border bg-card p-4 text-sm">
+            Não foi possível verificar a configuração da sua operação.
+            <button
+              type="button"
+              className="ml-2 min-h-10 font-semibold text-brand-red underline"
+              onClick={() => {
+                setLoadingError(false);
+                setAttempt((value) => value + 1);
+              }}
+            >
+              Tentar novamente
+            </button>
+          </div>
+        ) : (
+          <p role="status" className="text-sm text-muted-foreground">
+            Abrindo sua operação…
+          </p>
+        )}
+      </main>
+    </AppShell>
   );
 }
 
 function InstagramWorkspacePage({
   workspace,
+  workspaceControls,
   initialTab,
   app,
   onEditApp,
 }: {
   workspace: Workspace;
+  workspaceControls: ReactNode;
   initialTab?: Tab;
   app: WorkspaceAppStatus;
   onEditApp?: (guideStep?: number) => void;
@@ -1347,27 +1363,12 @@ function InstagramWorkspacePage({
   );
 
   return (
-    <div className="mx-auto grid w-full max-w-[1600px] gap-5 px-4 py-5 sm:px-6 xl:grid-cols-[200px_minmax(0,1fr)] xl:items-start xl:gap-6">
-      <aside className="rounded-xl border border-border bg-card p-3 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)] xl:overflow-y-auto">
-        <div className="mb-3 flex items-center gap-2 xl:px-2">
-          <span className="flex size-9 items-center justify-center rounded-lg border border-brand-red/25 bg-brand-red/10 text-brand-red">
-            <Instagram className="size-4" />
-          </span>
-          <span className="font-display text-sm font-semibold">Automação Instagram</span>
-        </div>
-        <div className="block text-xs font-medium text-muted-foreground xl:hidden">
-          Seção do painel
-          <WorkspaceSelect
-            label="Seção do painel"
-            className="mt-1"
-            value={tab}
-            options={tabItems
-              .filter((item) => canOpenTab(item.id))
-              .map((item) => ({ value: item.id, label: item.label }))}
-            onValueChange={(value) => setTab(value as Tab)}
-          />
-        </div>
-        <nav aria-label="Seções da automação Instagram" className="hidden space-y-4 xl:block">
+    <AppShell
+      workspaceNavigation={(closeMenu) => (
+        <nav
+          aria-label="Seções da automação Instagram"
+          className="mt-5 space-y-4 border-t border-border pt-4"
+        >
           {tabGroups
             .filter((group) => group.items.some((item) => canOpenTab(item.id)))
             .map((group) => (
@@ -1381,7 +1382,10 @@ function InstagramWorkspacePage({
                     <button
                       key={id}
                       type="button"
-                      onClick={() => setTab(id)}
+                      onClick={() => {
+                        setTab(id);
+                        closeMenu();
+                      }}
                       aria-current={tab === id ? "page" : undefined}
                       className={`tool-nav-link w-full text-left ${tab === id ? "is-active" : ""}`}
                     >
@@ -1391,8 +1395,10 @@ function InstagramWorkspacePage({
               </div>
             ))}
         </nav>
-      </aside>
-      <main className="min-w-0">
+      )}
+    >
+      {workspaceControls}
+      <main className="mx-auto w-full min-w-0 max-w-[1600px] px-4 py-5 sm:px-6">
         <header className="tool-section-heading flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border px-4 py-4 sm:px-5">
           <div>
             <p className="mb-1 text-xs font-semibold text-brand-red">Automação Instagram</p>
@@ -2921,7 +2927,7 @@ function InstagramWorkspacePage({
           </footer>
         )}
       </main>
-    </div>
+    </AppShell>
   );
 }
 

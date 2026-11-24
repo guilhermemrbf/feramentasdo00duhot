@@ -117,7 +117,11 @@ function GoogleAccessCard({ error }: { error: string }) {
   );
 }
 
-export function WorkspaceGate({ children }: { children: (ws: Workspace) => ReactNode }) {
+export function WorkspaceGate({
+  children,
+}: {
+  children: (workspace: Workspace, workspaceControls: ReactNode) => ReactNode;
+}) {
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [list, setList] = useState<Workspace[] | null>(null);
@@ -225,41 +229,39 @@ export function WorkspaceGate({ children }: { children: (ws: Workspace) => React
         </div>
       </AppShell>
     );
-  return (
-    <AppShell>
-      <div className="mx-auto max-w-7xl px-5 pt-5">
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-xs">
-          <span className="text-muted-foreground">Sua operação</span>
-          <WorkspaceSelect
-            label="Operação atual"
-            value={current.id}
-            className="w-auto min-w-36"
-            options={(list ?? []).map((workspace) => ({
-              value: workspace.id,
-              label: workspace.name,
-            }))}
-            onValueChange={(value) => {
-              setCurrentId(value);
-              try {
-                localStorage.setItem(STORAGE_KEY, value);
-              } catch {
-                /* optional */
-              }
-            }}
-          />
-          <button
-            aria-label="Sair da conta Google"
-            title="Sair"
-            onClick={() => void supabase.auth.signOut()}
-            className="ml-auto text-muted-foreground hover:text-foreground"
-          >
-            <LogOut className="size-4" />
-          </button>
-        </div>
-        <TeamAccess key={current.id} workspace={current} userId={userId} />
+  return children(
+    current,
+    <div className="mx-auto max-w-7xl px-5 pt-5">
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-xs">
+        <span className="text-muted-foreground">Sua operação</span>
+        <WorkspaceSelect
+          label="Operação atual"
+          value={current.id}
+          className="w-auto min-w-36"
+          options={(list ?? []).map((workspace) => ({
+            value: workspace.id,
+            label: workspace.name,
+          }))}
+          onValueChange={(value) => {
+            setCurrentId(value);
+            try {
+              localStorage.setItem(STORAGE_KEY, value);
+            } catch {
+              /* optional */
+            }
+          }}
+        />
+        <button
+          aria-label="Sair da conta Google"
+          title="Sair"
+          onClick={() => void supabase.auth.signOut()}
+          className="ml-auto text-muted-foreground hover:text-foreground"
+        >
+          <LogOut className="size-4" />
+        </button>
       </div>
-      {children(current)}
-    </AppShell>
+      <TeamAccess key={current.id} workspace={current} userId={userId} />
+    </div>,
   );
 }
 

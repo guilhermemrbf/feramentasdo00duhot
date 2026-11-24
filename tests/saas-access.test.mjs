@@ -6,6 +6,8 @@ test("only approved users and live trial sessions open protected routes", () => 
   assert.equal(accessForRoute("/automacao-instagram", "pending"), false);
   assert.equal(accessForRoute("/limpar-metadados", "expired"), false);
   assert.equal(accessForRoute("/painel", "trial"), true);
+  assert.equal(accessForRoute("/ferramentas", "trial"), true);
+  assert.equal(accessForRoute("/ferramentas", "pending"), false);
   assert.equal(accessForRoute("/limpar-metadados", "trial"), true);
   assert.equal(accessForRoute("/automacao-instagram", "trial"), false);
   assert.equal(accessForRoute("/criar-pagina", "trial"), false);

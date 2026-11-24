@@ -16,6 +16,7 @@ export type PlatformAccess = {
 const publicRoutes = new Set(["/", "/convite", "/privacidade", "/exclusao-de-dados"]);
 export const trialRoutes = new Set([
   "/painel",
+  "/ferramentas",
   "/limpar-metadados",
   "/gerar-preview",
   "/otimizar-criativos",

@@ -15,6 +15,7 @@ import {
   Image,
   Instagram,
   ScanSearch,
+  LayoutGrid,
   Mail,
   Menu,
   MonitorSmartphone,
@@ -60,10 +61,17 @@ export const TOOL_ICONS = {
   tempMail: Mail,
 };
 
-const SALES_TABS = [
-  { path: "/vendas/conexoes", title: "Integrações", icon: Settings2 },
+const PRIMARY_LINKS = [
+  { path: "/automacao-instagram", title: "Automatic Post", icon: Instagram },
+  { path: "/vendas", title: "ScaleHot", icon: ChartNoAxesCombined },
   { path: "/vendas/integracoes", title: "Gateways", icon: Plug },
   { path: "/vendas/notificacoes", title: "Notificações", icon: Bell },
+  { path: "/ferramentas", title: "Ferramentas", icon: LayoutGrid },
+] as const;
+const SCALEHOT_LINKS = [
+  { path: "/vendas", title: "Visão geral", icon: Home },
+  { path: "/vendas/rastreamento", title: "Rastreamento de vendas", icon: ChartNoAxesCombined },
+  { path: "/vendas/conexoes", title: "Integrações", icon: Settings2 },
 ] as const;
 const SIDEBAR_CATEGORIES = [
   "Automação",
@@ -94,33 +102,32 @@ function Brand() {
 
 export function AppShell({
   children,
+  workspaceNavigation,
 }: {
-  children: ReactNode | ((openTools: () => void) => ReactNode);
+  children: ReactNode;
+  workspaceNavigation?: (closeMenu: () => void) => ReactNode;
 }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathname = useRouterState({ select: (s) => s.location.pathname.replace(/\/$/, "") });
   const current = findTool(pathname);
-  const salesTab = SALES_TABS.find(({ path }) => path === pathname);
+  const section = [...PRIMARY_LINKS, ...SCALEHOT_LINKS].find(({ path }) => path === pathname);
   const currentId = current?.id;
   const isHome = pathname === "/painel";
   const isAdmin = pathname === "/aprovacoes";
+  const isScaleHot = SCALEHOT_LINKS.some(({ path }) => path === pathname);
+  const isTools =
+    pathname === "/ferramentas" || (current && current.id !== "social" && current.id !== "sales");
   const { status, user } = usePlatformAccess();
   const available = TOOL_CATALOG.filter((tool) => status && accessForRoute(tool.path, status));
+  const directoryTools = available.filter(({ id }) => id !== "social" && id !== "sales");
   const [mobile, setMobile] = useState(false),
     [query, setQuery] = useState("");
   const dialog = useRef<HTMLDialogElement>(null),
     searchInput = useRef<HTMLInputElement>(null);
-  const desktopSidebar = useRef<HTMLElement>(null);
   const { favorites, recent, toggle } = useToolPreferences();
   const shortcuts = [...new Set([...favorites, ...recent.slice(0, 4)])]
     .map((id) => available.find((tool) => tool.id === id))
     .filter((tool) => tool !== undefined);
-  const openTools = () => {
-    if (desktopSidebar.current?.getClientRects().length) {
-      desktopSidebar.current.querySelector<HTMLAnchorElement>("[data-main-tool]")?.focus();
-    } else {
-      setMobile(true);
-    }
-  };
+  const closeMenu = () => setMobile(false);
   useEffect(() => {
     if (currentId) recordTool(currentId);
     setMobile(false);
@@ -152,7 +159,6 @@ export function AppShell({
       <div key={tool.id} className="flex min-w-0 items-center gap-0.5">
         <Link
           to={tool.path}
-          data-main-tool={shortcut ? undefined : ""}
           onClick={() => setMobile(false)}
           aria-current={active ? "page" : undefined}
           className={cn("tool-nav-link min-w-0 flex-1 gap-2.5", active && "is-active")}
@@ -189,19 +195,12 @@ export function AppShell({
         <Brand />
       </Link>
       <div className="flex-1 overflow-y-auto px-3 py-5">
-        <button
-          onClick={openSearch}
-          className="mb-5 flex min-h-11 w-full items-center gap-2 rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-muted-foreground hover:border-primary hover:text-foreground"
-        >
-          <Search className="size-4" />
-          Buscar ferramenta<kbd className="ml-auto text-[10px]">Ctrl K</kbd>
-        </button>
-        <nav aria-label="Navegação principal">
+        <nav aria-label="Navegação principal" className="space-y-1">
           <Link
             to="/painel"
             onClick={() => setMobile(false)}
             aria-current={isHome ? "page" : undefined}
-            className={cn("tool-nav-link mb-4", isHome && "is-active")}
+            className={cn("tool-nav-link", isHome && "is-active")}
           >
             <Home className="size-[17px]" />
             Dashboard
@@ -211,52 +210,86 @@ export function AppShell({
               to="/aprovacoes"
               aria-current={isAdmin ? "page" : undefined}
               onClick={() => setMobile(false)}
-              className={cn("tool-nav-link mb-4", isAdmin && "is-active")}
+              className={cn("tool-nav-link", isAdmin && "is-active")}
             >
               <ShieldCheck className="size-[17px]" aria-hidden /> Aprovações e convites
             </Link>
           )}
-          {shortcuts.length > 0 && (
-            <details className="group mb-5 rounded-lg border border-border px-1">
-              <summary className="flex min-h-11 list-none items-center gap-2 px-2 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
-                <Star className="size-3.5" aria-hidden />
-                Favoritas e recentes
-                <ChevronDown className="ml-auto size-3.5 group-open:rotate-180" aria-hidden />
-              </summary>
-              <div className="pb-1">{shortcuts.map((tool) => nav(tool, true))}</div>
-            </details>
-          )}
-          {SIDEBAR_CATEGORIES.filter((category) =>
-            available.some((tool) => tool.category === category),
-          ).map((category) => (
-            <div key={category} className="mb-5">
-              <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {category}
-              </p>
-              {available.filter((tool) => tool.category === category).map((tool) => nav(tool))}
-              {category === "Automação" &&
-                status &&
-                SALES_TABS.filter(({ path }) => accessForRoute(path, status)).map(
-                  ({ path, title, icon: Icon }) => (
-                    <Link
-                      key={path}
-                      to={path}
-                      onClick={() => setMobile(false)}
-                      aria-current={pathname === path ? "page" : undefined}
-                      className={cn("tool-nav-link gap-2.5", pathname === path && "is-active")}
-                    >
-                      <Icon
-                        className="tool-tone size-[17px] shrink-0"
-                        data-tone="automacao"
-                        aria-hidden
-                      />
-                      {title}
-                    </Link>
-                  ),
-                )}
-            </div>
-          ))}
+          {status &&
+            PRIMARY_LINKS.filter(({ path }) => accessForRoute(path, status)).map(
+              ({ path, title, icon: Icon }) => {
+                const exact = pathname === path;
+                const active =
+                  exact ||
+                  (path === "/vendas" && isScaleHot) ||
+                  (path === "/ferramentas" && isTools);
+                return (
+                  <Link
+                    key={path}
+                    to={path}
+                    onClick={closeMenu}
+                    aria-current={exact ? "page" : active ? "location" : undefined}
+                    className={cn("tool-nav-link", active && "is-active")}
+                  >
+                    <Icon className="size-[17px] shrink-0" aria-hidden />
+                    {title}
+                  </Link>
+                );
+              },
+            )}
         </nav>
+        {isScaleHot && (
+          <nav
+            aria-label="Seções do ScaleHot"
+            className="mt-5 space-y-1 border-t border-border pt-4"
+          >
+            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              ScaleHot
+            </p>
+            {SCALEHOT_LINKS.map(({ path, title, icon: Icon }) => (
+              <Link
+                key={path}
+                to={path}
+                onClick={closeMenu}
+                aria-current={pathname === path ? "page" : undefined}
+                className={cn("tool-nav-link", pathname === path && "is-active")}
+              >
+                <Icon className="size-[17px] shrink-0" aria-hidden />
+                {title}
+              </Link>
+            ))}
+          </nav>
+        )}
+        {workspaceNavigation?.(closeMenu)}
+        {isTools && (
+          <nav
+            aria-label="Catálogo lateral de ferramentas"
+            className="mt-5 border-t border-border pt-4"
+          >
+            {SIDEBAR_CATEGORIES.filter((category) =>
+              directoryTools.some((tool) => tool.category === category),
+            ).map((category) => (
+              <div key={category} className="mb-5">
+                <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {category}
+                </p>
+                {directoryTools
+                  .filter((tool) => tool.category === category)
+                  .map((tool) => nav(tool))}
+              </div>
+            ))}
+            {shortcuts.length > 0 && (
+              <details className="group mb-5 rounded-lg border border-border px-1">
+                <summary className="flex min-h-11 list-none items-center gap-2 px-2 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+                  <Star className="size-3.5" aria-hidden />
+                  Favoritas e recentes
+                  <ChevronDown className="ml-auto size-3.5 group-open:rotate-180" aria-hidden />
+                </summary>
+                <div className="pb-1">{shortcuts.map((tool) => nav(tool, true))}</div>
+              </details>
+            )}
+          </nav>
+        )}
       </div>
       <div className="border-t border-border px-5 py-4 text-xs leading-5 text-muted-foreground">
         {user && (
@@ -300,9 +333,7 @@ export function AppShell({
       <a href="#workspace-main" className="skip-link">
         Pular para o conteúdo
       </a>
-      <aside ref={desktopSidebar} className="workspace-sidebar hidden lg:flex">
-        {sidebar}
-      </aside>
+      <aside className="workspace-sidebar hidden lg:flex">{sidebar}</aside>
       <div className="lg:pl-[244px]">
         <header className="workspace-topbar">
           <div className="flex min-w-0 items-center gap-3">
@@ -349,9 +380,7 @@ export function AppShell({
               </>
             )}
             <span className="truncate text-sm font-semibold">
-              {current?.name ||
-                salesTab?.title ||
-                (isAdmin ? "Aprovações e convites" : "Dashboard")}
+              {current?.name || section?.title || (isAdmin ? "Aprovações e convites" : "Dashboard")}
             </span>
           </div>
           {isHome && status !== "trial" && (
@@ -367,7 +396,7 @@ export function AppShell({
             </span>
           )}
           {status === "trial" && <TrialClock />}
-          {!isHome && status !== "trial" && (
+          {((!isHome && status !== "trial") || isTools) && (
             <button
               onClick={openSearch}
               aria-label="Buscar ferramenta"
@@ -384,7 +413,7 @@ export function AppShell({
               <ToolGuide tool={current} />
             </div>
           )}
-          {typeof children === "function" ? children(openTools) : children}
+          {children}
         </div>
         <footer className="workspace-footer">
           <span>MouseHot · {BRAND_SLOGAN}</span>

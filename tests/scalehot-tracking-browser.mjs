@@ -405,9 +405,29 @@ try {
     },
     { token, user, now },
   );
-  await page.goto(web + "/vendas/integracoes");
+  await page.goto(web + "/ferramentas");
+  const primary = page.getByRole("navigation", { name: "Navegação principal", exact: true });
+  const scaleHot = page.getByRole("navigation", { name: "Seções do ScaleHot", exact: true });
+  const catalog = page.getByRole("navigation", { name: "Catálogo lateral de ferramentas" });
+  await page.getByRole("main").getByRole("heading", { name: "Ferramentas", exact: true }).waitFor();
+  assert.deepEqual(await primary.getByRole("link").allTextContents(), [
+    "Dashboard",
+    "Automatic Post",
+    "ScaleHot",
+    "Gateways",
+    "Notificações",
+    "Ferramentas",
+  ]);
+  assert.equal(await primary.getByRole("link", { name: "Integrações", exact: true }).count(), 0);
+  await catalog.getByRole("link", { name: "Limpar Metadados", exact: true }).waitFor();
+  await page.getByRole("main").getByRole("link", { name: "Abrir Limpar Metadados" }).waitFor();
+  await primary.getByRole("link", { name: "ScaleHot", exact: true }).click();
+  await scaleHot.getByRole("link", { name: "Integrações", exact: true }).waitFor();
+  assert.equal(await catalog.count(), 0);
+  await primary.getByRole("link", { name: "Gateways", exact: true }).click();
   await page.getByRole("heading", { name: "Gateways", exact: true }).waitFor({ timeout: 90000 });
   assert.equal(await page.locator("#pixels").count(), 0);
+  assert.equal(await scaleHot.count(), 0);
   await page.goto(web + "/vendas/rastreamento?view=integracoes");
   await page.getByRole("heading", { name: "Credenciais de API" }).waitFor({ timeout: 90000 });
   await page.getByRole("button", { name: "Adicionar credencial" }).click();
