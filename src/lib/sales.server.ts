@@ -149,7 +149,7 @@ export async function receiveSalesWebhook(request: Request, key: string) {
   if (parsed.result === "ignored") return Response.json({ status: "ignored" });
   if (parsed.result !== "event") return Response.json({ error: "Invalid event" }, { status: 422 });
   const { event } = parsed;
-  const saved = await salesService.rpc("sales_record_event", {
+  const eventInput = {
     p_connection: link.id,
     p_hash: hash,
     p_external_id: event.externalId,
@@ -157,8 +157,28 @@ export async function receiveSalesWebhook(request: Request, key: string) {
     p_amount: event.amountCents,
     p_net: event.netCents,
     p_occurred: event.occurredAt,
-  });
-  const row = saved.data?.[0];
+  };
+  const product =
+    link.provider === "custom" &&
+    event.kind === "approved" &&
+    payload.value !== null &&
+    typeof payload.value === "object" &&
+    "product_name" in payload.value &&
+    typeof payload.value.product_name === "string"
+      ? payload.value.product_name.replace(/[\x00-\x1f\x7f]/g, "").trim().slice(0, 120)
+      : "";
+  const productEvent = product
+    ? await salesService.rpc("scalehot_record_product_event", {
+        ...eventInput,
+        p_product_name: product,
+      })
+    : null;
+  // The legacy writer remains available until PostgREST exposes the new RPC.
+  const saved =
+    !productEvent || productEvent.error?.code === "PGRST202"
+      ? await salesService.rpc("sales_record_event", eventInput)
+      : productEvent;
+  const row = saved.data?.[0] as { event_id: string; outcome: string } | undefined;
   if (saved.error || !row) return Response.json({ error: "Unavailable" }, { status: 503 });
   if (row.outcome === "unauthorized")
     return Response.json({ error: "Invalid connection" }, { status: 401 });

@@ -58,6 +58,7 @@ try {
     "20261123121000_scalehot_meta_ads.sql",
     "20261123122000_scalehot_tracking_report.sql",
     "20261124123000_scalehot_google_integrations.sql",
+    "20261124223000_scalehot_operation.sql",
   ]) {
     await db.exec(
       await readFile(new URL("../supabase/migrations/" + filename, import.meta.url), "utf8"),
@@ -209,6 +210,56 @@ try {
   await saveTag(other, "AW-123456789/label");
   await assert.rejects(saveTag(owner, "AW-123456789/label"), /duplicate key/);
   await assert.rejects(saveTag(other, "invalid"), /check constraint/);
+  await db.exec("reset role");
+  const day = (await db.query("select (now() at time zone 'America/Sao_Paulo')::date::text as day"))
+    .rows[0].day;
+  await db.query("select set_config('test.user_id',$1,false)", [owner]);
+  await db.exec("set role authenticated");
+  await db.query(
+    "insert into scalehot_costs(kind,label,occurred_on,cents) values ('expense','Edição',$1,250)",
+    [day],
+  );
+  await assert.rejects(
+    db.query(
+      "insert into scalehot_costs(user_id,kind,label,occurred_on,cents) values ($1,'expense','Outra',$2,500)",
+      [other, day],
+    ),
+    /row-level security/,
+  );
+  const readOperation = async (campaign = null) =>
+    (await db.query("select scalehot_operation_report($1,$1,$2) as report", [day, campaign]))
+      .rows[0].report;
+  const operation = await readOperation();
+  assert.equal(operation.approved, 2);
+  assert.equal(operation.expense_cents, 250);
+  assert.equal(operation.campaigns[0].name, "Lançamento");
+  assert.equal((await readOperation("Lançamento")).approved, 1);
+  assert.equal((await readOperation("inexistente")).approved, 0);
+  await assert.rejects(
+    db.query(
+      "select * from scalehot_record_product_event($1,$2,'produto','approved',1234,1234,now(),'Curso')",
+      [link, saleSecret],
+    ),
+    /permission denied/,
+  );
+  await db.exec("set role service_role");
+  const recordProduct = (name) =>
+    db.query(
+      "select * from scalehot_record_product_event($1,$2,'produto','approved',1234,1234,now(),$3)",
+      [link, saleSecret, name],
+    );
+  assert.equal((await recordProduct("Curso")).rows[0].outcome, "recorded");
+  assert.equal((await recordProduct("Outra oferta")).rows[0].outcome, "duplicate");
+  await db.exec("set role authenticated");
+  const products = (await readOperation()).products;
+  assert.equal(products.find(({ name }) => name === "Curso").gross_cents, 1234);
+  assert.equal(
+    products.some(({ name }) => name === "Outra oferta"),
+    false,
+  );
+  await db.query("select set_config('test.user_id',$1,false)", [other]);
+  assert.equal((await db.query("select * from scalehot_costs")).rows.length, 0);
+  assert.equal((await readOperation()).approved, 0);
   await db.exec("reset role");
   console.log(
     "ScaleHot attribution PostgreSQL: ownership, late binding, duplicate, refund, expiry and revocation passed",

@@ -202,7 +202,7 @@ function FunnelPreview({ funnel }: { funnel: Funnel }) {
       viewBox={`${bounds.left - 70} ${bounds.top - 70} ${bounds.right - bounds.left + 140} ${bounds.bottom - bounds.top + 140}`}
       className="h-full w-full"
       aria-hidden="true"
-      style={{ background: "#111111" }}
+      style={{ background: "var(--background)" }}
     >
       {funnel.edges.map((edge) => {
         const from = funnel.nodes.find((item) => item.id === edge.from);
@@ -214,7 +214,7 @@ function FunnelPreview({ funnel }: { funnel: Funnel }) {
             y1={from.y + from.height / 2}
             x2={to.x + to.width / 2}
             y2={to.y + to.height / 2}
-            stroke="#7f8b9b"
+            stroke="var(--muted-foreground)"
             strokeWidth="10"
           />
         ) : null;
@@ -229,8 +229,8 @@ function FunnelPreview({ funnel }: { funnel: Funnel }) {
             width={item.width}
             height={item.height}
             rx={item.appearance === "telegram" ? item.width / 2 : 4}
-            fill={item.background ?? "#5688ff"}
-            stroke="#7f8b9b"
+            fill={item.background ?? "var(--primary)"}
+            stroke="var(--muted-foreground)"
             strokeWidth="3"
           />
         ))}
@@ -986,7 +986,7 @@ function FunilPage() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setShareMode("import")}
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-600 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/10"
+                    className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-white/10"
                   >
                     <Code2 className="size-4" />
                     Inserir código
@@ -1039,7 +1039,7 @@ function FunilPage() {
                     >
                       <button
                         onClick={() => openFunnel(funnel.id)}
-                        className="block h-40 w-full overflow-hidden border-b border-border/70 bg-[#111111] p-4 text-left"
+                        className="block h-40 w-full overflow-hidden border-b border-border/70 bg-background p-4 text-left"
                         aria-label={`Prévia de ${funnel.name}`}
                       >
                         <FunnelPreview funnel={funnel} />
@@ -1141,21 +1141,21 @@ function FunilPage() {
                 <div className="flex flex-wrap items-center gap-3">
                   <button
                     onClick={() => persistWorkspace(true)}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-300/30 bg-blue-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/15 hover:bg-blue-400"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/40 bg-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-primary/15 hover:bg-primary-hover"
                   >
                     <Save className="size-5" />
                     Salvar fluxo
                   </button>
                   <button
                     onClick={() => setShareMode("export")}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-400/40 bg-blue-500/15 px-4 py-2 text-sm font-semibold text-blue-200 hover:bg-blue-500/25"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-brand-red hover:bg-primary/25"
                   >
                     <Share2 className="size-5" />
                     Compartilhar
                   </button>
                   <button
                     onClick={() => setShareMode("import")}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/10"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-white/10"
                   >
                     <Code2 className="size-5" />
                     Inserir código
@@ -1164,7 +1164,7 @@ function FunilPage() {
                     onClick={() => void toggleFullscreen()}
                     aria-keyshortcuts="F11"
                     aria-pressed={fullscreen}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-400/40 bg-blue-500/15 px-4 py-2 text-sm font-semibold text-blue-200 transition hover:bg-blue-500/25"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-brand-red transition hover:bg-primary/25"
                   >
                     {fullscreen ? (
                       <Minimize2 className="size-5" />
@@ -1256,20 +1256,20 @@ function FunilPage() {
                   <button
                     onClick={() => zoomAtCenter(zoom / 1.25)}
                     aria-label="Diminuir zoom"
-                    className="flex size-11 items-center justify-center rounded-xl border border-border text-slate-200 hover:bg-secondary hover:text-white"
+                    className="flex size-11 items-center justify-center rounded-xl border border-border text-foreground hover:bg-secondary hover:text-white"
                   >
                     <ZoomOut className="size-5" />
                   </button>
                   <button
                     onClick={() => zoomAtCenter(1)}
                     aria-label="Restaurar zoom em 100%"
-                    className="min-h-11 min-w-16 rounded-xl px-2 py-2 text-center text-sm font-semibold tabular-nums text-slate-200 hover:bg-secondary"
+                    className="min-h-11 min-w-16 rounded-xl px-2 py-2 text-center text-sm font-semibold tabular-nums text-foreground hover:bg-secondary"
                   >
                     {Math.round(zoom * 100)}%
                   </button>
                   <button
                     onClick={fitFlow}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/10 px-3.5 py-2 text-sm font-semibold text-blue-200 hover:bg-blue-500/20"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3.5 py-2 text-sm font-semibold text-brand-red hover:bg-primary/20"
                   >
                     <Expand className="size-5" />
                     Ver tudo
@@ -1277,7 +1277,7 @@ function FunilPage() {
                   <button
                     onClick={() => zoomAtCenter(zoom * 1.25)}
                     aria-label="Aumentar zoom"
-                    className="flex size-11 items-center justify-center rounded-xl border border-border text-slate-200 hover:bg-secondary hover:text-white"
+                    className="flex size-11 items-center justify-center rounded-xl border border-border text-foreground hover:bg-secondary hover:text-white"
                   >
                     <ZoomIn className="size-5" />
                   </button>
@@ -1291,13 +1291,13 @@ function FunilPage() {
                 <div
                   role="group"
                   aria-label="Modo do mouse"
-                  className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-slate-600 bg-background p-1"
+                  className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-border bg-background p-1"
                 >
                   <button
                     onClick={() => setMouseMode("move")}
                     aria-pressed={mouseMode === "move"}
                     title="Arraste o fundo com o botão esquerdo para mover o fluxo"
-                    className={`inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${mouseMode === "move" ? "bg-blue-500/25 text-blue-200 shadow-sm ring-1 ring-blue-400/40" : "text-slate-400 hover:bg-white/10 hover:text-white"}`}
+                    className={`inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${mouseMode === "move" ? "bg-primary/25 text-brand-red shadow-sm ring-1 ring-primary/40" : "text-muted-foreground hover:bg-white/10 hover:text-white"}`}
                   >
                     <Hand className="size-4" />
                     Mover
@@ -1306,7 +1306,7 @@ function FunilPage() {
                     onClick={() => setMouseMode("select")}
                     aria-pressed={mouseMode === "select"}
                     title="Arraste o botão esquerdo para selecionar vários elementos"
-                    className={`inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${mouseMode === "select" ? "bg-violet-500/25 text-violet-200 shadow-sm ring-1 ring-violet-400/40" : "text-slate-400 hover:bg-white/10 hover:text-white"}`}
+                    className={`inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${mouseMode === "select" ? "bg-violet-500/25 text-violet-200 shadow-sm ring-1 ring-violet-400/40" : "text-muted-foreground hover:bg-white/10 hover:text-white"}`}
                   >
                     <MousePointer2 className="size-4" />
                     Selecionar
@@ -1314,7 +1314,7 @@ function FunilPage() {
                 </div>
                 <button
                   onClick={organizeForReading}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/10 px-3 py-2 text-sm font-semibold text-blue-200 hover:bg-blue-500/20"
+                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-semibold text-brand-red hover:bg-primary/20"
                 >
                   <LayoutGrid className="size-4" />
                   Organizar para leitura
@@ -1322,13 +1322,13 @@ function FunilPage() {
                 {layoutUndo?.funnelId === active.id && (
                   <button
                     onClick={undoLayout}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-white/10"
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-white/10"
                   >
                     <RotateCcw className="size-4" />
                     Desfazer organização
                   </button>
                 )}
-                <span className="mr-1 text-xs font-medium text-slate-400">Explorar</span>
+                <span className="mr-1 text-xs font-medium text-muted-foreground">Explorar</span>
                 {sections.map((section) => (
                   <button
                     key={section.id}
@@ -1338,7 +1338,7 @@ function FunilPage() {
                       fitNodes(section.ids, section.label);
                     }}
                     aria-pressed={viewLabel === section.label}
-                    className={`min-h-10 rounded-xl border px-4 py-2 text-sm font-semibold transition ${viewLabel === section.label ? "border-blue-400/50 bg-blue-500/20 text-blue-200" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"}`}
+                    className={`min-h-10 rounded-xl border px-4 py-2 text-sm font-semibold transition ${viewLabel === section.label ? "border-primary/50 bg-primary/20 text-brand-red" : "border-white/10 bg-white/5 text-muted-foreground hover:bg-white/10"}`}
                   >
                     {section.label}
                   </button>
@@ -1346,7 +1346,7 @@ function FunilPage() {
                 {selectedNode && (
                   <button
                     onClick={() => fitNodes([selectedNode.id], selectedNode.title)}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-blue-400/40 px-4 py-2 text-sm font-semibold text-blue-200"
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-primary/40 px-4 py-2 text-sm font-semibold text-brand-red"
                   >
                     <ZoomIn className="size-4" />
                     Ampliar elemento
@@ -1354,11 +1354,11 @@ function FunilPage() {
                 )}
                 <button
                   onClick={() => selectNodes(active.nodes.map((node) => node.id))}
-                  className="min-h-10 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-white/10"
+                  className="min-h-10 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-white/10"
                 >
                   Selecionar todos
                 </button>
-                <span className="ml-auto hidden text-xs text-slate-400 sm:block">
+                <span className="ml-auto hidden text-xs text-muted-foreground sm:block">
                   {mouseMode === "move"
                     ? "Arraste: mover · Shift + arraste: selecionar"
                     : "Arraste: selecionar · Espaço + arraste: mover"}{" "}
@@ -1379,7 +1379,7 @@ function FunilPage() {
               )}
 
               <div
-                style={{ backgroundColor: "#101010" }}
+                style={{ backgroundColor: "var(--background)" }}
                 className={`relative mt-3 flex overflow-clip rounded-2xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.2)] ${fullscreen ? "min-h-[220px] flex-1" : "h-[calc(100dvh-295px)] min-h-[500px] flex-none"}`}
               >
                 <div ref={viewportRef} className="relative min-w-0 flex-1 overflow-hidden">
@@ -1410,12 +1410,12 @@ function FunilPage() {
                     aria-haspopup="dialog"
                     aria-label="Compartilhar fluxo"
                     title="Compartilhar em PDF, imagem ou código"
-                    className="absolute top-3 right-3 z-20 inline-flex min-h-12 items-center gap-3 rounded-xl border border-blue-300/40 bg-blue-600 px-4 py-3 text-left text-white shadow-lg shadow-black/30 transition hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-300"
+                    className="absolute top-3 right-3 z-20 inline-flex min-h-12 items-center gap-3 rounded-xl border border-primary/40 bg-primary px-4 py-3 text-left text-white shadow-lg shadow-black/30 transition hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
                     <Share2 aria-hidden="true" className="size-5 shrink-0" />
                     <span>
                       <span className="block text-sm font-bold">Compartilhar</span>
-                      <span className="hidden text-[11px] text-blue-100 sm:block">
+                      <span className="hidden text-[11px] text-primary-foreground sm:block">
                         PDF, imagem e código
                       </span>
                     </span>
@@ -1432,14 +1432,14 @@ function FunilPage() {
                         <h2 className="font-semibold text-white">
                           {selectedNodes.length} elementos selecionados
                         </h2>
-                        <p className="mt-1 text-xs text-slate-400">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           As alterações são salvas automaticamente.
                         </p>
                       </div>
                       <button
                         onClick={() => selectNodes([])}
                         aria-label="Limpar seleção"
-                        className="rounded-lg p-2 text-slate-400 hover:bg-white/10"
+                        className="rounded-lg p-2 text-muted-foreground hover:bg-white/10"
                       >
                         <X className="size-4" />
                       </button>
@@ -1447,12 +1447,12 @@ function FunilPage() {
                     <div className="flex-1 space-y-4 overflow-y-auto p-4">
                       <button
                         onClick={() => fitNodes(selectedNodeIds, "Seleção ampliada", true)}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-400/40 px-3 py-3 text-sm font-semibold text-blue-200 hover:bg-blue-500/15"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/40 px-3 py-3 text-sm font-semibold text-brand-red hover:bg-primary/15"
                       >
                         <ZoomIn className="size-4" />
                         Ampliar seleção
                       </button>
-                      <p className="text-xs leading-5 text-slate-300">
+                      <p className="text-xs leading-5 text-muted-foreground">
                         Arraste um dos blocos selecionados para mover todos juntos. Use Ctrl ou ⌘ +
                         clique para incluir ou retirar elementos.
                       </p>
@@ -1463,7 +1463,7 @@ function FunilPage() {
                         onUndo={undoSize}
                         canUndo={sizeUndo?.funnelId === active.id}
                       />
-                      <details className="rounded-xl border border-slate-700 p-3 text-xs text-slate-300">
+                      <details className="rounded-xl border border-border p-3 text-xs text-muted-foreground">
                         <summary className="cursor-pointer font-semibold">
                           Elementos na seleção ({selectedNodes.length})
                         </summary>
@@ -1471,7 +1471,7 @@ function FunilPage() {
                           {selectedNodes.map((node) => (
                             <li key={node.id} className="flex items-center justify-between gap-3">
                               <span className="truncate">{node.title}</span>
-                              <span className="shrink-0 text-slate-400">
+                              <span className="shrink-0 text-muted-foreground">
                                 {node.width} × {node.height}
                               </span>
                             </li>
@@ -1481,7 +1481,7 @@ function FunilPage() {
                     </div>
                     <button
                       onClick={() => selectNodes([])}
-                      className="m-4 rounded-xl bg-blue-500 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-400"
+                      className="m-4 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-primary-hover"
                     >
                       Concluir seleção
                     </button>
@@ -1492,12 +1492,12 @@ function FunilPage() {
                     className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-border bg-popover shadow-2xl sm:w-[350px]"
                     aria-label={selectedNode ? "Editar elemento" : "Editar conexão"}
                   >
-                    <div className="flex items-start justify-between border-b border-slate-700 px-4 py-4">
+                    <div className="flex items-start justify-between border-b border-border px-4 py-4">
                       <div>
-                        <p className="text-[9px] font-bold tracking-[0.15em] text-blue-300">
+                        <p className="text-[9px] font-bold tracking-[0.15em] text-brand-red">
                           {selectedNode ? "ELEMENTO DO FLUXO" : "CONEXÃO DO FLUXO"}
                         </p>
-                        <p className="mt-1 text-xs text-slate-400">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           As mudanças são salvas automaticamente.
                         </p>
                       </div>
@@ -1507,14 +1507,14 @@ function FunilPage() {
                           setSelectedEdgeId(null);
                         }}
                         aria-label="Fechar editor"
-                        className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white"
+                        className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-white/10 hover:text-white"
                       >
                         <X className="size-4" />
                       </button>
                     </div>
                     {selectedNode && (
                       <div className="flex-1 space-y-4 overflow-y-auto p-4">
-                        <label className="block text-[11px] font-semibold text-slate-300">
+                        <label className="block text-[11px] font-semibold text-muted-foreground">
                           Tipo
                           <select
                             value={selectedNode.kind}
@@ -1523,7 +1523,7 @@ function FunilPage() {
                                 kind: event.target.value as FlowNodeKind,
                               })
                             }
-                            className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
+                            className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-brand-red"
                           >
                             {Object.entries(kindStyles).map(([kind, style]) => (
                               <option key={kind} value={kind}>
@@ -1532,7 +1532,7 @@ function FunilPage() {
                             ))}
                           </select>
                         </label>
-                        <label className="block text-[11px] font-semibold text-slate-300">
+                        <label className="block text-[11px] font-semibold text-muted-foreground">
                           Visual do elemento
                           <select
                             value={selectedNode.appearance ?? "default"}
@@ -1541,7 +1541,7 @@ function FunilPage() {
                                 appearance: event.target.value as FlowNode["appearance"],
                               })
                             }
-                            className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
+                            className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-brand-red"
                           >
                             <option value="default">Cartão com detalhes</option>
                             <option value="solid">Bloco colorido</option>
@@ -1552,7 +1552,7 @@ function FunilPage() {
                           </select>
                         </label>
                         <fieldset className="space-y-2">
-                          <legend className="mb-2 text-xs font-semibold text-slate-300">
+                          <legend className="mb-2 text-xs font-semibold text-muted-foreground">
                             Cores rápidas
                           </legend>
                           <div className="flex flex-wrap gap-2">
@@ -1581,7 +1581,7 @@ function FunilPage() {
                         </fieldset>
                         {selectedNode && (
                           <div className="grid grid-cols-2 gap-3">
-                            <label className="text-[11px] font-semibold text-slate-300">
+                            <label className="text-[11px] font-semibold text-muted-foreground">
                               Cor de fundo
                               <input
                                 type="color"
@@ -1593,10 +1593,10 @@ function FunilPage() {
                                 onChange={(event) =>
                                   updateNode(selectedNode.id, { background: event.target.value })
                                 }
-                                className="mt-1.5 h-8 w-full rounded border border-slate-600 bg-transparent"
+                                className="mt-1.5 h-8 w-full rounded border border-border bg-transparent"
                               />
                             </label>
-                            <label className="text-[11px] font-semibold text-slate-300">
+                            <label className="text-[11px] font-semibold text-muted-foreground">
                               Cor do texto
                               <input
                                 type="color"
@@ -1604,24 +1604,24 @@ function FunilPage() {
                                 onChange={(event) =>
                                   updateNode(selectedNode.id, { textColor: event.target.value })
                                 }
-                                className="mt-1.5 h-8 w-full rounded border border-slate-600 bg-transparent"
+                                className="mt-1.5 h-8 w-full rounded border border-border bg-transparent"
                               />
                             </label>
                           </div>
                         )}
                         {selectedNode.appearance === "account" && (
                           <>
-                            <label className="block text-[11px] font-semibold text-slate-300">
+                            <label className="block text-[11px] font-semibold text-muted-foreground">
                               Número ou rótulo curto
                               <input
                                 value={selectedNode.displayLabel ?? ""}
                                 onChange={(event) =>
                                   updateNode(selectedNode.id, { displayLabel: event.target.value })
                                 }
-                                className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white"
+                                className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-xs text-white"
                               />
                             </label>
-                            <label className="block text-[11px] font-semibold text-slate-300">
+                            <label className="block text-[11px] font-semibold text-muted-foreground">
                               Ícone
                               <select
                                 value={selectedNode.platform ?? ""}
@@ -1631,7 +1631,7 @@ function FunilPage() {
                                       (event.target.value as FlowNode["platform"]) || undefined,
                                   })
                                 }
-                                className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white"
+                                className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-xs text-white"
                               >
                                 <option value="">Campanha</option>
                                 <option value="tiktok">TikTok</option>
@@ -1641,7 +1641,7 @@ function FunilPage() {
                             </label>
                           </>
                         )}
-                        <label className="block text-[11px] font-semibold text-slate-300">
+                        <label className="block text-[11px] font-semibold text-muted-foreground">
                           Título
                           <input
                             value={selectedNode.title}
@@ -1649,10 +1649,10 @@ function FunilPage() {
                               updateNode(selectedNode.id, { title: event.target.value })
                             }
                             placeholder="Nome deste ponto"
-                            className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
+                            className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-brand-red"
                           />
                         </label>
-                        <label className="block text-[11px] font-semibold text-slate-300">
+                        <label className="block text-[11px] font-semibold text-muted-foreground">
                           Descrição
                           <textarea
                             value={selectedNode.description}
@@ -1661,11 +1661,11 @@ function FunilPage() {
                             }
                             rows={3}
                             placeholder="Explique a função desta etapa"
-                            className="mt-1.5 w-full resize-y rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs leading-5 text-white outline-none focus:border-blue-400"
+                            className="mt-1.5 w-full resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-xs leading-5 text-white outline-none focus:border-brand-red"
                           />
                         </label>
                         {selectedNode && (
-                          <label className="block text-[11px] font-semibold text-slate-300">
+                          <label className="block text-[11px] font-semibold text-muted-foreground">
                             Texto e anotações
                             <textarea
                               value={selectedNode.body}
@@ -1674,13 +1674,13 @@ function FunilPage() {
                               }
                               rows={5}
                               placeholder="Adicione informações, links ou próximos passos"
-                              className="mt-1.5 w-full resize-y rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs leading-5 text-white outline-none focus:border-blue-400"
+                              className="mt-1.5 w-full resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-xs leading-5 text-white outline-none focus:border-brand-red"
                             />
                           </label>
                         )}
                         {selectedNode && (
                           <div className="space-y-3">
-                            <label className="block text-[11px] font-semibold text-slate-300">
+                            <label className="block text-[11px] font-semibold text-muted-foreground">
                               Link da imagem
                               <input
                                 value={selectedNode.imageUrl ?? ""}
@@ -1700,11 +1700,11 @@ function FunilPage() {
                                   });
                                 }}
                                 placeholder="https://..."
-                                className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
+                                className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-brand-red"
                               />
                             </label>
-                            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-600 px-3 py-3 text-xs font-semibold text-slate-300 transition hover:border-blue-400 hover:bg-blue-400/5">
-                              <Upload className="size-4 text-blue-300" />
+                            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border px-3 py-3 text-xs font-semibold text-muted-foreground transition hover:border-brand-red hover:bg-primary/5">
+                              <Upload className="size-4 text-brand-red" />
                               Enviar imagem do dispositivo
                               <input
                                 type="file"
@@ -1718,7 +1718,7 @@ function FunilPage() {
                             </label>
                             {imageFor(selectedNode) && (
                               <div className="flex items-center gap-2">
-                                <label className="flex-1 text-xs text-slate-300">
+                                <label className="flex-1 text-xs text-muted-foreground">
                                   Exibição da imagem
                                   <select
                                     aria-label="Exibição da imagem"
@@ -1728,7 +1728,7 @@ function FunilPage() {
                                         imageFit: event.target.value as "cover" | "contain",
                                       })
                                     }
-                                    className="mt-1 block w-full rounded-lg border border-slate-600 bg-background p-2"
+                                    className="mt-1 block w-full rounded-lg border border-border bg-background p-2"
                                   >
                                     <option value="cover">Preencher</option>
                                     <option value="contain">Imagem inteira</option>
@@ -1753,7 +1753,7 @@ function FunilPage() {
                               <img
                                 src={imageFor(selectedNode)}
                                 alt={selectedNode.title}
-                                className="max-h-48 w-full rounded-lg border border-slate-700 object-contain"
+                                className="max-h-48 w-full rounded-lg border border-border object-contain"
                               />
                             )}
                           </div>
@@ -1766,7 +1766,7 @@ function FunilPage() {
                           canUndo={sizeUndo?.funnelId === active.id}
                         />
                         <div className="grid grid-cols-2 gap-2">
-                          <label className="text-[10px] text-slate-400">
+                          <label className="text-[10px] text-muted-foreground">
                             Posição X
                             <input
                               type="number"
@@ -1776,10 +1776,10 @@ function FunilPage() {
                                   x: Math.max(0, Number(event.target.value)),
                                 })
                               }
-                              className="mt-1 w-full rounded-lg border border-slate-600 bg-background px-2.5 py-2 text-xs text-white"
+                              className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-xs text-white"
                             />
                           </label>
-                          <label className="text-[10px] text-slate-400">
+                          <label className="text-[10px] text-muted-foreground">
                             Posição Y
                             <input
                               type="number"
@@ -1789,7 +1789,7 @@ function FunilPage() {
                                   y: Math.max(0, Number(event.target.value)),
                                 })
                               }
-                              className="mt-1 w-full rounded-lg border border-slate-600 bg-background px-2.5 py-2 text-xs text-white"
+                              className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-xs text-white"
                             />
                           </label>
                         </div>
@@ -1797,13 +1797,13 @@ function FunilPage() {
                     )}
                     {selectedEdge && (
                       <div className="flex-1 space-y-4 p-4">
-                        <p className="text-xs leading-5 text-slate-300">
+                        <p className="text-xs leading-5 text-muted-foreground">
                           Conexão entre{" "}
                           <b>{active.nodes.find((item) => item.id === selectedEdge.from)?.title}</b>{" "}
                           e <b>{active.nodes.find((item) => item.id === selectedEdge.to)?.title}</b>
                           .
                         </p>
-                        <label className="block text-[11px] font-semibold text-slate-300">
+                        <label className="block text-[11px] font-semibold text-muted-foreground">
                           Rótulo opcional
                           <input
                             value={selectedEdge.label ?? ""}
@@ -1818,12 +1818,12 @@ function FunilPage() {
                               }))
                             }
                             placeholder="Ex.: se assinou, seguir para..."
-                            className="mt-1.5 w-full rounded-lg border border-slate-600 bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-blue-400"
+                            className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-xs text-white outline-none focus:border-brand-red"
                           />
                         </label>
                       </div>
                     )}
-                    <div className="flex items-center justify-between border-t border-slate-700 p-4">
+                    <div className="flex items-center justify-between border-t border-border p-4">
                       <button
                         onClick={() =>
                           selectedNode
@@ -1840,7 +1840,7 @@ function FunilPage() {
                           setSelectedNodeId(null);
                           setSelectedEdgeId(null);
                         }}
-                        className="inline-flex items-center gap-2 rounded-lg bg-blue-500 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-400"
+                        className="inline-flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-white hover:bg-primary-hover"
                       >
                         <Check className="size-3.5" />
                         Concluir
@@ -1915,7 +1915,7 @@ function FunilPage() {
                 <h2 id="delete-funnel-title" className="text-lg font-bold text-white">
                   Excluir este funil?
                 </h2>
-                <p id="delete-funnel-description" className="mt-3 text-sm leading-6 text-slate-400">
+                <p id="delete-funnel-description" className="mt-3 text-sm leading-6 text-muted-foreground">
                   “{deletingTarget.name}” e seus {deletingTarget.nodes.length} elementos serão
                   excluídos deste navegador.
                 </p>
@@ -1923,7 +1923,7 @@ function FunilPage() {
                   <button
                     autoFocus
                     onClick={() => setDeletingFunnelId(null)}
-                    className="rounded-xl border border-slate-600 px-4 py-2.5 text-sm font-semibold hover:bg-white/10"
+                    className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold hover:bg-white/10"
                   >
                     Cancelar
                   </button>

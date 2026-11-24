@@ -99,7 +99,7 @@ export const Route = createFileRoute("/automacao-instagram")({
   validateSearch: (
     search: Record<string, unknown>,
   ): {
-    tab?: "perfis" | "contas" | "nova-conta" | "stories" | "publicacoes" | "fila" | "analytics";
+    tab?: "perfis" | "contas" | "nova-conta" | "stories" | "publicacoes" | "fila" | "analytics" | "config";
   } => ({
     tab:
       search.tab === "perfis" ||
@@ -108,7 +108,8 @@ export const Route = createFileRoute("/automacao-instagram")({
       search.tab === "stories" ||
       search.tab === "publicacoes" ||
       search.tab === "fila" ||
-      search.tab === "analytics"
+      search.tab === "analytics" ||
+      search.tab === "config"
         ? search.tab
         : undefined,
   }),
@@ -2244,8 +2245,8 @@ function InstagramWorkspacePage({
                     ))}
                   </div>
                   {!accountReelFlow && (
-                    <fieldset className="mb-5 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-4">
-                      <legend className="px-1 text-sm font-semibold text-cyan-200">
+                    <fieldset className="mb-5 rounded-xl border border-primary/30 bg-primary/5 p-4">
+                      <legend className="px-1 text-sm font-semibold text-brand-red">
                         1. Em qual conta você vai publicar?
                       </legend>
                       {!!readyAccounts.length && (
@@ -2269,9 +2270,9 @@ function InstagramWorkspacePage({
                       )}
                     </fieldset>
                   )}
-                  <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-400/25 bg-violet-400/5 p-4">
+                  <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4">
                     <div>
-                      <h3 className="text-sm font-semibold text-violet-200">
+                      <h3 className="text-sm font-semibold text-brand-red">
                         {reelMode === "single" ? "2. Qual vídeo?" : "2. Quais vídeos?"}
                       </h3>
                       {reelMode === "single" && libraryVideos.length > 0 ? (

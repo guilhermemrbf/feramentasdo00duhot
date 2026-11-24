@@ -5,7 +5,7 @@ import "./scalehot.css";
 export function SalesLayout({ children }: { children: ReactNode }) {
   return (
     <AppShell>
-      <main className="mx-auto w-full min-w-0 max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
+      <main className="scalehot-surface mx-auto w-full min-w-0 max-w-[1600px] px-4 py-4 sm:px-6">
         {children}
       </main>
     </AppShell>

@@ -7,7 +7,7 @@
 }
 .funnel-canvas .funnel-node.is-selected {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px #c9a66b35;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 27%, transparent);
 }
 .funnel-canvas .funnel-port {
   border: 2px solid var(--primary);
@@ -44,7 +44,7 @@
 .funnel-canvas .react-flow__selection,
 .funnel-canvas .react-flow__nodesselection-rect {
   border: 1px solid var(--primary);
-  background: #c9a66b12;
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
   border-radius: 6px;
 }
 .funnel-canvas .react-flow__pane.dragging {

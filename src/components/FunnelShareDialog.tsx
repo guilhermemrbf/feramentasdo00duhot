@@ -69,7 +69,7 @@ export function FunnelShareDialog({
       setMessage(`${format.toUpperCase()} gerado. Confira os downloads do navegador.`);
     });
   const buttonClass =
-    "flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-600 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-40";
+    "flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-40";
   return (
     <div
       className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm"
@@ -83,7 +83,7 @@ export function FunnelShareDialog({
         role="dialog"
         aria-modal="true"
         aria-label="Compartilhar fluxo"
-        className="flex max-h-[94dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-600 bg-[#141a25] text-slate-200 shadow-2xl outline-none"
+        className="flex max-h-[94dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-2xl outline-none"
         onKeyDown={(event) => {
           if (event.key === "Escape" && !busy) {
             event.stopPropagation();
@@ -110,10 +110,10 @@ export function FunnelShareDialog({
           }
         }}
       >
-        <header className="flex items-start justify-between gap-3 border-b border-slate-700 p-5">
+        <header className="flex items-start justify-between gap-3 border-b border-border p-5">
           <div>
             <h2 className="text-lg font-bold text-white">Compartilhar fluxo</h2>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-muted-foreground">
               {funnel?.name ?? "Importe um projeto para começar."}
             </p>
           </div>
@@ -126,7 +126,7 @@ export function FunnelShareDialog({
             <X className="size-5" />
           </button>
         </header>
-        <div className="flex gap-2 border-b border-slate-700 px-5 py-3">
+        <div className="flex gap-2 border-b border-border px-5 py-3">
           {funnel && (
             <button
               disabled={!!busy}
@@ -136,7 +136,7 @@ export function FunnelShareDialog({
                 setMessage("");
               }}
               aria-pressed={mode === "export"}
-              className={`${buttonClass} ${mode === "export" ? "border-blue-400/50 bg-blue-500/15 text-blue-200" : ""}`}
+              className={`${buttonClass} ${mode === "export" ? "border-primary/50 bg-primary/15 text-brand-red" : ""}`}
             >
               <Download className="size-4" />
               Exportar fluxo
@@ -150,7 +150,7 @@ export function FunnelShareDialog({
               setMessage("");
             }}
             aria-pressed={mode === "import"}
-            className={`${buttonClass} ${mode === "import" ? "border-blue-400/50 bg-blue-500/15 text-blue-200" : ""}`}
+            className={`${buttonClass} ${mode === "import" ? "border-primary/50 bg-primary/15 text-brand-red" : ""}`}
           >
             <Code2 className="size-4" />
             Inserir código
@@ -159,7 +159,7 @@ export function FunnelShareDialog({
         <div className="space-y-5 overflow-y-auto p-5" aria-busy={!!busy}>
           {mode === "export" && funnel ? (
             <>
-              <p className="text-sm leading-6 text-slate-300">
+              <p className="text-sm leading-6 text-muted-foreground">
                 Exporte o fluxo inteiro com seus elementos e conexões, independentemente do zoom
                 atual.
               </p>
@@ -167,13 +167,13 @@ export function FunnelShareDialog({
                 <button
                   disabled={!!busy || !funnel.nodes.length}
                   onClick={() => void exportFile("pdf")}
-                  className={`${buttonClass} flex-col !items-start border-blue-400/30 bg-blue-500/10 text-left`}
+                  className={`${buttonClass} flex-col !items-start border-primary/40 bg-primary/10 text-left`}
                 >
                   <span className="flex items-center gap-2">
                     <FileText className="size-5" />
                     Baixar PDF
                   </span>
-                  <span className="text-xs font-normal leading-5 text-slate-400">
+                  <span className="text-xs font-normal leading-5 text-muted-foreground">
                     Uma página com o fluxo completo para ampliar e compartilhar.
                   </span>
                 </button>
@@ -186,17 +186,17 @@ export function FunnelShareDialog({
                     <FileImage className="size-5" />
                     Baixar imagem PNG
                   </span>
-                  <span className="text-xs font-normal leading-5 text-slate-400">
+                  <span className="text-xs font-normal leading-5 text-muted-foreground">
                     Imagem em alta resolução com o fundo quadriculado.
                   </span>
                 </button>
               </div>
-              <section className="space-y-3 rounded-xl border border-slate-700 bg-[#0d1119]/60 p-4">
+              <section className="space-y-3 rounded-xl border border-border bg-background/60 p-4">
                 <h3 className="flex items-center gap-2 text-sm font-bold">
                   <Code2 className="size-5" />
                   Código editável do fluxo
                 </h3>
-                <p className="text-xs leading-5 text-slate-400">
+                <p className="text-xs leading-5 text-muted-foreground">
                   Inclui textos, cores, tamanhos, conexões e imagens enviadas. Links de imagens
                   externas continuam vinculados à origem. Quem receber pode usar “Inserir código”.
                 </p>
@@ -218,7 +218,7 @@ export function FunnelShareDialog({
                         }
                       })
                     }
-                    className={`${buttonClass} border-blue-400/40 bg-blue-500/15`}
+                    className={`${buttonClass} border-primary/40 bg-primary/15`}
                   >
                     <Copy className="size-4" />
                     Copiar código
@@ -249,14 +249,14 @@ export function FunnelShareDialog({
                     value={code}
                     onFocus={(event) => event.target.select()}
                     spellCheck={false}
-                    className="h-36 w-full rounded-lg border border-slate-600 bg-[#0d1119] p-3 font-mono text-xs text-slate-300 outline-none focus:border-blue-400"
+                    className="h-36 w-full rounded-lg border border-border bg-background p-3 font-mono text-xs text-muted-foreground outline-none focus:border-brand-red"
                   />
                 )}
               </section>
             </>
           ) : (
             <>
-              <p className="text-sm leading-6 text-slate-300">
+              <p className="text-sm leading-6 text-muted-foreground">
                 Cole um código exportado pelo Funil ou abra um arquivo JSON. Ele será adicionado
                 como um novo projeto.
               </p>
@@ -270,7 +270,7 @@ export function FunnelShareDialog({
                 }}
                 spellCheck={false}
                 placeholder="Cole o código completo aqui…"
-                className="h-56 w-full rounded-xl border border-slate-600 bg-[#0d1119] p-3 font-mono text-xs text-slate-200 outline-none focus:border-blue-400"
+                className="h-56 w-full rounded-xl border border-border bg-background p-3 font-mono text-xs text-foreground outline-none focus:border-brand-red"
               />
               <input
                 ref={fileInput}
@@ -305,19 +305,19 @@ export function FunnelShareDialog({
                       onClose();
                     })
                   }
-                  className={`${buttonClass} border-blue-400/40 bg-blue-500/20`}
+                  className={`${buttonClass} border-primary/40 bg-primary/20`}
                 >
                   <Code2 className="size-4" />
                   Importar como novo funil
                 </button>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 Limite: 24 MB. Seus projetos existentes são mantidos.
               </p>
             </>
           )}
           {busy && (
-            <p role="status" className="flex items-center gap-2 text-sm text-blue-200">
+            <p role="status" className="flex items-center gap-2 text-sm text-brand-red">
               <LoaderCircle className="size-4 animate-spin" />
               {busy}
             </p>

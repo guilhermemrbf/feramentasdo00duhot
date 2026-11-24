@@ -1,0 +1,73 @@
+@font-face {
+  font-family: Poppins;
+  src: url("/fonts/poppins-400.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Poppins;
+  src: url("/fonts/poppins-500.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Poppins;
+  src: url("/fonts/poppins-600.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Poppins;
+  src: url("/fonts/poppins-700.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  --workspace-font: Poppins, "Segoe UI", sans-serif;
+  --workspace-inset: var(--sidebar);
+}
+
+.app-workspace,
+.organic-landing,
+.launch-site {
+  font-family: var(--workspace-font);
+}
+
+.app-workspace .workspace-topbar {
+  background: color-mix(in oklab, var(--sidebar) 96%, transparent);
+}
+
+.app-workspace .tool-nav-link > svg:first-child {
+  flex: none;
+  stroke-width: 1.75;
+}
+
+.app-workspace .page-intro {
+  padding: clamp(1rem, 3vw, 1.75rem);
+}
+
+.app-workspace :is(.tool-icon, .workspace-feature-icon) {
+  background: var(--secondary);
+}
+
+.app-workspace :is(.workspace-feature:hover, .workspace-feature:focus-within) {
+  border-color: color-mix(in oklab, var(--primary) 46%, var(--border));
+}
+
+.app-workspace .field:not([type="color"]),
+.app-workspace .workspace-input {
+  background-color: var(--workspace-inset);
+}
+
+.organic-landing .organic-fill-hot,
+.organic-access .saas-button-primary {
+  background: var(--gradient-hot);
+}

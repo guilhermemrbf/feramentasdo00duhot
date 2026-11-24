@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Bell, BellRing, CheckCircle2, DollarSign, Send, Smartphone, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,11 @@ function publicKeyBytes(key: string) {
   );
 }
 
-export function SalesNotifications() {
+export function SalesNotifications({
+  renderSettings,
+}: {
+  renderSettings?: (parts: { device: ReactNode; approved: ReactNode }) => ReactNode;
+}) {
   const query = useQueryClient();
   const status = useServerFn(salesPushStatus);
   const register = useServerFn(registerSalesPush);
@@ -154,6 +158,80 @@ export function SalesNotifications() {
   }
 
   const DeviceIcon = active ? BellRing : Bell;
+  if (renderSettings) {
+    return renderSettings({
+      approved: (
+        <select
+          className="field"
+          value={notifyApproved ? "on" : "off"}
+          disabled={!active || pending}
+          onChange={(event) => void toggleApproved(event.target.value === "on")}
+        >
+          <option value="on">Habilitado</option>
+          <option value="off">Desabilitado</option>
+        </select>
+      ),
+      device: (
+        <>
+          <div className="settings-inset">
+            <strong>Modo atual</strong>
+            <p>
+              {typeof window !== "undefined" &&
+              window.matchMedia("(display-mode: standalone)").matches
+                ? "Aplicativo instalado"
+                : "Navegador"}
+            </p>
+            <InstallSalesApp primary={false} />
+          </div>
+          <div className="settings-inset">
+            <strong>Notificações neste dispositivo</strong>
+            <p role="status">
+              {!ready
+                ? "Verificando o dispositivo…"
+                : active
+                  ? "Ativadas"
+                  : !compatible
+                    ? "Este navegador não oferece notificações push."
+                    : !key
+                      ? "Serviço de notificações indisponível neste ambiente."
+                      : "Desativadas"}
+            </p>
+            {ready && registration && key && (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={active ? "sales-button sales-button-outline" : "sales-button"}
+                  disabled={pending}
+                  onClick={() => void change(active ? "disable" : "enable")}
+                >
+                  <DeviceIcon className="size-4" aria-hidden />
+                  {active ? "Desativar notificações" : "Ativar notificações"}
+                </button>
+                {active && (
+                  <button
+                    type="button"
+                    className="sales-button sales-button-outline"
+                    disabled={pending}
+                    onClick={() => void change("test")}
+                  >
+                    <Send className="size-4" aria-hidden /> Enviar teste
+                  </button>
+                )}
+              </div>
+            )}
+            {message && (
+              <p
+                role={message.error ? "alert" : "status"}
+                className={message.error ? "text-destructive" : "text-success"}
+              >
+                {message.text}
+              </p>
+            )}
+          </div>
+        </>
+      ),
+    });
+  }
   return (
     <div className="grid max-w-6xl gap-6 lg:grid-cols-3">
       <section className="sales-panel p-6 lg:col-span-2" aria-labelledby="sales-push-title">
@@ -308,6 +386,13 @@ function InstallSalesApp({ primary }: { primary: boolean }) {
               <li>Abra o menu de três pontos.</li>
               <li>Escolha Adicionar à tela inicial e confirme.</li>
             </ol>
+          </div>
+          <div className="rounded-xl border border-border bg-background/40 p-4">
+            <h3 className="mb-2 text-sm font-semibold">Windows e Mac (Chrome ou Edge)</h3>
+            <p className="text-sm text-muted-foreground">
+              Abra o menu do navegador e procure a opção de instalar a MouseHot ou de instalar a
+              página como aplicativo.
+            </p>
           </div>
         </div>
       </DialogContent>

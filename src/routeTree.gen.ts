@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AprovacoesRouteImport } from './routes/aprovacoes'
 import { Route as AutomacaoInstagramRouteImport } from './routes/automacao-instagram'
 import { Route as AutomacaoTiktokRouteImport } from './routes/automacao-tiktok'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ControlHubRouteImport } from './routes/control-hub'
 import { Route as ConviteRouteImport } from './routes/convite'
 import { Route as CriarPaginaRouteImport } from './routes/criar-pagina'
@@ -34,9 +35,15 @@ import { Route as TelegramSyncRouteImport } from './routes/telegram-sync'
 import { Route as VendasRouteImport } from './routes/vendas'
 import { Route as VendasIndexRouteImport } from './routes/vendas.index'
 import { Route as VendasConexoesRouteImport } from './routes/vendas.conexoes'
+import { Route as VendasDespesasRouteImport } from './routes/vendas.despesas'
+import { Route as VendasEventosRouteImport } from './routes/vendas.eventos'
 import { Route as VendasIntegracoesRouteImport } from './routes/vendas.integracoes'
+import { Route as VendasMetaRouteImport } from './routes/vendas.meta'
 import { Route as VendasNotificacoesRouteImport } from './routes/vendas.notificacoes'
+import { Route as VendasPixelsRouteImport } from './routes/vendas.pixels'
+import { Route as VendasProdutosRouteImport } from './routes/vendas.produtos'
 import { Route as VendasRastreamentoRouteImport } from './routes/vendas.rastreamento'
+import { Route as VendasTaxasRouteImport } from './routes/vendas.taxas'
 import { Route as ApiInstagramDriveCleanupRouteImport } from './routes/api.instagram.drive-cleanup'
 import { Route as ApiInstagramWorkerRouteImport } from './routes/api.instagram.worker'
 import { Route as ApiPublicMetaProcessRouteImport } from './routes/api.public.meta-process'
@@ -68,6 +75,11 @@ const AutomacaoInstagramRoute = AutomacaoInstagramRouteImport.update({
 const AutomacaoTiktokRoute = AutomacaoTiktokRouteImport.update({
   id: '/automacao-tiktok',
   path: '/automacao-tiktok',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ControlHubRoute = ControlHubRouteImport.update({
@@ -175,9 +187,24 @@ const VendasConexoesRoute = VendasConexoesRouteImport.update({
   path: '/conexoes',
   getParentRoute: () => VendasRoute,
 } as any)
+const VendasDespesasRoute = VendasDespesasRouteImport.update({
+  id: '/despesas',
+  path: '/despesas',
+  getParentRoute: () => VendasRoute,
+} as any)
+const VendasEventosRoute = VendasEventosRouteImport.update({
+  id: '/eventos',
+  path: '/eventos',
+  getParentRoute: () => VendasRoute,
+} as any)
 const VendasIntegracoesRoute = VendasIntegracoesRouteImport.update({
   id: '/integracoes',
   path: '/integracoes',
+  getParentRoute: () => VendasRoute,
+} as any)
+const VendasMetaRoute = VendasMetaRouteImport.update({
+  id: '/meta',
+  path: '/meta',
   getParentRoute: () => VendasRoute,
 } as any)
 const VendasNotificacoesRoute = VendasNotificacoesRouteImport.update({
@@ -185,9 +212,24 @@ const VendasNotificacoesRoute = VendasNotificacoesRouteImport.update({
   path: '/notificacoes',
   getParentRoute: () => VendasRoute,
 } as any)
+const VendasPixelsRoute = VendasPixelsRouteImport.update({
+  id: '/pixels',
+  path: '/pixels',
+  getParentRoute: () => VendasRoute,
+} as any)
+const VendasProdutosRoute = VendasProdutosRouteImport.update({
+  id: '/produtos',
+  path: '/produtos',
+  getParentRoute: () => VendasRoute,
+} as any)
 const VendasRastreamentoRoute = VendasRastreamentoRouteImport.update({
   id: '/rastreamento',
   path: '/rastreamento',
+  getParentRoute: () => VendasRoute,
+} as any)
+const VendasTaxasRoute = VendasTaxasRouteImport.update({
+  id: '/taxas',
+  path: '/taxas',
   getParentRoute: () => VendasRoute,
 } as any)
 const ApiInstagramDriveCleanupRoute =
@@ -263,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/aprovacoes': typeof AprovacoesRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/control-hub': typeof ControlHubRoute
   '/convite': typeof ConviteRoute
   '/criar-pagina': typeof CriarPaginaRoute
@@ -283,9 +326,15 @@ export interface FileRoutesByFullPath {
   '/telegram-sync': typeof TelegramSyncRoute
   '/vendas': typeof VendasRouteWithChildren
   '/vendas/conexoes': typeof VendasConexoesRoute
+  '/vendas/despesas': typeof VendasDespesasRoute
+  '/vendas/eventos': typeof VendasEventosRoute
   '/vendas/integracoes': typeof VendasIntegracoesRoute
+  '/vendas/meta': typeof VendasMetaRoute
   '/vendas/notificacoes': typeof VendasNotificacoesRoute
+  '/vendas/pixels': typeof VendasPixelsRoute
+  '/vendas/produtos': typeof VendasProdutosRoute
   '/vendas/rastreamento': typeof VendasRastreamentoRoute
+  '/vendas/taxas': typeof VendasTaxasRoute
   '/vendas/': typeof VendasIndexRoute
   '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
@@ -305,6 +354,7 @@ export interface FileRoutesByTo {
   '/aprovacoes': typeof AprovacoesRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/control-hub': typeof ControlHubRoute
   '/convite': typeof ConviteRoute
   '/criar-pagina': typeof CriarPaginaRoute
@@ -324,9 +374,15 @@ export interface FileRoutesByTo {
   '/privacidade': typeof PrivacidadeRoute
   '/telegram-sync': typeof TelegramSyncRoute
   '/vendas/conexoes': typeof VendasConexoesRoute
+  '/vendas/despesas': typeof VendasDespesasRoute
+  '/vendas/eventos': typeof VendasEventosRoute
   '/vendas/integracoes': typeof VendasIntegracoesRoute
+  '/vendas/meta': typeof VendasMetaRoute
   '/vendas/notificacoes': typeof VendasNotificacoesRoute
+  '/vendas/pixels': typeof VendasPixelsRoute
+  '/vendas/produtos': typeof VendasProdutosRoute
   '/vendas/rastreamento': typeof VendasRastreamentoRoute
+  '/vendas/taxas': typeof VendasTaxasRoute
   '/vendas': typeof VendasIndexRoute
   '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
@@ -347,6 +403,7 @@ export interface FileRoutesById {
   '/aprovacoes': typeof AprovacoesRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/control-hub': typeof ControlHubRoute
   '/convite': typeof ConviteRoute
   '/criar-pagina': typeof CriarPaginaRoute
@@ -367,9 +424,15 @@ export interface FileRoutesById {
   '/telegram-sync': typeof TelegramSyncRoute
   '/vendas': typeof VendasRouteWithChildren
   '/vendas/conexoes': typeof VendasConexoesRoute
+  '/vendas/despesas': typeof VendasDespesasRoute
+  '/vendas/eventos': typeof VendasEventosRoute
   '/vendas/integracoes': typeof VendasIntegracoesRoute
+  '/vendas/meta': typeof VendasMetaRoute
   '/vendas/notificacoes': typeof VendasNotificacoesRoute
+  '/vendas/pixels': typeof VendasPixelsRoute
+  '/vendas/produtos': typeof VendasProdutosRoute
   '/vendas/rastreamento': typeof VendasRastreamentoRoute
+  '/vendas/taxas': typeof VendasTaxasRoute
   '/vendas/': typeof VendasIndexRoute
   '/api/instagram/drive-cleanup': typeof ApiInstagramDriveCleanupRoute
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
@@ -391,6 +454,7 @@ export interface FileRouteTypes {
     | '/aprovacoes'
     | '/automacao-instagram'
     | '/automacao-tiktok'
+    | '/configuracoes'
     | '/control-hub'
     | '/convite'
     | '/criar-pagina'
@@ -411,9 +475,15 @@ export interface FileRouteTypes {
     | '/telegram-sync'
     | '/vendas'
     | '/vendas/conexoes'
+    | '/vendas/despesas'
+    | '/vendas/eventos'
     | '/vendas/integracoes'
+    | '/vendas/meta'
     | '/vendas/notificacoes'
+    | '/vendas/pixels'
+    | '/vendas/produtos'
     | '/vendas/rastreamento'
+    | '/vendas/taxas'
     | '/vendas/'
     | '/api/instagram/drive-cleanup'
     | '/api/instagram/worker'
@@ -433,6 +503,7 @@ export interface FileRouteTypes {
     | '/aprovacoes'
     | '/automacao-instagram'
     | '/automacao-tiktok'
+    | '/configuracoes'
     | '/control-hub'
     | '/convite'
     | '/criar-pagina'
@@ -452,9 +523,15 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/telegram-sync'
     | '/vendas/conexoes'
+    | '/vendas/despesas'
+    | '/vendas/eventos'
     | '/vendas/integracoes'
+    | '/vendas/meta'
     | '/vendas/notificacoes'
+    | '/vendas/pixels'
+    | '/vendas/produtos'
     | '/vendas/rastreamento'
+    | '/vendas/taxas'
     | '/vendas'
     | '/api/instagram/drive-cleanup'
     | '/api/instagram/worker'
@@ -474,6 +551,7 @@ export interface FileRouteTypes {
     | '/aprovacoes'
     | '/automacao-instagram'
     | '/automacao-tiktok'
+    | '/configuracoes'
     | '/control-hub'
     | '/convite'
     | '/criar-pagina'
@@ -494,9 +572,15 @@ export interface FileRouteTypes {
     | '/telegram-sync'
     | '/vendas'
     | '/vendas/conexoes'
+    | '/vendas/despesas'
+    | '/vendas/eventos'
     | '/vendas/integracoes'
+    | '/vendas/meta'
     | '/vendas/notificacoes'
+    | '/vendas/pixels'
+    | '/vendas/produtos'
     | '/vendas/rastreamento'
+    | '/vendas/taxas'
     | '/vendas/'
     | '/api/instagram/drive-cleanup'
     | '/api/instagram/worker'
@@ -517,6 +601,7 @@ export interface RootRouteChildren {
   AprovacoesRoute: typeof AprovacoesRoute
   AutomacaoInstagramRoute: typeof AutomacaoInstagramRoute
   AutomacaoTiktokRoute: typeof AutomacaoTiktokRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRoute
   ControlHubRoute: typeof ControlHubRoute
   ConviteRoute: typeof ConviteRoute
   CriarPaginaRoute: typeof CriarPaginaRoute
@@ -578,6 +663,13 @@ declare module '@tanstack/react-router' {
       path: '/automacao-tiktok'
       fullPath: '/automacao-tiktok'
       preLoaderRoute: typeof AutomacaoTiktokRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/control-hub': {
@@ -727,11 +819,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendasConexoesRouteImport
       parentRoute: typeof VendasRoute
     }
+    '/vendas/despesas': {
+      id: '/vendas/despesas'
+      path: '/despesas'
+      fullPath: '/vendas/despesas'
+      preLoaderRoute: typeof VendasDespesasRouteImport
+      parentRoute: typeof VendasRoute
+    }
+    '/vendas/eventos': {
+      id: '/vendas/eventos'
+      path: '/eventos'
+      fullPath: '/vendas/eventos'
+      preLoaderRoute: typeof VendasEventosRouteImport
+      parentRoute: typeof VendasRoute
+    }
     '/vendas/integracoes': {
       id: '/vendas/integracoes'
       path: '/integracoes'
       fullPath: '/vendas/integracoes'
       preLoaderRoute: typeof VendasIntegracoesRouteImport
+      parentRoute: typeof VendasRoute
+    }
+    '/vendas/meta': {
+      id: '/vendas/meta'
+      path: '/meta'
+      fullPath: '/vendas/meta'
+      preLoaderRoute: typeof VendasMetaRouteImport
       parentRoute: typeof VendasRoute
     }
     '/vendas/notificacoes': {
@@ -741,11 +854,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendasNotificacoesRouteImport
       parentRoute: typeof VendasRoute
     }
+    '/vendas/pixels': {
+      id: '/vendas/pixels'
+      path: '/pixels'
+      fullPath: '/vendas/pixels'
+      preLoaderRoute: typeof VendasPixelsRouteImport
+      parentRoute: typeof VendasRoute
+    }
+    '/vendas/produtos': {
+      id: '/vendas/produtos'
+      path: '/produtos'
+      fullPath: '/vendas/produtos'
+      preLoaderRoute: typeof VendasProdutosRouteImport
+      parentRoute: typeof VendasRoute
+    }
     '/vendas/rastreamento': {
       id: '/vendas/rastreamento'
       path: '/rastreamento'
       fullPath: '/vendas/rastreamento'
       preLoaderRoute: typeof VendasRastreamentoRouteImport
+      parentRoute: typeof VendasRoute
+    }
+    '/vendas/taxas': {
+      id: '/vendas/taxas'
+      path: '/taxas'
+      fullPath: '/vendas/taxas'
+      preLoaderRoute: typeof VendasTaxasRouteImport
       parentRoute: typeof VendasRoute
     }
     '/api/instagram/drive-cleanup': {
@@ -837,17 +971,29 @@ declare module '@tanstack/react-router' {
 
 interface VendasRouteChildren {
   VendasConexoesRoute: typeof VendasConexoesRoute
+  VendasDespesasRoute: typeof VendasDespesasRoute
+  VendasEventosRoute: typeof VendasEventosRoute
   VendasIntegracoesRoute: typeof VendasIntegracoesRoute
+  VendasMetaRoute: typeof VendasMetaRoute
   VendasNotificacoesRoute: typeof VendasNotificacoesRoute
+  VendasPixelsRoute: typeof VendasPixelsRoute
+  VendasProdutosRoute: typeof VendasProdutosRoute
   VendasRastreamentoRoute: typeof VendasRastreamentoRoute
+  VendasTaxasRoute: typeof VendasTaxasRoute
   VendasIndexRoute: typeof VendasIndexRoute
 }
 
 const VendasRouteChildren: VendasRouteChildren = {
   VendasConexoesRoute: VendasConexoesRoute,
+  VendasDespesasRoute: VendasDespesasRoute,
+  VendasEventosRoute: VendasEventosRoute,
   VendasIntegracoesRoute: VendasIntegracoesRoute,
+  VendasMetaRoute: VendasMetaRoute,
   VendasNotificacoesRoute: VendasNotificacoesRoute,
+  VendasPixelsRoute: VendasPixelsRoute,
+  VendasProdutosRoute: VendasProdutosRoute,
   VendasRastreamentoRoute: VendasRastreamentoRoute,
+  VendasTaxasRoute: VendasTaxasRoute,
   VendasIndexRoute: VendasIndexRoute,
 }
 
@@ -859,6 +1005,7 @@ const rootRouteChildren: RootRouteChildren = {
   AprovacoesRoute: AprovacoesRoute,
   AutomacaoInstagramRoute: AutomacaoInstagramRoute,
   AutomacaoTiktokRoute: AutomacaoTiktokRoute,
+  ConfiguracoesRoute: ConfiguracoesRoute,
   ControlHubRoute: ControlHubRoute,
   ConviteRoute: ConviteRoute,
   CriarPaginaRoute: CriarPaginaRoute,

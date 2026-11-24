@@ -1,3 +1,5 @@
+import { readMouseHotSettings } from "./mousehot-settings.ts";
+
 const brasiliaHour = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
   hour: "numeric",
@@ -17,6 +19,7 @@ export function dashboardGreeting(now: Date, user: DashboardUser | null, isAdmin
   const profileName = [metadata?.given_name, metadata?.full_name, metadata?.name].find(
     (value): value is string => typeof value === "string" && value.trim() !== "",
   );
-  const firstName = admin ? "Guilherme" : profileName?.trim().split(/\s+/)[0];
+  const displayName = readMouseHotSettings(metadata).displayName;
+  const firstName = (displayName || (admin ? "Guilherme" : profileName))?.trim().split(/\s+/)[0];
   return firstName ? `${greeting}, ${firstName}!` : `${greeting}!`;
 }

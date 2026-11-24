@@ -154,7 +154,11 @@ export async function removeGoogleAds(user: string) {
   return true;
 }
 
-export async function googleAdsReport(user: string, id: string, days: 7 | 30) {
+export async function googleAdsReport(
+  user: string,
+  id: string,
+  range: 7 | 30 | { since: string; until: string },
+) {
   const settings = config();
   if (!settings) throw new Error("Configure a integração do Google Ads neste ambiente.");
   const row = await storedGoogleAds(user, true);
@@ -171,7 +175,7 @@ export async function googleAdsReport(user: string, id: string, days: 7 | 30) {
       binding(user, settings.clientId),
     );
     const grant = await exchangeGoogleToken(settings, { refresh });
-    return await readGoogleAdSpend(settings, grant.access_token, account, days);
+    return await readGoogleAdSpend(settings, grant.access_token, account, range);
   } catch (error) {
     if (error instanceof Error && error.message === "expired")
       throw new Error("O Google revogou ou expirou esta autorização. Reconecte sua conta.");

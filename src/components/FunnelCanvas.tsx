@@ -114,7 +114,7 @@ const FunnelNode = memo(function FunnelNode({ data, selected, id }: NodeProps<Ca
         minHeight={32}
         maxWidth={1600}
         maxHeight={1200}
-        color="#60a5fa"
+        color="var(--brand-red)"
         onResizeEnd={(_, size) =>
           data.onResize(id, {
             width: Math.round(size.width),
@@ -337,14 +337,14 @@ export function FunnelCanvas({
         style: {
           stroke:
             edge.id === selectedEdgeId || edge.from === focus || edge.to === focus
-              ? "#79bcff"
-              : "#889bb5",
+              ? "var(--brand-red)"
+              : "var(--muted-foreground)",
           strokeWidth: edge.id === selectedEdgeId ? 3 : 1.5,
         },
         interactionWidth: 24,
-        markerEnd: { type: MarkerType.ArrowClosed, color: "#889bb5", width: 14, height: 14 },
-        labelStyle: { fill: "#e2e8f0", fontSize: 14 },
-        labelBgStyle: { fill: "#20201e" },
+        markerEnd: { type: MarkerType.ArrowClosed, color: "var(--muted-foreground)", width: 14, height: 14 },
+        labelStyle: { fill: "var(--foreground)", fontSize: 14 },
+        labelBgStyle: { fill: "var(--card)" },
       })),
     );
   }, [funnel, selectedNodeId, selectedEdgeId, hovered]);
@@ -404,7 +404,7 @@ export function FunnelCanvas({
         edges={edges}
         nodeTypes={nodeTypes}
         colorMode="dark"
-        style={{ background: "#121212" }}
+        style={{ background: "var(--background)" }}
         onNodesChange={useCallback(
           (changes: NodeChange<CanvasNode>[]) =>
             setNodes((current) => applyNodeChanges(changes, current)),
@@ -538,7 +538,7 @@ export function FunnelCanvas({
           id="grid"
           variant={BackgroundVariant.Lines}
           gap={80}
-          color="#263246"
+          color="var(--secondary)"
           bgColor="transparent"
           lineWidth={1}
         />
@@ -546,7 +546,7 @@ export function FunnelCanvas({
           id="dots"
           variant={BackgroundVariant.Dots}
           gap={20}
-          color="#334155"
+          color="var(--border)"
           bgColor="transparent"
           size={1}
         />
@@ -554,13 +554,13 @@ export function FunnelCanvas({
           pannable
           zoomable
           position="bottom-right"
-          className="!h-[120px] !w-[190px] !rounded-xl !border !border-slate-700 !bg-card max-sm:!hidden"
-          nodeColor={(node) => node.data.node.background ?? "#3c648b"}
-          maskColor="#070d16b0"
+          className="!h-[120px] !w-[190px] !rounded-xl !border !border-border !bg-card max-sm:!hidden"
+          nodeColor={(node) => node.data.node.background ?? "var(--primary)"}
+          maskColor="color-mix(in oklab, var(--background) 72%, transparent)"
           ariaLabel="Mapa do funil: arraste ou use a roda para navegar"
         />
       </ReactFlow>
-      <div className="pointer-events-none absolute bottom-3 left-3 max-w-[calc(100%-24px)] rounded-xl border border-white/10 bg-card/90 px-3 py-2 text-xs text-slate-300 sm:max-w-[calc(100%-240px)]">
+      <div className="pointer-events-none absolute bottom-3 left-3 max-w-[calc(100%-24px)] rounded-xl border border-white/10 bg-card/90 px-3 py-2 text-xs text-muted-foreground sm:max-w-[calc(100%-240px)]">
         {mouseMode === "move"
           ? "Arraste o fundo: mover · Shift + arraste: selecionar"
           : "Arraste o fundo: selecionar · Espaço + arraste: mover"}{" "}
@@ -570,7 +570,7 @@ export function FunnelCanvas({
         <div
           role="dialog"
           aria-label="Adicionar ao fluxo"
-          className="nodrag nopan absolute z-50 w-[230px] rounded-2xl border border-slate-600 bg-card p-3 shadow-2xl"
+          className="nodrag nopan absolute z-50 w-[230px] rounded-2xl border border-border bg-card p-3 shadow-2xl"
           style={{ left: menu.x, top: menu.y }}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
@@ -593,9 +593,9 @@ export function FunnelCanvas({
                 onAdd(kind, title, menu.at);
                 setMenu(null);
               }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-slate-200 hover:bg-accent"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-foreground hover:bg-accent"
             >
-              <Icon className="size-5 text-blue-300" />
+              <Icon className="size-5 text-brand-red" />
               {label}
             </button>
           ))}

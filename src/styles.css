@@ -5,12 +5,13 @@
 @import "./launch-premium.css";
 @import "./launch-command.css";
 @import "./organic-landing.css";
+@import "./workspace-theme.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: Manrope, "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: "Bricolage Grotesque", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans: var(--workspace-font);
+  --font-display: var(--workspace-font);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -25,6 +26,7 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -60,32 +62,34 @@
 :root {
   --radius: 1rem;
   --control-radius: 0.625rem;
-  --background: oklch(0.11 0.006 25);
-  --foreground: oklch(0.97 0.01 80);
-  --card: oklch(0.16 0.012 25);
+  --background: #0c0f14;
+  --foreground: #f3f4f6;
+  --card: #191e27;
   --card-foreground: var(--foreground);
-  --popover: oklch(0.19 0.012 25);
+  --popover: #202631;
   --popover-foreground: var(--foreground);
-  --primary: oklch(0.6 0.24 27);
-  --primary-foreground: oklch(0.11 0.006 25);
-  --primary-glow: oklch(0.74 0.19 50);
+  --primary: #bf2b38;
+  --primary-hover: #cc3340;
+  --primary-foreground: #fff;
+  --primary-glow: #f46970;
+  --brand-orange: oklch(0.57 0.16 43);
   --brand-gold: oklch(0.82 0.15 75);
-  --gradient-hot: linear-gradient(120deg, var(--primary), var(--primary-glow));
-  --shadow-glow: 0 20px 60px -15px color-mix(in oklab, var(--primary) 55%, transparent);
-  --secondary: oklch(0.22 0.013 25);
+  --gradient-hot: linear-gradient(120deg, var(--primary) 0%, var(--primary) 55%, var(--brand-orange));
+  --shadow-glow: 0 18px 54px -20px color-mix(in oklab, var(--primary) 46%, transparent);
+  --secondary: #232934;
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.20 0.012 25);
-  --muted-foreground: oklch(0.72 0.015 40);
-  --accent: oklch(0.23 0.025 25);
+  --muted: #171c24;
+  --muted-foreground: #aeb6c3;
+  --accent: #262d38;
   --accent-foreground: var(--foreground);
   --destructive: oklch(0.76 0.14 23);
-  --destructive-foreground: var(--primary-foreground);
+  --destructive-foreground: var(--background);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 34%);
   --ring: var(--primary-glow);
   --success: oklch(0.79 0.13 158);
   --success-foreground: oklch(0.16 0.025 158);
-  --brand-red: oklch(0.77 0.16 25);
+  --brand-red: #f46970;
   --info: oklch(0.77 0.09 240);
   --violet: oklch(0.78 0.10 300);
   --chart-1: var(--primary-glow);
@@ -93,11 +97,11 @@
   --chart-3: var(--success);
   --chart-4: var(--info);
   --chart-5: var(--brand-red);
-  --sidebar: oklch(0.14 0.008 25);
+  --sidebar: #0f131a;
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: color-mix(in oklab, var(--primary) 15%, var(--sidebar));
+  --sidebar-accent: var(--secondary);
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
@@ -377,24 +381,7 @@
   color: var(--brand-red);
 }
 .metric-card {
-  border-top-color: color-mix(in srgb, var(--metric-tone, var(--primary)) 60%, var(--border));
-  background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--metric-tone, var(--primary)) 8%, var(--card)),
-    var(--card) 70%
-  );
-}
-.metric-card[data-tone="info"] {
-  --metric-tone: var(--info);
-}
-.metric-card[data-tone="violet"] {
-  --metric-tone: var(--violet);
-}
-.metric-card[data-tone="success"] {
-  --metric-tone: var(--success);
-}
-.metric-card[data-tone="coral"] {
-  --metric-tone: var(--brand-red);
+  background: var(--card);
 }
 .workspace-input {
   min-height: 44px;
@@ -527,7 +514,7 @@
     font-weight: 600;
     text-align: center;
   }
-  .tool-action:hover:not(:disabled) { background: var(--brand-red); }
+  .tool-action:hover:not(:disabled) { background: var(--primary-hover); }
   .tool-action:active:not(:disabled) { background: var(--primary); }
   .tool-icon { border-radius: 14px; }
   .tool-guide > summary { min-height: 48px; color: var(--foreground); }

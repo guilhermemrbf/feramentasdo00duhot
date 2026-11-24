@@ -2,7 +2,9 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowUpRight,
+  Activity,
   Bell,
+  Box,
   Clock3,
   LogOut,
   ChevronDown,
@@ -10,6 +12,7 @@ import {
   ChartNoAxesCombined,
   Download,
   FileKey,
+  Facebook,
   GitBranch,
   Home,
   Image,
@@ -20,13 +23,16 @@ import {
   Menu,
   MonitorSmartphone,
   PanelTop,
+  Percent,
   Plug,
+  Puzzle,
   Search,
   Send,
   ShieldCheck,
   Scan,
   Settings2,
   Star,
+  Wallet,
   X,
 } from "lucide-react";
 import {
@@ -38,6 +44,7 @@ import {
   type Tool,
 } from "@/lib/tool-catalog";
 import { recordTool, useToolPreferences } from "@/lib/tool-preferences";
+import { readMouseHotSettings } from "@/lib/mousehot-settings";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import { accessForRoute, secondsRemaining } from "@/lib/platform-access";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,11 +74,18 @@ const PRIMARY_LINKS = [
   { path: "/vendas/integracoes", title: "Gateways", icon: Plug },
   { path: "/vendas/notificacoes", title: "Notificações", icon: Bell },
   { path: "/ferramentas", title: "Ferramentas", icon: LayoutGrid },
+  { path: "/configuracoes", title: "Configurações", icon: Settings2 },
 ] as const;
 const SCALEHOT_LINKS = [
-  { path: "/vendas", title: "Visão geral", icon: Home },
+  { path: "/vendas", title: "Resumo", icon: LayoutGrid },
+  { path: "/vendas/meta", title: "Meta", icon: Facebook },
+  { path: "/vendas/pixels", title: "Pixels", icon: Scan },
+  { path: "/vendas/eventos", title: "Eventos", icon: Activity },
+  { path: "/vendas/produtos", title: "Produtos", icon: Box },
+  { path: "/vendas/taxas", title: "Taxas", icon: Percent },
+  { path: "/vendas/despesas", title: "Despesas", icon: Wallet },
   { path: "/vendas/rastreamento", title: "Rastreamento de vendas", icon: ChartNoAxesCombined },
-  { path: "/vendas/conexoes", title: "Integrações", icon: Settings2 },
+  { path: "/vendas/conexoes", title: "Integrações", icon: Puzzle },
 ] as const;
 const SIDEBAR_CATEGORIES = [
   "Automação",
@@ -224,42 +238,37 @@ export function AppShell({
                   (path === "/vendas" && isScaleHot) ||
                   (path === "/ferramentas" && isTools);
                 return (
-                  <Link
-                    key={path}
-                    to={path}
-                    onClick={closeMenu}
-                    aria-current={exact ? "page" : active ? "location" : undefined}
-                    className={cn("tool-nav-link", active && "is-active")}
-                  >
-                    <Icon className="size-[17px] shrink-0" aria-hidden />
-                    {title}
-                  </Link>
+                  <div key={path}>
+                    <Link
+                      to={path}
+                      onClick={closeMenu}
+                      aria-current={exact ? "page" : active ? "location" : undefined}
+                      className={cn("tool-nav-link", active && "is-active")}
+                    >
+                      <Icon className="size-[17px] shrink-0" aria-hidden />
+                      {title}
+                    </Link>
+                    {path === "/vendas" && isScaleHot && (
+                      <nav aria-label="Seções do ScaleHot" className="scalehot-subnav space-y-1">
+                        {SCALEHOT_LINKS.map(({ path: itemPath, title: itemTitle, icon: ItemIcon }) => (
+                          <Link
+                            key={itemPath}
+                            to={itemPath}
+                            onClick={closeMenu}
+                            aria-current={pathname === itemPath ? "page" : undefined}
+                            className={cn("tool-nav-link", pathname === itemPath && "is-active")}
+                          >
+                            <ItemIcon className="size-4 shrink-0" aria-hidden />
+                            {itemTitle}
+                          </Link>
+                        ))}
+                      </nav>
+                    )}
+                  </div>
                 );
               },
             )}
         </nav>
-        {isScaleHot && (
-          <nav
-            aria-label="Seções do ScaleHot"
-            className="mt-5 space-y-1 border-t border-border pt-4"
-          >
-            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              ScaleHot
-            </p>
-            {SCALEHOT_LINKS.map(({ path, title, icon: Icon }) => (
-              <Link
-                key={path}
-                to={path}
-                onClick={closeMenu}
-                aria-current={pathname === path ? "page" : undefined}
-                className={cn("tool-nav-link", pathname === path && "is-active")}
-              >
-                <Icon className="size-[17px] shrink-0" aria-hidden />
-                {title}
-              </Link>
-            ))}
-          </nav>
-        )}
         {workspaceNavigation?.(closeMenu)}
         {isTools && (
           <nav
@@ -278,7 +287,7 @@ export function AppShell({
                   .map((tool) => nav(tool))}
               </div>
             ))}
-            {shortcuts.length > 0 && (
+            {readMouseHotSettings(user?.user_metadata).showToolShortcuts && shortcuts.length > 0 && (
               <details className="group mb-5 rounded-lg border border-border px-1">
                 <summary className="flex min-h-11 list-none items-center gap-2 px-2 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
                   <Star className="size-3.5" aria-hidden />

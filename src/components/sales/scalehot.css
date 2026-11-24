@@ -26,7 +26,7 @@
 }
 
 .sales-button:hover:not(:disabled) {
-  background: var(--brand-red);
+  background: var(--primary-hover);
 }
 .sales-button:disabled {
   opacity: 0.52;
@@ -39,4 +39,357 @@
 .sales-button-outline:hover:not(:disabled) {
   background: var(--secondary);
   border-color: var(--input);
+}
+
+.scalehot-surface {
+  --report-bg: var(--background);
+  --report-panel: var(--card);
+  --report-raised: var(--secondary);
+  min-height: calc(100vh - 64px);
+  color: var(--foreground);
+}
+.scalehot-dashboard {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.scalehot-dashboard > .operate-heading {
+  margin-bottom: 0;
+}
+.scalehot-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.scalehot-heading h1 {
+  font: 600 1.25rem/1.3 var(--font-display);
+}
+.scalehot-heading p {
+  margin-top: 4px;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+.scalehot-actions,
+.scalehot-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.scalehot-actions .sales-button {
+  min-height: 36px;
+  padding-inline: 12px;
+  font-size: 0.8125rem;
+}
+.scalehot-actions svg {
+  color: var(--primary-glow);
+}
+.scalehot-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 15rem)) auto;
+  align-items: end;
+  justify-content: start;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--report-panel) 80%, var(--report-bg));
+  padding: 12px;
+}
+.scalehot-filters label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+}
+.scalehot-filters .field {
+  min-height: 40px;
+  background: var(--report-bg);
+}
+.scalehot-filters select.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.scalehot-filters select.field::picker-icon {
+  margin-inline-start: auto;
+}
+.scalehot-date-control {
+  position: relative;
+}
+.scalehot-date-control > svg {
+  position: absolute;
+  z-index: 1;
+  inset: 12px auto auto 12px;
+  color: var(--brand-red);
+  pointer-events: none;
+}
+.scalehot-date-control .field {
+  padding-inline-start: 36px;
+  background: var(--report-panel);
+}
+.scalehot-subnav {
+  margin: 4px 0 8px 20px;
+  padding-inline-start: 8px;
+  border-inline-start: 1px solid var(--border);
+}
+.scalehot-subnav .tool-nav-link {
+  min-height: 36px;
+  font-size: 0.8125rem;
+}
+.scalehot-action {
+  min-height: 40px;
+}
+.scalehot-notice {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: 8px;
+  min-height: 96px;
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  text-align: center;
+}
+.scalehot-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.scalehot-stat {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  min-height: 128px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--report-panel);
+}
+.scalehot-stat[draggable="true"] {
+  cursor: grab;
+  border-style: dashed;
+}
+.scalehot-stat[draggable="true"]:active {
+  cursor: grabbing;
+}
+.scalehot-stat-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.scalehot-stat-head p {
+  font-size: 0.75rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.scalehot-stat-icon,
+.scalehot-stat-info {
+  display: grid;
+  place-items: center;
+}
+.scalehot-stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--report-raised);
+  color: var(--foreground);
+}
+.scalehot-stat-info {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+}
+.scalehot-stat-info:hover {
+  background: var(--report-raised);
+  color: var(--foreground);
+}
+.scalehot-stat strong {
+  overflow-wrap: anywhere;
+  font: 600 clamp(1.0625rem, 1.85vw, 1.5rem)/1.12 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.scalehot-stat small {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+.scalehot-order-control {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.scalehot-order-control:disabled {
+  opacity: 0.4;
+}
+.scalehot-analysis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+.scalehot-analysis > .scalehot-ranking {
+  grid-column: span 2;
+}
+.scalehot-analysis > .scalehot-chart {
+  grid-column: span 3;
+}
+.scalehot-analysis > .scalehot-analysis-wide {
+  grid-column: 1 / -1;
+}
+.scalehot-chart,
+.scalehot-approval {
+  min-width: 0;
+  padding: 18px;
+}
+.scalehot-chart h2,
+.scalehot-approval h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.scalehot-chart h2 svg {
+  color: var(--muted-foreground);
+}
+.scalehot-funnel-note,
+.scalehot-approval-value span {
+  margin-top: 7px;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+.scalehot-chart-frame {
+  height: 216px;
+  position: relative;
+  margin-top: 14px;
+}
+.scalehot-chart-empty {
+  position: absolute;
+  inset: 38% 14px auto;
+  color: var(--muted-foreground);
+  text-align: center;
+  pointer-events: none;
+  font-size: 0.75rem;
+}
+.scalehot-funnel-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 6px;
+  margin-top: 14px;
+}
+.scalehot-funnel-steps li {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--workspace-inset);
+  font-size: 0.8125rem;
+}
+.scalehot-funnel-steps li[data-available="true"] {
+  background: var(--secondary);
+}
+.scalehot-funnel-steps strong,
+.scalehot-approval-value strong {
+  font-variant-numeric: tabular-nums;
+}
+.scalehot-approval-value {
+  display: grid;
+  margin-top: 12px;
+}
+.scalehot-empty {
+  display: grid;
+  min-height: 96px;
+  place-content: center;
+  padding: 12px;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  text-align: center;
+}
+.scalehot-table {
+  width: 100%;
+  min-width: 420px;
+  text-align: start;
+  font-size: 0.875rem;
+}
+.scalehot-table th,
+.scalehot-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+}
+.scalehot-table th {
+  background: var(--report-raised);
+  color: var(--muted-foreground);
+}
+.scalehot-tabs a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 12px;
+  border: 1px solid transparent;
+  border-radius: var(--control-radius);
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+.scalehot-tabs a:hover,
+.scalehot-tabs a[aria-current="page"] {
+  border-color: var(--border);
+  background: var(--report-raised);
+  color: var(--primary-glow);
+}
+@media (max-width: 1240px) {
+  .scalehot-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .scalehot-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 639px) {
+  .scalehot-filters {
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+  }
+  .scalehot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .scalehot-stat {
+    min-height: 112px;
+    padding: 10px;
+  }
+  .scalehot-stat-icon {
+    width: 25px;
+    height: 25px;
+  }
+  .scalehot-stat-info {
+    width: 18px;
+  }
+  .scalehot-analysis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .scalehot-analysis > :is(.scalehot-ranking, .scalehot-chart) {
+    grid-column: 1;
+  }
+}
+@media (pointer: coarse) {
+  .scalehot-subnav .tool-nav-link {
+    min-height: 44px;
+  }
 }

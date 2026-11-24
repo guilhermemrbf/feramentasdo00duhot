@@ -186,7 +186,11 @@ export async function removeMetaAds(userId: string) {
   return true;
 }
 
-export async function metaAdsReport(userId: string, accountId: string, days: number) {
+export async function metaAdsReport(
+  userId: string,
+  accountId: string,
+  range: number | { since: string; until: string },
+) {
   const settings = config();
   if (!settings) throw new Error("A conexão de anúncios ainda não foi configurada.");
   const row = await storedConnection(userId, true);
@@ -211,8 +215,12 @@ export async function metaAdsReport(userId: string, accountId: string, days: num
       Number(localToday.formatToParts().find(({ type }) => type === part)?.value),
     );
     // Use the last complete dates in the ad account's own calendar.
-    const since = new Date(Date.UTC(year, month - 1, day - days)).toISOString().slice(0, 10);
-    const until = new Date(Date.UTC(year, month - 1, day - 1)).toISOString().slice(0, 10);
+    const { since, until } = typeof range === "number"
+      ? {
+          since: new Date(Date.UTC(year, month - 1, day - range)).toISOString().slice(0, 10),
+          until: new Date(Date.UTC(year, month - 1, day - 1)).toISOString().slice(0, 10),
+        }
+      : range;
     const token = openMetaAdsToken(
       row.token_ciphertext,
       settings.key,

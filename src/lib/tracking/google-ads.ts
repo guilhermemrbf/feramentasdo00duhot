@@ -184,7 +184,7 @@ export async function readGoogleAdSpend(
   settings: GoogleAdsSettings,
   access: string,
   account: GoogleAdAccount,
-  days: 7 | 30,
+  range: 7 | 30 | { since: string; until: string },
   request = fetch,
   now = new Date(),
 ) {
@@ -198,8 +198,12 @@ export async function readGoogleAdSpend(
   const [year, month, day] = ["year", "month", "day"].map((part) =>
     Number(parts.find(({ type }) => type === part)?.value),
   );
-  const since = new Date(Date.UTC(year, month - 1, day - days)).toISOString().slice(0, 10);
-  const until = new Date(Date.UTC(year, month - 1, day - 1)).toISOString().slice(0, 10);
+  const { since, until } = typeof range === "number"
+    ? {
+        since: new Date(Date.UTC(year, month - 1, day - range)).toISOString().slice(0, 10),
+        until: new Date(Date.UTC(year, month - 1, day - 1)).toISOString().slice(0, 10),
+      }
+    : range;
   const data = z.object({ results: z.array(reportRow).max(1).default([]) }).parse(
     await adsRequest(settings, access, "/customers/" + account.id + "/googleAds:search", request, {
       query:

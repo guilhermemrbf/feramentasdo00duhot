@@ -25,6 +25,7 @@ import {
   YAxis,
 } from "recharts";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { readMouseHotSettings } from "@/lib/mousehot-settings";
 import type { DashboardMetric } from "@/components/DashboardMetrics";
 import { SalesPageHeader } from "@/components/sales/SalesLayout";
 import { SalesGoal } from "@/components/sales/SalesGoal";
@@ -66,7 +67,8 @@ export function SalesDashboard({
   renderOverview?: (period: SalesPeriod, metrics: DashboardMetric[]) => ReactNode;
 }) {
   const { user } = usePlatformAccess();
-  const [period, setPeriod] = useState<SalesPeriod>("month");
+  const [chosenPeriod, setPeriod] = useState<SalesPeriod>();
+  const period = chosenPeriod ?? readMouseHotSettings(user?.user_metadata).period ?? "month";
   const query = useSalesOverview(30, null, period);
   const fullName = user?.user_metadata.full_name;
   const name = typeof fullName === "string" ? fullName.trim().split(/\s+/)[0] : "";
