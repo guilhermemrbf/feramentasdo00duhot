@@ -38,7 +38,7 @@ import {
   useInView,
   useReducedMotion,
 } from "motion/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AccessForm } from "@/components/access/AccessForm";
 import { findTool } from "@/lib/tool-catalog";
 import { Reveal, MagneticButton, TiltCard, Eyebrow } from "./fx";
@@ -104,37 +104,36 @@ function Nav() {
   );
 }
 
-function Hero() {
+function Hero({ sectionRef }: { sectionRef: React.RefObject<HTMLElement | null> }) {
   const reduce = useReducedMotion();
-  const ref = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const y = useTransform(scrollYProgress, [0, 1], [0, 160]);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+  const y = useTransform(scrollYProgress, [0, 1], [0, 78]);
   const blob = useTransform(scrollYProgress, [0, 1], [0, -200]);
   return (
-    <section ref={ref} className="relative overflow-hidden pt-36 pb-24 md:pt-44 md:pb-36">
+    <section ref={sectionRef} className="relative overflow-hidden pt-28 pb-20 md:pt-36 md:pb-28">
       <div className="absolute inset-0 bg-grid opacity-40 [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)]" />
       <motion.div
         style={reduce ? undefined : { y: blob }}
         className="absolute -top-40 left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-primary/25 blur-[140px]"
       />
-      <div className="relative mx-auto grid max-w-[1240px] items-center gap-14 px-6 lg:grid-cols-12">
-        <div className="lg:col-span-6">
-          <Reveal>
-            <Eyebrow>Campanhas, conteúdo e vendas</Eyebrow>
-          </Reveal>
+      <div className="ambient-hero relative mx-auto max-w-[1240px] px-6">
+        <div className="ambient-hero-heading">
           <h1
             aria-label={BRAND_SLOGAN}
-            className="mt-6 text-[clamp(3rem,7vw,5.8rem)] font-extrabold leading-[0.95]"
+            className="text-[clamp(2.5rem,6.25vw,4.85rem)] font-extrabold leading-[0.99]"
           >
             {headline.map((w, i) => (
               <motion.span
                 aria-hidden="true"
                 key={i}
                 className={`mr-[0.22em] inline-block ${w === "digital" || w === "lugar" ? "text-gradient-hot" : ""}`}
-                initial={reduce ? false : { opacity: 0, y: 40, filter: "blur(8px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                initial={reduce ? false : { opacity: 0.76, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{
-                  delay: reduce ? 0 : 0.1 + i * 0.07,
+                  delay: reduce ? 0 : i * 0.042,
                   duration: reduce ? 0 : 0.6,
                   ease: [0.22, 1, 0.36, 1],
                 }}
@@ -144,31 +143,26 @@ function Hero() {
               </motion.span>
             ))}
           </h1>
-          <Reveal delay={0.6}>
-            <p className="mt-7 max-w-[34rem] text-lg leading-relaxed text-muted-foreground md:text-xl">
-              Descubra quais campanhas geraram vendas, programe Reels por perfil e prepare seus
-              Stories. Reúna também os canais de Telegram, os arquivos e os celulares que fazem
-              parte da operação.
-            </p>
-          </Reveal>
-          <Reveal delay={0.75}>
-            <div className="mt-9 flex flex-wrap gap-4">
-              <MagneticButton href="#acesso">Criar minha conta →</MagneticButton>
-              <MagneticButton href="#como" variant="ghost">
-                Ver como funciona
-              </MagneticButton>
-            </div>
-            <p className="mt-5 text-sm text-muted-foreground">
-              Cadastro sujeito à aprovação · Teste de 15 minutos por convite
-            </p>
-          </Reveal>
         </div>
-        <motion.div style={reduce ? undefined : { y }} className="relative lg:col-span-6">
+        <motion.div style={reduce ? undefined : { y }} className="ambient-hero-visual">
           <OrbitHero />
-          <p className="mt-2 text-center text-sm text-muted-foreground">
-            Tudo gira em torno de uma operação mais organizada.
-          </p>
         </motion.div>
+        <div className="ambient-hero-detail">
+          <p className="max-w-[34rem] text-lg leading-relaxed text-muted-foreground md:text-xl">
+            Descubra quais campanhas geraram vendas, programe Reels por perfil e prepare seus
+            Stories. Reúna também os canais de Telegram, os arquivos e os celulares que fazem parte
+            da operação.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-4">
+            <MagneticButton href="#acesso">Criar minha conta →</MagneticButton>
+            <MagneticButton href="#como" variant="ghost">
+              Ver como funciona
+            </MagneticButton>
+          </div>
+          <p className="mt-5 text-sm text-muted-foreground">
+            Cadastro sujeito à aprovação · Teste de 15 minutos por convite
+          </p>
+        </div>
       </div>
     </section>
   );
@@ -242,61 +236,101 @@ const steps = [
   },
 ];
 
+const stepIcons = [ScanSearch, Film, FolderOpen, CalendarDays];
+
+function StepPreview({ index }: { index: number }) {
+  const step = steps[index]!;
+  const Icon = stepIcons[index]!;
+
+  return (
+    <div className="flow-preview">
+      <div className="flow-preview-surface">
+        <div className="flow-preview-header">
+          <Icon size={22} strokeWidth={1.7} aria-hidden="true" />
+          <strong>{step.t}</strong>
+        </div>
+        <ul>
+          {step.vis.map((value) => (
+            <li key={value}>
+              <span aria-hidden="true" />
+              {value}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 function Steps() {
   const ref = useRef<HTMLElement>(null);
+  const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
   const [active, setActive] = useState(0);
+  const bar = useTransform(scrollYProgress, [0, 1], [0, 1]);
+  const rotateY = useTransform(scrollYProgress, [0, 0.52, 1], [-22, 0, 12]);
+  const rotateX = useTransform(scrollYProgress, [0, 1], [14, -7]);
   useMotionValueEvent(scrollYProgress, "change", (v) => setActive(Math.min(3, Math.floor(v * 4))));
-  const bar = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
-  const s = steps[active]!;
+  const step = steps[active]!;
+
   return (
-    <section id="como" ref={ref} className="relative h-[400vh]">
-      <div className="sticky top-0 flex h-screen items-center">
-        <div className="mx-auto grid w-full max-w-[1240px] items-center gap-12 px-6 lg:grid-cols-2">
+    <section id="como" ref={ref} className="landing-flow" aria-label="Como funciona">
+      <div className="landing-flow-sticky">
+        <div className="landing-flow-content">
           <div>
-            <Eyebrow>Como funciona · {active + 1}/4</Eyebrow>
-            <div className="mt-6 h-1 w-full overflow-hidden rounded-full bg-muted">
-              <motion.div className="h-full organic-fill-hot" style={{ width: bar }} />
-            </div>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={active}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -30 }}
-                transition={{ duration: 0.45 }}
-              >
-                <p className="mt-8 font-display text-8xl font-extrabold text-gradient-hot">{s.n}</p>
-                <h2 className="mt-2 text-4xl font-bold md:text-5xl">{s.t}</h2>
-                <p className="mt-5 text-lg text-destructive line-through decoration-2">{s.dor}</p>
-                <p className="mt-2 text-xl font-semibold">{s.res}</p>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={active}
-              initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              exit={{ opacity: 0, scale: 0.9, rotate: 3 }}
-              transition={{ duration: 0.5 }}
-              className="rounded-[2rem] border border-border bg-card p-8 shadow-glow"
-            >
-              {s.vis.map((v, i) => (
-                <motion.div
-                  key={v}
-                  initial={{ opacity: 0, x: 40 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.15 + i * 0.12 }}
-                  className="mb-3 flex items-center gap-4 rounded-2xl bg-muted/60 p-4"
-                >
-                  <div className="h-12 w-12 rounded-xl organic-fill-hot" />
-                  <span className="font-semibold">{v}</span>
-                </motion.div>
+            <h2 className="text-3xl font-extrabold sm:text-4xl">Da preparação à publicação.</h2>
+            <ol className="flow-chapters" aria-label="Etapas da operação">
+              {steps.map(({ n, t }, i) => (
+                <li key={n} aria-current={i === active ? "step" : undefined}>
+                  <span>{n}</span>
+                  <span>{t}</span>
+                </li>
               ))}
+            </ol>
+            <div className="flow-progress" aria-hidden="true">
+              <motion.div style={{ scaleX: bar }} />
+            </div>
+            <p className="mt-5 min-h-24 max-w-md text-base leading-relaxed text-muted-foreground">
+              {step.res}
+            </p>
+          </div>
+          <div className="flow-perspective">
+            <motion.div className="flow-world" style={reduce ? undefined : { rotateY, rotateX }}>
+              <div className="flow-depth flow-depth-far" aria-hidden="true" />
+              <div className="flow-depth" aria-hidden="true" />
+              <AnimatePresence initial={false} mode="popLayout">
+                <motion.div
+                  key={active}
+                  className="flow-pane"
+                  initial={{ opacity: 0, x: 25, z: -30 }}
+                  animate={{ opacity: 1, x: 0, z: 0 }}
+                  exit={{ opacity: 0, x: -30, z: 32 }}
+                  transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <StepPreview index={active} />
+                </motion.div>
+              </AnimatePresence>
             </motion.div>
-          </AnimatePresence>
+          </div>
         </div>
+      </div>
+      <div className="landing-flow-static mx-auto max-w-[1240px] px-6 py-20">
+        <h2 className="mb-8 text-3xl font-extrabold sm:text-4xl">Da preparação à publicação.</h2>
+        <ol className="grid gap-9 md:grid-cols-2">
+          {steps.map(({ n, res }, i) => (
+            <motion.li
+              key={n}
+              initial={false}
+              whileInView={reduce ? undefined : { opacity: [0.76, 1], rotateX: [9, 0], y: [16, 0] }}
+              viewport={{ once: true, amount: 0.25 }}
+              transition={{ duration: 0.48, ease: "easeOut" }}
+              style={{ transformPerspective: 750 }}
+            >
+              <StepPreview index={i} />
+              <p className="mt-4 text-base leading-relaxed text-muted-foreground">{res}</p>
+            </motion.li>
+          ))}
+        </ol>
       </div>
     </section>
   );
@@ -410,32 +444,69 @@ const trackingSteps = [
 ];
 
 function TrackingFeature() {
+  const frame = useRef<HTMLDivElement>(null);
+  const player = useRef<HTMLVideoElement>(null);
+  const inView = useInView(frame, { amount: 0.6 });
+  const hasEntered = useInView(frame, { amount: 0.6, once: true });
+  const reduceMotion = useReducedMotion();
   const tracking = findTool("/vendas");
+
+  useEffect(() => {
+    const video = player.current;
+    if (!video || reduceMotion !== false || !inView) return;
+    const sync = () => {
+      if (document.hidden) video.pause();
+      else if (!video.ended) void video.play().catch(() => {});
+    };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      video.pause();
+    };
+  }, [hasEntered, inView, reduceMotion]);
+
   if (!tracking) return null;
 
   return (
-    <Reveal className="landing-tracking-feature brand-stage mb-5">
-      <div>
-        <span className="landing-tracking-icon" aria-hidden="true">
-          <RouteIcon size={22} strokeWidth={1.75} />
-        </span>
-        <h3 className="mt-4 text-2xl font-bold sm:text-3xl">Rastreamento avançado de vendas</h3>
-        <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground">
-          {tracking.summary}
-        </p>
-      </div>
-      <ol className="landing-tracking-steps" aria-label="Como o Mousefy atribui uma venda">
-        {trackingSteps.map(({ icon: Icon, title, detail }) => (
-          <li key={title}>
-            <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
-            <div>
-              <strong>{title}</strong>
-              <span>{detail}</span>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </Reveal>
+    <div id="rastreamento" className="mb-5 scroll-mt-24">
+      <Reveal className="landing-tracking-feature brand-stage">
+        <div>
+          <span className="landing-tracking-icon" aria-hidden="true">
+            <RouteIcon size={22} strokeWidth={1.75} />
+          </span>
+          <h3 className="mt-4 text-2xl font-bold sm:text-3xl">Rastreamento avançado de vendas</h3>
+          <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground">
+            {tracking.summary}
+          </p>
+          <div ref={frame} className="tracking-motion" aria-hidden="true">
+            {hasEntered && reduceMotion === false ? (
+              <video
+                ref={player}
+                muted
+                playsInline
+                preload="none"
+                poster="/brand/tracking-flow.webp"
+                src="/brand/tracking-flow.mp4"
+              />
+            ) : (
+              <img src="/brand/tracking-flow.webp" alt="" width={720} height={405} loading="lazy" />
+            )}
+          </div>
+        </div>
+        <ol className="landing-tracking-steps" aria-label="Como o Mousefy atribui uma venda">
+          {trackingSteps.map(({ icon: Icon, title, detail }) => (
+            <li key={title}>
+              <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+              <div>
+                <strong>{title}</strong>
+                <span>{detail}</span>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </Reveal>
+    </div>
   );
 }
 
@@ -660,8 +731,23 @@ const faqs = [
 ];
 
 export function OrganicLanding() {
+  const heroSection = useRef<HTMLElement>(null);
   const accessSection = useRef<HTMLElement>(null);
   const viewingAccess = useInView(accessSection, { margin: "0px 0px -60px 0px" });
+  const [pastHero, setPastHero] = useState(false);
+
+  useEffect(() => {
+    const hero = heroSection.current;
+    if (!hero) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry) setPastHero(entry.boundingClientRect.bottom <= 1);
+      },
+      { rootMargin: "-1px 0px 0px" },
+    );
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -671,7 +757,7 @@ export function OrganicLanding() {
         </a>
         <Nav />
         <main id="conteudo" tabIndex={-1} className="overflow-x-clip">
-          <Hero />
+          <Hero sectionRef={heroSection} />
           <Marquee />
 
           <OperationComparison />
@@ -743,6 +829,7 @@ export function OrganicLanding() {
           </Section>
 
           <Section
+            id="comparacao"
             eyebrow="Pare de apagar incêndio"
             title={
               <>
@@ -908,7 +995,7 @@ export function OrganicLanding() {
           © 2026 {BRAND_NAME} · {BRAND_SLOGAN}
         </footer>
 
-        {!viewingAccess && (
+        {pastHero && !viewingAccess && (
           <div className="fixed inset-x-4 bottom-4 z-40 md:hidden">
             <a
               href="#acesso"
