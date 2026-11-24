@@ -1,16 +1,15 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { OrganicLanding } from "@/components/landing/OrganicLanding";
+import { BRAND_MARK, BRAND_NAME } from "@/lib/brand";
 import { AccessStatusPanel } from "./AccessStatusPanel";
 import { usePlatformAccess } from "./PlatformAccessProvider";
 
 export function PublicBrand() {
   return (
-    <Link to="/" className="launch-brand" aria-label="MouseHot, página inicial">
-      <img src="/brand/compact.webp" width={36} height={36} alt="" />
-      <strong>
-        MouseHot<span>.</span>
-      </strong>
+    <Link to="/" className="launch-brand" aria-label={`${BRAND_NAME}, página inicial`}>
+      <img src={BRAND_MARK} width={36} height={36} alt="" />
+      <strong>{BRAND_NAME}</strong>
     </Link>
   );
 }

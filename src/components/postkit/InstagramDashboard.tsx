@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   ArrowRight,
@@ -23,7 +24,7 @@ import type { InstagramConnectionDetailsAccount } from "./InstagramConnectionDet
 import { supabase } from "@/integrations/supabase/client";
 import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
 import type { PostkitDatabase } from "@/lib/postkit-database";
-import { readPostkitQueue, type UpcomingPostkitPublication } from "@/lib/postkit-dashboard-data";
+import { readPostkitQueue } from "@/lib/postkit-dashboard-data";
 
 const database = supabase as unknown as SupabaseClient<PostkitDatabase>;
 const numbers = new Intl.NumberFormat("pt-BR");
@@ -37,22 +38,6 @@ const periods = [
   { id: "month", label: "30 dias", days: 29 },
 ] as const;
 type Period = (typeof periods)[number] | { id: "custom"; start: string; end: string };
-
-type DashboardData = {
-  period: string;
-  upcoming: UpcomingPostkitPublication[];
-  scheduleUnavailable: boolean;
-  queued: number | null;
-  reminderCount: number | null;
-  published: number | null;
-  allPublished: number | null;
-  reelsPublished: number | null;
-  needsAttention: number | null;
-  accountCount: number | null;
-  videoCount: number | null;
-  analytics?: InstagramAnalyticsReport;
-  analyticsUnavailable: boolean;
-};
 
 function periodBounds(timezone: string, period: Period) {
   if (period.id === "custom") {
@@ -106,15 +91,10 @@ export function InstagramDashboard({
 }) {
   const [period, setPeriod] = useState<Period>(periods[0]);
   const [choosingDates, setChoosingDates] = useState(false);
-  const [data, setData] = useState<DashboardData>();
-  const [error, setError] = useState(false);
-  const [retry, setRetry] = useState(0);
   const [dismissed, setDismissed] = useState(false);
   const preferenceKey = "mousehot.instagram.first-steps:" + workspaceId;
   const periodKey = period.id === "custom" ? period.start + "/" + period.end : period.id;
-  const periodData = data?.period === periodKey ? data : undefined;
   const today = calendarDateInZone(timezone);
-  const { accountCount, videoCount } = data ?? {};
 
   useEffect(() => {
     try {
@@ -134,10 +114,13 @@ export function InstagramDashboard({
     }
   };
 
-  useEffect(() => {
-    let active = true;
-    let loading = false;
-    const load = async () => {
+  const report = useQuery({
+    queryKey: ["mousehot-instagram-dashboard", workspaceId, timezone, periodKey, refreshKey],
+    placeholderData: keepPreviousData,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: true,
+    retry: false,
+    queryFn: async () => {
       const { start, end } = periodBounds(timezone, period);
       const posts = () => supabase.from("posts");
       const publishedInPeriod = () =>
@@ -190,8 +173,17 @@ export function InstagramDashboard({
           p_page: 0,
         }),
       ]);
-      if (!active) return;
-      setData({
+      const incomplete =
+        [
+          published,
+          allPublished,
+          reelsPublished,
+          attention,
+          accountInventory,
+          reelInventory,
+          analytics,
+        ].some(({ error }) => Boolean(error)) || schedule.scheduleUnavailable;
+      return {
         period: periodKey,
         ...schedule,
         published: published.count,
@@ -204,37 +196,14 @@ export function InstagramDashboard({
           ? (analytics.data as unknown as InstagramAnalyticsReport)
           : undefined,
         analyticsUnavailable: Boolean(analytics.error),
-      });
-      setError(
-        [
-          published,
-          allPublished,
-          reelsPublished,
-          attention,
-          accountInventory,
-          reelInventory,
-          analytics,
-        ].some(({ error }) => Boolean(error)) || schedule.scheduleUnavailable,
-      );
-    };
-    const refresh = () => {
-      if (loading) return;
-      loading = true;
-      void load()
-        .catch(() => {
-          if (active) setError(true);
-        })
-        .finally(() => {
-          loading = false;
-        });
-    };
-    refresh();
-    const timer = window.setInterval(refresh, 30_000);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, [workspaceId, timezone, period, periodKey, refreshKey, retry]);
+        incomplete,
+      };
+    },
+  });
+  const data = report.data;
+  const periodData = data?.period === periodKey ? data : undefined;
+  const error = report.isError || Boolean(periodData?.incomplete);
+  const { accountCount, videoCount } = data ?? {};
 
   const steps = [
     {
@@ -301,8 +270,8 @@ export function InstagramDashboard({
       value: periodData?.published,
       note:
         data?.allPublished != null
-          ? `${showNumber(data.allPublished)} publicadas pelo MouseHot no total`
-          : "Publicações pelo MouseHot",
+          ? `${showNumber(data.allPublished)} publicadas pelo Mousefy no total`
+          : "Publicações pelo Mousefy",
       detail: `${showNumber(periodData?.reelsPublished)} Reels publicados no período`,
       icon: CheckCircle2,
       tone: "success",
@@ -387,7 +356,6 @@ export function InstagramDashboard({
                 onClick={() => {
                   setChoosingDates(false);
                   if (period.id !== item.id) {
-                    setError(false);
                     setPeriod(item);
                   }
                 }}
@@ -423,7 +391,6 @@ export function InstagramDashboard({
                 input.reportValidity();
                 return;
               }
-              setError(false);
               setPeriod({ id: "custom", start, end });
               setChoosingDates(false);
             }}
@@ -502,7 +469,7 @@ export function InstagramDashboard({
           <button
             type="button"
             className="font-semibold underline"
-            onClick={() => setRetry((value) => value + 1)}
+            onClick={() => void report.refetch()}
           >
             Tentar novamente
           </button>

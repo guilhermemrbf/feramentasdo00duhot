@@ -9,7 +9,7 @@ import { trackingOverview } from "@/lib/api/tracking.functions";
 import "@/components/sales/tracking-report.css";
 
 export const Route = createFileRoute("/vendas/rastreamento")({
-  head: () => ({ meta: [{ title: "Rastreamento de vendas · ScaleHot | MouseHot" }] }),
+  head: () => ({ meta: [{ title: "Rastreamento de vendas · Traqueamento avançado | Mousefy" }] }),
   validateSearch: (search: Record<string, unknown>): { meta?: string; view?: "integracoes" } => ({
     meta: typeof search.meta === "string" ? search.meta : undefined,
     view: search.view === "integracoes" ? "integracoes" : undefined,
@@ -42,7 +42,7 @@ function TrackingPage() {
         to="/vendas"
         className="tracking-back inline-flex min-h-10 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft size={16} aria-hidden="true" /> Dashboard do ScaleHot
+        <ArrowLeft size={16} aria-hidden="true" /> Resumo do traqueamento
       </Link>
       <header className="tracking-header">
         <h1>Rastreamento de vendas</h1>

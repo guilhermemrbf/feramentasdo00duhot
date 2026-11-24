@@ -7,7 +7,7 @@ import { downloads } from "@/lib/downloads";
 export const Route = createFileRoute("/fazenda-de-celulares")({
   head: () => ({
     meta: [
-      { title: "Fazenda de Celulares — MauseHot" },
+      { title: "Fazenda de Celulares — Mousefy" },
       {
         name: "description",
         content: "Baixe a Fazenda de Celulares para Windows e gerencie iPhones conectados por USB.",

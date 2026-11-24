@@ -63,7 +63,7 @@ export const createTrackingSource = createServerFn({ method: "POST" })
     if (!origin) throw new Error("Informe apenas o domínio HTTPS, sem o caminho da página.");
     const base = new URL(process.env.APP_BASE_URL ?? "http://127.0.0.1:5173");
     if (base.protocol !== "https:" && process.env.VERCEL === "1") {
-      throw new Error("O domínio HTTPS do MouseHot precisa estar configurado.");
+      throw new Error("O domínio HTTPS do Mousefy precisa estar configurado.");
     }
     const [{ hashSalesKey, salesService }, { randomBytes }] = await Promise.all([
       import("@/lib/sales.server"),

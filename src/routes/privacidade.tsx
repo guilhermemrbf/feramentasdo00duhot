@@ -4,11 +4,11 @@ import { siteOrigin } from "@/lib/site-origin";
 export const Route = createFileRoute("/privacidade")({
   head: () => ({
     meta: [
-      { title: "Política de privacidade — MauseHot" },
+      { title: "Política de privacidade — Mousefy" },
       {
         name: "description",
         content:
-          "Como o MauseHot trata os dados do Automatic Post e da integração com o Instagram.",
+          "Como o Mousefy trata os dados do Automatic Post e da integração com o Instagram.",
       },
     ],
     links: siteOrigin ? [{ rel: "canonical", href: siteOrigin + "/privacidade" }] : [],
@@ -21,14 +21,14 @@ function Privacy() {
     <main className="mx-auto min-h-screen max-w-3xl px-5 py-10 text-sm leading-7 text-foreground sm:px-8">
       <a href="/" className="inline-flex items-center gap-3 font-semibold">
         <img src="/brand/mark.png" alt="" width={40} height={40} className="rounded-lg" />
-        MauseHot
+        Mousefy
       </a>
       <h1 className="mt-8 text-3xl font-bold tracking-tight">Política de privacidade</h1>
       <p className="mt-2 text-muted-foreground">Atualizada em 16 de novembro de 2026.</p>
       <p className="mt-6">
         Este aviso descreve o tratamento de dados no Automatic Post, no acesso ao seu espaço de
-        trabalho e na conexão de contas do Instagram ao MauseHot. O responsável por essa operação é
-        Guilherme Machado Rocha, pessoa física, no Brasil. O nome comercial MauseHot não representa
+        trabalho e na conexão de contas do Instagram ao Mousefy. O responsável por essa operação é
+        Guilherme Machado Rocha, pessoa física, no Brasil. O nome comercial Mousefy não representa
         uma declaração de constituição de pessoa jurídica.
       </p>
       <p className="mt-3">
@@ -71,7 +71,7 @@ function Privacy() {
         </ul>
         <p>
           Você informa senhas e códigos de autenticação nas páginas oficiais do Google e da Meta.
-          Não solicitamos esses dados nos formulários do MauseHot.
+          Não solicitamos esses dados nos formulários do Mousefy.
         </p>
       </section>
 
@@ -158,7 +158,7 @@ function Privacy() {
           Ver instruções para excluir os dados e revogar o acesso
         </a>
         <p>
-          Excluir dados do MauseHot não apaga automaticamente publicações já enviadas ao Instagram.
+          Excluir dados do Mousefy não apaga automaticamente publicações já enviadas ao Instagram.
           Esses conteúdos e os dados mantidos pela Meta seguem os controles e políticas daquele
           serviço.
         </p>

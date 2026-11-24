@@ -37,7 +37,8 @@ test("notification preferences accept supported values and ignore malformed save
     mouseHotDashboardName({ mousehot_dashboard_name: "  Minha operação  " }),
     "Minha operação",
   );
-  assert.equal(mouseHotDashboardName({ mousehot_dashboard_name: "   " }), "MouseHot");
+  assert.equal(mouseHotDashboardName({ mousehot_dashboard_name: "   " }), "Mousefy");
+  assert.equal(mouseHotDashboardName({ mousehot_dashboard_name: "MouseHot" }), "Mousefy");
 });
 
 test("personal settings preserve existing defaults and ignore unsupported values", () => {

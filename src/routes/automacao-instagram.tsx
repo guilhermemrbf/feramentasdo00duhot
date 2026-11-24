@@ -115,14 +115,14 @@ export const Route = createFileRoute("/automacao-instagram")({
   }),
   head: () => ({
     meta: [
-      { property: "og:title", content: "Automatic Post · Instagram — MauseHot" },
+      { property: "og:title", content: "Automatic Post · Instagram — Mousefy" },
       {
         property: "og:description",
         content: "Organize contas profissionais, vídeos, legendas e agendamentos de Reels.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { title: "Automatic Post · Instagram — MauseHot" },
+      { title: "Automatic Post · Instagram — Mousefy" },
       {
         name: "description",
         content:
@@ -314,7 +314,7 @@ function InstagramWorkspaceEntry({
   }
 
   return (
-    <AppShell>
+    <AppShell dashboard={setup ? undefined : "instagram"}>
       {workspaceControls}
       <main className="mx-auto w-full max-w-5xl space-y-4 px-4 py-5 sm:px-6">
         <header className="tool-section-heading rounded-xl border border-border px-4 py-4 sm:px-5">
@@ -664,7 +664,7 @@ function InstagramWorkspacePage({
       const reason = new URLSearchParams(window.location.search).get("instagram_reason");
       if (reason === "unified_accounts_empty") {
         setNotice(
-          "A Meta concluiu o login, mas não retornou nenhum perfil para o MauseHot. Confira se a conta profissional pertence ao portfólio escolhido e se ela foi compartilhada na autorização.",
+          "A Meta concluiu o login, mas não retornou nenhum perfil para o Mousefy. Confira se a conta profissional pertence ao portfólio escolhido e se ela foi compartilhada na autorização.",
         );
         return;
       }
@@ -1365,6 +1365,7 @@ function InstagramWorkspacePage({
 
   return (
     <AppShell
+      dashboard={tab === "dashboard" ? "instagram" : undefined}
       workspaceNavigation={(closeMenu) => (
         <nav
           aria-label="Seções da automação Instagram"
@@ -1842,7 +1843,7 @@ function InstagramWorkspacePage({
                               if (selectedAccountId === account.id) resetReelDraft("");
                               setAccountRefresh((value) => value + 1);
                               setHistoryRefresh((value) => value + 1);
-                              setNotice(`@${account.username} foi desconectada do MouseHot.`);
+                              setNotice(`@${account.username} foi desconectada do Mousefy.`);
                             },
                           }
                         : undefined

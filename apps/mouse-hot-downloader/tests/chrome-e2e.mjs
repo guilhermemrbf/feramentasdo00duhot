@@ -328,7 +328,7 @@ try {
   assert.match(await text(production), /TikTok/);
   assert.doesNotMatch(await text(production), /Telegram/);
   const manifest = await evaluate(production, "chrome.runtime.getManifest()");
-  assert.equal(manifest.name, "Mouse Hot");
+  assert.equal(manifest.name, "Mousefy Downloader");
   const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
   assert.equal(manifest.version, packageJson.version);
   assert.equal(manifest.side_panel, undefined);

@@ -11,6 +11,7 @@ import {
 import type { ReactNode } from "react";
 import { PlatformAccessProvider } from "@/components/access/PlatformAccessProvider";
 import { PlatformGate } from "@/components/access/AccessStatusPanel";
+import { BRAND_NAME } from "@/lib/brand";
 
 import appCss from "../styles.css?url";
 
@@ -75,15 +76,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { title: "MauseHot" },
-      { name: "application-name", content: "MauseHot" },
+      { title: BRAND_NAME },
+      { name: "application-name", content: BRAND_NAME },
+      { name: "apple-mobile-web-app-title", content: BRAND_NAME },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "color-scheme", content: "dark" },
       { name: "theme-color", content: "#0c0c0f" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/png", href: "/brand/mark.png" },
+      { rel: "icon", type: "image/png", href: "/brand/organic-favicon.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/brand/pwa-192.png" },
     ],

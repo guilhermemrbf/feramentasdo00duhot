@@ -25,14 +25,14 @@ import { AppShell, PageIntro } from "@/components/AppShell";
 export const Route = createFileRoute("/otimizar-criativos")({
   head: () => ({
     meta: [
-      { property: "og:title", content: "Otimizar Criativos — MauseHot" },
+      { property: "og:title", content: "Otimizar Criativos — Mousefy" },
       {
         property: "og:description",
         content: "Prepare imagens e vídeos com sua marca e exporte novas versões localmente.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { title: "Otimizar Criativos — MauseHot" },
+      { title: "Otimizar Criativos — Mousefy" },
       {
         name: "description",
         content:

@@ -24,14 +24,14 @@ import { AppShell, PageIntro } from "@/components/AppShell";
 export const Route = createFileRoute("/gerar-preview")({
   head: () => ({
     meta: [
-      { property: "og:title", content: "Gerar Preview — MauseHot" },
+      { property: "og:title", content: "Gerar Preview — Mousefy" },
       {
         property: "og:description",
         content: "Crie prévias de fotos e vídeos com desfoque ou pixelização.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { title: "Gerar Preview — MauseHot" },
+      { title: "Gerar Preview — Mousefy" },
       {
         name: "description",
         content:

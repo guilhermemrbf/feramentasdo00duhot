@@ -407,21 +407,22 @@ try {
   );
   await page.goto(web + "/ferramentas");
   const primary = page.getByRole("navigation", { name: "Navegação principal", exact: true });
-  const scaleHot = page.getByRole("navigation", { name: "Seções do ScaleHot", exact: true });
+  const scaleHot = page.getByRole("navigation", { name: "Traqueamento avançado", exact: true });
   const catalog = page.getByRole("navigation", { name: "Catálogo lateral de ferramentas" });
   await page.getByRole("main").getByRole("heading", { name: "Ferramentas", exact: true }).waitFor();
   assert.deepEqual(await primary.getByRole("link").allTextContents(), [
     "Dashboard",
     "Automatic Post",
-    "ScaleHot",
+    "Traqueamento avançado",
     "Gateways",
     "Notificações",
     "Ferramentas",
+    "Configurações",
   ]);
   assert.equal(await primary.getByRole("link", { name: "Integrações", exact: true }).count(), 0);
   await catalog.getByRole("link", { name: "Limpar Metadados", exact: true }).waitFor();
   await page.getByRole("main").getByRole("link", { name: "Abrir Limpar Metadados" }).waitFor();
-  await primary.getByRole("link", { name: "ScaleHot", exact: true }).click();
+  await primary.getByRole("link", { name: "Traqueamento avançado", exact: true }).click();
   await scaleHot.getByRole("link", { name: "Integrações", exact: true }).waitFor();
   assert.equal(await catalog.count(), 0);
   await primary.getByRole("link", { name: "Gateways", exact: true }).click();

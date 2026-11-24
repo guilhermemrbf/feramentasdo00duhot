@@ -50,6 +50,8 @@ import { accessForRoute, secondsRemaining } from "@/lib/platform-access";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { DashboardHeader, type DashboardHeaderKind } from "@/components/DashboardHeader";
+import { BRAND_MARK, BRAND_NAME, BRAND_SLOGAN, TRACKING_NAME } from "@/lib/brand";
 
 export const TOOL_ICONS = {
   controlHub: MonitorSmartphone,
@@ -70,7 +72,7 @@ export const TOOL_ICONS = {
 
 const PRIMARY_LINKS = [
   { path: "/automacao-instagram", title: "Automatic Post", icon: Instagram },
-  { path: "/vendas", title: "ScaleHot", icon: ChartNoAxesCombined },
+  { path: "/vendas", title: TRACKING_NAME, icon: ChartNoAxesCombined },
   { path: "/vendas/integracoes", title: "Gateways", icon: Plug },
   { path: "/vendas/notificacoes", title: "Notificações", icon: Bell },
   { path: "/ferramentas", title: "Ferramentas", icon: LayoutGrid },
@@ -91,8 +93,6 @@ const SIDEBAR_CATEGORIES = [
   "Automação",
   ...CATEGORIES.filter((category) => category !== "Automação"),
 ] as const;
-const BRAND_MARK = "/brand/compact.webp";
-const BRAND_SLOGAN = "Sua operação digital em um só lugar";
 
 function Brand() {
   return (
@@ -105,7 +105,7 @@ function Brand() {
         className="brand-mark size-11 shrink-0 rounded-lg object-contain"
       />
       <span>
-        <strong className="block text-[17px] font-semibold tracking-tight">MouseHot</strong>
+        <strong className="block text-[17px] font-semibold tracking-tight">{BRAND_NAME}</strong>
         <span className="mt-0.5 block text-[11px] leading-snug font-medium text-muted-foreground">
           {BRAND_SLOGAN}
         </span>
@@ -117,9 +117,11 @@ function Brand() {
 export function AppShell({
   children,
   workspaceNavigation,
+  dashboard,
 }: {
   children: ReactNode;
   workspaceNavigation?: (closeMenu: () => void) => ReactNode;
+  dashboard?: DashboardHeaderKind;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname.replace(/\/$/, "") });
   const current = findTool(pathname);
@@ -131,6 +133,10 @@ export function AppShell({
   const isTools =
     pathname === "/ferramentas" || (current && current.id !== "social" && current.id !== "sales");
   const { status, user } = usePlatformAccess();
+  const dashboardKind =
+    status === "trial"
+      ? undefined
+      : (dashboard ?? (isHome ? "home" : pathname === "/vendas" ? "scalehot" : undefined));
   const available = TOOL_CATALOG.filter((tool) => status && accessForRoute(tool.path, status));
   const directoryTools = available.filter(({ id }) => id !== "social" && id !== "sales");
   const [mobile, setMobile] = useState(false),
@@ -167,6 +173,7 @@ export function AppShell({
   }, []);
   const nav = (tool: Tool, shortcut = false) => {
     const Icon = TOOL_ICONS[tool.id];
+    const title = tool.name;
     const active = currentId === tool.id;
     const favorite = favorites.includes(tool.id);
     return (
@@ -182,14 +189,14 @@ export function AppShell({
             data-tone={normalizeSearch(tool.category)}
             aria-hidden
           />
-          <span className="min-w-0 flex-1 leading-tight break-words">{tool.name}</span>
+          <span className="min-w-0 flex-1 leading-tight break-words">{title}</span>
         </Link>
         {!shortcut && (
           <button
             type="button"
             onClick={() => toggle(tool.id)}
             aria-pressed={favorite}
-            aria-label={`${favorite ? "Remover" : "Adicionar"} ${tool.name} ${favorite ? "dos" : "aos"} favoritos`}
+            aria-label={`${favorite ? "Remover" : "Adicionar"} ${title} ${favorite ? "dos" : "aos"} favoritos`}
             className="grid min-h-11 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-brand-red aria-pressed:text-brand-red"
           >
             <Star className={cn("size-3.5", favorite && "fill-current")} aria-hidden />
@@ -203,7 +210,7 @@ export function AppShell({
       <Link
         to="/painel"
         onClick={() => setMobile(false)}
-        aria-label="MouseHot, início"
+        aria-label={`${BRAND_NAME}, início`}
         className="border-b border-border px-5 py-5"
       >
         <Brand />
@@ -249,19 +256,21 @@ export function AppShell({
                       {title}
                     </Link>
                     {path === "/vendas" && isScaleHot && (
-                      <nav aria-label="Seções do ScaleHot" className="scalehot-subnav space-y-1">
-                        {SCALEHOT_LINKS.map(({ path: itemPath, title: itemTitle, icon: ItemIcon }) => (
-                          <Link
-                            key={itemPath}
-                            to={itemPath}
-                            onClick={closeMenu}
-                            aria-current={pathname === itemPath ? "page" : undefined}
-                            className={cn("tool-nav-link", pathname === itemPath && "is-active")}
-                          >
-                            <ItemIcon className="size-4 shrink-0" aria-hidden />
-                            {itemTitle}
-                          </Link>
-                        ))}
+                      <nav aria-label={title} className="scalehot-subnav space-y-1">
+                        {SCALEHOT_LINKS.map(
+                          ({ path: itemPath, title: itemTitle, icon: ItemIcon }) => (
+                            <Link
+                              key={itemPath}
+                              to={itemPath}
+                              onClick={closeMenu}
+                              aria-current={pathname === itemPath ? "page" : undefined}
+                              className={cn("tool-nav-link", pathname === itemPath && "is-active")}
+                            >
+                              <ItemIcon className="size-4 shrink-0" aria-hidden />
+                              {itemTitle}
+                            </Link>
+                          ),
+                        )}
                       </nav>
                     )}
                   </div>
@@ -287,16 +296,17 @@ export function AppShell({
                   .map((tool) => nav(tool))}
               </div>
             ))}
-            {readMouseHotSettings(user?.user_metadata).showToolShortcuts && shortcuts.length > 0 && (
-              <details className="group mb-5 rounded-lg border border-border px-1">
-                <summary className="flex min-h-11 list-none items-center gap-2 px-2 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
-                  <Star className="size-3.5" aria-hidden />
-                  Favoritas e recentes
-                  <ChevronDown className="ml-auto size-3.5 group-open:rotate-180" aria-hidden />
-                </summary>
-                <div className="pb-1">{shortcuts.map((tool) => nav(tool, true))}</div>
-              </details>
-            )}
+            {readMouseHotSettings(user?.user_metadata).showToolShortcuts &&
+              shortcuts.length > 0 && (
+                <details className="group mb-5 rounded-lg border border-border px-1">
+                  <summary className="flex min-h-11 list-none items-center gap-2 px-2 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+                    <Star className="size-3.5" aria-hidden />
+                    Favoritas e recentes
+                    <ChevronDown className="ml-auto size-3.5 group-open:rotate-180" aria-hidden />
+                  </summary>
+                  <div className="pb-1">{shortcuts.map((tool) => nav(tool, true))}</div>
+                </details>
+              )}
           </nav>
         )}
       </div>
@@ -344,8 +354,8 @@ export function AppShell({
       </a>
       <aside className="workspace-sidebar hidden lg:flex">{sidebar}</aside>
       <div className="lg:pl-[244px]">
-        <header className="workspace-topbar">
-          <div className="flex min-w-0 items-center gap-3">
+        <header className={cn("workspace-topbar", dashboardKind && "dashboard-topbar")}>
+          <div className={cn("flex min-w-0 items-center gap-3", dashboardKind && "lg:hidden")}>
             <Sheet open={mobile} onOpenChange={setMobile}>
               <SheetTrigger asChild>
                 <button
@@ -368,16 +378,18 @@ export function AppShell({
                 {sidebar}
               </SheetContent>
             </Sheet>
-            <Link to="/painel" aria-label="MouseHot, início" className="shrink-0 sm:hidden">
-              <img
-                src={BRAND_MARK}
-                alt=""
-                width={32}
-                height={32}
-                className="brand-mark size-8 rounded-md object-contain"
-              />
-            </Link>
-            {!isHome && (
+            {!dashboardKind && (
+              <Link to="/painel" aria-label={`${BRAND_NAME}, início`} className="shrink-0 sm:hidden">
+                <img
+                  src={BRAND_MARK}
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="brand-mark size-8 rounded-md object-contain"
+                />
+              </Link>
+            )}
+            {!isHome && !dashboardKind && (
               <>
                 <Link
                   to="/painel"
@@ -388,24 +400,19 @@ export function AppShell({
                 <span className="hidden text-muted-foreground/40 sm:block">/</span>
               </>
             )}
-            <span className="truncate text-sm font-semibold">
-              {current?.name || section?.title || (isAdmin ? "Aprovações e convites" : "Dashboard")}
-            </span>
+            {!dashboardKind && (
+              <span className="truncate text-sm font-semibold">
+                {current?.name ||
+                  section?.title ||
+                  (isAdmin ? "Aprovações e convites" : "Dashboard")}
+              </span>
+            )}
           </div>
-          {isHome && status !== "trial" && (
-            <span className="flex max-w-34 items-center gap-2 text-right text-[11px] leading-snug text-muted-foreground sm:max-w-none sm:text-xs">
-              <img
-                src={BRAND_MARK}
-                alt=""
-                width={28}
-                height={28}
-                className="hidden size-7 shrink-0 rounded-md object-contain sm:block"
-              />
-              {BRAND_SLOGAN}
-            </span>
+          {dashboardKind && (
+            <DashboardHeader key={dashboardKind} kind={dashboardKind} onSearch={openSearch} />
           )}
           {status === "trial" && <TrialClock />}
-          {((!isHome && status !== "trial") || isTools) && (
+          {!dashboardKind && ((!isHome && status !== "trial") || isTools) && (
             <button
               onClick={openSearch}
               aria-label="Buscar ferramenta"
@@ -425,7 +432,7 @@ export function AppShell({
           {children}
         </div>
         <footer className="workspace-footer">
-          <span>MouseHot · {BRAND_SLOGAN}</span>
+          <span>{BRAND_NAME} · {BRAND_SLOGAN}</span>
         </footer>
       </div>
       <dialog

@@ -115,7 +115,7 @@ export function PlatformGate({ children }: { children: ReactNode }) {
         <AccessStatusPanel />
       ) : (
         <div className="access-form-panel access-status-panel">
-          <h1>Entre para usar a MouseHot</h1>
+          <h1>Entre para usar o Mousefy</h1>
           <p>Faça login ou crie uma conta para solicitar acesso às ferramentas.</p>
           <Link to="/" hash="acesso" className="saas-button saas-button-primary">
             Entrar ou criar conta

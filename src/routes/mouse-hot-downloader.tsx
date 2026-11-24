@@ -7,7 +7,7 @@ import { downloads } from "@/lib/downloads";
 export const Route = createFileRoute("/mouse-hot-downloader")({
   head: () => ({
     meta: [
-      { title: "Mouse Hot Downloader — MauseHot" },
+      { title: "Mousefy Downloader" },
       {
         name: "description",
         content: "Instale a extensão para baixar fotos, vídeos e Reels no Chrome.",
@@ -21,12 +21,12 @@ const steps = [
   {
     icon: FolderOpen,
     title: "Extraia o ZIP",
-    text: "Abra o ZIP baixado e extraia a pasta Mouse Hot para um lugar fácil de encontrar.",
+    text: "Abra o ZIP baixado e extraia a pasta da extensão para um lugar fácil de encontrar.",
   },
   {
     icon: Puzzle,
     title: "Instale no Chrome",
-    text: "Digite chrome://extensions na barra de endereço. Ative o Modo do desenvolvedor, clique em Carregar sem compactação e selecione a pasta Mouse Hot.",
+    text: "Abra chrome://extensions, ative o Modo do desenvolvedor e clique em Carregar sem compactação. Selecione a pasta com o arquivo manifest.json.",
   },
   {
     icon: CheckCircle2,
@@ -43,7 +43,7 @@ function MouseHotDownloader() {
       <main className="mx-auto max-w-5xl space-y-7 p-5 sm:p-8">
         <PageIntro
           eyebrow="EXTENSÃO PARA CHROME"
-          title="Mouse Hot Downloader"
+          title="Mousefy Downloader"
           description="Baixe fotos, vídeos e Reels do Instagram e do TikTok direto para o computador."
         />
         <section
@@ -85,7 +85,7 @@ function MouseHotDownloader() {
         <div className="rounded-xl border border-border bg-card p-4 text-sm leading-6 text-muted-foreground">
           <p>
             <strong className="text-foreground">Onde ficam os arquivos?</strong> Em Downloads →
-            Mouse Hot. Os arquivos são baixados um por vez.
+            Mouse Hot, o nome da pasta preservado da versão anterior. Os arquivos são baixados um por vez.
           </p>
           <p className="mt-2">
             <strong className="text-foreground">Já tem uma versão anterior?</strong> Desative-a

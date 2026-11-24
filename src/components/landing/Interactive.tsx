@@ -42,7 +42,7 @@ export function RoiCalculator() {
   const [posts, setPosts] = useState(5);
   const [min, setMin] = useState(25);
   const [valor, setValor] = useState(50);
-  const horas = Math.round((perfis * posts * min * 4.3 * 0.7) / 60);
+  const horas = Math.round((perfis * posts * min * 4.3) / 60);
   const reais = horas * valor;
   return (
     <div className="grid gap-8 rounded-[2rem] border border-border bg-card p-6 md:grid-cols-2 md:p-10">
@@ -55,7 +55,7 @@ export function RoiCalculator() {
       <div className="flex flex-col justify-between rounded-3xl organic-fill-hot p-8 text-primary-foreground">
         <div>
           <p className="text-sm font-bold uppercase tracking-widest opacity-80">
-            Economia mensal estimada
+            Carga mensal estimada
           </p>
           <motion.p
             key={horas}
@@ -79,14 +79,14 @@ export function RoiCalculator() {
             })}
           </motion.p>
           <p className="mt-2 text-sm opacity-80">
-            Cenário ilustrativo que supõe automatizar 70% do trabalho manual.
+            Estimativa com base no volume, no tempo e no valor por hora que você informou.
           </p>
         </div>
         <a
           href="#acesso"
           className="mt-8 inline-flex justify-center rounded-full bg-background px-6 py-4 font-bold text-foreground transition-transform hover:scale-[1.03]"
         >
-          Quero essas {horas}h de volta →
+          Ver opções de acesso →
         </a>
       </div>
     </div>
@@ -221,7 +221,7 @@ export function BeforeAfter() {
     <div className="relative h-[420px] select-none overflow-hidden rounded-[2rem] border border-border">
       <div className="absolute inset-0 bg-surface p-8 text-surface-foreground">
         <p className="mb-6 text-right text-sm font-bold uppercase tracking-widest text-primary">
-          Depois · com MouseHot
+          Depois · com Mousefy
         </p>
         <div className="ml-auto grid max-w-md grid-cols-2 gap-3">
           {order.map((o) => (

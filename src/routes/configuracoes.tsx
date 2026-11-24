@@ -34,7 +34,7 @@ import "@/components/sales/scalehot.css";
 import "./mousehot-settings.css";
 
 export const Route = createFileRoute("/configuracoes")({
-  head: () => ({ meta: [{ title: "Configurações | MouseHot" }] }),
+  head: () => ({ meta: [{ title: "Configurações | Mousefy" }] }),
   component: SettingsPage,
 });
 
@@ -89,7 +89,7 @@ function SettingsPage() {
               </span>
             </div>
           </div>
-          <p>Ajuste sua conta, o dashboard e os avisos que você recebe na MouseHot.</p>
+          <p>Ajuste sua conta, o dashboard e os avisos que você recebe no Mousefy.</p>
         </header>
         <section id="conta" className="settings-section" aria-labelledby="settings-account">
           <SettingsSectionHeading id="settings-account" title="Conta e dashboard" icon={UserIcon}>
@@ -109,7 +109,7 @@ function SettingsPage() {
                 />
                 <section className="settings-section" aria-labelledby="settings-app">
                   <SettingsSectionHeading id="settings-app" title="App e plano" icon={Smartphone}>
-                    Instale a MouseHot e veja o acesso desta conta.
+                    Instale o Mousefy e veja o acesso desta conta.
                   </SettingsSectionHeading>
                   <div className="settings-columns">
                     <section
@@ -133,7 +133,7 @@ function SettingsPage() {
                         Acesso atual · {access}
                       </SettingsCardHeading>
                       <div className="settings-inset">
-                        <strong>Acesso à MouseHot</strong>
+                        <strong>Acesso ao Mousefy</strong>
                         <p>O acesso à plataforma é gerenciado por aprovação de cadastro.</p>
                       </div>
                     </section>
@@ -149,7 +149,7 @@ function SettingsPage() {
           aria-labelledby="settings-connections"
         >
           <SettingsSectionHeading id="settings-connections" title="Integrações" icon={Link2}>
-            Gerencie conexões das ferramentas da MouseHot.
+            Gerencie conexões das ferramentas do Mousefy.
           </SettingsSectionHeading>
           <div className="settings-card settings-directories">
             <div>
@@ -165,7 +165,7 @@ function SettingsPage() {
             </div>
             <div>
               <div>
-                <h3>ScaleHot</h3>
+                <h3>Traqueamento avançado</h3>
                 <p>Conecte contas de anúncios e configure webhooks, UTMs e pixels.</p>
               </div>
               <Button variant="outline" asChild>
@@ -226,7 +226,7 @@ function SettingsPage() {
             <div>
               <div>
                 <h3>Sessão atual</h3>
-                <p>Encerre o acesso da MouseHot neste navegador.</p>
+                <p>Encerre o acesso do Mousefy neste navegador.</p>
               </div>
               <Button
                 type="button"
@@ -262,7 +262,7 @@ function AccountForm({ user }: { user: User }) {
   const providerName = loginName(user);
   const dirty =
     name.trim() !== existing.displayName ||
-    (dashboard.trim() || "MouseHot") !== storedDashboardName ||
+    (dashboard.trim() || "Mousefy") !== storedDashboardName ||
     period !== (existing.period ?? "") ||
     shortcuts !== existing.showToolShortcuts;
 
@@ -323,7 +323,7 @@ function AccountForm({ user }: { user: User }) {
         <div className="settings-inset">
           <strong>Dica</strong>
           <p>
-            O e-mail é usado para entrar na MouseHot. Alterações neste formulário atualizam o nome
+            O e-mail é usado para entrar no Mousefy. Alterações neste formulário atualizam o nome
             de exibição.
           </p>
         </div>

@@ -21,7 +21,7 @@ const pages = [
 ] as const;
 
 export const Route = createFileRoute("/vendas/conexoes")({
-  head: () => ({ meta: [{ title: "Integrações · ScaleHot | MouseHot" }] }),
+  head: () => ({ meta: [{ title: "Integrações · Traqueamento avançado | Mousefy" }] }),
   validateSearch: (
     search: Record<string, unknown>,
   ): {
@@ -43,7 +43,7 @@ function ScaleHotIntegrations() {
     <>
       <SalesPageHeader
         title="Integrações"
-        subtitle="Conecte anúncios, recebimentos e conversões ao ScaleHot."
+        subtitle="Conecte anúncios, recebimentos e conversões ao módulo de traqueamento."
       />
       <nav aria-label="Áreas de integrações" className="scalehot-tabs mb-6">
         {pages.map(({ id, label, icon: Icon }) => (
@@ -143,7 +143,7 @@ function UtmSettings() {
     <div className="grid gap-4">
       <section className="sales-panel grid gap-4 p-5">
         <div>
-          <h2 className="font-semibold">UTMs da MouseHot</h2>
+          <h2 className="font-semibold">UTMs do Mousefy</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Identifique a origem, o meio e a campanha no link. O checkout deve vincular o clique ao
             mesmo pedido recebido pelo webhook.

@@ -81,7 +81,7 @@ export const metaGuide: readonly MetaGuideStep[] = [
         "Configuração do app com a URL de redirecionamento selecionada",
       ],
     ],
-    tip: "A imagem mostra o endereço do ambiente anterior. Use a URL do MouseHot que aparece acima.",
+    tip: "A imagem mostra o endereço do ambiente anterior. Use a URL do Mousefy que aparece acima.",
     commonIssue:
       "Se a Meta informar que o redirecionamento é inválido, confira o domínio e o caminho completos. Copie novamente pelo botão deste passo.",
   },
@@ -109,7 +109,7 @@ export const metaGuide: readonly MetaGuideStep[] = [
         "Configurações básicas com o ID e a chave oculta do aplicativo",
       ],
     ],
-    tip: "A chave é gravada cifrada no servidor. O MouseHot nunca volta a exibir o valor.",
+    tip: "A chave é gravada cifrada no servidor. O Mousefy nunca volta a exibir o valor.",
     commonIssue:
       "Use o ID e a chave do mesmo aplicativo. A identificação da configuração vem do quadro do Login Unificado.",
   },

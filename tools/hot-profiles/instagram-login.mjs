@@ -33,7 +33,7 @@ export function validateInstagramLogin(input, origin) {
     input.cookie.value !== provider.searchParams.get("state") ||
     input.cookie.maxAge !== 600
   )
-    throw new Error("Autorização inválida. Inicie a conexão pelo MauseHot.");
+    throw new Error("Autorização inválida. Inicie a conexão pelo Mousefy.");
   return {
     authorizationUrl: provider.href,
     cookie: {

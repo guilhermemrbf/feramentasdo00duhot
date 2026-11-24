@@ -11,7 +11,7 @@ import { platformRpc, rpcData } from "@/lib/platform-access-client";
 export const Route = createFileRoute("/convite")({
   head: () => ({
     meta: [
-      { title: "Seu convite | MouseHot" },
+      { title: "Seu convite | Mousefy" },
       { name: "robots", content: "noindex, nofollow" },
       { name: "referrer", content: "no-referrer" },
     ],
@@ -82,7 +82,7 @@ function InvitePage() {
       <main className="launch-access launch-wrap">
         <div>
           <h1>
-            Seu teste na MouseHot<span>.</span>
+            Seu teste no Mousefy<span>.</span>
           </h1>
           <p>
             Você tem 15 minutos para experimentar as ferramentas de preparação de conteúdo. O tempo

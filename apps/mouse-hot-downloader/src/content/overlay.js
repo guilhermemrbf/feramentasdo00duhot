@@ -65,7 +65,7 @@ export function makeOverlay(send, fixture, runDownload) {
   styles.replaceSync(css);
   shadow.adoptedStyleSheets = [styles];
   const box = document.createElement("section");
-  box.setAttribute("aria-label", "Mouse Hot");
+  box.setAttribute("aria-label", "Mousefy Downloader");
   const make = (tag, parent, attributes = {}, label = "") => {
     const node = document.createElement(tag);
     for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
@@ -77,7 +77,7 @@ export function makeOverlay(send, fixture, runDownload) {
   const header = make("header", box);
   make("img", header, { src: chrome.runtime.getURL("icons/48.png"), alt: "", width: "34", height: "34" });
   const heading = make("div", header);
-  make("strong", heading, {}, "Mouse Hot");
+  make("strong", heading, {}, "Mousefy");
   const summary = make("small", heading, { id: "mh-summary" }, "Procurando mídias…");
   const toggle = make("button", header, { id: "mh-toggle", class: "primary", "aria-expanded": "false", "aria-controls": "mh-details" }, "Ver mídias");
   const details = make("main", box, { id: "mh-details", hidden: "" });

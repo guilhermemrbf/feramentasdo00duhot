@@ -15,7 +15,7 @@ const tabs = [
   { id: "ads", label: "Anúncios" },
 ] as const;
 export const Route = createFileRoute("/vendas/meta")({
-  head: () => ({ meta: [{ title: "Meta · ScaleHot | MouseHot" }] }),
+  head: () => ({ meta: [{ title: "Meta · Traqueamento avançado | Mousefy" }] }),
   validateSearch: (search: Record<string, unknown>) => ({
     tab: tabs.find((item) => item.id === search.tab)?.id ?? "accounts",
   }),
@@ -28,7 +28,7 @@ function MetaPage() {
     <div className="scalehot-dashboard">
       <SalesPageHeader
         title="Meta"
-        subtitle="Consulte suas contas e a atribuição de campanha do ScaleHot."
+        subtitle="Consulte suas contas e a atribuição de campanha do módulo de traqueamento."
       />
       <nav className="scalehot-tabs" aria-label="Seções de anúncios Meta">
         {tabs.map(({ id, label }) => (

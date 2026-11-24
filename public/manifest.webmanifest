@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "MouseHot",
-  "short_name": "MouseHot",
+  "name": "Mousefy",
+  "short_name": "Mousefy",
   "lang": "pt-BR",
   "start_url": "/painel",
   "scope": "/",

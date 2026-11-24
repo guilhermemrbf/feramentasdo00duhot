@@ -1,149 +1,135 @@
-import { motion, AnimatePresence } from "motion/react";
-import { useEffect, useState } from "react";
-import { Counter } from "./fx";
+import { Activity, CalendarDays, CircleCheck, Clock3, Film, ReceiptText } from "lucide-react";
+import { useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { TRACKING_NAME } from "@/lib/brand";
 
-type Status = "Na fila" | "Agendado" | "Publicado";
-type Post = { id: number; profile: string; title: string; status: Status };
-const profiles = ["@studiofit", "@chefdacasa", "@viagemlow", "@devdicas", "@petshopzn"];
-const titles = [
-  "Reel: 3 erros no treino",
-  "Receita em 30s",
-  "Roteiro barato Lisboa",
-  "Atalho no VS Code",
-  "Banho sem estresse",
+const reels = [
+  { title: "Apresentação da coleção", profile: "@loja.exemplo", time: "09:00", published: true },
+  { title: "Bastidores da produção", profile: "@estudio.exemplo", time: "13:00", published: false },
+  { title: "Guia de tamanhos", profile: "@loja.exemplo", time: "18:30", published: false },
 ];
-const next: Record<Status, Status> = {
-  "Na fila": "Agendado",
-  Agendado: "Publicado",
-  Publicado: "Publicado",
-};
-const tone: Record<Status, string> = {
-  "Na fila": "bg-muted text-muted-foreground",
-  Agendado: "bg-primary/15 text-primary",
-  Publicado: "bg-accent/20 text-accent",
-};
+
+const sales = [
+  {
+    title: "Coleção de verão",
+    detail: "Meta Ads · pedido aprovado",
+    amount: "R$ 149,00",
+    attributed: true,
+  },
+  {
+    title: "Busca pela marca",
+    detail: "Google Ads · pedido aprovado",
+    amount: "R$ 89,00",
+    attributed: true,
+  },
+  {
+    title: "Origem não identificada",
+    detail: "Pedido aprovado",
+    amount: "R$ 59,00",
+    attributed: false,
+  },
+];
 
 export function HeroMock() {
-  const [seq, setSeq] = useState(3);
-  const [posts, setPosts] = useState<Post[]>([
-    { id: 0, profile: profiles[0]!, title: titles[0]!, status: "Publicado" },
-    { id: 1, profile: profiles[1]!, title: titles[1]!, status: "Agendado" },
-    { id: 2, profile: profiles[2]!, title: titles[2]!, status: "Na fila" },
-  ]);
-  const [progress, setProgress] = useState(20);
-
-  const add = () => {
-    setSeq((s) => s + 1);
-    setPosts((p) =>
-      [
-        {
-          id: seq,
-          profile: profiles[seq % 5]!,
-          title: titles[seq % 5]!,
-          status: "Na fila" as Status,
-        },
-        ...p,
-      ].slice(0, 4),
-    );
-  };
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setPosts((p) => p.map((x) => (Math.random() > 0.5 ? { ...x, status: next[x.status] } : x)));
-      setProgress((v) => (v >= 100 ? 10 : v + 15));
-    }, 1800);
-    const a = setInterval(add, 4200);
-    return () => {
-      clearInterval(t);
-      clearInterval(a);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seq]);
+  const [view, setView] = useState<"tracking" | "reels">("tracking");
+  const reduced = useReducedMotion();
+  const tracking = view === "tracking";
 
   return (
-    <motion.div
+    <div
+      className="mousefy-demo app-frame"
+      data-visual
       role="region"
-      aria-label="Demonstração da fila de Reels"
-      initial={{ opacity: 0, y: 40, rotateX: 12 }}
-      animate={{ opacity: 1, y: 0, rotateX: 0 }}
-      transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      style={{ transformPerspective: 1200 }}
-      className="relative rounded-3xl border border-border bg-card/80 p-5 shadow-glow backdrop-blur-xl"
+      aria-labelledby="mousefy-demo-title"
     >
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex gap-1.5">
-          <span className="h-3 w-3 rounded-full bg-destructive/70" />
-          <span className="h-3 w-3 rounded-full bg-primary-glow/70" />
-          <span className="h-3 w-3 rounded-full bg-accent/70" />
+      <header className="mousefy-demo-head">
+        <div>
+          <p>Demonstração com dados fictícios</p>
+          <strong id="mousefy-demo-title">{tracking ? TRACKING_NAME : "Automatic Post"}</strong>
         </div>
-        <span className="text-xs font-semibold text-muted-foreground">Demonstração · 5 perfis</span>
+        {tracking ? (
+          <Activity size={22} aria-hidden="true" />
+        ) : (
+          <CalendarDays size={22} aria-hidden="true" />
+        )}
+      </header>
+      <div className="mousefy-demo-controls" role="group" aria-label="O que demonstrar">
+        <button type="button" aria-pressed={tracking} onClick={() => setView("tracking")}>
+          Atribuição de vendas
+        </button>
+        <button type="button" aria-pressed={!tracking} onClick={() => setView("reels")}>
+          Fila de Reels
+        </button>
       </div>
-      <div className="mb-4 grid grid-cols-3 gap-3">
-        {[
-          { l: "Posts/semana", v: 84 },
-          { l: "Horas salvas", v: 26 },
-          { l: "Alcance", v: 312, s: "k" },
-        ].map((k) => (
-          <div key={k.l} className="rounded-2xl bg-muted/60 p-3">
-            <div className="text-[11px] text-muted-foreground">{k.l}</div>
-            <div className="font-display text-2xl font-bold">
-              <Counter to={k.v} suffix={k.s ?? ""} />
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-bold">Fila de Reels</span>
-        <motion.button
-          whileTap={{ scale: 0.92 }}
-          onClick={add}
-          className="rounded-full organic-fill-hot px-3 py-1 text-xs font-bold text-primary-foreground"
-        >
-          + Agendar
-        </motion.button>
-      </div>
-      <ul className="space-y-2">
-        <AnimatePresence initial={false}>
-          {posts.map((p) => (
-            <motion.li
-              key={p.id}
-              layout
-              initial={{ opacity: 0, x: -30, scale: 0.95 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 30 }}
-              transition={{ type: "spring", stiffness: 300, damping: 26 }}
-              className="flex items-center gap-3 rounded-xl border border-border bg-background/60 p-2.5"
-            >
-              <div className="h-9 w-9 shrink-0 rounded-lg organic-fill-hot" />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">{p.title}</div>
-                <div className="text-xs text-muted-foreground">{p.profile}</div>
+      <motion.div
+        className="mousefy-demo-body"
+        key={view}
+        initial={reduced ? false : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reduced ? 0 : 0.22 }}
+        aria-live="polite"
+      >
+        {tracking ? (
+          <>
+            <dl className="mousefy-demo-summary">
+              <div>
+                <dt>Receita atribuída</dt>
+                <dd>R$ 238,00</dd>
               </div>
-              <motion.span
-                key={p.status}
-                initial={{ scale: 0.6, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${tone[p.status]}`}
-              >
-                {p.status}
-              </motion.span>
-            </motion.li>
-          ))}
-        </AnimatePresence>
-      </ul>
-      <div className="mt-4">
-        <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-          <span>Exportando lote de mídia</span>
-          <span>{Math.min(progress, 100)}%</span>
-        </div>
-        <div className="h-2 overflow-hidden rounded-full bg-muted">
-          <motion.div
-            className="h-full organic-fill-hot"
-            animate={{ width: `${Math.min(progress, 100)}%` }}
-            transition={{ duration: 0.8 }}
-          />
-        </div>
-      </div>
-    </motion.div>
+              <div>
+                <dt>Sem atribuição</dt>
+                <dd>R$ 59,00</dd>
+              </div>
+            </dl>
+            <ul className="mousefy-demo-list" aria-label="Vendas por origem">
+              {sales.map(({ title, detail, amount, attributed }) => (
+                <li key={title}>
+                  <ReceiptText size={18} aria-hidden="true" />
+                  <div>
+                    <strong>{title}</strong>
+                    <span>{detail}</span>
+                  </div>
+                  <b data-positive={attributed}>{amount}</b>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <>
+            <dl className="mousefy-demo-summary">
+              <div>
+                <dt>Publicados</dt>
+                <dd>1 Reel</dd>
+              </div>
+              <div>
+                <dt>Na fila</dt>
+                <dd>2 Reels</dd>
+              </div>
+            </dl>
+            <ul className="mousefy-demo-list" aria-label="Publicações por conta">
+              {reels.map(({ title, profile, time, published }) => (
+                <li key={title}>
+                  <Film size={18} aria-hidden="true" />
+                  <div>
+                    <strong>{title}</strong>
+                    <span>
+                      {profile} · {time}
+                    </span>
+                  </div>
+                  <b data-positive={published}>
+                    {published ? (
+                      <CircleCheck size={14} aria-hidden="true" />
+                    ) : (
+                      <Clock3 size={14} aria-hidden="true" />
+                    )}
+                    {published ? "Publicado" : "Na fila"}
+                  </b>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </motion.div>
+    </div>
   );
 }

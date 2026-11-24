@@ -64,11 +64,11 @@ export function instagramOAuthResult(
     result === "insights_not_granted"
       ? "A conta foi conectada, mas a Meta não liberou as métricas. Você pode revisar essa permissão no painel."
       : success
-        ? "A autorização foi salva com segurança. Sua lista de contas no MauseHot será atualizada."
+        ? "A autorização foi salva com segurança. Sua lista de contas no Mousefy será atualizada."
         : (details[reason ?? ""] ??
           "A conexão não foi concluída. Confira se a conta profissional tem acesso ao aplicativo na Meta e tente novamente.");
   return new Response(
-    `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · MauseHot</title><style>body{margin:0;background:#111217;color:#f4f4f5;font:16px/1.6 system-ui;min-height:100vh;display:grid;place-items:center}main{max-width:36rem;padding:2rem;margin:1rem;border:1px solid #45454c;border-radius:1rem;background:#1c1c23}h1{font-size:1.5rem;color:${success ? "#86efac" : "#fcd34d"}}p{color:#d4d4d8}strong{color:#fff}</style></head><body><main><p>MauseHot · Conexão do Instagram</p><h1>${title}</h1><p>${detail}</p><p><strong>Volte à aba original do MauseHot se esta janela não fechar automaticamente.</strong></p><p>${success ? "Confira a conta na lista e continue pela biblioteca de vídeos." : "Na aba original, clique em Conectar Instagram para repetir o login em uma sessão nova."}</p></main><script nonce="${nonce}">${notification}</script></body></html>`,
+    `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · Mousefy</title><style>body{margin:0;background:#111217;color:#f4f4f5;font:16px/1.6 system-ui;min-height:100vh;display:grid;place-items:center}main{max-width:36rem;padding:2rem;margin:1rem;border:1px solid #45454c;border-radius:1rem;background:#1c1c23}h1{font-size:1.5rem;color:${success ? "#86efac" : "#fcd34d"}}p{color:#d4d4d8}strong{color:#fff}</style></head><body><main><p>Mousefy · Conexão do Instagram</p><h1>${title}</h1><p>${detail}</p><p><strong>Volte à aba original do Mousefy se esta janela não fechar automaticamente.</strong></p><p>${success ? "Confira a conta na lista e continue pela biblioteca de vídeos." : "Na aba original, clique em Conectar Instagram para repetir o login em uma sessão nova."}</p></main><script nonce="${nonce}">${notification}</script></body></html>`,
     {
       status: 200,
       headers: {

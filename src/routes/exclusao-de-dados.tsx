@@ -4,10 +4,10 @@ import { siteOrigin } from "@/lib/site-origin";
 export const Route = createFileRoute("/exclusao-de-dados")({
   head: () => ({
     meta: [
-      { title: "Exclusão de dados — MauseHot" },
+      { title: "Exclusão de dados — Mousefy" },
       {
         name: "description",
-        content: "Como solicitar a exclusão dos dados da integração Instagram no MauseHot.",
+        content: "Como solicitar a exclusão dos dados da integração Instagram no Mousefy.",
       },
     ],
     links: siteOrigin ? [{ rel: "canonical", href: siteOrigin + "/exclusao-de-dados" }] : [],
@@ -17,12 +17,12 @@ export const Route = createFileRoute("/exclusao-de-dados")({
 
 function DataDeletion() {
   const email = "guilhermemachado.face@gmail.com";
-  const requestLink = `mailto:${email}?subject=${encodeURIComponent("MauseHot — solicitação de exclusão de dados")}`;
+  const requestLink = `mailto:${email}?subject=${encodeURIComponent("Mousefy — solicitação de exclusão de dados")}`;
   return (
     <main className="mx-auto min-h-screen max-w-3xl px-5 py-10 text-sm leading-7 text-foreground sm:px-8">
       <a href="/" className="inline-flex items-center gap-3 font-semibold">
         <img src="/brand/mark.png" alt="" width={40} height={40} className="rounded-lg" />
-        MauseHot
+        Mousefy
       </a>
       <h1 className="mt-8 text-3xl font-bold tracking-tight">Exclusão de dados</h1>
       <p className="mt-2 text-muted-foreground">
@@ -30,7 +30,7 @@ function DataDeletion() {
       </p>
       <p className="mt-6">
         O responsável pelo atendimento é Guilherme Machado Rocha, no Brasil. Você pode solicitar a
-        exclusão dos dados da sua integração sem precisar entrar no MauseHot.
+        exclusão dos dados da sua integração sem precisar entrar no Mousefy.
       </p>
 
       <section className="mt-8 space-y-3" aria-labelledby="deletion-request">
@@ -42,10 +42,10 @@ function DataDeletion() {
           <a className="break-all font-medium underline underline-offset-4" href={requestLink}>
             {email}
           </a>{" "}
-          com o assunto <strong>MauseHot — solicitação de exclusão de dados</strong>.
+          com o assunto <strong>Mousefy — solicitação de exclusão de dados</strong>.
         </p>
         <ul className="list-disc space-y-2 pl-5">
-          <li>Informe o e-mail usado para entrar no MauseHot e o @ do Instagram relacionado.</li>
+          <li>Informe o e-mail usado para entrar no Mousefy e o @ do Instagram relacionado.</li>
           <li>Diga se deseja remover uma integração específica ou todos os dados do seu espaço.</li>
           <li>
             Não envie senha, token de acesso, código de verificação ou documento na mensagem
@@ -68,10 +68,10 @@ function DataDeletion() {
           Para interromper o acesso pela integração, abra as configurações de apps e sites ou
           integrações empresariais da sua conta no Instagram/Meta, encontre
           <strong> 00duHot Publisher / 00duHot Publisher-IG</strong> e remova a autorização. Esses
-          são os nomes do aplicativo Meta usado pelo MauseHot.
+          são os nomes do aplicativo Meta usado pelo Mousefy.
         </p>
         <p>
-          Retirar a autorização não é a mesma coisa que excluir os dados armazenados no MauseHot.
+          Retirar a autorização não é a mesma coisa que excluir os dados armazenados no Mousefy.
           Envie também a solicitação do passo anterior. Uma publicação já entregue à Meta pode ter
           sido concluída antes da retirada de acesso.
         </p>

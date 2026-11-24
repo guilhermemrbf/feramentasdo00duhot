@@ -7,7 +7,7 @@ import { SCALEHOT_PERIODS } from "@/lib/scalehot-period";
 import type { SalesPeriod } from "@/lib/sales-events";
 
 export const Route = createFileRoute("/vendas/produtos")({
-  head: () => ({ meta: [{ title: "Produtos · ScaleHot | MouseHot" }] }),
+  head: () => ({ meta: [{ title: "Produtos · Traqueamento avançado | Mousefy" }] }),
   component: Products,
 });
 

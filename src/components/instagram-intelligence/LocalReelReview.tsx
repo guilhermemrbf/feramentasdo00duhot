@@ -142,7 +142,7 @@ export function LocalReelReview({
       <p className="text-sm text-muted-foreground">
         Abra o arquivo autorizado correspondente a este Reel. O vídeo e os frames ficam neste
         computador. Se usar a IA local, somente as observações anexadas à ficha são salvas no
-        MauseHot.
+        Mousefy.
       </p>
       <input
         type="file"

@@ -9,7 +9,7 @@ import { TrialInviteForm } from "@/components/access/TrialInviteForm";
 
 export const Route = createFileRoute("/aprovacoes")({
   head: () => ({
-    meta: [{ title: "Aprovações e convites | MouseHot" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Aprovações e convites | Mousefy" }, { name: "robots", content: "noindex" }],
   }),
   component: ApprovalsPage,
 });
@@ -77,7 +77,7 @@ function ApprovalsPage() {
         <header className="operate-heading">
           <div>
             <h1>Aprovações e convites</h1>
-            <p>Analise os cadastros e libere acesso à MouseHot ou envie um teste individual.</p>
+            <p>Analise os cadastros e libere acesso ao Mousefy ou envie um teste individual.</p>
           </div>
           {requests.isSuccess && (
             <span className="workspace-badge">

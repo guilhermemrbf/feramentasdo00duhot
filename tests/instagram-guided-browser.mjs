@@ -1172,113 +1172,51 @@ try {
   const visitor = await browser.newPage({ viewport: { width: 390, height: 844 } });
 
   await visitor.goto(web);
-  await visitor
-    .getByRole("heading", { name: "Sua operação digital em um só lugar.", exact: true })
-    .waitFor();
-  assert.equal(
-    await visitor.getByRole("link", { name: "Solicitar acesso", exact: true }).count(),
-    0,
-  );
+  const landing = visitor.locator(".organic-landing");
+  const headline = landing.getByRole("heading", {
+    name: "sua operação digital em um só lugar",
+    exact: true,
+  });
+  const comparison = visitor.locator("#frentes");
+  const access = visitor.locator("#acesso");
+  await headline.waitFor();
   await visitor.waitForFunction(
     () => document.querySelector("button.saas-button-primary[type=submit]")?.disabled === false,
   );
-  const landing = visitor.locator(".organic-landing");
-  const loginControl = landing
-    .locator("#acesso")
-    .getByRole("button", { name: "Continuar com Google" });
-  await landing
-    .getByRole("heading", { name: "Veja a fila rodando ao vivo.", exact: true })
-    .waitFor();
-  await landing
-    .locator("#ferramentas")
-    .getByRole("heading", { name: "Instagram Intelligence" })
-    .waitFor();
-  await landing
-    .locator("#ferramentas")
-    .getByRole("heading", { name: "Fazenda de celulares" })
-    .waitFor();
   assert.equal(await visitor.getByRole("button", { name: "Continuar com Google" }).count(), 1);
-
-  for (const viewport of [
-    { width: 390, height: 844 },
-    { width: 1024, height: 850 },
-    { width: 1440, height: 900 },
-  ]) {
-    await visitor.setViewportSize(viewport);
-    await visitor.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
-    const entry = landing
-      .getByRole("navigation", { name: "Menu público" })
-      .getByRole("link", { name: "Criar conta", exact: true });
-    assert.match(
-      await entry.evaluate((element) => getComputedStyle(element).backgroundImage),
-      /linear-gradient/,
-    );
-    const box = await entry.boundingBox();
-    assert.ok(box && box.y >= 0 && box.y + box.height <= viewport.height);
-    await entry.click();
-    await loginControl.waitFor();
-    await visitor.waitForFunction(
-      () => location.hash === "#acesso" && document.activeElement?.id === "acesso",
-    );
-    assert.ok(await visitor.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  assert.equal(await comparison.locator(".operation-card").count(), 11);
+  assert.equal(await comparison.locator(".operation-card-link img").count(), 10);
+  const logoCards = comparison.locator(".operation-primary");
+  await logoCards.getByRole("link", { name: "ScaleReels", exact: true }).waitFor();
+  await logoCards.getByRole("link", { name: "Metricool", exact: true }).waitFor();
+  for (const name of ["AttriOn", "mLabs", "PostBot"]) {
+    assert.equal(await comparison.getByRole("link", { name, exact: true }).count(), 0);
   }
-  await visitor.mouse.move(100, 1);
-  await visitor.evaluate(() => document.dispatchEvent(new MouseEvent("mouseout", { clientY: 0 })));
-  assert.equal(await visitor.getByText("Antes de ir…", { exact: true }).count(), 0);
-  assert.equal(await visitor.getByRole("dialog").count(), 0);
+  assert.equal(await landing.getByRole("dialog").count(), 0);
 
-  const orbit = landing.getByRole("group", { name: "Áreas da operação" });
-  await orbit.getByRole("button", { name: "Perfis", exact: true }).hover();
-  await orbit.getByText("Perfis para analisar e comparar").waitFor();
-  const media = await orbit.getByRole("img", { name: "Mascote MouseHot" }).evaluate((image) => ({
-    loaded: image.complete && image.naturalWidth === 640,
-    local: new URL(image.src).origin === location.origin,
-  }));
-  assert.deepEqual(media, { loaded: true, local: true });
-  const marquee = landing.locator(".animate-marquee");
-  assert.equal(
-    await marquee.evaluate((element) => getComputedStyle(element).animationName),
-    "organic-marquee",
-  );
-
-  const queue = landing.getByRole("region", { name: "Demonstração da fila de Reels" });
-  const queuedPost = queue.getByRole("listitem").first();
-  const initialPost = await queuedPost.textContent();
-  await queue.getByRole("button", { name: "+ Agendar" }).click();
-  await visitor.waitForFunction(
-    (previous) =>
-      document.querySelector('[aria-label="Demonstração da fila de Reels"] li')?.textContent !==
-      previous,
-    initialPost,
-  );
-  const calculator = landing.locator("#calculadora");
-  const hours = calculator.getByRole("link", { name: /Quero essas/ });
-  const before = await hours.textContent();
-  await calculator.getByRole("slider", { name: /Perfis que você opera/ }).press("End");
-  await visitor.waitForFunction(
-    (previous) =>
-      document.querySelector('#calculadora a[href="#acesso"]')?.textContent !== previous,
-    before,
-  );
-  const compare = landing.getByRole("slider", { name: "Comparar antes e depois" });
-  await compare.press("End");
-  assert.equal(await compare.inputValue(), "100");
-  await landing.getByRole("button", { name: "1 a 2", exact: true }).click();
-  await landing.getByRole("button", { name: "Preparar mídia", exact: true }).click();
-  await landing.getByRole("button", { name: "Escalar vários perfis", exact: true }).click();
-  await landing.getByRole("heading", { name: "Comece pelo Preparo em Lote" }).waitFor();
-
-  const trialFaq = landing.getByRole("button", { name: "Como funciona o convite de 15 minutos?" });
-  await trialFaq.click();
-  await landing.getByText(/O convite vale uma vez/).waitFor();
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await visitor.setViewportSize({ width, height: 900 });
+    await visitor.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    assert.ok(await visitor.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    if (process.env.UI_TEST_SCREENSHOTS && [390, 1440].includes(width)) {
+      await visitor.screenshot({
+        path: resolve(process.env.UI_TEST_SCREENSHOTS, `mousefy-landing-${width}.png`),
+        fullPage: true,
+      });
+    }
+  }
+  const demo = landing.locator(".mousefy-demo");
+  await demo.getByText("R$ 238,00").waitFor();
+  await demo.getByRole("button", { name: "Fila de Reels" }).click();
+  await demo.getByRole("list", { name: "Publicações por conta" }).waitFor();
+  assert.equal(await demo.getByRole("listitem").count(), 3);
+  await landing.getByText("O Automatic Post publica Stories sozinho?", { exact: true }).click();
+  await landing.locator("#faq").getByText(/publique manualmente/).waitFor();
   await visitor.emulateMedia({ reducedMotion: "reduce" });
-  assert.equal(
-    await marquee.evaluate((element) => getComputedStyle(element).animationName),
-    "none",
-  );
-  const mascotButton = landing.getByRole("button", { name: "Dê um toque no rato" });
-  await mascotButton.click();
-  await landing.getByText(/O chefe tá de olho/).waitFor();
+  assert.equal(await landing.locator(".animate-marquee").evaluate((element) => getComputedStyle(element).animationName), "none");
+
+  await landing.getByRole("banner").getByRole("link", { name: "Criar conta", exact: true }).click();
+  await visitor.waitForFunction(() => location.hash === "#acesso");
   await landing
     .locator("#acesso")
     .getByRole("button", { name: "Criar conta", exact: true })
@@ -1303,7 +1241,7 @@ try {
   await visitor.getByText(/Enviamos um link de acesso/).waitFor();
   assert.equal(emailLinkSent, true);
   await visitor.goto(web + "/automacao-instagram");
-  await visitor.getByRole("heading", { name: "Entre para usar a MouseHot" }).waitFor();
+  await visitor.getByRole("heading", { name: "Entre para usar o Mousefy" }).waitFor();
   await visitor.goto(web + "/#acesso");
   const loginForm = visitor.locator("#acesso .access-form-panel");
   await loginForm.getByRole("button", { name: "Entrar", exact: true }).click();

@@ -1,3 +1,5 @@
+import { BRAND_NAME } from "./brand.ts";
+
 export const REPORT_HOURS = [8, 12, 18, 23] as const;
 type ReportHour = (typeof REPORT_HOURS)[number];
 
@@ -16,8 +18,9 @@ export type MouseHotNoticePreferences = {
 };
 
 export function mouseHotDashboardName(metadata?: Record<string, unknown>) {
-  const name = metadata?.mousehot_dashboard_name;
-  return (typeof name === "string" && name.trim().slice(0, 80)) || "MouseHot";
+  const saved = metadata?.mousehot_dashboard_name;
+  const name = typeof saved === "string" ? saved.trim().slice(0, 80) : "";
+  return name && !/^(?:mouse|mause) ?hot$/i.test(name) ? name : BRAND_NAME;
 }
 
 export function readMouseHotNoticePreferences(

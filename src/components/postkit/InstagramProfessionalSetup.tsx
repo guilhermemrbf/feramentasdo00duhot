@@ -29,7 +29,7 @@ export function InstagramProfessionalSetup({
             de confirmar.
           </li>
           <li>
-            Volte ao MouseHot e continue a conexão para escolher o perfil e autorizar o acesso.
+            Volte ao Mousefy e continue a conexão para escolher o perfil e autorizar o acesso.
           </li>
         </ol>
         <a
@@ -45,7 +45,7 @@ export function InstagramProfessionalSetup({
         {opened && (
           <p role="status" className="text-xs text-muted-foreground">
             A configuração abre em outra aba. Se não abriu, permita a abertura no navegador e clique
-            novamente. O MouseHot não recebe sua senha nem confirma a conversão por você.
+            novamente. O Mousefy não recebe sua senha nem confirma a conversão por você.
           </p>
         )}
         <label className="flex items-start gap-2 text-sm">

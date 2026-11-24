@@ -34,7 +34,7 @@ const questions = [
   {
     question: "Quanto custa?",
     answer:
-      "A MouseHot está em fase de testes. Os planos e preços serão divulgados quando estiverem definidos.",
+      "O Mousefy está em fase de testes. Os planos e preços serão divulgados quando estiverem definidos.",
   },
   {
     question: "Funciona para agência e vários clientes?",
@@ -54,7 +54,7 @@ const questions = [
   {
     question: "Meus vídeos do Google Drive precisam ficar públicos?",
     answer:
-      "A pasta pode continuar privada. Compartilhe com a identidade indicada pela MouseHot e vincule-a à biblioteca da conta que vai usar aqueles vídeos.",
+      "A pasta pode continuar privada. Compartilhe com a identidade indicada pelo Mousefy e vincule-a à biblioteca da conta que vai usar aqueles vídeos.",
   },
   {
     question: "Como funciona o convite de 15 minutos?",
@@ -78,7 +78,7 @@ const comparisons = [
     ],
   },
   {
-    title: "Com a MouseHot",
+    title: "Com o Mousefy",
     items: [
       "Perfis comparados antes de investir em produção.",
       "Mídia tratada em lote e separada por conta.",
@@ -195,7 +195,7 @@ export function LaunchSetup({ onExplore }: { onExplore: (category: ShowcaseCateg
           <button
             type="button"
             className="launch-mascot-button"
-            aria-label="Dê um toque no rato para animar o rato da MouseHot"
+            aria-label="Dê um toque no rato para animar o rato do Mousefy"
             onPointerMove={(event) => {
               if (
                 event.pointerType !== "mouse" ||

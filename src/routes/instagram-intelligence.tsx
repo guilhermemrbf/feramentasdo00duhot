@@ -24,7 +24,7 @@ import { recordTool } from "@/lib/tool-preferences";
 import { getPostkitSession } from "@/lib/postkit-access";
 
 export const Route = createFileRoute("/instagram-intelligence")({
-  head: () => ({ meta: [{ title: "Instagram Intelligence — MauseHot" }] }),
+  head: () => ({ meta: [{ title: "Instagram Intelligence — Mousefy" }] }),
   validateSearch: (search: Record<string, unknown>) => ({
     modo: search.modo === "revisao" ? ("revisao" as const) : undefined,
   }),
@@ -107,7 +107,7 @@ function InstagramIntelligence() {
         ) : (
           <section className="space-y-3 rounded-lg border border-border bg-card p-5">
             <h2 className="font-display text-lg font-semibold">Entre para acessar seus lotes</h2>
-            <p className="text-sm text-muted-foreground">Use a mesma conta Google do MouseHot.</p>
+            <p className="text-sm text-muted-foreground">Use a mesma conta Google do Mousefy.</p>
             <Button onClick={() => void signIn()} disabled={signingIn}>
               Continuar com Google
             </Button>

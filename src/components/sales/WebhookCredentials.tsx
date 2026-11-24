@@ -87,7 +87,7 @@ export function WebhookCredentials() {
               Credenciais de API
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Receba vendas e estornos do seu gateway no ScaleHot.
+              Receba vendas e estornos do seu gateway no módulo de traqueamento.
             </p>
           </div>
           <Dialog
@@ -111,7 +111,7 @@ export function WebhookCredentials() {
                 <DialogDescription>
                   {generated.data
                     ? "Copie o token agora. Ele só aparece uma vez."
-                    : "Dê um nome para identificar a integração no ScaleHot."}
+                    : "Dê um nome para identificar a integração no módulo de traqueamento."}
                 </DialogDescription>
               </DialogHeader>
               {generated.data ? (

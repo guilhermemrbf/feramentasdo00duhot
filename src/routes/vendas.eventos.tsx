@@ -16,7 +16,7 @@ const date = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
 });
 export const Route = createFileRoute("/vendas/eventos")({
-  head: () => ({ meta: [{ title: "Eventos · ScaleHot | MouseHot" }] }),
+  head: () => ({ meta: [{ title: "Eventos · Traqueamento avançado | Mousefy" }] }),
   component: Events,
 });
 

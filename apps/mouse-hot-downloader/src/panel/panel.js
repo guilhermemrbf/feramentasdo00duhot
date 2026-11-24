@@ -68,7 +68,7 @@ function renderCapture() {
   const platform = capture?.scope?.startsWith("instagram:") ? "Instagram" : "TikTok";
   $("source").textContent = capture?.scope ? platform + collection : "Aguardando";
   $("capture-hint").textContent = !capture ?
-    "Abra o Instagram ou TikTok e clique no ícone Mouse Hot na barra do Chrome." :
+    "Abra o Instagram ou TikTok e clique no ícone Mousefy na barra do Chrome." :
     !items.length ? "Abra uma publicação ou role o perfil para encontrar mídias." :
     items.length + " encontrada(s) · " + selected.size + " selecionada(s). O arquivo é verificado antes de baixar.";
   $("allow").hidden = !needed.length;

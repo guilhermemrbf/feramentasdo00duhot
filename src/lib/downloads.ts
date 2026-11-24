@@ -17,8 +17,8 @@ export const downloads = {
     ),
   },
   mouseHotDownloader: {
-    version: "3.0.7",
-    url: "/downloads/Mouse-Hot-Downloader-3.0.7.zip",
+    version: "3.0.8",
+    url: "/downloads/Mousefy-Downloader-3.0.8.zip",
   },
   telegramSync: {
     version: "0.7.1",

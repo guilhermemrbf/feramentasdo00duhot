@@ -14,7 +14,7 @@ Icon ".build\fazenda.ico"
 UninstallIcon ".build\fazenda.ico"
 VIProductVersion "${APP_VERSION}.0"
 VIAddVersionKey /LANG=1046 "ProductName" "${APP}"
-VIAddVersionKey /LANG=1046 "CompanyName" "MauseHot"
+VIAddVersionKey /LANG=1046 "CompanyName" "Mousefy"
 VIAddVersionKey /LANG=1046 "FileDescription" "Instalador da Fazenda de Celulares"
 VIAddVersionKey /LANG=1046 "FileVersion" "${APP_VERSION}"
 
@@ -44,7 +44,7 @@ Section
   WriteUninstaller "$INSTDIR\Desinstalar.exe"
   WriteRegStr HKCU "${PRODUCT_KEY}" "DisplayName" "${APP}"
   WriteRegStr HKCU "${PRODUCT_KEY}" "DisplayVersion" "${APP_VERSION}"
-  WriteRegStr HKCU "${PRODUCT_KEY}" "Publisher" "MauseHot"
+  WriteRegStr HKCU "${PRODUCT_KEY}" "Publisher" "Mousefy"
   WriteRegStr HKCU "${PRODUCT_KEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "${PRODUCT_KEY}" "DisplayIcon" "$INSTDIR\app\${APP_EXE}"
   WriteRegStr HKCU "${PRODUCT_KEY}" "UninstallString" '$\"$INSTDIR\Desinstalar.exe$\"'

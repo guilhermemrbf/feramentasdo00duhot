@@ -6,7 +6,7 @@ self.addEventListener("push", (event) => {
     /* The fallback remains visible. */
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || "MouseHot", {
+    self.registration.showNotification(data.title || "Mousefy", {
       body: data.body || "Confira as novidades no painel.",
       icon: "/brand/pwa-192.png",
       tag: data.tag || "mousehot-sales",

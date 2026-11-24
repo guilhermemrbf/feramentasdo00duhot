@@ -1,5 +1,33 @@
 import { Link } from "@tanstack/react-router";
-import { ChartNoAxesCombined, MousePointer2, ReceiptText, Route as RouteIcon } from "lucide-react";
+import { BRAND_NAME, BRAND_SLOGAN } from "@/lib/brand";
+import {
+  AtSign,
+  Building2,
+  CalendarDays,
+  ChartNoAxesCombined,
+  Clapperboard,
+  Cloud,
+  Crosshair,
+  Film,
+  FolderOpen,
+  GitBranch,
+  Hash,
+  ImageIcon,
+  Instagram,
+  LayoutGrid,
+  Link2,
+  LockKeyhole,
+  MonitorSmartphone,
+  MousePointer2,
+  PenLine,
+  Plus,
+  ReceiptText,
+  Route as RouteIcon,
+  ScanSearch,
+  ShieldCheck,
+  Smartphone,
+  Zap,
+} from "lucide-react";
 import {
   motion,
   useScroll,
@@ -13,7 +41,8 @@ import {
 import { useRef, useState } from "react";
 import { AccessForm } from "@/components/access/AccessForm";
 import { findTool } from "@/lib/tool-catalog";
-import { Reveal, Counter, MagneticButton, TiltCard, Eyebrow } from "./fx";
+import { Reveal, MagneticButton, TiltCard, Eyebrow } from "./fx";
+import { OperationComparison } from "./OperationComparison";
 import { Mascot } from "./Mascot";
 import { HeroMock } from "./HeroMock";
 import { OrbitHero } from "./OrbitHero";
@@ -25,7 +54,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-const headline = ["Sua", "operação", "digital", "em", "um", "só", "lugar."];
+const headline = BRAND_SLOGAN.split(" ");
 
 function Nav() {
   const { scrollY } = useScroll();
@@ -43,9 +72,14 @@ function Nav() {
       >
         <a href="#" className="flex items-center gap-2 font-display text-xl font-extrabold">
           <img src="/brand/organic-mascot.webp" alt="" className="h-8 w-8 rounded-full" />
-          Mouse<span className="-ml-2 text-primary">Hot</span>
+          <span aria-label={BRAND_NAME}>
+            Mouse<span className="text-primary">fy</span>
+          </span>
         </a>
         <div className="hidden gap-7 text-sm font-semibold text-muted-foreground md:flex">
+          <a href="#frentes" className="hover:text-foreground">
+            Tudo em um lugar
+          </a>
           <a href="#como" className="hover:text-foreground">
             Como funciona
           </a>
@@ -86,29 +120,35 @@ function Hero() {
       <div className="relative mx-auto grid max-w-[1240px] items-center gap-14 px-6 lg:grid-cols-12">
         <div className="lg:col-span-6">
           <Reveal>
-            <Eyebrow>Operação orgânica em escala</Eyebrow>
+            <Eyebrow>Campanhas, conteúdo e vendas</Eyebrow>
           </Reveal>
           <h1
-            aria-label="Sua operação digital em um só lugar."
+            aria-label={BRAND_SLOGAN}
             className="mt-6 text-[clamp(3rem,7vw,5.8rem)] font-extrabold leading-[0.95]"
           >
             {headline.map((w, i) => (
               <motion.span
                 aria-hidden="true"
                 key={i}
-                className={`mr-[0.22em] inline-block ${w === "digital" || w === "lugar." ? "text-gradient-hot" : ""}`}
-                initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
+                className={`mr-[0.22em] inline-block ${w === "digital" || w === "lugar" ? "text-gradient-hot" : ""}`}
+                initial={reduce ? false : { opacity: 0, y: 40, filter: "blur(8px)" }}
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                transition={{ delay: 0.1 + i * 0.07, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                transition={{
+                  delay: reduce ? 0 : 0.1 + i * 0.07,
+                  duration: reduce ? 0 : 0.6,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
               >
                 {w}
+                {i < headline.length - 1 ? " " : ""}
               </motion.span>
             ))}
           </h1>
           <Reveal delay={0.6}>
             <p className="mt-7 max-w-[34rem] text-lg leading-relaxed text-muted-foreground md:text-xl">
-              Pesquise perfis, prepare vídeos em lote, agende Reels e organize os Stories de cada
-              conta. Acompanhe as vendas e descubra quais campanhas geraram pedidos.
+              Descubra quais campanhas geraram vendas, programe Reels por perfil e prepare seus
+              Stories. Reúna também os canais de Telegram, os arquivos e os celulares que fazem
+              parte da operação.
             </p>
           </Reveal>
           <Reveal delay={0.75}>
@@ -119,7 +159,7 @@ function Hero() {
               </MagneticButton>
             </div>
             <p className="mt-5 text-sm text-muted-foreground">
-              Teste de 15 minutos por convite · Preparo de mídia no navegador
+              Cadastro sujeito à aprovação · Teste de 15 minutos por convite
             </p>
           </Reveal>
         </div>
@@ -136,8 +176,8 @@ function Hero() {
 
 function Marquee() {
   const items = [
-    "Contas dark",
-    "Operações no Hot",
+    "Tráfego pago",
+    "Traqueamento de vendas",
     "Gestão de contas",
     "Reels agendados",
     "Agenda de Stories",
@@ -155,7 +195,7 @@ function Marquee() {
             className="flex items-center gap-12 font-display text-2xl font-bold text-muted-foreground"
           >
             {t}
-            <span className="text-primary">✦</span>
+            <Plus className="size-4 text-primary" aria-hidden="true" />
           </span>
         ))}
       </div>
@@ -170,9 +210,9 @@ const steps = [
     dor: "Trocar de painel para gerenciar cada conta.",
     res: "Conecte suas contas profissionais e compare perfis e subnichos no Instagram Intelligence antes de investir.",
     vis: [
-      "Conta @dark_01 · conectada ✓",
-      "Conta @dark_02 · conectada ✓",
-      "Perfil referência · 1,2M views",
+      "@loja.exemplo · conta conectada",
+      "@estudio.exemplo · conta conectada",
+      "Perfil de referência · em análise",
     ],
   },
   {
@@ -193,7 +233,7 @@ const steps = [
     n: "04",
     t: "Agende Reels e acompanhe Stories",
     dor: "Horários conferidos conta por conta.",
-    res: "Escolha dias e horários, revise a fila e veja o que foi publicado em cada perfil. Tráfego rodando enquanto você escala.",
+    res: "Escolha dias e horários, revise a fila e veja o que foi publicado em cada perfil. Os Stories com figurinhas são publicados no Instagram após o lembrete.",
     vis: [
       "Reel da manhã · 09:00 · Revisado",
       "Story · 12:00 · Lembrete",
@@ -295,61 +335,65 @@ function Section({
 
 const personas = [
   {
-    e: "🐭",
-    t: "Operação dark / Hot",
+    icon: LayoutGrid,
+    t: "Operações com vários perfis",
     d: "Organize conteúdo e programação para os perfis que você administra.",
   },
-  { e: "🎯", t: "Infoprodutores", d: "Planeje conteúdo orgânico para apresentar sua oferta." },
   {
-    e: "🏢",
+    icon: Crosshair,
+    t: "Infoprodutores",
+    d: "Planeje conteúdo orgânico para apresentar sua oferta.",
+  },
+  {
+    icon: Building2,
     t: "Agências",
     d: "Bibliotecas e agendas por perfil para vários clientes com equipe enxuta.",
   },
   {
-    e: "📲",
+    icon: Smartphone,
     t: "Outros nichos digitais",
-    d: "Mesma máquina de escala para qualquer nicho do digital.",
+    d: "Organize campanhas, conteúdo e tarefas recorrentes do seu negócio.",
   },
 ];
 
 const tools = [
   {
-    e: "⚡",
+    icon: Zap,
     t: "Gestão de contas",
     d: "Conecte suas contas profissionais do Instagram e organize a operação por perfil.",
   },
   {
-    e: "🔎",
+    icon: ScanSearch,
     t: "Instagram Intelligence",
     d: "Pesquise e compare perfis e subnichos antes de investir em produção.",
   },
   {
-    e: "🧭",
+    icon: GitBranch,
     t: "Funil visual",
     d: "Desenhe o caminho do primeiro contato até a venda, por campanha.",
   },
   {
-    e: "🎬",
+    icon: Clapperboard,
     t: "Preparo em lote",
     d: "Original, versão com marca e prévia — dezenas de vídeos de uma vez, no navegador.",
   },
   {
-    e: "📅",
+    icon: CalendarDays,
     t: "Automatic Post · Reels",
     d: "Fila de Reels de todos os perfis, com dia, horário e histórico.",
   },
   {
-    e: "⭕",
+    icon: Instagram,
     t: "Agenda de Stories",
     d: "Prepare sequências de Stories por conta com lembretes para publicar.",
   },
   {
-    e: "📱",
+    icon: MonitorSmartphone,
     t: "Fazenda de celulares",
-    d: "Vários celulares conectados via USB a um computador Windows, operados de um só painel.",
+    d: "Conecte vários iPhones ao Windows via USB e selecione a tela que deseja acompanhar.",
   },
   {
-    e: "🗂️",
+    icon: FolderOpen,
     t: "Biblioteca por conta",
     d: "Pasta privada do Google Drive vinculada à biblioteca de Reels de cada perfil.",
   },
@@ -358,12 +402,16 @@ const tools = [
 const trackingSteps = [
   { icon: MousePointer2, title: "Clique na campanha", detail: "Identifica a origem da visita" },
   { icon: ReceiptText, title: "Pagamento aprovado", detail: "Confirma a venda recebida" },
-  { icon: ChartNoAxesCombined, title: "Receita por campanha", detail: "Exibe as vendas atribuídas" },
+  {
+    icon: ChartNoAxesCombined,
+    title: "Receita por campanha",
+    detail: "Exibe as vendas atribuídas",
+  },
 ];
 
 function TrackingFeature() {
-  const scaleHot = findTool("/vendas");
-  if (!scaleHot) return null;
+  const tracking = findTool("/vendas");
+  if (!tracking) return null;
 
   return (
     <Reveal className="landing-tracking-feature brand-stage mb-5">
@@ -373,10 +421,10 @@ function TrackingFeature() {
         </span>
         <h3 className="mt-4 text-2xl font-bold sm:text-3xl">Rastreamento avançado de vendas</h3>
         <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground">
-          {scaleHot.summary}
+          {tracking.summary}
         </p>
       </div>
-      <ol className="landing-tracking-steps" aria-label="Como o ScaleHot atribui uma venda">
+      <ol className="landing-tracking-steps" aria-label="Como o Mousefy atribui uma venda">
         {trackingSteps.map(({ icon: Icon, title, detail }) => (
           <li key={title}>
             <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
@@ -394,15 +442,15 @@ function TrackingFeature() {
 function StoriesMock() {
   const reduce = useReducedMotion();
   const stories = [
-    { t: "08:00 · Bom dia", s: "🔗 Figurinha de link" },
-    { t: "12:00 · Prévia do conteúdo", s: "@ Menção marcada" },
-    { t: "18:00 · Chamada pro link", s: "🔗 Link + #hashtag" },
-    { t: "21:00 · Último Story", s: "# Hashtag do nicho" },
+    { t: "08:00 · Bom dia", s: "Figurinha de link" },
+    { t: "12:00 · Prévia do conteúdo", s: "Menção marcada" },
+    { t: "18:00 · Chamada pro link", s: "Link e hashtag" },
+    { t: "21:00 · Último Story", s: "Hashtag do perfil" },
   ];
   const stickers = [
-    { e: "🔗", l: "Link", x: "12%", y: "30%" },
-    { e: "@", l: "Menção", x: "52%", y: "48%" },
-    { e: "#", l: "Hashtag", x: "18%", y: "64%" },
+    { icon: Link2, l: "Link", x: "12%", y: "30%" },
+    { icon: AtSign, l: "Menção", x: "52%", y: "48%" },
+    { icon: Hash, l: "Hashtag", x: "18%", y: "64%" },
   ];
   return (
     <div className="grid items-center gap-10 md:grid-cols-2">
@@ -411,7 +459,7 @@ function StoriesMock() {
           {[0, 1, 2].map((i) => (
             <motion.div
               key={i}
-              animate={{ y: [0, i % 2 ? 12 : -12, 0] }}
+              animate={reduce ? undefined : { y: [0, i % 2 ? 12 : -12, 0] }}
               transition={{ duration: 4 + i, repeat: Infinity, ease: "easeInOut" }}
               className="relative aspect-[9/16] w-28 overflow-hidden rounded-3xl border border-border bg-card p-2 sm:w-36"
             >
@@ -421,22 +469,28 @@ function StoriesMock() {
                     <motion.div
                       className="h-full bg-foreground"
                       animate={{ width: reduce ? "100%" : ["0%", "100%"] }}
-                      transition={{ duration: 3, delay: k * 3, repeat: Infinity, repeatDelay: 6 }}
+                      transition={
+                        reduce
+                          ? { duration: 0 }
+                          : { duration: 3, delay: k * 3, repeat: Infinity, repeatDelay: 6 }
+                      }
                     />
                   </div>
                 ))}
               </div>
               <div className="mt-2 flex items-center gap-1.5">
                 <img src="/brand/organic-mascot.webp" alt="" className="h-5 w-5 rounded-full" />
-                <span className="text-[10px] font-bold">@dark_0{i + 1}</span>
+                <span className="text-[10px] font-bold">@perfil_0{i + 1}</span>
               </div>
               {stickers.map((st, k) => (
                 <motion.div
                   key={st.l}
                   className="absolute flex items-center gap-1 rounded-full bg-foreground/90 px-1.5 py-0.5 text-[8px] font-bold text-background shadow sm:text-[9px]"
                   style={{ left: st.x, top: st.y }}
-                  initial={{ scale: 0, rotate: -20 }}
-                  animate={{ scale: [0, 1.15, 1], rotate: 0, opacity: [0, 1, 1, 0] }}
+                  initial={reduce ? false : { scale: 0, rotate: -20 }}
+                  animate={
+                    reduce ? undefined : { scale: [0, 1.15, 1], rotate: 0, opacity: [0, 1, 1, 0] }
+                  }
                   transition={{
                     duration: 2.2,
                     delay: 1 + k * 2.2 + i * 0.5,
@@ -445,12 +499,12 @@ function StoriesMock() {
                     times: [0, 0.15, 0.85, 1],
                   }}
                 >
-                  <span>{st.e}</span>
+                  <st.icon className="size-3" aria-hidden="true" />
                   {st.l}
                 </motion.div>
               ))}
               <div className="absolute inset-x-2 bottom-3 rounded-xl organic-fill-hot p-2 text-center text-[10px] font-bold text-primary-foreground">
-                Lembrete ✓
+                Lembrete
               </div>
             </motion.div>
           ))}
@@ -484,22 +538,25 @@ function StoriesMock() {
 }
 
 function ReelsMock() {
+  const reduce = useReducedMotion();
   const feats = [
-    { e: "🖼️", t: "Capa do Reel", d: "Escolha a capa que aparece no feed de cada perfil." },
-    { e: "✍️", t: "Legenda", d: "Texto pronto por conta, sem copiar e colar na mão." },
-    { e: "#️⃣", t: "Hashtags", d: "Conjuntos de hashtags por nicho, aplicados no agendamento." },
-    { e: "🛡️", t: "Mais segurança", d: "Publicação com a autorização oficial da Meta." },
+    { icon: ImageIcon, t: "Capa do Reel", d: "Escolha a capa que aparece no feed de cada perfil." },
+    { icon: PenLine, t: "Legenda", d: "Texto pronto por conta, sem copiar e colar na mão." },
+    { icon: Hash, t: "Hashtags", d: "Conjuntos de hashtags por nicho, aplicados no agendamento." },
+    { icon: ShieldCheck, t: "Mais segurança", d: "Publicação com a autorização oficial da Meta." },
   ];
   return (
     <div className="grid items-center gap-10 md:grid-cols-2">
       <div className="order-2 space-y-3 md:order-1">
-        {feats.map((f, i) => (
-          <Reveal key={f.t} delay={i * 0.08}>
+        {feats.map(({ icon: Icon, t, d }, i) => (
+          <Reveal key={t} delay={i * 0.08}>
             <div className="flex items-start gap-4 rounded-2xl border border-border bg-card p-4">
-              <span className="text-2xl">{f.e}</span>
+              <span className="text-2xl">
+                <Icon className="size-6 text-primary" aria-hidden="true" />
+              </span>
               <div>
-                <p className="font-bold">{f.t}</p>
-                <p className="mt-0.5 text-sm text-muted-foreground">{f.d}</p>
+                <p className="font-bold">{t}</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">{d}</p>
               </div>
             </div>
           </Reveal>
@@ -508,7 +565,7 @@ function ReelsMock() {
       <Reveal className="order-1 md:order-2">
         <div className="mx-auto w-64">
           <motion.div
-            animate={{ y: [0, -10, 0] }}
+            animate={reduce ? undefined : { y: [0, -10, 0] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
             className="relative overflow-hidden rounded-[2rem] border border-border bg-card shadow-glow"
           >
@@ -519,11 +576,11 @@ function ReelsMock() {
                 transition={{ delay: 0.6 }}
                 className="absolute top-3 right-3 rounded-full bg-foreground/90 px-2.5 py-1 text-[10px] font-bold text-background"
               >
-                🖼️ Capa definida
+                <ImageIcon className="mr-1 inline size-3" aria-hidden="true" /> Capa definida
               </motion.div>
               <div className="mt-8 flex items-center gap-1.5">
                 <img src="/brand/organic-mascot.webp" alt="" className="h-6 w-6 rounded-full" />
-                <span className="text-[11px] font-bold">@dark_01</span>
+                <span className="text-[11px] font-bold">@perfil_01</span>
               </div>
               <div className="absolute inset-x-3 bottom-3 space-y-2">
                 <motion.p
@@ -535,7 +592,7 @@ function ReelsMock() {
                   Legenda: 3 erros que travam sua operação no orgânico…
                 </motion.p>
                 <div className="flex flex-wrap gap-1">
-                  {["#trafegoorganico", "#rendadigital", "#mousehot"].map((h, k) => (
+                  {["#trafegoorganico", "#rendadigital", "#mousefy"].map((h, k) => (
                     <motion.span
                       key={h}
                       initial={{ scale: 0 }}
@@ -562,19 +619,19 @@ function ReelsMock() {
 const faqs = [
   [
     "Quanto custa?",
-    "A MouseHot está em fase de testes. Os planos ainda serão divulgados. Cadastros passam por aprovação.",
+    "O Mousefy está em fase de testes. Os planos ainda serão divulgados. Cadastros passam por aprovação.",
   ],
   [
     "A criação de contas é automática mesmo?",
-    "Você cria a conta no Instagram e depois conecta o perfil profissional à MouseHot para organizar o conteúdo.",
+    "Você cria a conta no Instagram e depois conecta o perfil profissional ao Mousefy para organizar o conteúdo.",
   ],
   [
-    "Dá para agendar Stories, além de Reels?",
-    "Cada conta tem uma fila de Reels e uma agenda de lembretes para Stories. O Reel pode incluir capa, legenda e hashtags. As figurinhas do Story são adicionadas no Instagram durante a publicação.",
+    "O Automatic Post publica Stories sozinho?",
+    "O Mousefy publica Reels da fila quando a publicação automática está ativa. Para Stories, ele prepara a mídia e envia um lembrete. Adicione as figurinhas no Instagram e publique manualmente.",
   ],
   [
     "Como funciona a Fazenda de Celulares?",
-    "Você conecta vários iPhones compatíveis via USB a um computador Windows e acessa os aparelhos pelo mesmo painel.",
+    "Conecte iPhones compatíveis via USB a um computador Windows. A janela exibe um aparelho por vez. Para controle por mouse e teclado, use iOS 27 ou mais recente com o Modo de Desenvolvedor ativo.",
   ],
   [
     "Funciona para agência e vários clientes?",
@@ -590,11 +647,11 @@ const faqs = [
   ],
   [
     "Meus vídeos do Google Drive precisam ficar públicos?",
-    "Não. A pasta continua privada: compartilhe com a identidade indicada pela MouseHot e vincule à biblioteca da conta.",
+    "Não. A pasta continua privada: compartilhe com a identidade indicada pelo Mousefy e vincule à biblioteca da conta.",
   ],
   [
     "Como funciona o convite de 15 minutos?",
-    "O convite vale uma vez e vence 15 minutos após gerado. Ao iniciar, você tem 15 minutos para testar as ferramentas de preparo.",
+    "O convite vale uma vez e vence 15 minutos após ser gerado. Entre com o e-mail indicado no convite. Ao iniciar, você tem 15 minutos para testar as ferramentas de preparo.",
   ],
   [
     "Posso criar uma conta sem convite?",
@@ -617,26 +674,7 @@ export function OrganicLanding() {
           <Hero />
           <Marquee />
 
-          <section className="py-20 md:py-28">
-            <div className="mx-auto grid max-w-[1240px] grid-cols-2 gap-8 px-6 md:grid-cols-4">
-              {[
-                { v: 10, s: "x", l: "mais contas por operador" },
-                { v: 6, s: "h", l: "recuperadas por semana" },
-                { v: 50, s: "", l: "vídeos exportados por lote" },
-                { v: 0, s: "", l: "Reels ou Stories esquecidos" },
-              ].map((k, i) => (
-                <Reveal key={k.l} delay={i * 0.08} className="border-l-2 border-primary pl-5">
-                  <p className="font-display text-6xl font-extrabold">
-                    <Counter to={k.v} suffix={k.s} />
-                  </p>
-                  <p className="mt-2 text-muted-foreground">{k.l}</p>
-                </Reveal>
-              ))}
-            </div>
-            <p className="mt-6 text-center text-xs text-muted-foreground">
-              Exemplos ilustrativos. Os números não representam resultados medidos.
-            </p>
-          </section>
+          <OperationComparison />
 
           <Steps />
 
@@ -653,12 +691,14 @@ export function OrganicLanding() {
           >
             <TrackingFeature />
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {tools.map((t, i) => (
-                <Reveal key={t.t} delay={(i % 4) * 0.07}>
+              {tools.map(({ icon: Icon, t, d }, i) => (
+                <Reveal key={t} delay={(i % 4) * 0.07}>
                   <TiltCard className="h-full">
-                    <div className="text-3xl">{t.e}</div>
-                    <h3 className="mt-4 text-xl font-bold">{t.t}</h3>
-                    <p className="mt-2 text-[15px] text-muted-foreground">{t.d}</p>
+                    <div className="text-3xl">
+                      <Icon className="size-7 text-primary" aria-hidden="true" />
+                    </div>
+                    <h3 className="mt-4 text-xl font-bold">{t}</h3>
+                    <p className="mt-2 text-[15px] text-muted-foreground">{d}</p>
                   </TiltCard>
                 </Reveal>
               ))}
@@ -669,11 +709,11 @@ export function OrganicLanding() {
             eyebrow="Agenda de Stories"
             title={
               <>
-                Perfil quente o dia inteiro,{" "}
-                <span className="text-gradient-hot">com Stories prontos na hora.</span>
+                Organize a publicação de Stories,{" "}
+                <span className="text-gradient-hot">conta por conta.</span>
               </>
             }
-            sub="Prepare a sequência de cada conta e organize os lembretes de publicação com link, menção e hashtag."
+            sub="Prepare mídia, link, menção e hashtag na prévia. O lembrete sinaliza a hora de abrir o Instagram, adicionar as figurinhas e publicar."
             alt
           >
             <StoriesMock />
@@ -684,18 +724,18 @@ export function OrganicLanding() {
             title={
               <>
                 Reel agendado com capa, legenda e hashtag.{" "}
-                <span className="text-gradient-hot">Do jeito que vende.</span>
+                <span className="text-gradient-hot">Publique pela conexão com a Meta.</span>
               </>
             }
-            sub="Nada de post genérico: cada Reel sai completo, com a cara do perfil, com publicação pela integração oficial da Meta."
+            sub="Quando a publicação automática está ativa, o Mousefy envia o Reel da fila para o perfil profissional autorizado pela Meta."
           >
             <ReelsMock />
           </Section>
 
           <Section
             eyebrow="Por dentro do painel"
-            title="Veja a fila rodando ao vivo."
-            sub="Clique em “+ Agendar” e acompanhe um post de exemplo percorrer a fila."
+            title="Veja como aparecem as vendas e a fila de Reels."
+            sub="Alterne entre vendas atribuídas e a fila de Reels. Os dois exemplos usam dados fictícios."
           >
             <div className="mx-auto max-w-xl">
               <HeroMock />
@@ -726,21 +766,23 @@ export function OrganicLanding() {
                 <span className="text-gradient-hot">custando?</span>
               </>
             }
-            sub="Mova os controles para estimar quantas horas e reais você poderia poupar por mês."
+            sub="Use seus números para estimar o tempo e o custo atuais dedicados às publicações manuais."
           >
             <Reveal>
               <RoiCalculator />
             </Reveal>
           </Section>
 
-          <Section eyebrow="Para quem é" title="Feito para quem escala no orgânico." alt>
+          <Section eyebrow="Para quem é" title="Para quem opera campanhas, canais e conteúdo." alt>
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-              {personas.map((p, i) => (
-                <Reveal key={p.t} delay={i * 0.08}>
+              {personas.map(({ icon: Icon, t, d }, i) => (
+                <Reveal key={t} delay={i * 0.08}>
                   <TiltCard className="h-full">
-                    <div className="text-4xl">{p.e}</div>
-                    <h3 className="mt-5 text-2xl font-bold">{p.t}</h3>
-                    <p className="mt-3 text-muted-foreground">{p.d}</p>
+                    <div className="text-4xl">
+                      <Icon className="size-7 text-primary" aria-hidden="true" />
+                    </div>
+                    <h3 className="mt-5 text-2xl font-bold">{t}</h3>
+                    <p className="mt-3 text-muted-foreground">{d}</p>
                   </TiltCard>
                 </Reveal>
               ))}
@@ -764,26 +806,28 @@ export function OrganicLanding() {
             alt
           >
             <div className="grid gap-5 md:grid-cols-3">
-              {[
+              {(
                 [
-                  "🔒",
-                  "API oficial da Meta",
-                  "Publicação de Reels pela conexão autorizada na Meta.",
-                ],
-                [
-                  "☁️",
-                  "Drive privado",
-                  "A pasta de Reels pode permanecer privada no Google Drive.",
-                ],
-                [
-                  "⚡",
-                  "Processado no navegador",
-                  "Exportação local, rápida e sem upload de arquivos pesados.",
-                ],
-              ].map(([e = "", t = "", d = ""], i) => (
+                  [
+                    LockKeyhole,
+                    "API oficial da Meta",
+                    "Publicação de Reels pela conexão autorizada na Meta.",
+                  ],
+                  [
+                    Cloud,
+                    "Drive privado",
+                    "A pasta de Reels pode permanecer privada no Google Drive.",
+                  ],
+                  [
+                    Zap,
+                    "Processado no navegador",
+                    "Exportação local, rápida e sem upload de arquivos pesados.",
+                  ],
+                ] as const
+              ).map(([Icon, t, d], i) => (
                 <Reveal key={t} delay={i * 0.08}>
                   <TiltCard className="h-full">
-                    <div className="text-3xl">{e}</div>
+                    <Icon className="size-7 text-primary" aria-hidden="true" />
                     <h3 className="mt-4 text-xl font-bold">{t}</h3>
                     <p className="mt-2 text-muted-foreground">{d}</p>
                   </TiltCard>
@@ -825,7 +869,7 @@ export function OrganicLanding() {
               <Reveal>
                 <div className="mb-7 flex flex-col items-center lg:items-start">
                   <Mascot size={200} />
-                  <p className="mt-3 text-sm text-muted-foreground">Dê um toque no rato 👆</p>
+                  <p className="mt-3 text-sm text-muted-foreground">Dê um toque no rato</p>
                 </div>
                 <Eyebrow>Acesso antecipado</Eyebrow>
                 <h2
@@ -836,8 +880,8 @@ export function OrganicLanding() {
                   <span className="text-gradient-hot">mais controle.</span>
                 </h2>
                 <p className="mt-4 mb-8 text-lg text-muted-foreground">
-                  Crie sua conta para organizar publicações e acompanhar as vendas da sua
-                  operação no mesmo painel.
+                  Crie sua conta para organizar publicações e acompanhar as vendas da sua operação
+                  no mesmo painel.
                 </p>
               </Reveal>
               <div className="organic-access">
@@ -861,7 +905,7 @@ export function OrganicLanding() {
           </section>
         </main>
         <footer className="border-t border-border py-10 pb-28 text-center text-sm text-muted-foreground md:pb-10">
-          © 2026 MouseHot · Sua operação digital em um só lugar.
+          © 2026 {BRAND_NAME} · {BRAND_SLOGAN}
         </footer>
 
         {!viewingAccess && (

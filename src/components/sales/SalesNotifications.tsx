@@ -365,9 +365,9 @@ function InstallSalesApp({ primary }: { primary: boolean }) {
       </DialogTrigger>
       <DialogContent className="max-w-md bg-card text-foreground">
         <DialogHeader>
-          <DialogTitle>Como instalar a MouseHot</DialogTitle>
+          <DialogTitle>Como instalar o Mousefy</DialogTitle>
           <DialogDescription>
-            Abra a MouseHot pelo ícone na Tela de Início e volte a Notificações para ativar os
+            Abra o Mousefy pelo ícone na Tela de Início e volte a Notificações para ativar os
             alertas.
           </DialogDescription>
         </DialogHeader>
@@ -390,7 +390,7 @@ function InstallSalesApp({ primary }: { primary: boolean }) {
           <div className="rounded-xl border border-border bg-background/40 p-4">
             <h3 className="mb-2 text-sm font-semibold">Windows e Mac (Chrome ou Edge)</h3>
             <p className="text-sm text-muted-foreground">
-              Abra o menu do navegador e procure a opção de instalar a MouseHot ou de instalar a
+              Abra o menu do navegador e procure a opção de instalar o Mousefy ou de instalar a
               página como aplicativo.
             </p>
           </div>

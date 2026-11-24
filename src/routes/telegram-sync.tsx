@@ -5,10 +5,10 @@ import { AppShell, PageIntro } from "@/components/AppShell";
 
 export const Route = createFileRoute("/telegram-sync")({
   head: () => ({ meta: [
-      { property: "og:title", content: "Telegram Sync — MauseHot" },
+      { property: "og:title", content: "Telegram Sync — Mousefy" },
       { property: "og:description", content: "Atualize os links de posts do seu canal com prévia e backup local." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },{ title: "Telegram Sync — MauseHot" }, { name: "description", content: "Atualize os links de posts do seu canal com prévia e backup local." }] }),
+      { name: "twitter:card", content: "summary_large_image" },{ title: "Telegram Sync — Mousefy" }, { name: "description", content: "Atualize os links de posts do seu canal com prévia e backup local." }] }),
   component: TelegramSync,
 });
 const { url: download, release } = downloads.telegramSync;

@@ -6,7 +6,7 @@ import { accessForRoute } from "@/lib/platform-access";
 import { CATEGORIES, TOOL_CATALOG } from "@/lib/tool-catalog";
 
 export const Route = createFileRoute("/ferramentas")({
-  head: () => ({ meta: [{ title: "Ferramentas | MouseHot" }] }),
+  head: () => ({ meta: [{ title: "Ferramentas | Mousefy" }] }),
   component: ToolsPage,
 });
 

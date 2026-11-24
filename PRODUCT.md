@@ -1,4 +1,4 @@
-# MouseHot
+# Mousefy
 
 <!-- impeccable:product-schema 1 -->
 
@@ -12,11 +12,11 @@ Operadores de conteúdo e equipes pequenas usam as ferramentas para preparar mí
 
 ## Produto
 
-Uma plataforma para reunir preparação de mídia, análise, planejamento e automação de conteúdo. A operação atual inclui Automatic Post, biblioteca de Reels por perfil e fontes privadas do Google Drive.
+Uma plataforma para reunir análise de campanhas, atribuição de vendas, planejamento, mídia e publicação. A operação inclui o Automatic Post, com publicação de Reels pela Meta e agenda de lembretes para Stories, além de ferramentas para Telegram e iPhones conectados ao Windows.
 
 ## Marca
 
-Use a marca MouseHot e o slogan “Sua operação digital em um só lugar”. Preserve a identidade vermelho, preto e branco.
+Use a marca Mousefy e o slogan “sua operação digital em um só lugar”. Preserve a identidade em grafite, vermelho e branco.
 
 ## Acesso
 

@@ -4,7 +4,7 @@ import { SalesPageHeader } from "@/components/sales/SalesLayout";
 import { useSalesOverview } from "@/components/sales/SalesSummary";
 
 export const Route = createFileRoute("/vendas/integracoes")({
-  head: () => ({ meta: [{ title: "Gateways | MouseHot" }] }),
+  head: () => ({ meta: [{ title: "Gateways | Mousefy" }] }),
   component: SalesIntegrations,
 });
 

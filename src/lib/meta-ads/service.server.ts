@@ -35,14 +35,14 @@ export async function encryptionKey() {
   } catch {
     // Report missing configuration without exposing the configured value.
   }
-  throw new Error("Configure a chave de criptografia do ScaleHot no servidor.");
+  throw new Error("Configure a chave de criptografia do módulo de traqueamento no servidor.");
 }
 
 export function scalehotOrigin() {
   const publicOrigin = process.env.APP_BASE_URL ?? "";
   const url = allowedPage(publicOrigin);
   if (!url || url.href !== url.origin + "/") {
-    throw new Error("Configure a origem pública HTTPS do ScaleHot no servidor.");
+    throw new Error("Configure a origem pública HTTPS do módulo de traqueamento no servidor.");
   }
   return url.origin;
 }

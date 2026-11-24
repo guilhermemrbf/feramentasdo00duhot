@@ -5,14 +5,14 @@ import { CloudWorkspace } from "@/components/hot-profiles/CloudWorkspace";
 export const Route = createFileRoute("/hot-profiles")({
   head: () => ({
     meta: [
-      { property: "og:title", content: "Hot Profiles — MauseHot" },
+      { property: "og:title", content: "Hot Profiles — Mousefy" },
       {
         property: "og:description",
         content: "Prepare seus perfis profissionais e organize o conteúdo inicial para Instagram.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { title: "Hot Profiles — MauseHot" },
+      { title: "Hot Profiles — Mousefy" },
       {
         name: "description",
         content: "Prepare seus perfis profissionais e organize o conteúdo inicial para Instagram.",

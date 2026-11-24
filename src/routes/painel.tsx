@@ -8,7 +8,7 @@ import { SalesDashboard } from "@/components/sales/SalesDashboard";
 import { AutomaticPostOverview } from "@/components/postkit/AutomaticPostOverview";
 
 export const Route = createFileRoute("/painel")({
-  head: () => ({ meta: [{ title: "Dashboard | MouseHot" }] }),
+  head: () => ({ meta: [{ title: "Dashboard | Mousefy" }] }),
   component: WorkspaceHome,
 });
 

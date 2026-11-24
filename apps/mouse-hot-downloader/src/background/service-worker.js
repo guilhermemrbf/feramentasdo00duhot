@@ -53,7 +53,7 @@ async function content(message, sender) {
       return true;
     }
     if (!state || state.documentId !== sender.documentId || state.origin !== origin) {
-      throw new Error("Recarregue a página para ativar a Mouse Hot.");
+      throw new Error("Recarregue a página para ativar a extensão Mousefy.");
     }
     if (message.type === "capture:items") {
       const p = pageInfo(message.url);

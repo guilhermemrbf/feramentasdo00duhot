@@ -56,11 +56,11 @@ import {
 export const Route = createFileRoute("/funil")({
   head: () => ({
     meta: [
-      { property: "og:title", content: "Funil — MauseHot" },
+      { property: "og:title", content: "Funil — Mousefy" },
       { property: "og:description", content: "Organize e conecte as etapas da sua operação em um funil editável." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { title: "Funil — MauseHot" },
+      { title: "Funil — Mousefy" },
       { name: "description", content: "Desenhe, conecte e edite cada etapa do seu funil." },
     ],
   }),

@@ -47,7 +47,7 @@ export function MouseOrbit() {
     <section
       ref={ref}
       className="mouse-orbit"
-      aria-label="Exemplos de uso da MouseHot"
+      aria-label="Exemplos de uso do Mousefy"
       data-playing={(running && !paused && !hovered) || undefined}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -119,12 +119,12 @@ export function MouseOrbit() {
         <button
           type="button"
           className="command-mascot-trigger"
-          aria-label="Cumprimentar o rato da MouseHot"
+          aria-label="Cumprimentar o rato do Mousefy"
           onClick={() => setGreeting((value) => value + 1)}
         >
           <span className="mouse-orbit-core" aria-hidden="true">
             <img src="/brand/mascot.webp" width="720" height="720" alt="" fetchPriority="high" />
-            <strong>MouseHot</strong>
+            <strong>Mousefy</strong>
           </span>
         </button>
         <div className="mouse-orbit-categories" role="group" aria-label="Áreas da operação">

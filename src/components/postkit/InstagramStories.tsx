@@ -92,7 +92,7 @@ function exportCalendar(rows: Reminder[], accounts: Account[]) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//MauseHot//Stories//PT-BR",
+    "PRODID:-//Mousefy//Stories//PT-BR",
     "CALSCALE:GREGORIAN",
   ];
   for (const row of items) {
@@ -106,7 +106,7 @@ function exportCalendar(rows: Reminder[], accounts: Account[]) {
       "SUMMARY:" + escapeCalendar(title),
       "DESCRIPTION:" +
         escapeCalendar(
-          row.filename + "\nAbra a aba Stories do MauseHot para preparar a publicação.",
+          row.filename + "\nAbra a aba Stories do Mousefy para preparar a publicação.",
         ),
       "BEGIN:VALARM",
       "TRIGGER:PT0M",
@@ -418,7 +418,7 @@ export function InstagramStories({
     for (const row of pendingDue) {
       if (notified.current.has(row.id)) continue;
       try {
-        new Notification("Story pronto no MauseHot", {
+        new Notification("Story pronto no Mousefy", {
           body: "Abra a agenda para copiar o link e publicar no Instagram.",
           tag: row.id,
         });
@@ -696,7 +696,7 @@ export function InstagramStories({
       setBrowserAlerts(allowed);
       setNotice(
         allowed
-          ? "Avisos ativos enquanto o MauseHot estiver aberto."
+          ? "Avisos ativos enquanto o Mousefy estiver aberto."
           : "O navegador não autorizou os avisos. Use a exportação para o calendário.",
       );
     } catch {

@@ -1,0 +1,129 @@
+.workspace-topbar.dashboard-topbar {
+  min-height: 66px;
+  justify-content: flex-start;
+  gap: 12px;
+  padding-inline: clamp(12px, 2vw, 28px);
+}
+
+.dashboard-header-status {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  margin-inline-end: auto;
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-header-feedback {
+  color: var(--destructive);
+  font-size: 0.6875rem;
+  font-weight: 400;
+}
+
+.dashboard-header-actions {
+  display: flex;
+  align-items: center;
+  gap: clamp(5px, 1vw, 14px);
+}
+
+.dashboard-header-control {
+  display: inline-flex;
+  min-width: 42px;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-inline: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
+}
+
+.dashboard-header-control svg {
+  flex: none;
+  color: var(--brand-red);
+}
+
+.dashboard-header-control:hover:not(:disabled),
+.dashboard-header-control[data-state="open"] {
+  border-color: color-mix(in oklab, var(--primary) 50%, var(--border));
+  background: var(--secondary);
+}
+
+.dashboard-header-control:disabled {
+  opacity: 0.65;
+}
+
+.dashboard-header-bell {
+  padding-inline: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.dashboard-header-account {
+  min-width: 0;
+  padding-inline-start: 8px;
+  background: var(--card);
+}
+
+.dashboard-header-avatar {
+  display: grid;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--primary) 19%, var(--secondary));
+  color: var(--brand-red);
+  font-weight: 700;
+}
+
+.dashboard-header-name {
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-header-spinner {
+    animation: dashboard-refresh-spin 950ms linear infinite;
+  }
+
+  @keyframes dashboard-refresh-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
+
+@media (max-width: 639px) {
+  .workspace-topbar.dashboard-topbar {
+    flex-wrap: wrap;
+    gap: 5px 8px;
+    padding: 8px 12px;
+  }
+
+  .dashboard-header-status {
+    font-size: 0.75rem;
+  }
+
+  .dashboard-header-control {
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: 6px;
+  }
+
+  .dashboard-header-name,
+  .dashboard-refresh-label {
+    display: none;
+  }
+}

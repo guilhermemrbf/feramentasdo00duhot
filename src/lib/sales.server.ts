@@ -45,11 +45,11 @@ export async function deliverSalesPush(device: PushDevice, saleId?: string) {
         saleId
           ? {
               title: "Nova venda aprovada",
-              body: "Confira a venda no Dashboard da MouseHot.",
+              body: "Confira a venda no Dashboard do Mousefy.",
               tag: saleId,
             }
           : {
-              title: "Notificações da MouseHot",
+              title: "Notificações do Mousefy",
               body: "Este dispositivo está pronto para receber alertas de vendas.",
               tag: "mousehot-sales-test",
             },

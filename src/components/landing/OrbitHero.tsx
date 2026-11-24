@@ -112,14 +112,14 @@ export function OrbitHero() {
         >
           <img
             src="/brand/organic-mascot.webp"
-            alt="Mascote MouseHot"
+            alt="Mascote Mousefy"
             width={640}
             height={640}
             fetchPriority="high"
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-x-0 bottom-0 organic-orbit-shade pt-8 pb-3 text-center font-display text-sm font-extrabold tracking-[0.25em] sm:text-lg">
-            MOUSE<span className="text-primary">HOT</span>
+            Mousefy
           </div>
         </motion.div>
       </motion.div>

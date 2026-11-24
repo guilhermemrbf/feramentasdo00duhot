@@ -135,7 +135,7 @@ const indicators = [
   ["checkout", "Initiate Checkout", "number", CreditCard, "Eventos de início de checkout."],
   ["metaTax", "Imposto Meta", "money", Percent, "Impostos Meta registrados em Taxas."],
   ["tax", "Impostos", "money", Receipt, "Impostos operacionais registrados em Taxas."],
-  ["fee", "Taxas", "money", Wallet, "Taxas operacionais registradas no ScaleHot."],
+  ["fee", "Taxas", "money", Wallet, "Taxas operacionais registradas no módulo de traqueamento."],
   ["expense", "Despesas", "money", Wallet, "Despesas registradas para o período."],
 ] as const;
 type Metric = (typeof indicators)[number];

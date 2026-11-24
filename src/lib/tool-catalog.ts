@@ -1,3 +1,5 @@
+import { TRACKING_NAME } from "./brand.ts";
+
 function publicMailUrl(value: string | undefined) {
   if (!value) return null;
   try {
@@ -24,7 +26,7 @@ const ALL_TOOLS = [
     category: "Ambientes",
     mode: "Aplicativo Windows",
     summary:
-      "Conecte múltiplos celulares via USB ao seu computador Windows e gerencie os dispositivos em um único ambiente, com mais organização e controle para sua operação digital.",
+      "Conecte vários iPhones compatíveis via USB ao Windows e selecione a tela do aparelho que quer acompanhar.",
     overview: {
       title: "Controle seus celulares pelo Windows",
       highlights: ["Conexão de vários iPhones via USB", "Tela e controle em aparelhos compatíveis"],
@@ -87,7 +89,7 @@ const ALL_TOOLS = [
     id: "downloader",
     action: "Baixar a extensão",
     path: "/mouse-hot-downloader",
-    name: "Mouse Hot Downloader",
+    name: "Mousefy Downloader",
     category: "Conteúdo",
     mode: "Extensão para Chrome",
     summary: "Baixe fotos, vídeos e Reels do Instagram e do TikTok, direto no computador.",
@@ -98,7 +100,7 @@ const ALL_TOOLS = [
     input: "Um perfil ou publicação que você tem permissão para baixar.",
     output: "Arquivos salvos na pasta Downloads do Chrome, um por vez.",
     steps: [
-      "Baixe o ZIP e extraia a pasta Mouse Hot.",
+      "Baixe o ZIP e extraia a pasta da extensão.",
       "Instale a pasta em Extensões no Chrome.",
       "Abra a rede social, clique em Ver mídias e escolha o que baixar.",
     ],
@@ -221,7 +223,7 @@ const ALL_TOOLS = [
     aliases: "Hot Profiles Stories",
     category: "Automação",
     mode: "Instagram Reels",
-    summary: "Separe os vídeos por conta, programe Reels e confira o resultado no histórico.",
+    summary: "Programe Reels por conta e confira o histórico. Prepare Stories com figurinhas e lembretes para publicar no Instagram.",
     overview: {
       title: "Sua operação no Instagram",
       highlights: ["Biblioteca de Reels", "Fila de publicações"],
@@ -240,7 +242,7 @@ const ALL_TOOLS = [
     id: "sales",
     action: "Acompanhar vendas",
     path: "/vendas",
-    name: "ScaleHot",
+    name: TRACKING_NAME,
     category: "Automação",
     mode: "Rastreamento de vendas",
     summary:
@@ -252,11 +254,11 @@ const ALL_TOOLS = [
     input: "Eventos enviados por um gateway conectado ao seu webhook.",
     output: "Métricas em reais, histórico e notificações nos dispositivos ativados.",
     steps: [
-      "Abra Integrações no ScaleHot, vá a Webhooks e gere uma credencial para seu gateway.",
+      "Abra Integrações no módulo de traqueamento, vá a Webhooks e gere uma credencial para seu gateway.",
       "Cole a URL na plataforma de pagamento e selecione os eventos de vendas e estornos.",
       "Ative os alertas no seu dispositivo e envie uma notificação de teste.",
     ],
-    requirement: "Conta MouseHot aprovada e eventos enviados por um gateway configurado.",
+    requirement: "Conta Mousefy aprovada e eventos enviados por um gateway configurado.",
   },
   {
     id: "intelligence",
@@ -323,7 +325,7 @@ const ALL_TOOLS = [
       "Revise a programação de Reels e prepare os Stories.",
     ],
     requirement:
-      "Entre no MauseHot para salvar fichas. Para agendar, conecte uma conta profissional que você administra.",
+      "Entre no Mousefy para salvar fichas. Para agendar, conecte uma conta profissional que você administra.",
   },
 ] as const;
 export const TOOL_CATALOG = ALL_TOOLS.filter(

@@ -206,7 +206,7 @@ function salesMetricCards(data?: SalesOverview): DashboardMetric[] {
 
 function DashboardCards({ data }: { data?: SalesOverview }) {
   const [revenue, profit, fees, refunds] = salesMetricCards(data);
-  const unavailable = "Sem dados na MouseHot";
+  const unavailable = "Sem dados no Mousefy";
   const cards: DashboardMetric[] = [
     revenue,
     profit,
