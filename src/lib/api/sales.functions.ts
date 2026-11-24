@@ -102,6 +102,42 @@ export const createSalesWebhook = createServerFn({ method: "POST" })
     };
   });
 
+export const listSalesWebhookCredentials = createServerFn({ method: "GET" })
+  .middleware([requirePlatformAccess])
+  .handler(async ({ context }) => {
+    const { salesService } = await import("@/lib/sales.server");
+    const { data, error } = await salesService
+      .from("sales_webhook_links")
+      .select("id,provider,label,active,created_at,last_event_at")
+      .eq("user_id", context.userId)
+      .is("archived_at", null)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error("Não foi possível carregar os webhooks.");
+    return data as LinkRow[];
+  });
+
+export const archiveSalesWebhook = createServerFn({ method: "POST" })
+  .middleware([requirePlatformAccess])
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const { hashSalesKey, salesService } = await import("@/lib/sales.server");
+    const { randomBytes } = await import("node:crypto");
+    const { error, data: archived } = await salesService
+      .from("sales_webhook_links")
+      .update({
+        active: false,
+        archived_at: new Date().toISOString(),
+        secret_hash: hashSalesKey(randomBytes(32).toString("base64url")),
+      })
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .eq("provider", "custom")
+      .select("id")
+      .maybeSingle();
+    if (error || !archived) throw new Error("Não foi possível excluir este webhook.");
+    return true;
+  });
+
 export const saveSalesGoal = createServerFn({ method: "POST" })
   .middleware([requirePlatformAccess])
   .validator(z.object({ cents: z.number().int().min(0).max(1_000_000_000_000) }))

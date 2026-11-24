@@ -75,16 +75,28 @@ const api = createServer(async (request, response) => {
         assert.equal(input.provider, "custom");
         webhook = { ...input, id: "00000000-0000-4000-8000-000000000004", active: true };
       } else if (request.method === "PATCH") {
+        const params = new URL(request.url, "http://localhost").searchParams;
+        assert.equal(params.get("user_id"), "eq." + user.id);
+        assert.equal(params.get("provider"), "eq.custom");
         assert.equal(input.active, false);
-        webhook.active = false;
+        assert.ok(input.archived_at);
+        assert.notEqual(input.secret_hash, webhook.secret_hash);
+        webhook = { ...webhook, ...input };
         body = { id: webhook.id };
       } else {
-        const key = new URL(request.url, "http://localhost").searchParams.get("secret_hash");
+        const params = new URL(request.url, "http://localhost").searchParams;
+        const key = params.get("secret_hash");
+        const listing = params.get("archived_at") === "is.null";
         body = key
           ? key === "eq." + webhook?.secret_hash && webhook?.active
             ? [webhook]
             : []
-          : [{ id: gateway }];
+          : listing
+            ? [
+                { id: gateway, label: "Gateway de teste", provider: "syncpay", active: true },
+                ...(webhook && !webhook.archived_at ? [webhook] : []),
+              ]
+            : [{ id: gateway }];
       }
       break;
     }
@@ -336,7 +348,7 @@ const vite = spawn(
       SCALEHOT_META_ADS_ENCRYPTION_KEY: Buffer.alloc(32, 4).toString("base64"),
       SCALEHOT_GOOGLE_ADS_CLIENT_ID: "google-client-fixture",
       SCALEHOT_GOOGLE_ADS_CLIENT_SECRET: "google-secret-fixture",
-      SCALEHOT_GOOGLE_ADS_DEVELOPER_TOKEN: "google-developer-fixture",
+      SCALEHOT_GOOGLE_ADS_DEVELOPER_TOKEN: "",
       SCALEHOT_GOOGLE_ADS_API_VERSION: "v26",
       SCALEHOT_GOOGLE_ADS_ENCRYPTION_KEY: Buffer.alloc(32, 5).toString("base64"),
       META_GRAPH_API_VERSION: "v27.0",
@@ -430,8 +442,24 @@ try {
   assert.equal((await sendHook(apiToken)).status, 201);
   assert.equal((await sendHook(apiToken, "bearer")).status, 201);
   await page.getByRole("button", { name: "Concluir" }).click();
-  await page.getByRole("button", { name: "Desativar credencial Minha loja" }).click();
-  await page.getByText("Desativada", { exact: true }).waitFor();
+  if (process.env.SCALEHOT_WEBHOOK_PREVIEW) {
+    await page.getByRole("list", { name: "Webhooks cadastrados" }).screenshot({
+      path: process.env.SCALEHOT_WEBHOOK_PREVIEW,
+    });
+  }
+  await page.getByRole("button", { name: "Excluir webhook Minha loja" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Cancelar" }).click();
+  await page.getByRole("heading", { name: "Minha loja", exact: true }).waitFor();
+  assert.equal((await sendHook(apiToken)).status, 201);
+  await page.getByRole("button", { name: "Excluir webhook Minha loja" }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Excluir webhook", exact: true })
+    .click();
+  await page
+    .getByRole("heading", { name: "Minha loja", exact: true })
+    .waitFor({ state: "detached" });
+  await page.getByRole("heading", { name: "Gateway de teste", exact: true }).waitFor();
   assert.equal((await sendHook(apiToken)).status, 401);
   await page.getByRole("link", { name: "Pixels", exact: true }).click();
   await page.getByRole("button", { name: "Adicionar pixel" }).click();

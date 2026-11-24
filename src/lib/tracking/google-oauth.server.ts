@@ -25,7 +25,6 @@ function config() {
   if (
     !clientId ||
     !clientSecret ||
-    !developerToken ||
     !version ||
     !/^v\d{2}$/.test(version) ||
     key.length !== 32 ||

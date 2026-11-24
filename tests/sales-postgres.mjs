@@ -42,6 +42,15 @@ try {
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/20261124203000_archive_custom_sales_webhooks.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
   await db.exec(`
     set role service_role;
     insert into sales_webhook_links(id,user_id,provider,label,secret_hash) values ('${link}','${owner}','custom','Loja','${secret}');
@@ -126,8 +135,27 @@ try {
   assert.deepEqual(otherSnapshot.links, []);
   assert.deepEqual(otherSnapshot.recent, []);
   assert.equal(otherSnapshot.goal_cents, null);
-  await db.exec("reset role; set role service_role; update sales_webhook_links set active=false");
+  await db.exec("reset role; set role service_role");
+  await assert.rejects(
+    db.query("update sales_webhook_links set archived_at=now() where id=$1", [link]),
+    /sales_webhook_links_archived_opt_out/,
+  );
+  await db.query(
+    "update sales_webhook_links set active=false,archived_at=now(),secret_hash=$2 where id=$1",
+    [link, "c".repeat(64)],
+  );
+  assert.equal(
+    (await db.query("select id from sales_webhook_links where archived_at is null")).rows.length,
+    0,
+  );
   assert.equal((await record("approved")).rows[0].outcome, "unauthorized");
+  assert.equal((await record("approved", "c".repeat(64))).rows[0].outcome, "unauthorized");
+  await db.exec("reset role; set role authenticated");
+  await db.query("select set_config('test.user_id',$1,false)", [owner]);
+  const archivedSnapshot = (await db.query("select sales_overview(7) as snapshot")).rows[0]
+    .snapshot;
+  assert.equal(archivedSnapshot.recent.length, 3);
+  assert.equal(archivedSnapshot.gross_cents, snapshot.gross_cents);
   console.log(
     "PASS: intake, deduplication, reversals, monthly goal, dashboard periods, push preferences and retries, tenant isolation and revoked links",
   );

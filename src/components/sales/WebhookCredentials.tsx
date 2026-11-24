@@ -1,7 +1,17 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { KeyRound, Plus } from "lucide-react";
+import { KeyRound, Plus, Trash2, Webhook } from "lucide-react";
+import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,10 +23,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { createSalesWebhook, disableSalesWebhook } from "@/lib/api/sales.functions";
+import {
+  archiveSalesWebhook,
+  createSalesWebhook,
+  listSalesWebhookCredentials,
+} from "@/lib/api/sales.functions";
 import { SALES_PROVIDERS } from "@/lib/sales-events";
 import { IntegrationCopyField } from "./IntegrationCopyField";
-import { useSalesOverview } from "./SalesSummary";
 import { TrackingStores } from "./TrackingStores";
 
 const sampleSale = JSON.stringify(
@@ -32,21 +45,38 @@ const sampleSale = JSON.stringify(
 );
 
 export function WebhookCredentials() {
+  const { user } = usePlatformAccess();
   const [open, setOpen] = useState(false);
-  const load = useSalesOverview(30, null);
+  const [removing, setRemoving] = useState<{ id: string; label: string } | null>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
+  const removeButton = useRef<HTMLButtonElement | null>(null);
+  const list = useServerFn(listSalesWebhookCredentials);
+  const load = useQuery({
+    queryKey: ["sales-webhook-credentials", user?.id],
+    queryFn: () => list(),
+    enabled: Boolean(user),
+  });
   const create = useServerFn(createSalesWebhook);
-  const disable = useServerFn(disableSalesWebhook);
+  const archive = useServerFn(archiveSalesWebhook);
   const client = useQueryClient();
+  const refresh = () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: ["sales-overview"] }),
+      client.invalidateQueries({ queryKey: ["sales-webhook-credentials"] }),
+    ]);
   const generated = useMutation({
     mutationFn: (label: string) => create({ data: { label } }),
     gcTime: 0,
-    onSuccess: () => void client.invalidateQueries({ queryKey: ["sales-overview"] }),
+    onSuccess: () => void refresh(),
   });
   const revoke = useMutation({
-    mutationFn: (id: string) => disable({ data: { id } }),
-    onSuccess: () => void client.invalidateQueries({ queryKey: ["sales-overview"] }),
+    mutationFn: (id: string) => archive({ data: { id } }),
+    onSuccess: async () => {
+      await refresh();
+      setRemoving(null);
+    },
   });
-  const links = load.data?.links;
+  const links = load.data;
 
   return (
     <div className="space-y-5">
@@ -69,7 +99,7 @@ export function WebhookCredentials() {
             }}
           >
             <DialogTrigger asChild>
-              <Button type="button" className="min-h-11">
+              <Button ref={addButton} type="button" className="min-h-11">
                 <Plus aria-hidden="true" /> Adicionar credencial
               </Button>
             </DialogTrigger>
@@ -182,24 +212,24 @@ export function WebhookCredentials() {
             <p className="text-sm text-muted-foreground">Nenhuma credencial cadastrada.</p>
           )}
           {links && links.length > 0 && (
-            <ul className="divide-y divide-border">
+            <ul
+              aria-label="Webhooks cadastrados"
+              className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,14rem),1fr))] gap-3"
+            >
               {links.map((link) => (
                 <li
                   key={link.id}
-                  className="flex flex-wrap items-center justify-between gap-2 py-2.5"
+                  className="flex min-w-0 flex-col rounded-xl border border-border bg-background/45 p-4"
                 >
-                  <span className="min-w-0 break-words text-sm font-medium">
-                    {link.label}{" "}
-                    <span className="font-normal text-muted-foreground">
-                      · {SALES_PROVIDERS[link.provider]}
-                    </span>
-                  </span>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-brand-red">
+                      <Webhook aria-hidden="true" className="size-[18px]" />
+                    </div>
                     <span
                       className={
                         link.active && link.last_event_at
-                          ? "text-sm text-success"
-                          : "text-sm text-muted-foreground"
+                          ? "rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-success"
+                          : "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
                       }
                     >
                       {!link.active
@@ -208,29 +238,75 @@ export function WebhookCredentials() {
                           ? "Recebendo eventos"
                           : "Aguardando evento"}
                     </span>
-                    {link.provider === "custom" && link.active && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={revoke.isPending}
-                        aria-label={"Desativar credencial " + link.label}
-                        onClick={() => revoke.mutate(link.id)}
-                      >
-                        Desativar
-                      </Button>
-                    )}
                   </div>
+                  <h3 className="mt-3 break-words text-base font-semibold">{link.label}</h3>
+                  <p className="mb-3 text-sm text-muted-foreground">
+                    {SALES_PROVIDERS[link.provider]}
+                  </p>
+                  {link.provider === "custom" && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="mt-auto min-h-11 self-start px-2 text-muted-foreground hover:text-destructive"
+                      disabled={revoke.isPending}
+                      aria-label={"Excluir webhook " + link.label}
+                      onClick={(event) => {
+                        removeButton.current = event.currentTarget;
+                        revoke.reset();
+                        setRemoving(link);
+                      }}
+                    >
+                      <Trash2 aria-hidden="true" /> Excluir
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>
           )}
-          {revoke.error && (
-            <p className="mt-3 text-sm text-destructive" role="alert">
-              {revoke.error.message}
-            </p>
-          )}
         </div>
+        <AlertDialog
+          open={Boolean(removing)}
+          onOpenChange={(next) => {
+            if (!next && !revoke.isPending) setRemoving(null);
+          }}
+        >
+          <AlertDialogContent
+            className="w-[calc(100%-2rem)] rounded-xl"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              (removeButton.current?.isConnected
+                ? removeButton.current
+                : addButton.current
+              )?.focus();
+            }}
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir webhook?</AlertDialogTitle>
+              <AlertDialogDescription className="break-words">
+                A credencial de {removing?.label} será revogada e o card sairá da lista. As vendas
+                registradas continuam no histórico.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {revoke.error && (
+              <p className="text-sm text-destructive" role="alert">
+                {revoke.error.message}
+              </p>
+            )}
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={revoke.isPending}>Cancelar</AlertDialogCancel>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={!removing || revoke.isPending}
+                onClick={() => {
+                  if (removing && !revoke.isPending) revoke.mutate(removing.id);
+                }}
+              >
+                {revoke.isPending ? "Excluindo…" : "Excluir webhook"}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <details className="mt-5 border-t border-border pt-2 text-sm text-muted-foreground">
           <summary className="min-h-11 cursor-pointer content-center">
             Formato para webhook personalizado

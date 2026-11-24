@@ -4,7 +4,7 @@ import { z } from "zod";
 export type GoogleAdsSettings = {
   clientId: string;
   clientSecret: string;
-  developerToken: string;
+  developerToken?: string;
   version: string;
   redirect: string;
 };
@@ -99,8 +99,8 @@ async function adsRequest(
 ) {
   const headers = new Headers({
     authorization: "Bearer " + access,
-    "developer-token": settings.developerToken,
   });
+  if (settings.developerToken) headers.set("developer-token", settings.developerToken);
   if (options?.manager) headers.set("login-customer-id", options.manager);
   if (options) headers.set("Content-Type", "application/json");
   const response = await request("https://googleads.googleapis.com/" + settings.version + path, {
