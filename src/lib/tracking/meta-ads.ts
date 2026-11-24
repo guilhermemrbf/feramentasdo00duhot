@@ -9,7 +9,34 @@ export type MetaAdAccount = {
   active: boolean;
 };
 type Provider = (url: URL, init?: RequestInit) => Promise<Response>;
-type GraphError = { error?: { code?: number } };
+type GraphError = { error?: { code?: number; error_subcode?: number } };
+type MetaAdsOperation =
+  | "exchange_code"
+  | "extend_token"
+  | "inspect_token"
+  | "list_accounts"
+  | "read_insights";
+
+export class MetaAdsProviderError extends Error {
+  readonly operation: MetaAdsOperation;
+  readonly httpStatus?: number;
+  readonly providerCode?: number;
+  readonly providerSubcode?: number;
+
+  constructor(
+    reason: string,
+    operation: MetaAdsOperation,
+    httpStatus?: number,
+    providerCode?: number,
+    providerSubcode?: number,
+  ) {
+    super(reason);
+    this.operation = operation;
+    this.httpStatus = httpStatus;
+    this.providerCode = providerCode;
+    this.providerSubcode = providerSubcode;
+  }
+}
 
 export function adsAuthorizationUrl(config: MetaAdsConfig, state: string) {
   const url = new URL("/" + config.version + "/dialog/oauth", "https://www.facebook.com");
@@ -25,6 +52,7 @@ export function adsAuthorizationUrl(config: MetaAdsConfig, state: string) {
 
 async function graph<T extends object>(
   config: MetaAdsConfig,
+  operation: MetaAdsOperation,
   path: string,
   fields: Record<string, string>,
   request: Provider,
@@ -46,16 +74,27 @@ async function graph<T extends object>(
     });
     body = await response.json();
   } catch {
-    throw new Error("unavailable");
+    throw new MetaAdsProviderError("unavailable", operation);
   }
-  if (!body || typeof body !== "object") throw new Error("unavailable");
+  if (!body || typeof body !== "object") {
+    throw new MetaAdsProviderError("unavailable", operation, response.status);
+  }
   if (!response.ok || body.error) {
     const code = body.error?.code;
-    if (code === 190) throw new Error("expired");
-    if (code === 10 || code === 200 || response.status === 403) throw new Error("permission");
-    if (code === 4 || code === 17 || code === 80004 || response.status === 429)
-      throw new Error("rate_limit");
-    throw new Error("unavailable");
+    const subcode = body.error?.error_subcode;
+    let reason = "unavailable";
+    if (code === 190) reason = "expired";
+    else if (code === 10 || code === 200 || response.status === 403) reason = "permission";
+    else if (code === 4 || code === 17 || code === 80004 || response.status === 429) {
+      reason = "rate_limit";
+    }
+    throw new MetaAdsProviderError(
+      reason,
+      operation,
+      response.status,
+      Number.isSafeInteger(code) ? code : undefined,
+      Number.isSafeInteger(subcode) ? subcode : undefined,
+    );
   }
   return body;
 }
@@ -67,11 +106,17 @@ export async function exchangeMetaAdsGrant(
   now = Date.now(),
 ) {
   const app = { client_id: config.appId, client_secret: config.secret };
-  const exchange = (fields: Record<string, string>) =>
-    graph<{ access_token?: string }>(config, "oauth/access_token", { ...app, ...fields }, request);
-  const short = await exchange({ redirect_uri: config.redirect, code });
+  const exchange = (operation: MetaAdsOperation, fields: Record<string, string>) =>
+    graph<{ access_token?: string }>(
+      config,
+      operation,
+      "oauth/access_token",
+      { ...app, ...fields },
+      request,
+    );
+  const short = await exchange("exchange_code", { redirect_uri: config.redirect, code });
   if (!short.access_token) throw new Error("unavailable");
-  const long = await exchange({
+  const long = await exchange("extend_token", {
     grant_type: "fb_exchange_token",
     fb_exchange_token: short.access_token,
   });
@@ -86,6 +131,7 @@ export async function exchangeMetaAdsGrant(
     };
   }>(
     config,
+    "inspect_token",
     "debug_token",
     { input_token: long.access_token },
     request,
@@ -121,7 +167,14 @@ export async function listMetaAdAccounts(
         account_status: number;
       }[];
       paging?: { next?: string; cursors?: { after?: string } };
-    } = await graph(config, "me/adaccounts", after ? { ...fields, after } : fields, request, token);
+    } = await graph(
+      config,
+      "list_accounts",
+      "me/adaccounts",
+      after ? { ...fields, after } : fields,
+      request,
+      token,
+    );
     if (!Array.isArray(result.data)) throw new Error("unavailable");
     for (const row of result.data) {
       if (
@@ -161,6 +214,7 @@ export async function readMetaAdSpend(
     data?: { spend?: string; impressions?: string; clicks?: string }[];
   }>(
     config,
+    "read_insights",
     account + "/insights",
     {
       fields: "spend,impressions,clicks",

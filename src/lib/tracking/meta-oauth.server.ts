@@ -6,6 +6,7 @@ import {
   adsAuthorizationUrl,
   exchangeMetaAdsGrant,
   listMetaAdAccounts,
+  MetaAdsProviderError,
   openMetaAdsToken,
   readMetaAdSpend,
   sealMetaAdsToken,
@@ -104,6 +105,7 @@ export async function finishMetaAds(request: Request) {
   )
     return redirect("session");
   deleteCookie(cookie, cookieOptions(settings.secure));
+  let stage = "claim_oauth_state";
   try {
     const stateHash = hashSalesKey(state);
     const pending = await salesService.rpc("sales_meta_ads_claim_state", { p_hash: stateHash });
@@ -111,9 +113,12 @@ export async function finishMetaAds(request: Request) {
     if (params.has("error")) return redirect("denied");
     const code = params.get("code");
     if (!code || code.length > 4096) return redirect("session");
+    stage = "exchange_grant";
     const grant = await exchangeMetaAdsGrant(settings, code);
+    stage = "load_ad_accounts";
     const accounts = await listMetaAdAccounts(settings, grant.token);
     if (!accounts.length) return redirect("empty");
+    stage = "save_connection";
     const saved = await salesService.rpc("sales_meta_ads_finish_state", {
       p_owner: pending.data,
       p_hash: stateHash,
@@ -124,6 +129,15 @@ export async function finishMetaAds(request: Request) {
     });
     return redirect(!saved.error && saved.data ? "connected" : "session");
   } catch (error) {
+    console.warn("[scalehot] Meta Ads OAuth failed", {
+      stage,
+      ...(error instanceof MetaAdsProviderError && {
+        operation: error.operation,
+        status: error.httpStatus,
+        code: error.providerCode,
+        subcode: error.providerSubcode,
+      }),
+    });
     return redirect(
       error instanceof Error && error.message === "permission" ? "denied" : "unavailable",
     );

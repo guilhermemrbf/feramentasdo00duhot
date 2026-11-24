@@ -4,6 +4,7 @@ import {
   adsAuthorizationUrl,
   exchangeMetaAdsGrant,
   listMetaAdAccounts,
+  MetaAdsProviderError,
   readMetaAdSpend,
   sealMetaAdsToken,
   openMetaAdsToken,
@@ -81,6 +82,27 @@ test("paginates accounts by cursor without following an untrusted next URL", asy
   assert.deepEqual(
     (await listMetaAdAccounts(config, "token", provider)).map((item) => item.id),
     ["act_1", "act_2"],
+  );
+});
+
+test("retains only operation and numeric Meta error metadata for OAuth diagnosis", async () => {
+  await assert.rejects(
+    exchangeMetaAdsGrant(config, "private-grant", async () =>
+      Response.json(
+        { error: { code: 100, error_subcode: 36008, message: "private provider details" } },
+        { status: 400 },
+      ),
+    ),
+    (error) => {
+      assert.ok(error instanceof MetaAdsProviderError);
+      assert.equal(error.message, "unavailable");
+      assert.equal(error.operation, "exchange_code");
+      assert.equal(error.httpStatus, 400);
+      assert.equal(error.providerCode, 100);
+      assert.equal(error.providerSubcode, 36008);
+      assert.doesNotMatch(JSON.stringify(error), /private|test-only-secret/);
+      return true;
+    },
   );
 });
 
