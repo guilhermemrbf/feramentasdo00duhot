@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LaunchPage } from "@/components/access/LaunchPage";
 
 const description =
-  "Organize sua operação orgânica na MouseHot. Compare perfis, trate vídeos em lote, mantenha uma biblioteca por conta e agende Reels.";
+  "Organize sua operação na MouseHot. Prepare conteúdo, agende Reels e acompanhe a origem das vendas com rastreamento avançado.";
 
 export const Route = createFileRoute("/")({
   head: () => ({

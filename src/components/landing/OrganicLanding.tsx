@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { ChartNoAxesCombined, MousePointer2, ReceiptText, Route as RouteIcon } from "lucide-react";
 import {
   motion,
   useScroll,
@@ -11,6 +12,7 @@ import {
 } from "motion/react";
 import { useRef, useState } from "react";
 import { AccessForm } from "@/components/access/AccessForm";
+import { findTool } from "@/lib/tool-catalog";
 import { Reveal, Counter, MagneticButton, TiltCard, Eyebrow } from "./fx";
 import { Mascot } from "./Mascot";
 import { HeroMock } from "./HeroMock";
@@ -105,11 +107,8 @@ function Hero() {
           </h1>
           <Reveal delay={0.6}>
             <p className="mt-7 max-w-[34rem] text-lg leading-relaxed text-muted-foreground md:text-xl">
-              Organize a escala da sua operação no orgânico. Pesquise perfis, prepare vídeos em
-              lote, agende Reels e organize Stories com uma biblioteca para cada conta.{" "}
-              <strong className="text-foreground">
-                Organize a produção e mantenha seus perfis ativos.
-              </strong>
+              Pesquise perfis, prepare vídeos em lote, agende Reels e organize os Stories de cada
+              conta. Acompanhe as vendas e descubra quais campanhas geraram pedidos.
             </p>
           </Reveal>
           <Reveal delay={0.75}>
@@ -355,6 +354,42 @@ const tools = [
     d: "Pasta privada do Google Drive vinculada à biblioteca de Reels de cada perfil.",
   },
 ];
+
+const trackingSteps = [
+  { icon: MousePointer2, title: "Clique na campanha", detail: "Identifica a origem da visita" },
+  { icon: ReceiptText, title: "Pagamento aprovado", detail: "Confirma a venda recebida" },
+  { icon: ChartNoAxesCombined, title: "Receita por campanha", detail: "Exibe as vendas atribuídas" },
+];
+
+function TrackingFeature() {
+  const scaleHot = findTool("/vendas");
+  if (!scaleHot) return null;
+
+  return (
+    <Reveal className="landing-tracking-feature brand-stage mb-5">
+      <div>
+        <span className="landing-tracking-icon" aria-hidden="true">
+          <RouteIcon size={22} strokeWidth={1.75} />
+        </span>
+        <h3 className="mt-4 text-2xl font-bold sm:text-3xl">Rastreamento avançado de vendas</h3>
+        <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground">
+          {scaleHot.summary}
+        </p>
+      </div>
+      <ol className="landing-tracking-steps" aria-label="Como o ScaleHot atribui uma venda">
+        {trackingSteps.map(({ icon: Icon, title, detail }) => (
+          <li key={title}>
+            <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+            <div>
+              <strong>{title}</strong>
+              <span>{detail}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </Reveal>
+  );
+}
 
 function StoriesMock() {
   const reduce = useReducedMotion();
@@ -614,8 +649,9 @@ export function OrganicLanding() {
                 <span className="text-gradient-hot">no mesmo lugar.</span>
               </>
             }
-            sub="Cada ferramenta resolve uma etapa do orgânico, da preparação do perfil à publicação."
+            sub="Planeje perfis, prepare conteúdo, programe publicações e acompanhe de onde vêm suas vendas."
           >
+            <TrackingFeature />
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {tools.map((t, i) => (
                 <Reveal key={t.t} delay={(i % 4) * 0.07}>
@@ -800,7 +836,8 @@ export function OrganicLanding() {
                   <span className="text-gradient-hot">mais controle.</span>
                 </h2>
                 <p className="mt-4 mb-8 text-lg text-muted-foreground">
-                  Crie sua conta e dê o primeiro passo para organizar sua operação no orgânico.
+                  Crie sua conta para organizar publicações e acompanhar as vendas da sua
+                  operação no mesmo painel.
                 </p>
               </Reveal>
               <div className="organic-access">

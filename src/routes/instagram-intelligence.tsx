@@ -86,8 +86,8 @@ function InstagramIntelligence() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <main className="mx-auto max-w-[1000px] space-y-6 px-4 py-6 sm:px-5">
-        <h1 className="flex items-center gap-3 text-2xl font-semibold">
+      <main className="mx-auto max-w-[1000px] space-y-6 px-4 py-6 sm:px-8 sm:py-8">
+        <h1 className="flex items-center gap-3 font-display text-2xl font-semibold sm:text-3xl">
           <span
             className="tool-tone tool-icon grid size-12 shrink-0 place-items-center"
             aria-hidden
@@ -105,9 +105,9 @@ function InstagramIntelligence() {
             reviewMode={modo === "revisao"}
           />
         ) : (
-          <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-            <h2 className="text-lg font-semibold">Entre para acessar seus lotes</h2>
-            <p className="text-sm text-muted-foreground">Use a mesma conta Google do MauseHot.</p>
+          <section className="space-y-3 rounded-lg border border-border bg-card p-5">
+            <h2 className="font-display text-lg font-semibold">Entre para acessar seus lotes</h2>
+            <p className="text-sm text-muted-foreground">Use a mesma conta Google do MouseHot.</p>
             <Button onClick={() => void signIn()} disabled={signingIn}>
               Continuar com Google
             </Button>
@@ -158,13 +158,13 @@ function PrivateBatches({ userId, reviewMode }: { userId: string; reviewMode: bo
   return (
     <>
       <form
-        className="space-y-3 rounded-[10px] border border-border bg-card p-[15px]"
+        className="space-y-3 rounded-lg border border-border bg-card p-4 sm:p-5"
         onSubmit={(event) => {
           event.preventDefault();
           void analyze();
         }}
       >
-        <h2 id="intelligence-input-title" className="text-xl font-semibold">
+        <h2 id="intelligence-input-title" className="font-display text-xl font-semibold">
           Cole os links dos perfis
         </h2>
         <textarea
@@ -180,7 +180,7 @@ function PrivateBatches({ userId, reviewMode }: { userId: string; reviewMode: bo
           placeholder={"https://instagram.com/perfil1/\n@perfil2"}
           onChange={(event) => setText(event.target.value)}
         />
-        <div id="intelligence-import-help" className="space-y-1 text-sm text-neutral-300">
+        <div id="intelligence-import-help" className="space-y-1 text-sm text-muted-foreground">
           <p>Um perfil por linha. Até 1.000 perfis por análise. Use links ou @usuários.</p>
           {parsed.error === "size" && <p role="alert">A lista é longa demais.</p>}
           {parsed.error === "limit" && (
@@ -201,7 +201,7 @@ function PrivateBatches({ userId, reviewMode }: { userId: string; reviewMode: bo
         </div>
         <Button
           type="submit"
-          className="h-16 w-full rounded-[10px] bg-primary text-xl font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring"
+          className="w-full text-base"
           disabled={
             busy || !parsed.usernames.length || !!parsed.error || !!parsed.invalidLines.length
           }

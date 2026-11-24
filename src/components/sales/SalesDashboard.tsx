@@ -152,7 +152,7 @@ export function SalesDashboard({
               key={key}
               aria-pressed={period === key}
               onClick={() => setPeriod(key)}
-              className="sales-period-button min-h-11 min-w-21 flex-1 rounded-lg px-3 text-xs font-bold tracking-wider text-muted-foreground uppercase hover:text-foreground aria-pressed:bg-background aria-pressed:text-foreground sm:text-sm"
+              className="sales-period-button min-h-11 min-w-21 flex-1 rounded-lg px-3 text-xs font-semibold text-muted-foreground hover:text-foreground aria-pressed:text-foreground sm:text-sm"
             >
               {label}
             </button>
@@ -278,14 +278,14 @@ function SalesCharts({
   period: SalesPeriod;
   embedded: boolean;
 }) {
-  const color = embedded ? "var(--brand-red)" : green;
+  const color = "var(--primary-glow)";
   return (
     <div className={cn("grid min-w-0 gap-4", embedded ? "mt-4" : "lg:grid-cols-2")}>
       <section className="sales-panel min-w-0 p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className={cn("font-display font-semibold", embedded && "text-lg")}>
-              Evolução Diária do Faturamento
+              Evolução diária do faturamento
             </h2>
             {embedded && (
               <p className="mt-1 text-sm text-muted-foreground">
@@ -312,7 +312,7 @@ function SalesCharts({
               >
                 <defs>
                   <linearGradient id="scalehot-daily" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={color} stopOpacity={embedded ? 0.28 : 0.5} />
+                    <stop offset="0%" stopColor={color} stopOpacity={0.24} />
                     <stop offset="100%" stopColor={color} stopOpacity={0} />
                   </linearGradient>
                 </defs>

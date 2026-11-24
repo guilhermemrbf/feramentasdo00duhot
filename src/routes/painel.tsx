@@ -27,7 +27,7 @@ function WorkspaceHome() {
   const toolsLink = (
     <Link
       to="/ferramentas"
-      className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold hover:bg-muted"
+      className="workspace-primary-action mt-6 inline-flex min-h-11 items-center gap-2 rounded-[var(--control-radius)] px-4 text-sm font-semibold"
     >
       Ver todas as ferramentas <ArrowUpRight size={17} aria-hidden />
     </Link>
@@ -35,10 +35,10 @@ function WorkspaceHome() {
   return (
     <AppShell>
       <main className="workspace-overview mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-9">
-        <header className="operate-heading">
+        <header className="operate-heading workspace-dashboard-heading brand-stage">
           <div>
             <h1>{dashboardGreeting(new Date(now + offsetMs), user, status === "admin")}</h1>
-            <p>Acompanhe sua operação e abra as ferramentas da MouseHot.</p>
+            <p>Acompanhe publicações, vendas e campanhas da sua operação.</p>
           </div>
         </header>
         {status === "admin" || status === "approved" ? (

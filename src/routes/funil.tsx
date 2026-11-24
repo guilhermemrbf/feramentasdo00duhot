@@ -1425,9 +1425,9 @@ function FunilPage() {
                 {selectedNodes.length > 1 && (
                   <aside
                     aria-label="Editar seleção"
-                    className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-slate-700 bg-[#181818] shadow-2xl sm:w-[350px]"
+                    className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-border bg-popover shadow-2xl sm:w-[350px]"
                   >
-                    <header className="flex items-start justify-between border-b border-slate-700 p-4">
+                    <header className="flex items-start justify-between border-b border-border p-4">
                       <div>
                         <h2 className="font-semibold text-white">
                           {selectedNodes.length} elementos selecionados
@@ -1489,7 +1489,7 @@ function FunilPage() {
                 )}
                 {(selectedNode || selectedEdge) && (
                   <aside
-                    className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-slate-700 bg-[#181818] shadow-2xl sm:w-[350px]"
+                    className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-border bg-popover shadow-2xl sm:w-[350px]"
                     aria-label={selectedNode ? "Editar elemento" : "Editar conexão"}
                   >
                     <div className="flex items-start justify-between border-b border-slate-700 px-4 py-4">
@@ -1899,7 +1899,7 @@ function FunilPage() {
                 aria-modal="true"
                 aria-labelledby="delete-funnel-title"
                 aria-describedby="delete-funnel-description"
-                className="w-full max-w-md rounded-2xl border border-slate-600 bg-[#181818] p-5 text-slate-200 shadow-2xl"
+                className="w-full max-w-md rounded-lg border border-border bg-popover p-5 text-popover-foreground shadow-2xl"
                 onKeyDown={(event) => {
                   if (event.key === "Escape") {
                     event.stopPropagation();

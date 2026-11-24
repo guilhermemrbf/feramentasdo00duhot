@@ -1,6 +1,6 @@
 .tracking-workspace {
-  --tracking-red: #f65c70;
-  --tracking-neutral: #8390ad;
+  --tracking-red: var(--brand-red);
+  --tracking-neutral: var(--muted-foreground);
   color: var(--foreground);
 }
 
@@ -14,6 +14,7 @@
 
 .tracking-header h1 {
   margin: 0;
+  font-family: var(--font-display);
   font-size: 2rem;
   font-weight: 700;
   line-height: 1.15;

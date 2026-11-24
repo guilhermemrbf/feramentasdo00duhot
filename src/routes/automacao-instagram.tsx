@@ -1399,10 +1399,9 @@ function InstagramWorkspacePage({
     >
       {workspaceControls}
       <main className="mx-auto w-full min-w-0 max-w-[1600px] px-4 py-5 sm:px-6">
-        <header className="tool-section-heading flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border px-4 py-4 sm:px-5">
+        <header className="tool-section-heading flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border p-4 sm:p-6">
           <div>
-            <p className="mb-1 text-xs font-semibold text-brand-red">Automação Instagram</p>
-            <h1 className="font-display text-2xl font-semibold">
+            <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
               {tabItems.find((item) => item.id === tab)?.label}
             </h1>
           </div>

@@ -24,9 +24,9 @@ function FazendaDeCelulares() {
       <main className="mx-auto max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
         <section
           aria-labelledby="fazenda-title"
-          className="rounded-2xl border border-primary/30 bg-card p-6 sm:p-9"
+          className="rounded-lg border border-border bg-card p-6 sm:p-8"
         >
-          <div className="mb-6 flex size-12 items-center justify-center rounded-xl bg-primary/15 text-brand-red">
+          <div className="tool-icon mb-4 flex size-12 items-center justify-center rounded-md">
             <MonitorSmartphone className="size-6" aria-hidden />
           </div>
           <h1 id="fazenda-title" className="text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -37,7 +37,7 @@ function FazendaDeCelulares() {
             aparelho por vez. Use o mouse e o teclado no iOS 27 ou mais recente, com o Modo de
             Desenvolvedor ativo.
           </p>
-          <Button asChild size="lg" className="mt-7 min-h-12 w-full sm:w-auto">
+          <Button asChild size="lg" className="mt-6 min-h-12 w-full sm:w-auto">
             <a href={download.url}>
               <Download className="size-5" aria-hidden />
               Baixar instalador para Windows

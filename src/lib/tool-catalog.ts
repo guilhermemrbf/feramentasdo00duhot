@@ -242,12 +242,12 @@ const ALL_TOOLS = [
     path: "/vendas",
     name: "ScaleHot",
     category: "Automação",
-    mode: "Webhooks de vendas",
+    mode: "Rastreamento de vendas",
     summary:
-      "Acompanhe as vendas recebidas dos seus gateways e receba alertas quando uma nova venda for aprovada.",
+      "Relacione vendas confirmadas a campanhas e anúncios. Acompanhe a receita por origem e o que ainda está sem atribuição.",
     overview: {
-      title: "Acompanhe as vendas da sua operação",
-      highlights: ["Faturamento e histórico", "Webhooks e notificações"],
+      title: "Descubra de onde vêm suas vendas",
+      highlights: ["Receita por campanha", "Webhooks e notificações"],
     },
     input: "Eventos enviados por um gateway conectado ao seu webhook.",
     output: "Métricas em reais, histórico e notificações nos dispositivos ativados.",

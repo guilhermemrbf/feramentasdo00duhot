@@ -34,7 +34,7 @@ function ScoreBars({ notes }: { notes?: ResultRow["notes"] }) {
                 {model ? weight + "%" : value === null ? "—" : format.format(value) + "/100"}
               </span>
             </div>
-            <div className="h-3 overflow-hidden rounded-full bg-[#222]" aria-hidden="true">
+            <div className="h-3 overflow-hidden rounded-full bg-secondary" aria-hidden="true">
               {value !== null && (
                 <div
                   className={"h-full rounded-full " + colors[key]}
@@ -53,7 +53,7 @@ export function ScoringModel() {
   return (
     <section
       aria-labelledby="intelligence-scoring"
-      className="space-y-5 rounded-[10px] border border-[#252525] px-[15px] py-4"
+      className="space-y-5 rounded-lg border border-border bg-card p-4 sm:p-5"
     >
       <h2 id="intelligence-scoring" className="text-xl font-semibold">
         Modelo de pontuação
@@ -88,7 +88,7 @@ function ProfileCard({ row, approved }: { row: ResultRow; approved: boolean }) {
         ? "Falha de processamento"
         : row.decision === "review" ? "Em análise" : "Não aprovado";
   return (
-    <li className="min-w-0 space-y-3 rounded-lg border border-[#262626] bg-[#0b0b0b] p-3 text-sm">
+    <li className="min-w-0 space-y-3 rounded-md border border-border bg-background p-3 text-sm">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="break-all font-semibold">@{row.username}</h3>
