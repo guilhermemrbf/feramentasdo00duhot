@@ -37,7 +37,7 @@ export function AccessStatusPanel() {
           ? "O administrador não liberou o acesso para este cadastro."
           : status === "unverified"
             ? "Abra a mensagem de confirmação que enviamos ao seu endereço."
-            : "Seu cadastro foi recebido. A tela será atualizada quando o administrador analisar sua solicitação.";
+            : "Escolha um plano para assinar ou aguarde a análise da sua solicitação.";
 
   const Icon = approved ? ShieldCheck : status === "denied" ? ShieldX : Clock3;
 
@@ -64,6 +64,11 @@ export function AccessStatusPanel() {
               Verificar acesso
             </button>
           )
+        )}
+        {user && status && !isError && status !== "unverified" && (
+          <Link className="saas-button saas-button-outline" to="/assinatura">
+            Assinatura
+          </Link>
         )}
         {user && (
           <button

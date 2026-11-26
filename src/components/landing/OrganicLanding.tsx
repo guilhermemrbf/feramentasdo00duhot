@@ -688,10 +688,7 @@ function ReelsMock() {
 }
 
 const faqs = [
-  [
-    "Quanto custa?",
-    "O Mousefy está em fase de testes. Os planos ainda serão divulgados. Cadastros passam por aprovação.",
-  ],
+  ["Quanto custa?", "Entre na sua conta para consultar os planos recorrentes e assinar com Pix."],
   [
     "A criação de contas é automática mesmo?",
     "Você cria a conta no Instagram e depois conecta o perfil profissional ao Mousefy para organizar o conteúdo.",

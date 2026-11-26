@@ -39,6 +39,11 @@ function WorkspaceHome() {
           <div>
             <h1>{dashboardGreeting(new Date(now + offsetMs), user, status === "admin")}</h1>
             <p>Acompanhe publicações, vendas e campanhas da sua operação.</p>
+            {status === "approved" && (
+              <Link to="/assinatura" className="mt-2 inline-block text-sm underline">
+                Gerenciar assinatura
+              </Link>
+            )}
           </div>
         </header>
         {status === "admin" || status === "approved" ? (

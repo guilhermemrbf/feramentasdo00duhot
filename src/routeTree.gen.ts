@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AprovacoesRouteImport } from './routes/aprovacoes'
+import { Route as AssinaturaRouteImport } from './routes/assinatura'
 import { Route as AutomacaoInstagramRouteImport } from './routes/automacao-instagram'
 import { Route as AutomacaoTiktokRouteImport } from './routes/automacao-tiktok'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
@@ -48,6 +49,7 @@ import { Route as ApiInstagramDriveCleanupRouteImport } from './routes/api.insta
 import { Route as ApiInstagramWorkerRouteImport } from './routes/api.instagram.worker'
 import { Route as ApiPublicMetaProcessRouteImport } from './routes/api.public.meta-process'
 import { Route as ApiVendasProcessarRouteImport } from './routes/api.vendas.processar'
+import { Route as ApiWebhooksSyncpayRouteImport } from './routes/api.webhooks.syncpay'
 import { Route as ApiInstagramOauthCallbackRouteImport } from './routes/api.instagram.oauth.callback'
 import { Route as ApiPublicMetaCheckoutPixelRouteImport } from './routes/api.public.meta-checkout.$pixel'
 import { Route as ApiPublicMetaSyncpayPixelRouteImport } from './routes/api.public.meta-syncpay.$pixel'
@@ -65,6 +67,11 @@ const IndexRoute = IndexRouteImport.update({
 const AprovacoesRoute = AprovacoesRouteImport.update({
   id: '/aprovacoes',
   path: '/aprovacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssinaturaRoute = AssinaturaRouteImport.update({
+  id: '/assinatura',
+  path: '/assinatura',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AutomacaoInstagramRoute = AutomacaoInstagramRouteImport.update({
@@ -253,6 +260,11 @@ const ApiVendasProcessarRoute = ApiVendasProcessarRouteImport.update({
   path: '/api/vendas/processar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWebhooksSyncpayRoute = ApiWebhooksSyncpayRouteImport.update({
+  id: '/api/webhooks/syncpay',
+  path: '/api/webhooks/syncpay',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiInstagramOauthCallbackRoute =
   ApiInstagramOauthCallbackRouteImport.update({
     id: '/api/instagram/oauth/callback',
@@ -303,6 +315,7 @@ const ApiVendasAdsMetaCallbackRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/aprovacoes': typeof AprovacoesRoute
+  '/assinatura': typeof AssinaturaRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/configuracoes': typeof ConfiguracoesRoute
@@ -340,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
   '/api/public/meta-process': typeof ApiPublicMetaProcessRoute
   '/api/vendas/processar': typeof ApiVendasProcessarRoute
+  '/api/webhooks/syncpay': typeof ApiWebhooksSyncpayRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
   '/api/public/meta-checkout/$pixel': typeof ApiPublicMetaCheckoutPixelRoute
   '/api/public/meta-syncpay/$pixel': typeof ApiPublicMetaSyncpayPixelRoute
@@ -352,6 +366,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/aprovacoes': typeof AprovacoesRoute
+  '/assinatura': typeof AssinaturaRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/configuracoes': typeof ConfiguracoesRoute
@@ -388,6 +403,7 @@ export interface FileRoutesByTo {
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
   '/api/public/meta-process': typeof ApiPublicMetaProcessRoute
   '/api/vendas/processar': typeof ApiVendasProcessarRoute
+  '/api/webhooks/syncpay': typeof ApiWebhooksSyncpayRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
   '/api/public/meta-checkout/$pixel': typeof ApiPublicMetaCheckoutPixelRoute
   '/api/public/meta-syncpay/$pixel': typeof ApiPublicMetaSyncpayPixelRoute
@@ -401,6 +417,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/aprovacoes': typeof AprovacoesRoute
+  '/assinatura': typeof AssinaturaRoute
   '/automacao-instagram': typeof AutomacaoInstagramRoute
   '/automacao-tiktok': typeof AutomacaoTiktokRoute
   '/configuracoes': typeof ConfiguracoesRoute
@@ -438,6 +455,7 @@ export interface FileRoutesById {
   '/api/instagram/worker': typeof ApiInstagramWorkerRoute
   '/api/public/meta-process': typeof ApiPublicMetaProcessRoute
   '/api/vendas/processar': typeof ApiVendasProcessarRoute
+  '/api/webhooks/syncpay': typeof ApiWebhooksSyncpayRoute
   '/api/instagram/oauth/callback': typeof ApiInstagramOauthCallbackRoute
   '/api/public/meta-checkout/$pixel': typeof ApiPublicMetaCheckoutPixelRoute
   '/api/public/meta-syncpay/$pixel': typeof ApiPublicMetaSyncpayPixelRoute
@@ -452,6 +470,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/aprovacoes'
+    | '/assinatura'
     | '/automacao-instagram'
     | '/automacao-tiktok'
     | '/configuracoes'
@@ -489,6 +508,7 @@ export interface FileRouteTypes {
     | '/api/instagram/worker'
     | '/api/public/meta-process'
     | '/api/vendas/processar'
+    | '/api/webhooks/syncpay'
     | '/api/instagram/oauth/callback'
     | '/api/public/meta-checkout/$pixel'
     | '/api/public/meta-syncpay/$pixel'
@@ -501,6 +521,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/aprovacoes'
+    | '/assinatura'
     | '/automacao-instagram'
     | '/automacao-tiktok'
     | '/configuracoes'
@@ -537,6 +558,7 @@ export interface FileRouteTypes {
     | '/api/instagram/worker'
     | '/api/public/meta-process'
     | '/api/vendas/processar'
+    | '/api/webhooks/syncpay'
     | '/api/instagram/oauth/callback'
     | '/api/public/meta-checkout/$pixel'
     | '/api/public/meta-syncpay/$pixel'
@@ -549,6 +571,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/aprovacoes'
+    | '/assinatura'
     | '/automacao-instagram'
     | '/automacao-tiktok'
     | '/configuracoes'
@@ -586,6 +609,7 @@ export interface FileRouteTypes {
     | '/api/instagram/worker'
     | '/api/public/meta-process'
     | '/api/vendas/processar'
+    | '/api/webhooks/syncpay'
     | '/api/instagram/oauth/callback'
     | '/api/public/meta-checkout/$pixel'
     | '/api/public/meta-syncpay/$pixel'
@@ -599,6 +623,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AprovacoesRoute: typeof AprovacoesRoute
+  AssinaturaRoute: typeof AssinaturaRoute
   AutomacaoInstagramRoute: typeof AutomacaoInstagramRoute
   AutomacaoTiktokRoute: typeof AutomacaoTiktokRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
@@ -625,6 +650,7 @@ export interface RootRouteChildren {
   ApiInstagramWorkerRoute: typeof ApiInstagramWorkerRoute
   ApiPublicMetaProcessRoute: typeof ApiPublicMetaProcessRoute
   ApiVendasProcessarRoute: typeof ApiVendasProcessarRoute
+  ApiWebhooksSyncpayRoute: typeof ApiWebhooksSyncpayRoute
   ApiInstagramOauthCallbackRoute: typeof ApiInstagramOauthCallbackRoute
   ApiPublicMetaCheckoutPixelRoute: typeof ApiPublicMetaCheckoutPixelRoute
   ApiPublicMetaSyncpayPixelRoute: typeof ApiPublicMetaSyncpayPixelRoute
@@ -649,6 +675,13 @@ declare module '@tanstack/react-router' {
       path: '/aprovacoes'
       fullPath: '/aprovacoes'
       preLoaderRoute: typeof AprovacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assinatura': {
+      id: '/assinatura'
+      path: '/assinatura'
+      fullPath: '/assinatura'
+      preLoaderRoute: typeof AssinaturaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/automacao-instagram': {
@@ -910,6 +943,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVendasProcessarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/webhooks/syncpay': {
+      id: '/api/webhooks/syncpay'
+      path: '/api/webhooks/syncpay'
+      fullPath: '/api/webhooks/syncpay'
+      preLoaderRoute: typeof ApiWebhooksSyncpayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/instagram/oauth/callback': {
       id: '/api/instagram/oauth/callback'
       path: '/api/instagram/oauth/callback'
@@ -1003,6 +1043,7 @@ const VendasRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AprovacoesRoute: AprovacoesRoute,
+  AssinaturaRoute: AssinaturaRoute,
   AutomacaoInstagramRoute: AutomacaoInstagramRoute,
   AutomacaoTiktokRoute: AutomacaoTiktokRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
@@ -1029,6 +1070,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiInstagramWorkerRoute: ApiInstagramWorkerRoute,
   ApiPublicMetaProcessRoute: ApiPublicMetaProcessRoute,
   ApiVendasProcessarRoute: ApiVendasProcessarRoute,
+  ApiWebhooksSyncpayRoute: ApiWebhooksSyncpayRoute,
   ApiInstagramOauthCallbackRoute: ApiInstagramOauthCallbackRoute,
   ApiPublicMetaCheckoutPixelRoute: ApiPublicMetaCheckoutPixelRoute,
   ApiPublicMetaSyncpayPixelRoute: ApiPublicMetaSyncpayPixelRoute,

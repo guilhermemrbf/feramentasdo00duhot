@@ -13,7 +13,13 @@ export type PlatformAccess = {
   server_now: string;
 };
 
-const publicRoutes = new Set(["/", "/convite", "/privacidade", "/exclusao-de-dados"]);
+const publicRoutes = new Set([
+  "/",
+  "/assinatura",
+  "/convite",
+  "/privacidade",
+  "/exclusao-de-dados",
+]);
 export const trialRoutes = new Set([
   "/painel",
   "/ferramentas",
