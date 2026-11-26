@@ -508,7 +508,9 @@ function InstagramWorkspacePage({
     }
     const timeout = window.setTimeout(() => {
       setLoginWaiting(false);
-      setNotice("O tempo de conexão terminou. Clique em Conectar Instagram para tentar novamente.");
+      setNotice(
+        "O tempo de conexão terminou. Volte à tela de conexão para tentar novamente.",
+      );
     }, 600000);
     return () => {
       window.clearInterval(interval);
@@ -698,7 +700,7 @@ function InstagramWorkspacePage({
       const detail = reason
         ? (reasonLabels[reason] ?? "uma etapa não identificada")
         : "uma etapa não identificada";
-      setNotice(`A conexão parou em ${detail}. Clique em Conectar Instagram para tentar de novo.`);
+      setNotice(`A conexão parou em ${detail}. Volte à tela de conexão para tentar de novo.`);
     }
   }, []);
 
@@ -1636,8 +1638,8 @@ function InstagramWorkspacePage({
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Entre no Instagram, escolha o perfil profissional e confirme as permissões. A
-                    conta aparecerá aqui automaticamente, com sua própria biblioteca.
+                    Escolha o tipo de conta que você quer conectar. Depois, selecione o perfil
+                    correto na janela oficial da Meta e confirme as permissões.
                   </p>
                 )}
                 <button
@@ -1659,8 +1661,18 @@ function InstagramWorkspacePage({
                       ? "Aguardando seu Instagram…"
                       : !accountsLoaded && !accountsLoadError
                         ? "Carregando suas contas…"
-                        : "Conectar Instagram"}
+                        : "Conectar conta profissional"}
                 </button>
+                <InstagramProfessionalSetup
+                  disabled={
+                    platformMetaUnavailable ||
+                    !!connecting ||
+                    loginWaiting ||
+                    !accountsLoaded ||
+                    !!accountsLoadError
+                  }
+                  onConnect={() => void connectInstagram("instagram_unified_login")}
+                />
                 {accountsLoadError && (
                   <p role="alert" className="mt-3 text-sm text-amber-200">
                     {accountsLoadError}{" "}
@@ -1702,16 +1714,6 @@ function InstagramWorkspacePage({
                   Para conectar outro perfil, use <strong>Trocar de conta</strong> na tela da Meta.
                   Seus vídeos e agendamentos ficam separados por conta.
                 </p>
-                <InstagramProfessionalSetup
-                  disabled={
-                    platformMetaUnavailable ||
-                    !!connecting ||
-                    loginWaiting ||
-                    !accountsLoaded ||
-                    !!accountsLoadError
-                  }
-                  onConnect={() => void connectInstagram("instagram_unified_login")}
-                />
                 <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">
                   <summary className="cursor-pointer font-medium">Opções de navegador</summary>
                   <label className="mt-3 flex items-start gap-2 text-sm">
@@ -1765,7 +1767,7 @@ function InstagramWorkspacePage({
                       e aceite o convite em <strong>Convites do testador</strong>.
                     </li>
                     <li>
-                      Volte aqui e clique em <strong>Conectar Instagram</strong>.
+                      Volte aqui e clique em <strong>Conectar conta profissional</strong>.
                     </li>
                   </ol>
                 </details>
@@ -1799,10 +1801,9 @@ function InstagramWorkspacePage({
                   onClick={() => {
                     setConnectionTarget("reels");
                     setTab("nova-conta");
-                    void connectInstagram("instagram_unified_login");
                   }}
                 >
-                  Conectar Instagram
+                  Adicionar conta
                 </button>
               )}
               {accountsLoadError || !accountsLoaded ? (

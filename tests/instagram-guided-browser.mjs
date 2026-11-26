@@ -542,10 +542,18 @@ try {
     true,
   );
   releaseInitialAccounts();
-  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Conectar conta profissional", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
+  const pagesBeforeConnection = page.context().pages().length;
+  await page.getByRole("button", { name: "Adicionar conta", exact: true }).click();
+  await page.getByRole("button", { name: "Conectar conta profissional", exact: true }).waitFor();
+  assert.equal(page.context().pages().length, pagesBeforeConnection);
   await page.getByText("Opções de navegador", { exact: true }).click();
   await page.getByRole("checkbox", { name: /Usar uma sess/ }).check();
-  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).first().click();
+  await page
+    .getByRole("button", { name: "Conectar conta profissional", exact: true })
+    .first()
+    .click();
   await page.getByRole("region", { name: "Conectar navegador local" }).waitFor();
   await page.getByRole("button", { name: "Cancelar", exact: true }).first().click();
   await page.getByRole("checkbox", { name: /Usar uma sess/ }).uncheck();
@@ -581,16 +589,21 @@ try {
   await professionalPopup.waitForURL("https://www.facebook.com/**");
   assert.equal(await continueProfessional.isDisabled(), true);
   await page.getByRole("button", { name: "Cancelar esta tentativa", exact: true }).click();
-  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Conectar conta profissional", exact: true }).waitFor();
   assert.equal(
-    await page.getByRole("button", { name: "Conectar Instagram", exact: true }).isEnabled(),
+    await page
+      .getByRole("button", { name: "Conectar conta profissional", exact: true })
+      .isEnabled(),
     true,
   );
   // Cross-origin opener isolation can prevent the parent from closing Meta's tab.
   // Cancellation must stop waiting; fixture cleanup closes any remaining tab.
   await professionalPopup.close();
   const popupEvent = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).first().click();
+  await page
+    .getByRole("button", { name: "Conectar conta profissional", exact: true })
+    .first()
+    .click();
   const popup = await popupEvent;
   // Local fixture stops external navigation; this proves the real button reaches OAuth.
   await page
@@ -1121,7 +1134,7 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await firstSteps.getByRole("button", { name: "Conectar Instagram" }).click();
   const newLogin = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).click();
+  await page.getByRole("button", { name: "Conectar conta profissional", exact: true }).click();
   const freshPopup = await newLogin;
   await freshPopup.waitForURL("https://www.facebook.com/**");
   const auth = new URL(freshPopup.url());

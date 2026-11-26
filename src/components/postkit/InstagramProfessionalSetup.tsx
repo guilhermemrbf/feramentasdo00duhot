@@ -12,8 +12,8 @@ export function InstagramProfessionalSetup({
   const [confirmed, setConfirmed] = useState(false);
 
   return (
-    <details className="mt-4 rounded-lg border border-sky-400/25 bg-sky-400/5 p-3 text-sm">
-      <summary className="cursor-pointer font-semibold text-foreground">
+    <details className="mt-3 rounded-lg border border-border bg-background/30 p-3 text-sm">
+      <summary className="min-h-7 cursor-pointer font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         Minha conta ainda é pessoal
       </summary>
       <div className="mt-3 space-y-3" aria-label="Preparar conta profissional">
