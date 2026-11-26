@@ -58,13 +58,53 @@ function text(value: unknown) {
   return typeof value === "string" ? value : undefined;
 }
 
+const inlineQr = /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/i;
+const providerQr = /^https:\/\/(?:[a-z0-9-]+\.)*syncpayments\.com\.br\//i;
+const qrImageLimit = 256 * 1024;
+
+async function inlinePaymentImage(image: string | undefined) {
+  if (!image) return undefined;
+  if (inlineQr.test(image)) return image.length <= qrImageLimit * 1.4 ? image : undefined;
+  if (!providerQr.test(image)) return undefined;
+
+  try {
+    const response = await fetch(image, { redirect: "error", signal: AbortSignal.timeout(5000) });
+    if (!response.body) return undefined;
+    const mime = response.headers.get("Content-Type")?.split(";")[0].toLowerCase();
+    if (
+      !response.ok ||
+      !mime ||
+      !["image/png", "image/jpeg", "image/webp"].includes(mime) ||
+      Number(response.headers.get("Content-Length")) > qrImageLimit
+    ) {
+      await response.body.cancel();
+      return undefined;
+    }
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    for (;;) {
+      const part = await reader.read();
+      if (part.done) break;
+      size += part.value.length;
+      if (size > qrImageLimit) {
+        await reader.cancel();
+        return undefined;
+      }
+      chunks.push(part.value);
+    }
+    return size
+      ? "data:" + mime + ";base64," + Buffer.concat(chunks, size).toString("base64")
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function payment(value: unknown, method: BillingMethod): Payment {
   const source = object(value);
   const qr = text(source.qr_code);
-  const isImage =
-    qr &&
-    (/^data:image\/png;base64,[a-z0-9+/=]+$/i.test(qr) ||
-      /^https:\/\/(?:[a-z0-9-]+\.)*syncpayments\.com\.br\//i.test(qr));
+  const isImage = qr && (inlineQr.test(qr) || providerQr.test(qr));
   return {
     code:
       method === "pix_automatico"
@@ -140,7 +180,7 @@ async function view(row: Row | null) {
   if (!row) return null;
   const instruction = row.payment_status === "aguardando" ? row.payment : null;
   const qr =
-    instruction?.image ??
+    (await inlinePaymentImage(instruction?.image)) ??
     (row.billing_method === "pix_automatico" && instruction?.code
       ? await QRCode.toDataURL(instruction.code, { width: 256, margin: 2 })
       : undefined);
@@ -176,7 +216,7 @@ export async function chargesView(user: string, page: number) {
       paidAt: text(charge.paid_at),
       payment:
         charge.status === "pending" || charge.status === "overdue"
-          ? payment(charge.payment, row.billing_method)
+          ? { ...payment(charge.payment, row.billing_method), image: undefined }
           : null,
     })),
     upcoming: records(upcoming.items ?? data.upcoming).map((charge) => ({
