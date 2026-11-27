@@ -467,6 +467,7 @@ function InstagramWorkspacePage({
   );
   const [accountRefresh, setAccountRefresh] = useState(0);
   const [loginWaiting, setLoginWaiting] = useState(false);
+  const [needsMetaAssetSetup, setNeedsMetaAssetSetup] = useState(false);
   const storiesChoice: StoriesChoice = "skip";
   const storyReviewCount = 0;
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
@@ -499,9 +500,16 @@ function InstagramWorkspacePage({
         refresh();
         if (!data.success) {
           setLoginWaiting(false);
-          setNotice(
-            "A conexão não foi concluída. Volte à tela de conexão para tentar de novo.",
-          );
+          if (data.recovery === "meta_asset_setup") {
+            setNeedsMetaAssetSetup(true);
+            setNotice(
+              "A Meta confirmou o login, mas esta conta ainda não foi compartilhada como ativo. Adicione-a na Meta para continuar.",
+            );
+          } else {
+            setNotice(
+              "A conexão não foi concluída. Volte à tela de conexão para tentar de novo.",
+            );
+          }
         }
         channel.postMessage({ type: "ack", id: data.id });
       };
@@ -716,6 +724,7 @@ function InstagramWorkspacePage({
     loginLock.current = true;
     setConnecting(mode);
     setNotice("");
+    setNeedsMetaAssetSetup(false);
     loginAccountsBefore.current = connectedAccounts.map((account) => ({ ...account }));
     confirmedInstagramIds.current = [];
     try {
@@ -1666,6 +1675,37 @@ function InstagramWorkspacePage({
                         ? "Carregando suas contas…"
                         : "Conectar Instagram"}
                 </button>
+                {needsMetaAssetSetup && (
+                  <section
+                    aria-label="Adicionar conta na Meta"
+                    className="mt-4 rounded-lg border border-sky-400/30 bg-sky-400/5 p-4 text-sm"
+                  >
+                    <h3 className="font-semibold text-foreground">Adicionar conta na Meta</h3>
+                    <p className="mt-1 text-muted-foreground">
+                      Na Meta, abra <strong>Contas do Instagram</strong>, selecione adicionar,
+                      entre no perfil que quer usar e conclua as confirmações. Depois, volte aqui
+                      para compartilhar a conta com o Mousefy.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <a
+                        href="https://business.facebook.com/latest/settings/instagram-accounts"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex min-h-11 items-center rounded-md border border-sky-400/40 px-3 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        Abrir contas do Instagram na Meta
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => void connectInstagram("instagram_unified_login")}
+                        disabled={!!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError}
+                        className="inline-flex min-h-11 items-center rounded-md bg-primary px-3 font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                      >
+                        Já adicionei — continuar
+                      </button>
+                    </div>
+                  </section>
+                )}
                 <InstagramProfessionalSetup
                   disabled={
                     platformMetaUnavailable ||

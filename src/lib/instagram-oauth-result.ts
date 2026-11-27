@@ -7,12 +7,16 @@ export type InstagramConnectionNotification = {
   instagramAccountIds: string[];
 };
 
+type InstagramRecovery = "meta_asset_setup";
+
 export function instagramOAuthResult(
   result: string,
   reason?: string,
   connection?: InstagramConnectionNotification,
 ) {
   const success = result === "connected" || result === "insights_not_granted";
+  const recovery: InstagramRecovery | undefined =
+    reason === "unified_accounts_empty" ? "meta_asset_setup" : undefined;
   const details: Record<string, string> = {
     state_validation:
       "A autorização expirou ou não corresponde a esta janela. Inicie uma nova conexão.",
@@ -51,12 +55,12 @@ export function instagramOAuthResult(
       const channel = new BroadcastChannel('${INSTAGRAM_CONNECTION_CHANNEL}');
       const id = crypto.randomUUID();
       channel.onmessage = ({ data }) => {
-        if (data?.type === 'ack' && data.id === id) {
+        if (!${JSON.stringify(recovery)} && data?.type === 'ack' && data.id === id) {
           channel.close();
           window.close();
         }
       };
-      channel.postMessage({ type: 'oauth-result', id, success: ${success}, connection: ${JSON.stringify(accountContext)} });
+      channel.postMessage({ type: 'oauth-result', id, success: ${success}, recovery: ${JSON.stringify(recovery)}, connection: ${JSON.stringify(accountContext)} });
       setTimeout(() => channel.close(), 5000);
     } catch { /* Isolated browsers keep the manual return instructions. */ }
   })();`;
@@ -67,8 +71,12 @@ export function instagramOAuthResult(
         ? "A autorização foi salva com segurança. Sua lista de contas no Mousefy será atualizada."
         : (details[reason ?? ""] ??
           "A conexão não foi concluída. Confira se a conta profissional tem acesso ao aplicativo na Meta e tente novamente.");
+  const recoveryAction =
+    recovery === "meta_asset_setup"
+      ? '<p>Abra a Meta para adicionar o Instagram ao seu portfólio. Quando concluir, volte ao Mousefy e inicie a conexão novamente.</p><p><a href="https://business.facebook.com/latest/settings/instagram-accounts" target="_blank" rel="noopener noreferrer">Adicionar conta na Meta</a></p>'
+      : "";
   return new Response(
-    `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · Mousefy</title><style>body{margin:0;background:#111217;color:#f4f4f5;font:16px/1.6 system-ui;min-height:100vh;display:grid;place-items:center}main{max-width:36rem;padding:2rem;margin:1rem;border:1px solid #45454c;border-radius:1rem;background:#1c1c23}h1{font-size:1.5rem;color:${success ? "#86efac" : "#fcd34d"}}p{color:#d4d4d8}strong{color:#fff}</style></head><body><main><p>Mousefy · Conexão do Instagram</p><h1>${title}</h1><p>${detail}</p><p><strong>Volte à aba original do Mousefy se esta janela não fechar automaticamente.</strong></p><p>${success ? "Confira a conta na lista e continue pela biblioteca de vídeos." : "Na aba original, clique em Conectar Instagram para repetir o login em uma sessão nova."}</p></main><script nonce="${nonce}">${notification}</script></body></html>`,
+    `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · Mousefy</title><style>body{margin:0;background:#111217;color:#f4f4f5;font:16px/1.6 system-ui;min-height:100vh;display:grid;place-items:center}main{max-width:36rem;padding:2rem;margin:1rem;border:1px solid #45454c;border-radius:1rem;background:#1c1c23}h1{font-size:1.5rem;color:${success ? "#86efac" : "#fcd34d"}}p{color:#d4d4d8}strong{color:#fff}a{display:inline-block;color:#fff;background:#d9253b;padding:.65rem 1rem;border-radius:.5rem;font-weight:700;text-decoration:none}</style></head><body><main><p>Mousefy · Conexão do Instagram</p><h1>${title}</h1><p>${detail}</p>${recoveryAction}<p><strong>Volte à aba original do Mousefy se esta janela não fechar automaticamente.</strong></p><p>${success ? "Confira a conta na lista e continue pela biblioteca de vídeos." : recovery ? "A etapa de associação também foi aberta na aba original do Mousefy." : "Na aba original, clique em Conectar Instagram para repetir o login em uma sessão nova."}</p></main><script nonce="${nonce}">${notification}</script></body></html>`,
     {
       status: 200,
       headers: {

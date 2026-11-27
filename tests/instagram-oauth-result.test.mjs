@@ -23,6 +23,14 @@ test("OAuth result notifies the original tab through a nonce-bound script withou
   assert.ok(!(await instagramOAuthResult("connected").text()).includes('nonce="' + nonce + '"'));
 });
 
+test("OAuth empty shared accounts exposes the Meta asset recovery without closing its popup", async () => {
+  const html = await instagramOAuthResult("connection_failed", "unified_accounts_empty").text();
+  assert.match(html, /Adicionar conta na Meta/);
+  assert.match(html, /business\.facebook\.com\/latest\/settings\/instagram-accounts/);
+  assert.match(html, /recovery: "meta_asset_setup"/);
+  assert.match(html, /!"meta_asset_setup" && data\?\.type === 'ack'/);
+});
+
 test("OAuth failure and missing insights explain recovery without reflecting provider inputs", async () => {
   const result = await instagramOAuthResult("connection_failed", "state_validation").text();
   assert.match(result, /expirou/);

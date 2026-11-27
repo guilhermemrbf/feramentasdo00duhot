@@ -631,6 +631,35 @@ try {
   assert.equal(platformOAuth.searchParams.get("prompt"), "login");
   await page.getByText(/confira o perfil selecionado e confirme as permissões/i).waitFor();
   assert.equal(await popup.evaluate(() => window.opener === null), true);
+  await page.evaluate(() => {
+    const channel = new BroadcastChannel("mausehot-instagram-connection");
+    channel.postMessage({
+      type: "oauth-result",
+      id: crypto.randomUUID(),
+      success: false,
+      recovery: "meta_asset_setup",
+    });
+    channel.close();
+  });
+  const metaAssetSetup = page.getByRole("region", { name: "Adicionar conta na Meta" });
+  await metaAssetSetup.waitFor();
+  assert.equal(
+    await metaAssetSetup
+      .getByRole("link", { name: "Abrir contas do Instagram na Meta", exact: true })
+      .getAttribute("href"),
+    "https://business.facebook.com/latest/settings/instagram-accounts",
+  );
+  assert.equal(
+    await metaAssetSetup.getByRole("button", { name: "Já adicionei — continuar", exact: true }).isEnabled(),
+    true,
+  );
+  const resumePopupEvent = page.waitForEvent("popup");
+  await metaAssetSetup
+    .getByRole("button", { name: "Já adicionei — continuar", exact: true })
+    .click();
+  const resumePopup = await resumePopupEvent;
+  await resumePopup.waitForURL("https://www.facebook.com/**");
+  await popup.close();
   const workspaceReadsBeforeRefresh = calls.filter(
     (name) => name === "ensure_postkit_workspace",
   ).length;
@@ -681,8 +710,8 @@ try {
         body: await result.text(),
       });
     });
-  const closed = popup.waitForEvent("close");
-  await popup.goto(web + "/api/instagram/oauth/callback?fixture=success").catch((error) => {
+  const closed = resumePopup.waitForEvent("close");
+  await resumePopup.goto(web + "/api/instagram/oauth/callback?fixture=success").catch((error) => {
     if (!/closed/i.test(error.message)) throw error;
   });
   await closed;
