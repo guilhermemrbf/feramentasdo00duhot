@@ -542,16 +542,16 @@ try {
     true,
   );
   releaseInitialAccounts();
-  await page.getByRole("button", { name: "Conectar conta profissional", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).waitFor();
   await page.getByRole("button", { name: "Contas conectadas", exact: true }).click();
   const pagesBeforeConnection = page.context().pages().length;
   await page.getByRole("button", { name: "Adicionar conta", exact: true }).click();
-  await page.getByRole("button", { name: "Conectar conta profissional", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).waitFor();
   assert.equal(page.context().pages().length, pagesBeforeConnection);
   await page.getByText("Opções de navegador", { exact: true }).click();
   await page.getByRole("checkbox", { name: /Usar uma sess/ }).check();
   await page
-    .getByRole("button", { name: "Conectar conta profissional", exact: true })
+    .getByRole("button", { name: "Conectar Instagram", exact: true })
     .first()
     .click();
   await page.getByRole("region", { name: "Conectar navegador local" }).waitFor();
@@ -563,6 +563,25 @@ try {
       body: "<title>Meta authorization fixture</title>",
     }),
   );
+  const inviteGuide = page.getByText("Recebi um convite de teste", { exact: true });
+  await inviteGuide.click();
+  const inviteUrl = "https://www.instagram.com/accounts/manage_access/";
+  const openInvites = page.getByRole("link", { name: "Abrir convites no Instagram", exact: true });
+  assert.equal(await openInvites.getAttribute("href"), inviteUrl);
+  assert.equal(await openInvites.getAttribute("target"), "_blank");
+  await page.context().route(inviteUrl, (route) =>
+    route.fulfill({ contentType: "text/html", body: "<title>Instagram invitation fixture</title>" }),
+  );
+  const invitePopupEvent = page.waitForEvent("popup");
+  await openInvites.click();
+  const invitePopup = await invitePopupEvent;
+  await invitePopup.waitForURL(inviteUrl);
+  await invitePopup.close();
+  assert.equal(
+    await page.getByRole("button", { name: "Conectar Instagram", exact: true }).isEnabled(),
+    true,
+  );
+  await inviteGuide.click();
   await page.getByText("Minha conta ainda é pessoal", { exact: true }).click();
   const professionalGuide = page.getByLabel("Preparar conta profissional", { exact: true });
   assert.equal(
@@ -572,16 +591,10 @@ try {
     "https://www.instagram.com/accounts/convert_to_professional_account/",
   );
   const continueProfessional = professionalGuide.getByRole("button", {
-    name: "Continuar conexão do Instagram",
+    name: "Continuar com Instagram",
     exact: true,
   });
-  assert.equal(await continueProfessional.isDisabled(), true);
-  await professionalGuide
-    .getByRole("checkbox", {
-      name: "Concluí a configuração profissional no Instagram.",
-      exact: true,
-    })
-    .check();
+  assert.equal(await professionalGuide.getByRole("checkbox").count(), 0);
   assert.equal(await continueProfessional.isEnabled(), true);
   const professionalPopupEvent = page.waitForEvent("popup");
   await continueProfessional.click();
@@ -589,10 +602,10 @@ try {
   await professionalPopup.waitForURL("https://www.facebook.com/**");
   assert.equal(await continueProfessional.isDisabled(), true);
   await page.getByRole("button", { name: "Cancelar esta tentativa", exact: true }).click();
-  await page.getByRole("button", { name: "Conectar conta profissional", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).waitFor();
   assert.equal(
     await page
-      .getByRole("button", { name: "Conectar conta profissional", exact: true })
+      .getByRole("button", { name: "Conectar Instagram", exact: true })
       .isEnabled(),
     true,
   );
@@ -601,7 +614,7 @@ try {
   await professionalPopup.close();
   const popupEvent = page.waitForEvent("popup");
   await page
-    .getByRole("button", { name: "Conectar conta profissional", exact: true })
+    .getByRole("button", { name: "Conectar Instagram", exact: true })
     .first()
     .click();
   const popup = await popupEvent;
@@ -615,6 +628,8 @@ try {
   const platformOAuth = new URL(popup.url());
   assert.equal(platformOAuth.searchParams.get("client_id"), env.META_APP_ID);
   assert.equal(platformOAuth.searchParams.get("config_id"), env.META_INSTAGRAM_LOGIN_CONFIG_ID);
+  assert.equal(platformOAuth.searchParams.get("prompt"), "login");
+  await page.getByText(/confira o perfil selecionado e confirme as permissões/i).waitFor();
   assert.equal(await popup.evaluate(() => window.opener === null), true);
   const workspaceReadsBeforeRefresh = calls.filter(
     (name) => name === "ensure_postkit_workspace",
@@ -1134,7 +1149,7 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await firstSteps.getByRole("button", { name: "Conectar Instagram" }).click();
   const newLogin = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Conectar conta profissional", exact: true }).click();
+  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).click();
   const freshPopup = await newLogin;
   await freshPopup.waitForURL("https://www.facebook.com/**");
   const auth = new URL(freshPopup.url());

@@ -500,7 +500,7 @@ function InstagramWorkspacePage({
         if (!data.success) {
           setLoginWaiting(false);
           setNotice(
-            "A conexão não foi concluída. Confira a ajuda para conectar e tente novamente.",
+            "A conexão não foi concluída. Volte à tela de conexão para tentar de novo.",
           );
         }
         channel.postMessage({ type: "ack", id: data.id });
@@ -742,7 +742,9 @@ function InstagramWorkspacePage({
       setShowLocalLogin(false);
       setLoginWaiting(true);
       setNotice(
-        "Autorização aberta. Entre no perfil desejado e confirme o acesso na Meta. Esta lista será atualizada automaticamente.",
+        mode === "instagram_unified_login"
+          ? "Autorização aberta. Na Meta, escolha Continuar com Instagram e entre no perfil que quer conectar."
+          : "Autorização aberta. Entre no perfil desejado e confirme o acesso na Meta.",
       );
     } catch (error) {
       setNotice(
@@ -1638,8 +1640,9 @@ function InstagramWorkspacePage({
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Escolha o tipo de conta que você quer conectar. Depois, selecione o perfil
-                    correto na janela oficial da Meta e confirme as permissões.
+                    Na Meta, escolha <strong>Continuar com Instagram</strong>. Se aparecer{" "}
+                    <strong>Selecione os ativos do negócio para compartilhar</strong>, escolha
+                    apenas o perfil que quer conectar.
                   </p>
                 )}
                 <button
@@ -1661,7 +1664,7 @@ function InstagramWorkspacePage({
                       ? "Aguardando seu Instagram…"
                       : !accountsLoaded && !accountsLoadError
                         ? "Carregando suas contas…"
-                        : "Conectar conta profissional"}
+                        : "Conectar Instagram"}
                 </button>
                 <InstagramProfessionalSetup
                   disabled={
@@ -1691,8 +1694,8 @@ function InstagramWorkspacePage({
                 {loginWaiting && (
                   <div className="mt-3 rounded-lg border border-sky-400/30 bg-sky-400/5 p-3 text-sm">
                     <p>
-                      Conclua o login na janela do Instagram. Ao autorizar, você continuará pela
-                      biblioteca da conta.
+                      Se a Meta pedir um portfólio, escolha aquele que contém o seu Instagram.
+                      Confira o perfil selecionado e confirme as permissões para voltar ao Mousefy.
                     </p>
                     <button
                       type="button"
@@ -1714,6 +1717,32 @@ function InstagramWorkspacePage({
                   Para conectar outro perfil, use <strong>Trocar de conta</strong> na tela da Meta.
                   Seus vídeos e agendamentos ficam separados por conta.
                 </p>
+                <details className="mt-4 rounded-md border border-border px-3 py-2 text-sm">
+                  <summary className="min-h-7 cursor-pointer font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    Recebi um convite de teste
+                  </summary>
+                  <p className="mt-2 text-muted-foreground">
+                    Abra o Instagram com o perfil convidado. Em{" "}
+                    <strong>Convites do testador</strong>, confira o nome do app e clique em{" "}
+                    <strong>Aceitar</strong>.
+                  </p>
+                  <a
+                    className="mt-3 inline-flex min-h-11 items-center rounded-md border border-border px-3 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    href="https://www.instagram.com/accounts/manage_access/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Abrir convites no Instagram
+                  </a>
+                  <p className="mt-2 text-muted-foreground">
+                    Depois, volte a esta aba. Se houver uma tentativa em andamento, cancele-a e
+                    clique em <strong>Conectar Instagram</strong> novamente.
+                  </p>
+                  <p className="mt-2 text-muted-foreground">
+                    Se aparecer <strong>App not active</strong>, confirme com a equipe se o convite
+                    foi enviado para o perfil certo.
+                  </p>
+                </details>
                 <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">
                   <summary className="cursor-pointer font-medium">Opções de navegador</summary>
                   <label className="mt-3 flex items-start gap-2 text-sm">
@@ -1729,47 +1758,6 @@ function InstagramWorkspacePage({
                     Use esta opção apenas se quiser uma janela independente. A conexão padrão usa
                     este navegador.
                   </p>
-                </details>
-                <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">
-                  <summary className="cursor-pointer font-medium">Ajuda para conectar</summary>
-                  <p className="mt-2 text-muted-foreground">
-                    Se aparecer outro perfil, escolha <strong>Trocar de conta</strong>. Se a Meta
-                    mostrar <strong>App not active</strong>, confira o convite de teste.
-                  </p>
-                  <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-muted-foreground">
-                    <li>
-                      Em{" "}
-                      <a
-                        className="font-medium text-foreground underline underline-offset-2"
-                        href={
-                          app.appId
-                            ? `https://developers.facebook.com/apps/${app.appId}/roles/roles/`
-                            : "https://developers.facebook.com/apps/"
-                        }
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Funções do app na Meta
-                      </a>
-                      , o administrador adiciona o perfil como{" "}
-                      <strong>Testador do Instagram</strong>.
-                    </li>
-                    <li>
-                      No perfil convidado, abra{" "}
-                      <a
-                        className="font-medium text-foreground underline underline-offset-2"
-                        href="https://www.instagram.com/accounts/manage_access/"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Apps e sites do Instagram
-                      </a>{" "}
-                      e aceite o convite em <strong>Convites do testador</strong>.
-                    </li>
-                    <li>
-                      Volte aqui e clique em <strong>Conectar conta profissional</strong>.
-                    </li>
-                  </ol>
                 </details>
                 {connectionTarget === "stories" && reelAccount && (
                   <button
