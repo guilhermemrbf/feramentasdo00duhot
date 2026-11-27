@@ -117,6 +117,17 @@ function payment(value: unknown, method: BillingMethod): Payment {
   };
 }
 
+async function renderPayment(instruction: Payment | null): Promise<Payment | null> {
+  if (!instruction) return null;
+  const provided = await inlinePaymentImage(instruction.image);
+  const image =
+    provided ??
+    (instruction.code
+      ? await QRCode.toDataURL(instruction.code, { width: 320, margin: 4 }).catch(() => undefined)
+      : undefined);
+  return { ...instruction, image };
+}
+
 async function current(user: string): Promise<Row | null> {
   return result(await table().select("*").eq("user_id", user).is("closed_at", null).maybeSingle());
 }
@@ -178,12 +189,6 @@ export async function reconcile(subscriptionToken: string) {
 
 async function view(row: Row | null) {
   if (!row) return null;
-  const instruction = row.payment_status === "aguardando" ? row.payment : null;
-  const qr =
-    (await inlinePaymentImage(instruction?.image)) ??
-    (row.billing_method === "pix_automatico" && instruction?.code
-      ? await QRCode.toDataURL(instruction.code, { width: 256, margin: 2 })
-      : undefined);
   return {
     status: row.status,
     paymentStatus: row.payment_status,
@@ -192,7 +197,7 @@ async function view(row: Row | null) {
     manuallySuspended: row.manually_suspended,
     hasSubscription: !!row.subscription_token,
     closed: !!row.closed_at,
-    payment: instruction && { ...instruction, image: qr },
+    payment: await renderPayment(row.payment_status === "aguardando" ? row.payment : null),
   };
 }
 
@@ -208,17 +213,21 @@ export async function chargesView(user: string, page: number) {
   );
   const upcoming = object(data.upcoming);
   return {
-    charges: records(data.data).map((charge) => ({
-      cycle: typeof charge.cycle_number === "number" ? charge.cycle_number : undefined,
-      amount: typeof charge.amount === "number" ? charge.amount : text(charge.amount),
-      status: text(charge.status),
-      chargeAt: text(charge.due_date),
-      paidAt: text(charge.paid_at),
-      payment:
-        charge.status === "pending" || charge.status === "overdue"
-          ? { ...payment(charge.payment, row.billing_method), image: undefined }
-          : null,
-    })),
+    charges: await Promise.all(
+      records(data.data).map(async (charge) => ({
+        cycle: typeof charge.cycle_number === "number" ? charge.cycle_number : undefined,
+        amount: typeof charge.amount === "number" ? charge.amount : text(charge.amount),
+        status: text(charge.status),
+        chargeAt: text(charge.due_date),
+        paidAt: text(charge.paid_at),
+        payment:
+          row.billing_method === "qr_code" &&
+          row.payment_status !== "aguardando" &&
+          (charge.status === "pending" || charge.status === "overdue")
+            ? await renderPayment(payment(charge.payment, row.billing_method))
+            : null,
+      })),
+    ),
     upcoming: records(upcoming.items ?? data.upcoming).map((charge) => ({
       cycle: typeof charge.cycle_number === "number" ? charge.cycle_number : undefined,
       date:

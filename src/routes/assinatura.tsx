@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
-import { ArrowRight, CircleCheck } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { ArrowLeft, ArrowRight, CircleCheck, Copy, LockKeyhole, ScanLine } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { PublicBrand } from "@/components/access/LaunchPage";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
@@ -33,6 +33,16 @@ const day = (value?: string | null) =>
     : "—";
 const names = { pix_automatico: "Pix Automático", qr_code: "Pix Copia e Cola" } as const;
 type BillingMethod = keyof typeof names;
+const methodDescriptions: Record<BillingMethod, string> = {
+  pix_automatico: "Autorize uma vez no banco para pagar os próximos ciclos automaticamente.",
+  qr_code: "Pague um novo Pix a cada ciclo.",
+};
+const planDetails: Record<string, { name: string; instagram: string; ads: number }> = {
+  "b51f6f0f-4d23-48c8-a2e7-1037849aa8a9": { name: "Essencial", instagram: "50", ads: 3 },
+  "26a29855-68aa-4a80-bd53-2200ce44c471": { name: "Crescimento", instagram: "100", ads: 5 },
+  "44aa1915-be2f-4b0c-b386-7b75181c23eb": { name: "Pro", instagram: "150", ads: 8 },
+  "66b2964c-c281-4c8c-b902-ced6d567bcbd": { name: "Escala", instagram: "1.000", ads: 15 },
+};
 type Action = "cancel" | "suspend" | "reactivate";
 const paymentLabels: Record<string, string> = {
   aguardando: "Aguardando o primeiro pagamento",
@@ -52,54 +62,96 @@ const chargeLabels: Record<string, string> = {
 const button = "saas-button saas-button-outline";
 const primary = "saas-button saas-button-primary";
 const field = "w-full rounded-lg border border-input bg-background px-3 py-2 text-foreground";
+const checkoutField =
+  field +
+  " min-h-12 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
+function PlanLimits({ details }: { details: (typeof planDetails)[string] }) {
+  return (
+    <dl className="grid gap-3 text-sm">
+      <div>
+        <dt className="text-muted-foreground">Automatic Post</dt>
+        <dd className="font-semibold">Até {details.instagram} contas do Instagram</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">Traqueamento avançado</dt>
+        <dd className="font-semibold">Até {details.ads} contas de anúncio</dd>
+      </div>
+    </dl>
+  );
+}
 
 function PaymentInstructions({
   payment,
+  method,
 }: {
   payment: { code?: string; image?: string; expiresAt?: string };
+  method: BillingMethod;
 }) {
   const [copy, setCopy] = useState("");
+  const automatic = method === "pix_automatico";
   return (
-    <div className="space-y-3">
+    <div className="grid items-center gap-6 rounded-2xl border border-border bg-card p-4 sm:p-6 md:grid-cols-[auto_minmax(0,1fr)] md:gap-8">
       {payment.image && (
         <img
-          className="rounded-lg bg-white"
-          width={256}
-          height={256}
+          className="mx-auto aspect-square w-64 max-w-full rounded-xl bg-white object-contain p-3"
+          width={320}
+          height={320}
           alt="QR Code do pagamento Pix"
           src={payment.image}
           referrerPolicy="no-referrer"
         />
       )}
-      {payment.code && (
-        <>
-          <label className="block space-y-1">
-            <span>Código Pix</span>
-            <input
-              className={field}
-              readOnly
-              value={payment.code}
-              onFocus={(event) => event.target.select()}
-            />
-          </label>
-          <button
-            type="button"
-            className={button}
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(payment.code ?? "");
-                setCopy("Código copiado.");
-              } catch {
-                setCopy("Selecione e copie o código acima.");
-              }
-            }}
-          >
-            Copiar código Pix
-          </button>
-          <p role="status">{copy}</p>
-        </>
-      )}
-      {payment.expiresAt && <p>Pagamento disponível até {day(payment.expiresAt)}.</p>}
+      <div className="min-w-0 space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold">
+            {automatic ? "Autorize no app do seu banco" : "Pague no app do seu banco"}
+          </h3>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            {payment.image
+              ? "Abra a área Pix no celular e escaneie o QR Code."
+              : payment.code
+                ? "Copie o código e cole na área Pix do seu banco."
+                : "O QR Code ainda está indisponível. Atualize a assinatura e tente novamente."}
+            {automatic &&
+              payment.image &&
+              " Confira os dados e confirme a autorização do Pix Automático."}
+          </p>
+        </div>
+        {payment.code && (
+          <div className="space-y-2">
+            <label className="block space-y-2 text-sm font-medium">
+              <span>Pix Copia e Cola</span>
+              <input
+                className={checkoutField + " font-mono text-xs"}
+                readOnly
+                value={payment.code}
+                onFocus={(event) => event.target.select()}
+              />
+            </label>
+            <button
+              type="button"
+              className={button}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(payment.code ?? "");
+                  setCopy("Código copiado.");
+                } catch {
+                  setCopy("Selecione e copie o código acima.");
+                }
+              }}
+            >
+              <Copy className="size-4" aria-hidden /> Copiar código Pix
+            </button>
+            <p className="text-sm text-muted-foreground" role="status">
+              {copy}
+            </p>
+          </div>
+        )}
+        {payment.expiresAt && (
+          <p className="text-sm text-muted-foreground">Pix válido até {day(payment.expiresAt)}.</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -183,7 +235,14 @@ function SubscriptionDetails({ user }: { user: string }) {
     staleTime: 30_000,
   });
   const selected = plans.data?.find((entry) => entry.token === plan);
+  const selectedDetails = selected && planDetails[selected.token];
+  const checkoutHeading = useRef<HTMLHeadingElement>(null);
+  const awaitingPayment =
+    !!current?.hasSubscription && !current.closed && current.paymentStatus === "aguardando";
   const methods = accepted ?? selected?.methods ?? [];
+  useEffect(() => {
+    if (selected || awaitingPayment) checkoutHeading.current?.focus();
+  }, [selected, awaitingPayment]);
   const refresh = async () => {
     await Promise.all([
       client.invalidateQueries({ queryKey: subscriptionKey }),
@@ -202,6 +261,9 @@ function SubscriptionDetails({ user }: { user: string }) {
         setMessage(data.error);
         await client.invalidateQueries({ queryKey: ["mousefy-plans", user] });
       } else {
+        if ("subscription" in data && data.subscription?.hasSubscription) {
+          client.setQueryData(subscriptionKey, data.subscription);
+        }
         await refresh();
       }
     },
@@ -227,7 +289,7 @@ function SubscriptionDetails({ user }: { user: string }) {
     const form = new FormData(event.currentTarget);
     enrollment.mutate({
       data: {
-        plan,
+        plan: selected.token,
         method,
         amount: selected.amount,
         days: selected.days,
@@ -244,10 +306,14 @@ function SubscriptionDetails({ user }: { user: string }) {
     <div className="space-y-6">
       {current?.hasSubscription && (
         <section
-          className="space-y-4 rounded-xl border border-border p-5"
+          className="space-y-5 rounded-2xl border border-border p-4 sm:p-6"
           aria-label="Estado da assinatura"
         >
-          <h2 className="text-xl font-semibold">
+          <h2
+            className="text-xl font-semibold focus:outline-none sm:text-2xl"
+            ref={awaitingPayment ? checkoutHeading : undefined}
+            tabIndex={awaitingPayment ? -1 : undefined}
+          >
             {current.closed
               ? current.status === "cancelled"
                 ? "Assinatura cancelada"
@@ -268,7 +334,13 @@ function SubscriptionDetails({ user }: { user: string }) {
               São Paulo.
             </p>
           )}
-          {current.payment && !current.closed && <PaymentInstructions payment={current.payment} />}
+          {awaitingPayment && (
+            <PaymentInstructions
+              key={current.payment?.code}
+              payment={current.payment ?? {}}
+              method={current.method}
+            />
+          )}
           <div className="flex flex-wrap gap-2">
             <button type="button" className={button} onClick={() => void refresh()}>
               Atualizar
@@ -358,9 +430,7 @@ function SubscriptionDetails({ user }: { user: string }) {
       )}
       {canEnroll && (
         <section className="space-y-4 rounded-xl border border-border p-5" aria-label="Planos">
-          <h2 className="text-xl font-semibold">
-            {selected ? "Finalizar assinatura" : "Escolha seu plano"}
-          </h2>
+          {!selected && <h2 className="text-xl font-semibold">Escolha seu plano</h2>}
           {!selected && <p>Todos os planos incluem acesso às ferramentas do Mousefy.</p>}
           {plans.isPending ? (
             <p role="status">Consultando os planos…</p>
@@ -371,9 +441,7 @@ function SubscriptionDetails({ user }: { user: string }) {
           ) : (
             <form className="space-y-4" onSubmit={submit}>
               {!selected ? (
-                <div
-                  className="mousefy-pricing relative isolate min-w-0 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-zinc-50 sm:p-6"
-                >
+                <div className="mousefy-pricing relative isolate min-w-0 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-zinc-50 sm:p-6">
                   <style>{`
                     .mousefy-pricing .pricing-lines {
                       position: absolute;
@@ -436,7 +504,7 @@ function SubscriptionDetails({ user }: { user: string }) {
                         Sua operação, seu ritmo
                       </h3>
                       <p className="mt-2 text-sm text-zinc-400">
-                        Escolha o período de assinatura ideal para você.
+                        Escolha a capacidade ideal para sua operação.
                       </p>
                     </div>
                     <div className="pricing-grid">
@@ -446,7 +514,9 @@ function SubscriptionDetails({ user }: { user: string }) {
                           style={{ animationDelay: `${index * 70}ms` }}
                           className="pricing-card relative flex min-w-0 flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-900/90 p-4 transition-colors hover:border-zinc-500 sm:p-5"
                         >
-                          <h4 className="break-words text-base font-semibold">{entry.name}</h4>
+                          <h4 className="break-words text-base font-semibold">
+                            {planDetails[entry.token]?.name ?? entry.name}
+                          </h4>
                           <div>
                             <span className="block text-2xl font-bold tracking-tight text-white sm:text-3xl">
                               {money(entry.amount)}
@@ -455,8 +525,13 @@ function SubscriptionDetails({ user }: { user: string }) {
                               A cada {entry.days} dias
                             </span>
                           </div>
+                          {planDetails[entry.token] && (
+                            <PlanLimits details={planDetails[entry.token]} />
+                          )}
                           <div className="flex-1 border-t border-zinc-700 pt-4">
-                            <p className="mb-3 text-sm font-semibold text-zinc-100">Inclui:</p>
+                            <p className="mb-3 text-sm font-semibold text-zinc-100">
+                              Todas as ferramentas
+                            </p>
                             <ul className="space-y-2.5 text-sm text-zinc-200">
                               {TOOL_CATALOG.map((tool) => (
                                 <li key={tool.id} className="flex items-start gap-2">
@@ -476,7 +551,7 @@ function SubscriptionDetails({ user }: { user: string }) {
                           <button
                             type="button"
                             disabled={busy}
-                            aria-label={`Selecionar plano ${entry.name}`}
+                            aria-label={`Selecionar plano ${planDetails[entry.token]?.name ?? entry.name} — ${money(entry.amount)}`}
                             className="mt-auto flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-zinc-100 bg-zinc-100 px-3 py-2 text-center text-sm font-semibold text-zinc-950 transition-colors hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50"
                             onClick={() => {
                               setPlan(entry.token);
@@ -494,10 +569,10 @@ function SubscriptionDetails({ user }: { user: string }) {
                   </div>
                 </div>
               ) : (
-                <div className="mx-auto max-w-2xl space-y-4">
+                <div className="mx-auto max-w-5xl space-y-5">
                   <button
                     type="button"
-                    className={button}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50"
                     disabled={busy}
                     onClick={() => {
                       setPlan("");
@@ -505,70 +580,124 @@ function SubscriptionDetails({ user }: { user: string }) {
                       setMessage("");
                     }}
                   >
-                    Voltar aos planos
+                    <ArrowLeft className="size-4" aria-hidden /> Voltar aos planos
                   </button>
-                  <div className="rounded-xl border border-border bg-card p-4">
-                    <p className="text-sm text-muted-foreground">Plano selecionado</p>
-                    <p className="mt-1 text-lg font-semibold">{selected.name}</p>
-                    <p>{money(selected.amount)} a cada {selected.days} dias</p>
-                  </div>
-                  <label className="block space-y-1">
-                    <span>Forma de pagamento</span>
-                    <select
-                      className={field}
-                      required
-                      disabled={!methods.length || busy}
-                      value={method}
-                      onChange={(event) => setMethod(event.target.value as BillingMethod)}
-                    >
-                      {methods.map((item) => (
-                        <option key={item} value={item}>
-                          {names[item]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block space-y-1">
-                    <span>Nome completo ou razão social</span>
-                    <input
-                      className={field}
-                      name="name"
-                      minLength={3}
-                      maxLength={150}
-                      required
-                      autoComplete="name"
-                      disabled={busy}
-                    />
-                  </label>
-                  <label className="block space-y-1">
-                    <span>CPF ou CNPJ</span>
-                    <input
-                      className={field}
-                      name="document"
-                      inputMode="numeric"
-                      minLength={11}
-                      maxLength={18}
-                      required
-                      autoComplete="off"
-                      disabled={busy}
-                    />
-                  </label>
-                  <p className="text-sm text-muted-foreground">
-                    Seu nome, e-mail e CPF ou CNPJ são enviados à SyncPay para processar a cobrança.
-                  </p>
-                  {selected && (
-                    <p>
-                      {money(selected.amount)} a cada {selected.days} dias. O acesso é liberado quando o
-                      primeiro pagamento for confirmado.
-                    </p>
-                  )}
-                  <button
-                    type="submit"
-                    className={primary}
-                    disabled={busy || !selected || !methods.length}
+                  <h2
+                    ref={checkoutHeading}
+                    tabIndex={-1}
+                    className="font-display text-2xl font-semibold tracking-tight focus:outline-none sm:text-3xl"
                   >
-                    {busy ? "Processando…" : "Assinar com Pix"}
-                  </button>
+                    Finalizar assinatura
+                  </h2>
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,0.62fr)] lg:items-start">
+                    <section
+                      className="space-y-6 rounded-2xl border border-border bg-card p-4 sm:p-6"
+                      aria-label="Dados e forma de pagamento"
+                    >
+                      <div className="space-y-3">
+                        <h3 className="text-base font-semibold">Dados de cobrança</h3>
+                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(10rem,0.65fr)]">
+                          <label className="block space-y-2 text-sm font-medium">
+                            <span>Nome completo ou razão social</span>
+                            <input
+                              className={checkoutField}
+                              name="name"
+                              minLength={3}
+                              maxLength={150}
+                              required
+                              autoComplete="name"
+                              disabled={busy}
+                            />
+                          </label>
+                          <label className="block space-y-2 text-sm font-medium">
+                            <span>CPF ou CNPJ</span>
+                            <input
+                              className={checkoutField}
+                              name="document"
+                              inputMode="numeric"
+                              minLength={11}
+                              maxLength={18}
+                              required
+                              aria-describedby="mousefy-document-hint"
+                              autoComplete="off"
+                              disabled={busy}
+                            />
+                          </label>
+                        </div>
+                        <p
+                          className="text-xs leading-5 text-muted-foreground"
+                          id="mousefy-document-hint"
+                        >
+                          Seu nome, e-mail e CPF ou CNPJ são enviados à SyncPay para processar a
+                          cobrança.
+                        </p>
+                      </div>
+                      <fieldset className="space-y-2 border-t border-border pt-4" disabled={busy}>
+                        <legend className="text-base font-semibold">Forma de pagamento</legend>
+                        {methods.map((item) => (
+                          <label
+                            key={item}
+                            className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-3.5 has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:disabled]:cursor-not-allowed"
+                          >
+                            <input
+                              type="radio"
+                              name="billing-method"
+                              className="mt-1 size-4 shrink-0 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                              checked={method === item}
+                              onChange={() => setMethod(item)}
+                            />
+                            <span>
+                              <span className="block text-sm font-semibold">{names[item]}</span>
+                              <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                                {methodDescriptions[item]}
+                              </span>
+                            </span>
+                          </label>
+                        ))}
+                        {!methods.length && (
+                          <p role="status">Nenhuma forma de pagamento disponível.</p>
+                        )}
+                      </fieldset>
+                      {message && (
+                        <p role="alert" className="text-sm text-brand-red">
+                          {message}
+                        </p>
+                      )}
+                      <button
+                        type="submit"
+                        className={primary + " w-full"}
+                        disabled={busy || !methods.includes(method)}
+                      >
+                        <ScanLine className="size-4" aria-hidden />
+                        {busy ? "Gerando Pix…" : "Gerar Pix"}
+                      </button>
+                    </section>
+                    <aside
+                      className="space-y-5 rounded-2xl border border-border border-t-primary bg-card p-4 sm:p-6"
+                      aria-label="Resumo do plano"
+                    >
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground">
+                          Resumo do plano
+                        </h3>
+                        <p className="mt-1 text-xl font-semibold">
+                          {selectedDetails?.name ?? selected.name}
+                        </p>
+                        <p className="mt-2 text-2xl font-semibold tracking-tight">
+                          {money(selected.amount)} a cada{" "}
+                          <span className="whitespace-nowrap">{selected.days} dias</span>
+                        </p>
+                      </div>
+                      {selectedDetails && <PlanLimits details={selectedDetails} />}
+                      <p className="border-t border-border pt-4 text-sm">
+                        Acesso a todas as ferramentas do Mousefy
+                      </p>
+                      <p className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
+                        <LockKeyhole className="mt-0.5 size-4 shrink-0" aria-hidden />O acesso é
+                        liberado após a confirmação do primeiro pagamento.
+                      </p>
+                    </aside>
+                  </div>
                 </div>
               )}
             </form>
@@ -578,7 +707,7 @@ function SubscriptionDetails({ user }: { user: string }) {
       {access.status === "denied" && !current?.hasSubscription && (
         <p>Seu cadastro está indisponível para adesão.</p>
       )}
-      {message && <p role="alert">{message}</p>}
+      {message && !selected && <p role="alert">{message}</p>}
       {current?.hasSubscription && (
         <section className="space-y-4 rounded-xl border border-border p-5">
           <h2 className="text-xl font-semibold">Cobranças</h2>
@@ -597,11 +726,13 @@ function SubscriptionDetails({ user }: { user: string }) {
                         {chargeLabels[String(item.status)] ?? "Em processamento"}
                       </p>
                       {item.paidAt && <p>Paga em {day(item.paidAt)}</p>}
-                      {item.payment?.code &&
-                        current.method === "qr_code" &&
-                        current.paymentStatus !== "aguardando" && (
-                          <PaymentInstructions payment={item.payment} />
-                        )}
+                      {(item.payment?.code || item.payment?.image) && (
+                        <PaymentInstructions
+                          key={item.payment.code}
+                          payment={item.payment}
+                          method="qr_code"
+                        />
+                      )}
                     </li>
                   ))}
                 </ul>
