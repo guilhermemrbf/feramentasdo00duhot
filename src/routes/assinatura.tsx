@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
+import { ArrowRight, CircleCheck } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { PublicBrand } from "@/components/access/LaunchPage";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
@@ -107,7 +108,7 @@ function SubscriptionPage() {
   if (access.user) {
     return (
       <AppShell>
-        <main className="mx-auto max-w-3xl px-5 py-8 sm:px-8 sm:py-10">
+        <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
           <header className="rounded-xl border border-border bg-card px-5 py-6 sm:px-7">
             <h1 className="font-display text-3xl font-semibold tracking-tight">Planos</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
@@ -366,88 +367,203 @@ function SubscriptionDetails({ user }: { user: string }) {
             <p>Nenhum plano disponível para adesão agora.</p>
           ) : (
             <form className="space-y-4" onSubmit={submit}>
-              <label className="block space-y-1">
-                <span>Plano recorrente</span>
-                <select
-                  className={field}
-                  value={plan}
-                  required
-                  disabled={busy}
-                  onChange={(event) => {
-                    const next = event.target.value;
-                    setPlan(next);
-                    setAccepted(undefined);
-                    setMethod(
-                      plans.data.find((entry) => entry.token === next)?.methods[0] ??
-                        "pix_automatico",
-                    );
-                  }}
-                >
-                  <option value="">Selecione</option>
-                  {plans.data.map((entry) => (
-                    <option key={entry.token} value={entry.token}>
-                      {entry.name} · {money(entry.amount)} a cada {entry.days} dias
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block space-y-1">
-                <span>Forma de pagamento</span>
-                <select
-                  className={field}
-                  required
-                  disabled={!methods.length || busy}
-                  value={method}
-                  onChange={(event) => setMethod(event.target.value as BillingMethod)}
-                >
-                  {methods.map((item) => (
-                    <option key={item} value={item}>
-                      {names[item]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block space-y-1">
-                <span>Nome completo ou razão social</span>
-                <input
-                  className={field}
-                  name="name"
-                  minLength={3}
-                  maxLength={150}
-                  required
-                  autoComplete="name"
-                  disabled={busy}
-                />
-              </label>
-              <label className="block space-y-1">
-                <span>CPF ou CNPJ</span>
-                <input
-                  className={field}
-                  name="document"
-                  inputMode="numeric"
-                  minLength={11}
-                  maxLength={18}
-                  required
-                  autoComplete="off"
-                  disabled={busy}
-                />
-              </label>
-              <p className="text-sm text-muted-foreground">
-                Seu nome, e-mail e CPF ou CNPJ são enviados à SyncPay para processar a cobrança.
-              </p>
-              {selected && (
-                <p>
-                  {money(selected.amount)} a cada {selected.days} dias. O acesso é liberado quando o
-                  primeiro pagamento for confirmado.
-                </p>
-              )}
-              <button
-                type="submit"
-                className={primary}
-                disabled={busy || !selected || !methods.length}
+              <fieldset
+                className="mousefy-pricing relative isolate min-w-0 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-zinc-50 sm:p-6"
+                disabled={busy}
               >
-                {busy ? "Processando…" : "Assinar com Pix"}
-              </button>
+                <legend className="sr-only">Plano recorrente</legend>
+                <style>{`
+                  .mousefy-pricing .pricing-lines {
+                    position: absolute;
+                    inset: 0;
+                    pointer-events: none;
+                    background:
+                      linear-gradient(90deg, transparent 17.9%, #27272a 18%, transparent 18.1%, transparent 49.9%, #27272a 50%, transparent 50.1%, transparent 81.9%, #27272a 82%, transparent 82.1%),
+                      linear-gradient(transparent 17.9%, #27272a 18%, transparent 18.1%, transparent 49.9%, #27272a 50%, transparent 50.1%, transparent 81.9%, #27272a 82%, transparent 82.1%);
+                    opacity: .65;
+                    animation: mousefy-pricing-lines .7s ease both;
+                  }
+                  .mousefy-pricing .pricing-particles {
+                    position: absolute;
+                    inset: 0;
+                    pointer-events: none;
+                    background-image: radial-gradient(ellipse at center, #a1a1aa 0 1px, transparent 1.6px), radial-gradient(ellipse at center, #71717a 0 1px, transparent 1.6px);
+                    background-size: 71px 89px, 113px 137px;
+                    background-position: 13px 19px, 41px 61px;
+                    opacity: .18;
+                    animation: mousefy-pricing-particles 4s ease-out both;
+                  }
+                  .mousefy-pricing .pricing-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+                    gap: 1rem;
+                  }
+                  .mousefy-pricing .pricing-card {
+                    animation: mousefy-pricing-card .55s ease backwards;
+                  }
+                  @keyframes mousefy-pricing-lines {
+                    from { opacity: 0; transform: scale(.94); }
+                    to { opacity: .65; transform: scale(1); }
+                  }
+                  @keyframes mousefy-pricing-particles {
+                    from { background-position: 13px 39px, 41px 81px; }
+                    to { background-position: 13px 19px, 41px 61px; }
+                  }
+                  @keyframes mousefy-pricing-card {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                  }
+                  @media (prefers-reduced-motion: reduce) {
+                    .mousefy-pricing .pricing-lines,
+                    .mousefy-pricing .pricing-particles,
+                    .mousefy-pricing .pricing-card { animation: none; }
+                  }
+                `}</style>
+                <div aria-hidden="true" className="pricing-lines" />
+                <div aria-hidden="true" className="pricing-particles" />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 [background:radial-gradient(80%_60%_at_50%_0%,rgba(255,255,255,0.07),transparent_65%)]"
+                />
+                <div className="relative">
+                  <div className="mb-7 text-center">
+                    <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
+                      Mousefy
+                    </p>
+                    <h3 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+                      Sua operação, seu ritmo
+                    </h3>
+                    <p className="mt-2 text-sm text-zinc-400">
+                      Escolha o período de assinatura ideal para você.
+                    </p>
+                  </div>
+                  <div className="pricing-grid">
+                    {plans.data.map((entry, index) => {
+                      const active = entry.token === plan;
+                      return (
+                        <label
+                          key={entry.token}
+                          style={{ animationDelay: `${index * 70}ms` }}
+                          className={`pricing-card relative flex min-w-0 flex-col gap-4 rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-white focus-within:ring-offset-2 focus-within:ring-offset-zinc-950 sm:p-5 ${active ? "border-zinc-200 bg-zinc-800/90" : "border-zinc-800 bg-zinc-900/90 hover:border-zinc-500"} ${busy ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
+                        >
+                          <input
+                            className="sr-only"
+                            type="radio"
+                            name="subscription-plan"
+                            value={entry.token}
+                            checked={active}
+                            required
+                            disabled={busy}
+                            onChange={() => {
+                              setPlan(entry.token);
+                              setAccepted(undefined);
+                              setMethod(entry.methods[0] ?? "pix_automatico");
+                            }}
+                          />
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="break-words text-base font-semibold">
+                              {entry.name}
+                            </span>
+                            <CircleCheck
+                              aria-hidden="true"
+                              className={`size-5 shrink-0 ${active ? "text-white" : "text-zinc-500"}`}
+                            />
+                          </div>
+                          <div>
+                            <span className="block whitespace-nowrap text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                              {money(entry.amount)}
+                            </span>
+                            <span className="mt-1 block text-sm text-zinc-400">
+                              A cada {entry.days} dias
+                            </span>
+                          </div>
+                          <ul className="flex-1 space-y-3 border-t border-zinc-700 pt-4 text-sm text-zinc-200">
+                            <li className="flex items-start gap-2">
+                              <CircleCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-zinc-400" />
+                              Acesso ao Mousefy
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <CircleCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-zinc-400" />
+                              Ativação após pagamento confirmado
+                            </li>
+                            {entry.methods.map((item) => (
+                              <li key={item} className="flex items-start gap-2">
+                                <CircleCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-zinc-400" />
+                                {names[item]}
+                              </li>
+                            ))}
+                          </ul>
+                          <span
+                            className={`mt-auto flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-center text-sm font-semibold transition-colors ${active ? "border-zinc-100 bg-zinc-100 text-zinc-950" : "border-zinc-700 bg-transparent text-zinc-100"}`}
+                          >
+                            {active ? "Plano selecionado" : "Selecionar plano"}
+                            <ArrowRight aria-hidden="true" className="size-4 shrink-0" />
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </fieldset>
+              <div className="mx-auto max-w-2xl space-y-4">
+                <label className="block space-y-1">
+                  <span>Forma de pagamento</span>
+                  <select
+                    className={field}
+                    required
+                    disabled={!methods.length || busy}
+                    value={method}
+                    onChange={(event) => setMethod(event.target.value as BillingMethod)}
+                  >
+                    {methods.map((item) => (
+                      <option key={item} value={item}>
+                        {names[item]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block space-y-1">
+                  <span>Nome completo ou razão social</span>
+                  <input
+                    className={field}
+                    name="name"
+                    minLength={3}
+                    maxLength={150}
+                    required
+                    autoComplete="name"
+                    disabled={busy}
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span>CPF ou CNPJ</span>
+                  <input
+                    className={field}
+                    name="document"
+                    inputMode="numeric"
+                    minLength={11}
+                    maxLength={18}
+                    required
+                    autoComplete="off"
+                    disabled={busy}
+                  />
+                </label>
+                <p className="text-sm text-muted-foreground">
+                  Seu nome, e-mail e CPF ou CNPJ são enviados à SyncPay para processar a cobrança.
+                </p>
+                {selected && (
+                  <p>
+                    {money(selected.amount)} a cada {selected.days} dias. O acesso é liberado quando o
+                    primeiro pagamento for confirmado.
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  className={primary}
+                  disabled={busy || !selected || !methods.length}
+                >
+                  {busy ? "Processando…" : "Assinar com Pix"}
+                </button>
+              </div>
             </form>
           )}
         </section>
