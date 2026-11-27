@@ -22,7 +22,7 @@ function ToolsPage() {
       <main className="workspace-overview mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-9">
         <header className="operate-heading">
           <div>
-            <h1>{status === "trial" ? "Ferramentas do seu teste" : "Ferramentas"}</h1>
+            <h1>Ferramentas</h1>
             <p>Escolha a ferramenta que você quer usar.</p>
           </div>
         </header>

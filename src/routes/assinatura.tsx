@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
+import { AppShell } from "@/components/AppShell";
 import { PublicBrand } from "@/components/access/LaunchPage";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import {
@@ -103,6 +104,32 @@ function PaymentInstructions({
 
 function SubscriptionPage() {
   const access = usePlatformAccess();
+  if (access.user) {
+    return (
+      <AppShell>
+        <main className="mx-auto max-w-3xl px-5 py-8 sm:px-8 sm:py-10">
+          <header className="rounded-xl border border-border bg-card px-5 py-6 sm:px-7">
+            <h1 className="font-display text-3xl font-semibold tracking-tight">Planos</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Escolha como ativar sua operação. Você pode explorar o Mousefy antes de assinar;
+              conexões, publicações e ferramentas são ativadas após o pagamento confirmado.
+            </p>
+          </header>
+          <div className="mt-6">
+            {access.isLoading ? (
+              <p role="status">Carregando sua conta…</p>
+            ) : access.status === "unverified" ? (
+              <p>Confirme seu e-mail para assinar.</p>
+            ) : access.isError ? (
+              <p role="alert">Não foi possível verificar sua conta. Tente novamente.</p>
+            ) : (
+              <SubscriptionDetails key={access.user.id} user={access.user.id} />
+            )}
+          </div>
+        </main>
+      </AppShell>
+    );
+  }
   return (
     <div className="launch-site">
       <header className="launch-top launch-wrap launch-top-static">
@@ -112,16 +139,10 @@ function SubscriptionPage() {
         <h1 className="mb-6 text-3xl font-semibold">Assinatura do Mousefy</h1>
         {access.isLoading ? (
           <p role="status">Carregando sua conta…</p>
-        ) : !access.user ? (
+        ) : (
           <Link to="/" hash="acesso" className={primary}>
             Entrar ou criar conta
           </Link>
-        ) : access.status === "unverified" ? (
-          <p>Confirme seu e-mail para assinar.</p>
-        ) : access.isError ? (
-          <p role="alert">Não foi possível verificar sua conta. Tente novamente.</p>
-        ) : (
-          <SubscriptionDetails key={access.user.id} user={access.user.id} />
         )}
       </main>
     </div>

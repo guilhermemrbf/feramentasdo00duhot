@@ -550,10 +550,7 @@ try {
   assert.equal(page.context().pages().length, pagesBeforeConnection);
   await page.getByText("Opções de navegador", { exact: true }).click();
   await page.getByRole("checkbox", { name: /Usar uma sess/ }).check();
-  await page
-    .getByRole("button", { name: "Conectar Instagram", exact: true })
-    .first()
-    .click();
+  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).first().click();
   await page.getByRole("region", { name: "Conectar navegador local" }).waitFor();
   await page.getByRole("button", { name: "Cancelar", exact: true }).first().click();
   await page.getByRole("checkbox", { name: /Usar uma sess/ }).uncheck();
@@ -569,9 +566,14 @@ try {
   const openInvites = page.getByRole("link", { name: "Abrir convites no Instagram", exact: true });
   assert.equal(await openInvites.getAttribute("href"), inviteUrl);
   assert.equal(await openInvites.getAttribute("target"), "_blank");
-  await page.context().route(inviteUrl, (route) =>
-    route.fulfill({ contentType: "text/html", body: "<title>Instagram invitation fixture</title>" }),
-  );
+  await page
+    .context()
+    .route(inviteUrl, (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body: "<title>Instagram invitation fixture</title>",
+      }),
+    );
   const invitePopupEvent = page.waitForEvent("popup");
   await openInvites.click();
   const invitePopup = await invitePopupEvent;
@@ -604,19 +606,14 @@ try {
   await page.getByRole("button", { name: "Cancelar esta tentativa", exact: true }).click();
   await page.getByRole("button", { name: "Conectar Instagram", exact: true }).waitFor();
   assert.equal(
-    await page
-      .getByRole("button", { name: "Conectar Instagram", exact: true })
-      .isEnabled(),
+    await page.getByRole("button", { name: "Conectar Instagram", exact: true }).isEnabled(),
     true,
   );
   // Cross-origin opener isolation can prevent the parent from closing Meta's tab.
   // Cancellation must stop waiting; fixture cleanup closes any remaining tab.
   await professionalPopup.close();
   const popupEvent = page.waitForEvent("popup");
-  await page
-    .getByRole("button", { name: "Conectar Instagram", exact: true })
-    .first()
-    .click();
+  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).first().click();
   const popup = await popupEvent;
   // Local fixture stops external navigation; this proves the real button reaches OAuth.
   await page
@@ -650,7 +647,9 @@ try {
     "https://business.facebook.com/latest/settings/instagram-accounts",
   );
   assert.equal(
-    await metaAssetSetup.getByRole("button", { name: "Já adicionei — continuar", exact: true }).isEnabled(),
+    await metaAssetSetup
+      .getByRole("button", { name: "Já adicionei — continuar", exact: true })
+      .isEnabled(),
     true,
   );
   const resumePopupEvent = page.waitForEvent("popup");
@@ -1214,13 +1213,16 @@ try {
   });
   await googlePage.goto(web);
   await googlePage.waitForFunction(() =>
-    [...document.querySelectorAll("button")].some((button) =>
-      button.textContent.trim() === "Continuar com Google" &&
-      Object.keys(button).some((key) => key.startsWith("__reactProps")),
+    [...document.querySelectorAll("button")].some(
+      (button) =>
+        button.textContent.trim() === "Continuar com Google" &&
+        Object.keys(button).some((key) => key.startsWith("__reactProps")),
     ),
   );
   await googlePage.getByRole("button", { name: "Continuar com Google", exact: true }).click();
-  await googlePage.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)(?:, .+)?!$/ }).waitFor();
+  await googlePage
+    .getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)(?:, .+)?!$/ })
+    .waitFor();
   await googlePage.goto(web + "/automacao-instagram?tab=nova-conta");
   await googlePage.getByRole("region", { name: "Passo a passo por conta" }).waitFor();
   assert.equal(googleCodeExchanged, true);
@@ -1268,9 +1270,17 @@ try {
   await demo.getByRole("list", { name: "Publicações por conta" }).waitFor();
   assert.equal(await demo.getByRole("listitem").count(), 3);
   await landing.getByText("O Automatic Post publica Stories sozinho?", { exact: true }).click();
-  await landing.locator("#faq").getByText(/publique manualmente/).waitFor();
+  await landing
+    .locator("#faq")
+    .getByText(/publique manualmente/)
+    .waitFor();
   await visitor.emulateMedia({ reducedMotion: "reduce" });
-  assert.equal(await landing.locator(".animate-marquee").evaluate((element) => getComputedStyle(element).animationName), "none");
+  assert.equal(
+    await landing
+      .locator(".animate-marquee")
+      .evaluate((element) => getComputedStyle(element).animationName),
+    "none",
+  );
 
   await landing.getByRole("banner").getByRole("link", { name: "Criar conta", exact: true }).click();
   await visitor.waitForFunction(() => location.hash === "#acesso");
@@ -1305,12 +1315,14 @@ try {
   await loginForm.getByLabel("E-mail", { exact: true }).fill("fixture@example.test");
   await loginForm.getByLabel("Senha", { exact: true }).fill("fixture-password-only");
   await loginForm.locator("form").getByRole("button", { name: "Entrar", exact: true }).click();
-  await visitor.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)(?:, .+)?!$/ }).waitFor();
+  await visitor
+    .getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)(?:, .+)?!$/ })
+    .waitFor();
   await visitor.close();
 
   platformStatus = "pending";
   await page.goto(web + "/aprovacoes");
-  await page.getByRole("heading", { name: "Aguardando aprovação do administrador" }).waitFor();
+  await page.getByRole("heading", { name: "Área da administração" }).waitFor();
   assert.equal(await page.getByRole("heading", { name: "Aprovações e convites" }).count(), 0);
   await page.goto(web + "/convite#" + fixtureInvite);
   await page.getByRole("button", { name: "Iniciar meus 15 minutos" }).click();
@@ -1318,21 +1330,27 @@ try {
   await toolsLink.waitFor();
   assert.equal(new URL(page.url()).pathname, "/painel");
   await toolsLink.click();
-  await page.getByRole("heading", { name: "Ferramentas do seu teste" }).waitFor();
+  await page.getByRole("heading", { name: "Ferramentas" }).waitFor();
   const overview = page.locator(".workspace-overview");
-  assert.deepEqual(
-    await overview
-      .getByRole("link", { name: /^Abrir / })
-      .evaluateAll((links) => links.map((link) => link.getAttribute("href")).sort()),
-    ["/gerar-preview", "/limpar-metadados", "/otimizar-criativos"],
-  );
-  assert.equal(await page.getByRole("link", { name: "Automatic Post", exact: true }).count(), 0);
-  await page.getByRole("heading", { name: "Seu teste terminou" }).waitFor({ timeout: 15_000 });
+  const overviewLinks = await overview
+    .getByRole("link", { name: /^Abrir / })
+    .evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+  for (const href of [
+    "/automacao-instagram",
+    "/gerar-preview",
+    "/limpar-metadados",
+    "/otimizar-criativos",
+  ])
+    assert.ok(overviewLinks.includes(href));
+  await page.getByRole("link", { name: "Automatic Post", exact: true }).waitFor();
+  await page.getByText("Modo de visita", { exact: true }).waitFor();
 
   platformStatus = "admin";
   platformExpiry = null;
   await page.goto(web + "/painel");
-  await page.getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)(?:, .+)?!$/ }).waitFor();
+  await page
+    .getByRole("heading", { level: 1, name: /^(Bom dia|Boa tarde|Boa noite)(?:, .+)?!$/ })
+    .waitFor();
   const publishingCard = overview.getByRole("article", { name: "Automatic Post · Instagram" });
   assert.equal(await publishingCard.count(), 0);
   await toolsLink.click();

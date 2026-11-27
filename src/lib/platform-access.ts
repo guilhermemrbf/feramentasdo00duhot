@@ -35,9 +35,9 @@ export function isPublicRoute(path: string) {
 export function accessForRoute(path: string, status: AccessStatus) {
   if (isPublicRoute(path)) return true;
   if (path === "/aprovacoes") return status === "admin";
-  return (
-    status === "admin" || status === "approved" || (status === "trial" && trialRoutes.has(path))
-  );
+  // The product remains explorable after sign-up. Mutating operations are
+  // independently enforced by the server and database access policies.
+  return true;
 }
 
 export function secondsRemaining(expiresAt: string | null, now: number) {

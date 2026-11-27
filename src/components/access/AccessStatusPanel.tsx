@@ -2,7 +2,7 @@ import { ArrowLeft, Clock3, LoaderCircle, LogOut, ShieldCheck, ShieldX } from "l
 import { Link, useRouterState } from "@tanstack/react-router";
 import { type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { accessForRoute, isPublicRoute } from "@/lib/platform-access";
+import { isPublicRoute } from "@/lib/platform-access";
 import { usePlatformAccess } from "./PlatformAccessProvider";
 
 export function AccessStatusPanel() {
@@ -99,19 +99,15 @@ export function PlatformGate({ children }: { children: ReactNode }) {
       </main>
     );
   }
-  if (!access.isError && access.status && accessForRoute(path, access.status)) return children;
-  const trialBlocked = access.status === "trial" && !access.isError;
-  const adminBlocked = path === "/aprovacoes" && access.status === "approved" && !access.isError;
+  if (!access.isError && access.user && (path !== "/aprovacoes" || access.status === "admin"))
+    return children;
+  const adminBlocked = path === "/aprovacoes" && !!access.user && !access.isError;
   return (
     <main className="access-standalone">
-      {trialBlocked || adminBlocked ? (
+      {adminBlocked ? (
         <div className="access-form-panel access-status-panel">
-          <h1>{trialBlocked ? "Ferramenta disponível após aprovação" : "Área da administração"}</h1>
-          <p>
-            {trialBlocked
-              ? "Seu teste inclui ferramentas de preparação de conteúdo. Integrações e publicações ficam disponíveis com acesso aprovado."
-              : "Apenas a conta administradora pode aprovar cadastros e gerar convites."}
-          </p>
+          <h1>Área da administração</h1>
+          <p>Apenas a conta administradora pode aprovar cadastros e gerar convites.</p>
           <Link to="/painel" className="saas-button saas-button-outline">
             <ArrowLeft size={17} aria-hidden /> Voltar ao painel
           </Link>

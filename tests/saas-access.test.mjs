@@ -2,15 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { accessForRoute, secondsRemaining, inviteFromHash } from "../src/lib/platform-access.ts";
 
-test("only approved users and live trial sessions open protected routes", () => {
-  assert.equal(accessForRoute("/automacao-instagram", "pending"), false);
-  assert.equal(accessForRoute("/limpar-metadados", "expired"), false);
+test("signed-in users can explore the workspace while execution remains server-gated", () => {
+  assert.equal(accessForRoute("/automacao-instagram", "pending"), true);
+  assert.equal(accessForRoute("/limpar-metadados", "expired"), true);
   assert.equal(accessForRoute("/painel", "trial"), true);
   assert.equal(accessForRoute("/ferramentas", "trial"), true);
-  assert.equal(accessForRoute("/ferramentas", "pending"), false);
+  assert.equal(accessForRoute("/ferramentas", "pending"), true);
   assert.equal(accessForRoute("/limpar-metadados", "trial"), true);
-  assert.equal(accessForRoute("/automacao-instagram", "trial"), false);
-  assert.equal(accessForRoute("/criar-pagina", "trial"), false);
+  assert.equal(accessForRoute("/automacao-instagram", "trial"), true);
+  assert.equal(accessForRoute("/criar-pagina", "trial"), true);
   assert.equal(accessForRoute("/aprovacoes", "approved"), false);
   assert.equal(accessForRoute("/aprovacoes", "admin"), true);
   assert.equal(accessForRoute("/automacao-instagram", "approved"), true);

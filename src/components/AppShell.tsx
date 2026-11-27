@@ -5,7 +5,6 @@ import {
   Activity,
   Bell,
   Box,
-  Clock3,
   LogOut,
   ChevronDown,
   CircleHelp,
@@ -46,7 +45,7 @@ import {
 import { recordTool, useToolPreferences } from "@/lib/tool-preferences";
 import { readMouseHotSettings } from "@/lib/mousehot-settings";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
-import { accessForRoute, secondsRemaining } from "@/lib/platform-access";
+import { accessForRoute } from "@/lib/platform-access";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -76,6 +75,7 @@ const PRIMARY_LINKS = [
   { path: "/vendas/integracoes", title: "Gateways", icon: Plug },
   { path: "/vendas/notificacoes", title: "Notificações", icon: Bell },
   { path: "/ferramentas", title: "Ferramentas", icon: LayoutGrid },
+  { path: "/assinatura", title: "Planos", icon: Wallet },
   { path: "/configuracoes", title: "Configurações", icon: Settings2 },
 ] as const;
 const SCALEHOT_LINKS = [
@@ -134,10 +134,9 @@ export function AppShell({
     pathname === "/ferramentas" || (current && current.id !== "social" && current.id !== "sales");
   const { status, user } = usePlatformAccess();
   const dashboardKind =
-    status === "trial"
-      ? undefined
-      : (dashboard ?? (isHome ? "home" : pathname === "/vendas" ? "scalehot" : undefined));
+    dashboard ?? (isHome ? "home" : pathname === "/vendas" ? "scalehot" : undefined);
   const available = TOOL_CATALOG.filter((tool) => status && accessForRoute(tool.path, status));
+  const visitMode = status && !["admin", "approved"].includes(status);
   const directoryTools = available.filter(({ id }) => id !== "social" && id !== "sales");
   const [mobile, setMobile] = useState(false),
     [query, setQuery] = useState("");
@@ -318,9 +317,9 @@ export function AppShell({
               <span>
                 {status === "admin"
                   ? "Administração"
-                  : status === "trial"
-                    ? "Acesso de teste"
-                    : "Conta aprovada"}
+                  : status === "approved"
+                    ? "Plano ativo"
+                    : "Modo de visita"}
               </span>
             </div>
             <button
@@ -379,7 +378,11 @@ export function AppShell({
               </SheetContent>
             </Sheet>
             {!dashboardKind && (
-              <Link to="/painel" aria-label={`${BRAND_NAME}, início`} className="shrink-0 sm:hidden">
+              <Link
+                to="/painel"
+                aria-label={`${BRAND_NAME}, início`}
+                className="shrink-0 sm:hidden"
+              >
                 <img
                   src={BRAND_MARK}
                   alt=""
@@ -411,8 +414,7 @@ export function AppShell({
           {dashboardKind && (
             <DashboardHeader key={dashboardKind} kind={dashboardKind} onSearch={openSearch} />
           )}
-          {status === "trial" && <TrialClock />}
-          {!dashboardKind && ((!isHome && status !== "trial") || isTools) && (
+          {!dashboardKind && (!isHome || isTools) && (
             <button
               onClick={openSearch}
               aria-label="Buscar ferramenta"
@@ -424,6 +426,19 @@ export function AppShell({
           )}
         </header>
         <div id="workspace-main" tabIndex={-1}>
+          {visitMode && (
+            <div className="mx-auto max-w-7xl px-5 pt-4 sm:px-8">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
+                <p>
+                  Você está no modo de visita. Explore o Mousefy; para conectar contas e executar
+                  ferramentas, escolha um plano.
+                </p>
+                <Link to="/assinatura" className="font-semibold text-brand-red hover:underline">
+                  Ver planos
+                </Link>
+              </div>
+            </div>
+          )}
           {current && (current.id === "profiles" || current.id === "funnels") && (
             <div className="mx-auto max-w-7xl px-5 pt-4 sm:px-8">
               <ToolGuide tool={current} />
@@ -432,7 +447,9 @@ export function AppShell({
           {children}
         </div>
         <footer className="workspace-footer">
-          <span>{BRAND_NAME} · {BRAND_SLOGAN}</span>
+          <span>
+            {BRAND_NAME} · {BRAND_SLOGAN}
+          </span>
         </footer>
       </div>
       <dialog
@@ -504,22 +521,6 @@ export function AppShell({
         </div>
       </dialog>
     </div>
-  );
-}
-
-function TrialClock() {
-  const { expiresAt, offsetMs } = usePlatformAccess();
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-  const remaining = secondsRemaining(expiresAt, now + offsetMs);
-  return (
-    <span className="trial-clock" aria-label="Tempo restante do teste">
-      <Clock3 size={16} aria-hidden /> {Math.floor(remaining / 60)}:
-      {String(remaining % 60).padStart(2, "0")}
-    </span>
   );
 }
 

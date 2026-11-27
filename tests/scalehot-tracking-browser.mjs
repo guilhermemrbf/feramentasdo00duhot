@@ -417,6 +417,7 @@ try {
     "Gateways",
     "Notificações",
     "Ferramentas",
+    "Planos",
     "Configurações",
   ]);
   assert.equal(await primary.getByRole("link", { name: "Integrações", exact: true }).count(), 0);

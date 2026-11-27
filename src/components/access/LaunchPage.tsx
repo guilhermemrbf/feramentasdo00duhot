@@ -19,10 +19,10 @@ export function LaunchPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!access.isError && ["admin", "approved", "trial"].includes(access.status ?? "")) {
+    if (!access.isError && access.user && access.status !== "unverified") {
       void navigate({ to: "/painel", replace: true });
     }
-  }, [access.status, access.isError, navigate]);
+  }, [access.user, access.status, access.isError, navigate]);
 
   if (access.user) {
     return (
