@@ -14,7 +14,6 @@ import {
   getMousefyPlans,
   getMousefySubscription,
 } from "@/lib/api/syncpay.functions";
-import { TOOL_CATALOG } from "@/lib/tool-catalog";
 
 export const Route = createFileRoute("/assinatura")({
   head: () => ({
@@ -39,11 +38,29 @@ const methodDescriptions: Record<BillingMethod, string> = {
   pix_automatico: "Autorize uma vez no banco para pagar os próximos ciclos automaticamente.",
   qr_code: "Pague um novo Pix a cada ciclo.",
 };
-const planDetails: Record<string, { name: string; instagram: string; ads: number }> = {
-  "b51f6f0f-4d23-48c8-a2e7-1037849aa8a9": { name: "Essencial", instagram: "50", ads: 3 },
-  "26a29855-68aa-4a80-bd53-2200ce44c471": { name: "Crescimento", instagram: "100", ads: 5 },
-  "44aa1915-be2f-4b0c-b386-7b75181c23eb": { name: "Pro", instagram: "150", ads: 8 },
-  "66b2964c-c281-4c8c-b902-ced6d567bcbd": { name: "Escala", instagram: "1.000", ads: 15 },
+const planDetails: Record<
+  string,
+  { name: string; instagram: string; ads: number; telegram: number }
+> = {
+  "b51f6f0f-4d23-48c8-a2e7-1037849aa8a9": {
+    name: "Essencial",
+    instagram: "50",
+    ads: 3,
+    telegram: 3,
+  },
+  "26a29855-68aa-4a80-bd53-2200ce44c471": {
+    name: "Crescimento",
+    instagram: "100",
+    ads: 5,
+    telegram: 5,
+  },
+  "44aa1915-be2f-4b0c-b386-7b75181c23eb": { name: "Pro", instagram: "150", ads: 8, telegram: 8 },
+  "66b2964c-c281-4c8c-b902-ced6d567bcbd": {
+    name: "Escala",
+    instagram: "1.000",
+    ads: 15,
+    telegram: 15,
+  },
 };
 type Action = "cancel" | "suspend" | "reactivate";
 const paymentLabels: Record<string, string> = {
@@ -60,18 +77,19 @@ const checkoutField =
 
 function PlanLimits({ details }: { details: (typeof planDetails)[string] }) {
   return (
-    <dl className="grid gap-3 text-sm">
+    <dl className="grid gap-2.5 text-sm">
       <div>
-        <dt className="text-muted-foreground">Automatic Post</dt>
+        <dt className="text-xs text-muted-foreground">Automatic Post</dt>
         <dd className="font-semibold">Até {details.instagram} contas do Instagram</dd>
       </div>
       <div>
-        <dt className="text-muted-foreground">Traqueamento avançado</dt>
+        <dt className="text-xs text-muted-foreground">Traqueamento avançado</dt>
         <dd className="font-semibold">Até {details.ads} contas de anúncio</dd>
+        <dd className="text-xs text-muted-foreground">Meta Ads e Google Ads</dd>
       </div>
       <div>
-        <dt className="text-muted-foreground">Telegram Sync</dt>
-        <dd className="font-semibold">Até 3 contas no Telegram</dd>
+        <dt className="text-xs text-muted-foreground">Telegram Sync</dt>
+        <dd className="font-semibold">Até {details.telegram} contas do Telegram</dd>
       </div>
     </dl>
   );
@@ -160,9 +178,8 @@ function SubscriptionPage() {
         <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
           <header className="rounded-xl border border-border bg-card px-5 py-6 sm:px-7">
             <h1 className="font-display text-3xl font-semibold tracking-tight">Planos</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Escolha como ativar sua operação. Você pode explorar o Mousefy antes de assinar;
-              conexões, publicações e ferramentas são ativadas após o pagamento confirmado.
+            <p className="mt-2 text-sm text-muted-foreground">
+              Compare os limites de contas de cada plano do Mousefy.
             </p>
           </header>
           <div className="mt-6">
@@ -454,9 +471,7 @@ function SubscriptionDetails({ user }: { user: string }) {
         </section>
       )}
       {canEnroll && (
-        <section className="space-y-4 rounded-xl border border-border p-5" aria-label="Planos">
-          {!selected && <h2 className="text-xl font-semibold">Escolha seu plano</h2>}
-          {!selected && <p>Todos os planos incluem acesso às ferramentas do Mousefy.</p>}
+        <section className="space-y-4" aria-label="Planos">
           {plans.isPending ? (
             <p role="status">Consultando os planos…</p>
           ) : plans.isError ? (
@@ -466,118 +481,45 @@ function SubscriptionDetails({ user }: { user: string }) {
           ) : (
             <form className="space-y-4" onSubmit={submit}>
               {!selected ? (
-                <div className="mousefy-pricing relative isolate min-w-0 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-zinc-50 sm:p-6">
-                  <style>{`
-                    .mousefy-pricing .pricing-lines {
-                      position: absolute;
-                      inset: 0;
-                      pointer-events: none;
-                      background:
-                        linear-gradient(90deg, transparent 17.9%, #27272a 18%, transparent 18.1%, transparent 49.9%, #27272a 50%, transparent 50.1%, transparent 81.9%, #27272a 82%, transparent 82.1%),
-                        linear-gradient(transparent 17.9%, #27272a 18%, transparent 18.1%, transparent 49.9%, #27272a 50%, transparent 50.1%, transparent 81.9%, #27272a 82%, transparent 82.1%);
-                      opacity: .65;
-                      animation: mousefy-pricing-lines .7s ease both;
-                    }
-                    .mousefy-pricing .pricing-particles {
-                      position: absolute;
-                      inset: 0;
-                      pointer-events: none;
-                      background-image: radial-gradient(ellipse at center, #a1a1aa 0 1px, transparent 1.6px), radial-gradient(ellipse at center, #71717a 0 1px, transparent 1.6px);
-                      background-size: 71px 89px, 113px 137px;
-                      background-position: 13px 19px, 41px 61px;
-                      opacity: .18;
-                      animation: mousefy-pricing-particles 4s ease-out both;
-                    }
-                    .mousefy-pricing .pricing-grid {
-                      display: grid;
-                      grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
-                      gap: 1rem;
-                    }
-                    .mousefy-pricing .pricing-card {
-                      animation: mousefy-pricing-card .55s ease backwards;
-                    }
-                    @keyframes mousefy-pricing-lines {
-                      from { opacity: 0; transform: scale(.94); }
-                      to { opacity: .65; transform: scale(1); }
-                    }
-                    @keyframes mousefy-pricing-particles {
-                      from { background-position: 13px 39px, 41px 81px; }
-                      to { background-position: 13px 19px, 41px 61px; }
-                    }
-                    @keyframes mousefy-pricing-card {
-                      from { opacity: 0; transform: translateY(10px); }
-                      to { opacity: 1; transform: translateY(0); }
-                    }
-                    @media (prefers-reduced-motion: reduce) {
-                      .mousefy-pricing .pricing-lines,
-                      .mousefy-pricing .pricing-particles,
-                      .mousefy-pricing .pricing-card { animation: none; }
-                    }
-                  `}</style>
-                  <div aria-hidden="true" className="pricing-lines" />
-                  <div aria-hidden="true" className="pricing-particles" />
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 [background:radial-gradient(80%_60%_at_50%_0%,rgba(255,255,255,0.07),transparent_65%)]"
-                  />
-                  <div className="relative">
-                    <div className="mb-7 text-center">
-                      <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
-                        Mousefy
-                      </p>
-                      <h3 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-                        Sua operação, seu ritmo
-                      </h3>
-                      <p className="mt-2 text-sm text-zinc-400">
-                        Escolha a capacidade ideal para sua operação.
-                      </p>
-                    </div>
-                    <div className="pricing-grid">
-                      {plans.data.map((entry, index) => (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    {plans.data.map((entry) => {
+                      const details = planDetails[entry.token];
+                      const name = details?.name ?? entry.name;
+                      const featured = name === "Pro";
+                      return (
                         <article
                           key={entry.token}
-                          style={{ animationDelay: `${index * 70}ms` }}
-                          className="pricing-card relative flex min-w-0 flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-900/90 p-4 transition-colors hover:border-zinc-500 sm:p-5"
+                          className={`flex min-w-0 flex-col gap-4 rounded-2xl border p-4 transition-colors sm:p-5 ${
+                            featured
+                              ? "border-emerald-400/50 bg-emerald-400/5 hover:border-emerald-400"
+                              : "border-border bg-card hover:border-muted-foreground/60"
+                          }`}
                         >
-                          <h4 className="break-words text-base font-semibold">
-                            {planDetails[entry.token]?.name ?? entry.name}
-                          </h4>
                           <div>
-                            <span className="block text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                            <h3 className="text-base font-semibold">{name}</h3>
+                            <p className="mt-2 font-display text-2xl font-bold tracking-tight text-emerald-300">
                               {money(entry.amount)}
-                            </span>
-                            <span className="mt-1 block text-sm text-zinc-400">
-                              A cada {entry.days} dias
-                            </span>
-                          </div>
-                          {planDetails[entry.token] && (
-                            <PlanLimits details={planDetails[entry.token]} />
-                          )}
-                          <div className="flex-1 border-t border-zinc-700 pt-4">
-                            <p className="mb-3 text-sm font-semibold text-zinc-100">
-                              Todas as ferramentas
                             </p>
-                            <ul className="space-y-2.5 text-sm text-zinc-200">
-                              {TOOL_CATALOG.map((tool) => (
-                                <li key={tool.id} className="flex items-start gap-2">
-                                  <CircleCheck
-                                    aria-hidden="true"
-                                    className="mt-0.5 size-4 shrink-0 text-emerald-400"
-                                  />
-                                  <span>
-                                    {tool.id === "social"
-                                      ? "Automatic Post · Agendamento de Reels e preparação de Stories"
-                                      : tool.name}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
+                            <p className="text-xs text-muted-foreground">
+                              A cada {entry.days} dias
+                            </p>
                           </div>
+                          <div className="flex-1 border-t border-border pt-3">
+                            {details && <PlanLimits details={details} />}
+                          </div>
+                          <p className="flex items-start gap-2 text-sm font-medium">
+                            <CircleCheck
+                              aria-hidden
+                              className="mt-0.5 size-4 shrink-0 text-emerald-400"
+                            />
+                            Acesso a todas as ferramentas
+                          </p>
                           <button
                             type="button"
                             disabled={busy}
-                            aria-label={`Selecionar plano ${planDetails[entry.token]?.name ?? entry.name} — ${money(entry.amount)}`}
-                            className="mt-auto flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-zinc-100 bg-zinc-100 px-3 py-2 text-center text-sm font-semibold text-zinc-950 transition-colors hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50"
+                            aria-label={`Selecionar plano ${name} — ${money(entry.amount)}`}
+                            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold transition-colors hover:border-primary hover:text-brand-red focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"
                             onClick={() => {
                               setPlan(entry.token);
                               setAccepted(undefined);
@@ -586,13 +528,17 @@ function SubscriptionDetails({ user }: { user: string }) {
                             }}
                           >
                             Selecionar plano
-                            <ArrowRight aria-hidden="true" className="size-4 shrink-0" />
+                            <ArrowRight aria-hidden className="size-4 shrink-0" />
                           </button>
                         </article>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-                </div>
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    O limite de contas de anúncio vale para Meta Ads (Facebook e Instagram) e Google
+                    Ads.
+                  </p>
+                </>
               ) : (
                 <div className="mx-auto max-w-5xl space-y-5">
                   <button

@@ -174,19 +174,30 @@ try {
     { token, user, now },
   );
   await page.goto(web + "/assinatura");
+  const firstCard = page.getByRole("article").filter({ hasText: "49,90" });
+  const lastCard = page.getByRole("article").filter({ hasText: "269,90" });
+  await lastCard.waitFor();
+  assert.equal((await firstCard.boundingBox()).y, (await lastCard.boundingBox()).y);
+  if (process.env.CHECKOUT_SCREENSHOTS) {
+    await page.screenshot({
+      path: join(process.env.CHECKOUT_SCREENSHOTS, "mousefy-planos-compactos.png"),
+    });
+  }
   for (const [index, [, , price]] of plans.entries()) {
     const card = page.getByRole("article").filter({ hasText: price });
     const [instagram, ads] = limits[index];
     await card.getByText(`Até ${instagram} contas do Instagram`, { exact: true }).waitFor();
     await card.getByText(`Até ${ads} contas de anúncio`, { exact: true }).waitFor();
-    await card.getByText("Até 3 contas no Telegram", { exact: true }).waitFor();
-    await card.getByText("Todas as ferramentas", { exact: true }).waitFor();
+    const telegram = [3, 5, 8, 15][index];
+    await card.getByText(`Até ${telegram} contas do Telegram`, { exact: true }).waitFor();
+    await card.getByText("Acesso a todas as ferramentas", { exact: true }).waitFor();
+    await card.getByText("Meta Ads e Google Ads", { exact: true }).waitFor();
     await card.getByRole("button", { name: /Selecionar plano/ }).click();
     await page.getByRole("heading", { name: "Finalizar assinatura" }).waitFor();
     const summary = page.getByRole("complementary", { name: "Resumo do plano" });
     await summary.getByText(new RegExp(price + ".*30 dias")).waitFor();
     await summary.getByText(`Até ${instagram} contas do Instagram`, { exact: true }).waitFor();
-    await summary.getByText("Até 3 contas no Telegram", { exact: true }).waitFor();
+    await summary.getByText(`Até ${telegram} contas do Telegram`, { exact: true }).waitFor();
     await page.getByRole("button", { name: "Voltar aos planos" }).click();
   }
   assert.deepEqual(enrollments, []);
@@ -195,6 +206,12 @@ try {
     if (index === 1) await page.setViewportSize({ width: 390, height: 844 });
     await page.reload();
     const [id, , price] = plans[index];
+    if (index === 1 && process.env.CHECKOUT_SCREENSHOTS) {
+      await page.getByRole("article").filter({ hasText: "49,90" }).waitFor();
+      await page.screenshot({
+        path: join(process.env.CHECKOUT_SCREENSHOTS, "mousefy-planos-compactos-mobile.png"),
+      });
+    }
     await page
       .getByRole("article")
       .filter({ hasText: price })
