@@ -13,6 +13,7 @@ import {
   Instagram,
   Library,
   LayoutDashboard,
+  LoaderCircle,
   ListVideo,
   Repeat2,
   Plus,
@@ -99,7 +100,15 @@ export const Route = createFileRoute("/automacao-instagram")({
   validateSearch: (
     search: Record<string, unknown>,
   ): {
-    tab?: "perfis" | "contas" | "nova-conta" | "stories" | "publicacoes" | "fila" | "analytics" | "config";
+    tab?:
+      | "perfis"
+      | "contas"
+      | "nova-conta"
+      | "stories"
+      | "publicacoes"
+      | "fila"
+      | "analytics"
+      | "config";
   } => ({
     tab:
       search.tab === "perfis" ||
@@ -392,7 +401,6 @@ function InstagramWorkspacePage({
   onEditApp?: (guideStep?: number) => void;
 }) {
   const [requestedTab, setActiveTab] = useState<Tab>(initialTab ?? "dashboard");
-  const [guidedSetup, setGuidedSetup] = useState(initialTab === "nova-conta");
   const [isolatedLogin, setIsolatedLogin] = useState(false);
   const [connectionTarget, setConnectionTarget] = useState<"reels" | "stories">("reels");
   const loginAccountsBefore = useRef<InstagramConnectionAccount[]>([]);
@@ -413,11 +421,10 @@ function InstagramWorkspacePage({
   };
   const setTab = (next: Tab, target: "reels" | "stories" = "reels") => {
     if (next === "nova-conta") {
-      setGuidedSetup(target === "reels");
       setConnectionTarget(target);
     }
-    if (["contas", "dashboard", "stories", "analytics", "historico"].includes(next))
-      setGuidedSetup(false);
+    if (next !== "nova-conta" && connectionProgress?.step === "success")
+      setConnectionProgress(null);
     if (next === "biblioteca") setLibraryOpen(false);
     if (next === "fila" && tab !== "fila") setReelStep("videos");
     if (next === "analytics") setAnalyticsAccountId("");
@@ -468,6 +475,26 @@ function InstagramWorkspacePage({
   const [accountRefresh, setAccountRefresh] = useState(0);
   const [loginWaiting, setLoginWaiting] = useState(false);
   const [needsMetaAssetSetup, setNeedsMetaAssetSetup] = useState(false);
+  const [connectionProgress, setConnectionProgress] = useState<
+    | { step: "verifying" }
+    | { step: "error"; message: string }
+    | { step: "success"; id: string; username: string }
+    | null
+  >(null);
+  const connectionHeading = useRef<HTMLHeadingElement>(null);
+  const connectionStep = connectionProgress?.step;
+  const activeConnectionStep =
+    connectionStep === "success"
+      ? 3
+      : connectionStep === "verifying"
+        ? 2
+        : loginWaiting || needsMetaAssetSetup || connectionStep === "error"
+          ? 1
+          : 0;
+  useEffect(() => {
+    if (requestedTab === "nova-conta" && (connectionStep || needsMetaAssetSetup || loginWaiting))
+      connectionHeading.current?.focus();
+  }, [requestedTab, connectionStep, needsMetaAssetSetup, loginWaiting]);
   const storiesChoice: StoriesChoice = "skip";
   const storyReviewCount = 0;
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
@@ -489,6 +516,7 @@ function InstagramWorkspacePage({
           typeof data.success !== "boolean"
         )
           return;
+        if (data.connection?.workspaceId && data.connection.workspaceId !== workspace.id) return;
         if (
           data.connection?.workspaceId === workspace.id &&
           Array.isArray(data.connection.instagramAccountIds)
@@ -498,17 +526,24 @@ function InstagramWorkspacePage({
           );
         }
         refresh();
-        if (!data.success) {
+        if (data.success) {
+          setConnectionProgress({ step: "verifying" });
+          setNotice("");
+        } else {
           setLoginWaiting(false);
           if (data.recovery === "meta_asset_setup") {
             setNeedsMetaAssetSetup(true);
-            setNotice(
-              "A Meta confirmou o login, mas esta conta ainda não foi compartilhada como ativo. Adicione-a na Meta para continuar.",
-            );
+            setConnectionProgress(null);
+            setNotice("");
           } else {
-            setNotice(
-              "A conexão não foi concluída. Volte à tela de conexão para tentar de novo.",
-            );
+            setNotice("");
+            setConnectionProgress({
+              step: "error",
+              message:
+                data.reason === "meta_denied"
+                  ? "A autorização foi cancelada ou negada. Abra a Meta novamente para escolher a conta e confirmar as permissões."
+                  : "O Mousefy não conseguiu confirmar a autorização. Tente novamente com a conta profissional que deseja conectar.",
+            });
           }
         }
         channel.postMessage({ type: "ack", id: data.id });
@@ -516,9 +551,11 @@ function InstagramWorkspacePage({
     }
     const timeout = window.setTimeout(() => {
       setLoginWaiting(false);
-      setNotice(
-        "O tempo de conexão terminou. Volte à tela de conexão para tentar novamente.",
-      );
+      setNotice("");
+      setConnectionProgress({
+        step: "error",
+        message: "O tempo de conexão terminou. Abra uma nova autorização para continuar.",
+      });
     }, 600000);
     return () => {
       window.clearInterval(interval);
@@ -572,15 +609,8 @@ function InstagramWorkspacePage({
             if (added) {
               setLoginWaiting(false);
               resetReelDraft(added.id);
-              if (connectionTarget === "stories") {
-                setStoryAccount({ id: added.id, request: crypto.randomUUID(), productUrl: null });
-                setActiveTab("stories");
-              } else if (guidedSetup) {
-                setAccountReelFlow(true);
-                setLibraryOpen(true);
-                setActiveTab("biblioteca");
-              }
-              setNotice(`@${added.username} conectada. Continue para a biblioteca desta conta.`);
+              setConnectionProgress({ step: "success", id: added.id, username: added.username });
+              setNotice(`@${added.username} conectada no Mousefy.`);
             }
           }
           setSelectedAccountId(
@@ -594,7 +624,7 @@ function InstagramWorkspacePage({
     return () => {
       active = false;
     };
-  }, [workspace.id, accountRefresh, loginWaiting, connectionTarget, guidedSetup]);
+  }, [workspace.id, accountRefresh, loginWaiting]);
 
   useEffect(() => {
     let active = true;
@@ -661,7 +691,7 @@ function InstagramWorkspacePage({
     const result = new URLSearchParams(window.location.search).get("instagram");
     if (result === "connected") {
       setActiveTab("contas");
-      setNotice("Conexão concluída. Confira o @ em Suas contas.");
+      setNotice("Confira o status do perfil em Contas conectadas.");
     }
     if (result === "insights_not_granted") {
       setActiveTab("analytics");
@@ -670,12 +700,10 @@ function InstagramWorkspacePage({
       );
     }
     if (result === "connection_failed") {
-      setActiveTab("contas");
+      setActiveTab("nova-conta");
       const reason = new URLSearchParams(window.location.search).get("instagram_reason");
       if (reason === "unified_accounts_empty") {
-        setNotice(
-          "A Meta concluiu o login, mas não retornou nenhum perfil para o Mousefy. Confira se a conta profissional pertence ao portfólio escolhido e se ela foi compartilhada na autorização.",
-        );
+        setNeedsMetaAssetSetup(true);
         return;
       }
       const reasonLabels: Record<string, string> = {
@@ -708,13 +736,27 @@ function InstagramWorkspacePage({
       const detail = reason
         ? (reasonLabels[reason] ?? "uma etapa não identificada")
         : "uma etapa não identificada";
-      setNotice(`A conexão parou em ${detail}. Volte à tela de conexão para tentar de novo.`);
+      setConnectionProgress({
+        step: "error",
+        message: `A conexão parou em ${detail}. Tente novamente.`,
+      });
     }
   }, []);
 
   const platformMetaUnavailable = app.mode === "legacy" && !app.platformAppConfigured;
   const platformMetaMessage =
     "O app Meta já está vinculado a esta operação. Faltam as credenciais do app no servidor para abrir a autorização.";
+  const continueConnectedAccount = () => {
+    if (connectionProgress?.step !== "success") return;
+    const { id } = connectionProgress;
+    if (connectionTarget === "stories") {
+      setStoryAccount({ id, request: crypto.randomUUID(), productUrl: null });
+      setTab("stories");
+    } else {
+      openAccountLibrary(id);
+    }
+    setConnectionProgress(null);
+  };
   const connectInstagram = async (mode: InstagramAuthMode, analytics = false) => {
     if (platformMetaUnavailable) {
       setNotice(platformMetaMessage);
@@ -725,6 +767,7 @@ function InstagramWorkspacePage({
     setConnecting(mode);
     setNotice("");
     setNeedsMetaAssetSetup(false);
+    setConnectionProgress(null);
     loginAccountsBefore.current = connectedAccounts.map((account) => ({ ...account }));
     confirmedInstagramIds.current = [];
     try {
@@ -756,11 +799,12 @@ function InstagramWorkspacePage({
           : "Autorização aberta. Entre no perfil desejado e confirme o acesso na Meta.",
       );
     } catch (error) {
-      setNotice(
+      const message =
         error instanceof Error
           ? error.message
-          : "Não foi possível abrir a autorização. Tente novamente.",
-      );
+          : "Não foi possível abrir a autorização. Tente novamente.";
+      setConnectionProgress({ step: "error", message });
+      if (requestedTab !== "nova-conta") setNotice(message);
       if (isolatedLogin) setShowLocalLogin(true);
     } finally {
       loginLock.current = false;
@@ -1450,17 +1494,6 @@ function InstagramWorkspacePage({
             onClose={() => setShowLocalLogin(false)}
           />
         )}
-        {guidedSetup && tab === "nova-conta" && (
-          <section
-            className="mt-4 rounded-xl border border-border bg-card p-4"
-            aria-label="Passo a passo por conta"
-          >
-            <h2 className="font-semibold">Conecte uma conta para começar</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Depois da conexão, avance para a biblioteca e prepare os Reels dessa conta.
-            </p>
-          </section>
-        )}
         {notice && (
           <div className="mt-4 flex items-start justify-between gap-3 rounded-md border border-border bg-secondary/50 px-4 py-3 text-sm">
             <span role="status">{notice}</span>
@@ -1634,7 +1667,10 @@ function InstagramWorkspacePage({
         </div>
 
         {(tab === "contas" || tab === "nova-conta") && (
-          <section className="mt-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <section
+            aria-label={tab === "nova-conta" ? "Passo a passo por conta" : undefined}
+            className="mt-6 max-w-3xl"
+          >
             {tab === "nova-conta" && (
               <Panel
                 title={
@@ -1643,316 +1679,422 @@ function InstagramWorkspacePage({
                     : "Conectar Instagram"
                 }
               >
-                {platformMetaUnavailable ? (
-                  <p role="alert" className="text-sm text-amber-200">
-                    {platformMetaMessage}
-                  </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Na Meta, escolha <strong>Continuar com Instagram</strong>. Se aparecer{" "}
-                    <strong>Selecione os ativos do negócio para compartilhar</strong>, escolha
-                    apenas o perfil que quer conectar.
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={() => void connectInstagram("instagram_unified_login")}
-                  disabled={
-                    platformMetaUnavailable ||
-                    !!connecting ||
-                    loginWaiting ||
-                    !accountsLoaded ||
-                    !!accountsLoadError
-                  }
-                  className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-base font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                <ol
+                  aria-label="Etapas da conexão"
+                  className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4"
                 >
-                  <Instagram aria-hidden="true" className="size-4" />
-                  {connecting === "instagram_unified_login"
-                    ? "Abrindo autorização…"
-                    : loginWaiting
-                      ? "Aguardando seu Instagram…"
-                      : !accountsLoaded && !accountsLoadError
-                        ? "Carregando suas contas…"
-                        : "Conectar Instagram"}
-                </button>
-                {needsMetaAssetSetup && (
-                  <section
-                    aria-label="Adicionar conta na Meta"
-                    className="mt-4 rounded-lg border border-sky-400/30 bg-sky-400/5 p-4 text-sm"
-                  >
-                    <h3 className="font-semibold text-foreground">Adicionar conta na Meta</h3>
-                    <p className="mt-1 text-muted-foreground">
-                      Na Meta, abra <strong>Contas do Instagram</strong>, selecione adicionar,
-                      entre no perfil que quer usar e conclua as confirmações. Depois, volte aqui
-                      para compartilhar a conta com o Mousefy.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <a
-                        href="https://business.facebook.com/latest/settings/instagram-accounts"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex min-h-11 items-center rounded-md border border-sky-400/40 px-3 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  {["Preparar", "Autorizar na Meta", "Verificar", "Conectada"].map(
+                    (label, index) => (
+                      <li
+                        key={label}
+                        aria-current={index === activeConnectionStep ? "step" : undefined}
+                        className={`rounded-lg border px-3 py-2 text-xs font-medium ${index <= activeConnectionStep ? "border-primary/40 bg-primary/10 text-foreground" : "border-border text-muted-foreground"}`}
                       >
-                        Abrir contas do Instagram na Meta
-                      </a>
+                        {index + 1}. {label}
+                      </li>
+                    ),
+                  )}
+                </ol>
+                {connectionTarget === "stories" && !loginWaiting && !connectionProgress && (
+                  <button
+                    type="button"
+                    onClick={() => setTab("stories")}
+                    className="mb-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
+                  >
+                    <ArrowLeft className="size-4" aria-hidden /> Voltar para Stories
+                  </button>
+                )}
+                {connectionProgress?.step === "success" ? (
+                  <section className="space-y-4 rounded-xl border border-emerald-400/30 bg-emerald-400/5 p-4 sm:p-5">
+                    <CheckCircle2 className="size-8 text-emerald-300" aria-hidden />
+                    <div>
+                      <h3
+                        ref={connectionHeading}
+                        tabIndex={-1}
+                        className="font-display text-xl font-semibold"
+                      >
+                        Instagram conectado
+                      </h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        O perfil{" "}
+                        <strong className="text-foreground">@{connectionProgress.username}</strong>{" "}
+                        está disponível nesta operação.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => void connectInstagram("instagram_unified_login")}
-                        disabled={!!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError}
-                        className="inline-flex min-h-11 items-center rounded-md bg-primary px-3 font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                        onClick={continueConnectedAccount}
+                        className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
                       >
-                        Já adicionei — continuar
+                        {connectionTarget === "stories"
+                          ? "Continuar para Stories"
+                          : "Continuar para a biblioteca de Reels"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTab("contas")}
+                        className="min-h-11 rounded-lg border border-border px-4 text-sm font-semibold"
+                      >
+                        Ver contas
                       </button>
                     </div>
                   </section>
-                )}
-                <InstagramProfessionalSetup
-                  disabled={
-                    platformMetaUnavailable ||
-                    !!connecting ||
-                    loginWaiting ||
-                    !accountsLoaded ||
-                    !!accountsLoadError
-                  }
-                  onConnect={() => void connectInstagram("instagram_unified_login")}
-                />
-                {accountsLoadError && (
-                  <p role="alert" className="mt-3 text-sm text-amber-200">
-                    {accountsLoadError}{" "}
-                    <button
-                      type="button"
-                      className="underline underline-offset-4"
-                      onClick={() => {
-                        setAccountsLoadError("");
-                        setAccountRefresh((value) => value + 1);
-                      }}
-                    >
-                      Tentar carregar novamente
-                    </button>
-                  </p>
-                )}
-                {loginWaiting && (
-                  <div className="mt-3 rounded-lg border border-sky-400/30 bg-sky-400/5 p-3 text-sm">
-                    <p>
-                      Se a Meta pedir um portfólio, escolha aquele que contém o seu Instagram.
-                      Confira o perfil selecionado e confirme as permissões para voltar ao Mousefy.
-                    </p>
-                    <button
-                      type="button"
-                      className="mt-2 font-medium underline underline-offset-4"
-                      onClick={() => {
-                        setLoginWaiting(false);
-                        loginPopup.current?.close();
-                        loginPopup.current = null;
-                        setNotice(
-                          "Acompanhamento encerrado. Feche a janela da Meta se ela continuar aberta. Você pode iniciar outra conexão.",
-                        );
-                      }}
-                    >
-                      Cancelar esta tentativa
-                    </button>
-                  </div>
-                )}
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Para conectar outro perfil, use <strong>Trocar de conta</strong> na tela da Meta.
-                  Seus vídeos e agendamentos ficam separados por conta.
-                </p>
-                <details className="mt-4 rounded-md border border-border px-3 py-2 text-sm">
-                  <summary className="min-h-7 cursor-pointer font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                    Recebi um convite de teste
-                  </summary>
-                  <p className="mt-2 text-muted-foreground">
-                    Abra o Instagram com o perfil convidado. Em{" "}
-                    <strong>Convites do testador</strong>, confira o nome do app e clique em{" "}
-                    <strong>Aceitar</strong>.
-                  </p>
-                  <a
-                    className="mt-3 inline-flex min-h-11 items-center rounded-md border border-border px-3 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    href="https://www.instagram.com/accounts/manage_access/"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Abrir convites no Instagram
-                  </a>
-                  <p className="mt-2 text-muted-foreground">
-                    Depois, volte a esta aba. Se houver uma tentativa em andamento, cancele-a e
-                    clique em <strong>Conectar Instagram</strong> novamente.
-                  </p>
-                  <p className="mt-2 text-muted-foreground">
-                    Se aparecer <strong>App not active</strong>, confirme com a equipe se o convite
-                    foi enviado para o perfil certo.
-                  </p>
-                </details>
-                <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">
-                  <summary className="cursor-pointer font-medium">Opções de navegador</summary>
-                  <label className="mt-3 flex items-start gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={isolatedLogin}
-                      disabled={loginWaiting || !!connecting}
-                      onChange={(e) => setIsolatedLogin(e.target.checked)}
+                ) : (
+                  <>
+                    {connectionProgress?.step === "error" && (
+                      <div
+                        role="alert"
+                        className="mb-4 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3 text-sm"
+                      >
+                        <h3 ref={connectionHeading} tabIndex={-1} className="font-semibold">
+                          Conexão não concluída
+                        </h3>
+                        <p className="mt-1">{connectionProgress.message}</p>
+                      </div>
+                    )}
+                    {platformMetaUnavailable ? (
+                      <p role="alert" className="text-sm text-amber-200">
+                        {platformMetaMessage}
+                      </p>
+                    ) : (
+                      !loginWaiting &&
+                      !needsMetaAssetSetup && (
+                        <p className="text-sm text-muted-foreground">
+                          Você precisa de um perfil profissional. A Meta pede acesso ao perfil e
+                          permissão de publicação. Na Meta, escolha{" "}
+                          <strong>Continuar com Instagram</strong>. Se aparecer{" "}
+                          <strong>Selecione os ativos do negócio para compartilhar</strong>, escolha
+                          apenas o perfil que quer conectar.
+                        </p>
+                      )
+                    )}
+                    {!loginWaiting && !needsMetaAssetSetup && (
+                      <button
+                        type="button"
+                        onClick={() => void connectInstagram("instagram_unified_login")}
+                        disabled={
+                          platformMetaUnavailable ||
+                          !!connecting ||
+                          loginWaiting ||
+                          !accountsLoaded ||
+                          !!accountsLoadError
+                        }
+                        className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-base font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                      >
+                        <Instagram aria-hidden="true" className="size-4" />
+                        {connecting === "instagram_unified_login"
+                          ? "Abrindo autorização…"
+                          : loginWaiting
+                            ? "Aguardando seu Instagram…"
+                            : !accountsLoaded && !accountsLoadError
+                              ? "Carregando suas contas…"
+                              : connectionStep === "error"
+                                ? "Tentar novamente"
+                                : "Conectar Instagram"}
+                      </button>
+                    )}
+                    {needsMetaAssetSetup && (
+                      <section
+                        aria-label="Adicionar conta na Meta"
+                        className="mt-4 rounded-lg border border-sky-400/30 bg-sky-400/5 p-4 text-sm"
+                      >
+                        <h3
+                          ref={connectionHeading}
+                          tabIndex={-1}
+                          className="font-semibold text-foreground"
+                        >
+                          Adicionar conta na Meta
+                        </h3>
+                        <p className="mt-1 text-muted-foreground">
+                          Na Meta, abra <strong>Contas do Instagram</strong>, selecione adicionar,
+                          entre no perfil que quer usar e conclua as confirmações. Depois, volte
+                          aqui para compartilhar a conta com o Mousefy.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <a
+                            href="https://business.facebook.com/latest/settings/instagram-accounts"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex min-h-11 items-center rounded-md border border-sky-400/40 px-3 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            Abrir contas do Instagram na Meta
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => void connectInstagram("instagram_unified_login")}
+                            disabled={
+                              !!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError
+                            }
+                            className="inline-flex min-h-11 items-center rounded-md bg-primary px-3 font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                          >
+                            Já adicionei — continuar
+                          </button>
+                        </div>
+                      </section>
+                    )}
+                    <InstagramProfessionalSetup
+                      disabled={
+                        platformMetaUnavailable ||
+                        !!connecting ||
+                        loginWaiting ||
+                        !accountsLoaded ||
+                        !!accountsLoadError
+                      }
+                      onConnect={() => void connectInstagram("instagram_unified_login")}
                     />
-                    Usar uma sessão nova do Chrome (requer conector local)
-                  </label>
-                  <p className="mt-2 text-muted-foreground">
-                    Use esta opção apenas se quiser uma janela independente. A conexão padrão usa
-                    este navegador.
-                  </p>
-                </details>
-                {connectionTarget === "stories" && reelAccount && (
-                  <button
-                    type="button"
-                    className="mt-4 block rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-                    onClick={() => {
-                      setStoryAccount({
-                        id: reelAccount.id,
-                        request: crypto.randomUUID(),
-                        productUrl: null,
-                      });
-                      setTab("stories");
-                    }}
-                  >
-                    Próximo: biblioteca de Stories
-                  </button>
+                    {accountsLoadError && (
+                      <p role="alert" className="mt-3 text-sm text-amber-200">
+                        {accountsLoadError}{" "}
+                        <button
+                          type="button"
+                          className="underline underline-offset-4"
+                          onClick={() => {
+                            setAccountsLoadError("");
+                            setAccountRefresh((value) => value + 1);
+                          }}
+                        >
+                          Tentar carregar novamente
+                        </button>
+                      </p>
+                    )}
+                    {loginWaiting && (
+                      <div className="mb-4 rounded-lg border border-sky-400/30 bg-sky-400/5 p-4 text-sm">
+                        <h3
+                          ref={connectionHeading}
+                          tabIndex={-1}
+                          className="flex items-center gap-2 font-semibold"
+                        >
+                          <LoaderCircle aria-hidden className="size-4 motion-safe:animate-spin" />
+                          {connectionStep === "verifying"
+                            ? "Verificando a conexão"
+                            : "Autorize no Instagram ou Facebook"}
+                        </h3>
+                        <p className="mt-2 text-muted-foreground">
+                          {connectionStep === "verifying"
+                            ? "Conferindo se a conta já aparece conectada nesta operação."
+                            : "A autorização abriu em outra janela. Entre no perfil desejado e confirme o acesso solicitado."}
+                        </p>
+                        <p className="mt-2 text-muted-foreground">
+                          Se a Meta pedir um portfólio, escolha aquele que contém o seu Instagram.
+                          Confira o perfil selecionado e confirme as permissões para voltar ao
+                          Mousefy.
+                        </p>
+                        <button
+                          type="button"
+                          className="mr-4 mt-2 font-medium underline underline-offset-4"
+                          onClick={() => {
+                            setConnectionProgress({ step: "verifying" });
+                            setAccountRefresh((value) => value + 1);
+                          }}
+                        >
+                          Já autorizei · verificar conexão
+                        </button>
+                        <button
+                          type="button"
+                          className="mt-2 font-medium underline underline-offset-4"
+                          onClick={() => {
+                            setLoginWaiting(false);
+                            setConnectionProgress(null);
+                            loginPopup.current?.close();
+                            loginPopup.current = null;
+                            setNotice(
+                              "Acompanhamento encerrado. Feche a janela da Meta se ela continuar aberta. Você pode iniciar outra conexão.",
+                            );
+                          }}
+                        >
+                          Cancelar esta tentativa
+                        </button>
+                      </div>
+                    )}
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Para conectar outro perfil, use <strong>Trocar de conta</strong> na tela da
+                      Meta. Seus vídeos e agendamentos ficam separados por conta.
+                    </p>
+                    <details className="mt-4 rounded-md border border-border px-3 py-2 text-sm">
+                      <summary className="min-h-7 cursor-pointer font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        Recebi um convite de teste
+                      </summary>
+                      <p className="mt-2 text-muted-foreground">
+                        Abra o Instagram com o perfil convidado. Em{" "}
+                        <strong>Convites do testador</strong>, confira o nome do app e clique em{" "}
+                        <strong>Aceitar</strong>.
+                      </p>
+                      <a
+                        className="mt-3 inline-flex min-h-11 items-center rounded-md border border-border px-3 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        href="https://www.instagram.com/accounts/manage_access/"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Abrir convites no Instagram
+                      </a>
+                      <p className="mt-2 text-muted-foreground">
+                        Depois, volte a esta aba. Se houver uma tentativa em andamento, cancele-a e
+                        clique em <strong>Conectar Instagram</strong> novamente.
+                      </p>
+                      <p className="mt-2 text-muted-foreground">
+                        Se aparecer <strong>App not active</strong>, confirme com a equipe se o
+                        convite foi enviado para o perfil certo.
+                      </p>
+                    </details>
+                    <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">
+                      <summary className="cursor-pointer font-medium">Opções de navegador</summary>
+                      <label className="mt-3 flex items-start gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={isolatedLogin}
+                          disabled={loginWaiting || !!connecting}
+                          onChange={(e) => setIsolatedLogin(e.target.checked)}
+                        />
+                        Usar uma sessão nova do Chrome (requer conector local)
+                      </label>
+                      <p className="mt-2 text-muted-foreground">
+                        Use esta opção apenas se quiser uma janela independente. A conexão padrão
+                        usa este navegador.
+                      </p>
+                    </details>
+                  </>
                 )}
               </Panel>
             )}
-            <Panel
-              title={tab === "nova-conta" ? "Escolha a conta recém-conectada" : "Contas conectadas"}
-            >
-              {tab === "contas" && (
-                <button
-                  ref={connectAccountButton}
-                  type="button"
-                  disabled={!!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError}
-                  className="mb-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-                  onClick={() => {
-                    setConnectionTarget("reels");
-                    setTab("nova-conta");
-                  }}
-                >
-                  Adicionar conta
-                </button>
-              )}
-              {accountsLoadError || !accountsLoaded ? (
-                <p role="status" className="text-sm text-muted-foreground">
-                  {accountsLoadError || "Carregando contas…"}
-                </p>
-              ) : managedAccounts.length ? (
-                <>
-                  <p className="mb-4 text-sm text-muted-foreground">
-                    Abra um perfil para enviar vídeos, agendar Reels ou acompanhar os resultados
-                    dessa conta.
-                  </p>
-                  <InstagramAccountCards
-                    accounts={managedAccounts}
-                    selected={tab === "contas" ? openedAccountId : selectedAccountId}
-                    videoCounts={videosLoaded ? videosByAccount : undefined}
-                    disabled={libraryBusy || loginWaiting || !!connecting}
-                    onSelect={tab === "contas" ? setOpenedAccountId : chooseReelAccount}
-                    management={
-                      tab === "contas"
-                        ? {
-                            workspaceId: workspace.id,
-                            fallbackFocus: connectAccountButton,
-                            onDisconnected: (account) => {
-                              setConnectedAccounts((accounts) =>
-                                accounts.map((item) =>
-                                  item.id === account.id
-                                    ? {
-                                        ...item,
-                                        connection_status: "revoked",
-                                        scopes: [],
-                                        token_expires_at: null,
-                                      }
-                                    : item,
-                                ),
-                              );
-                              setOpenedAccountId((id) => (id === account.id ? "" : id));
-                              if (selectedAccountId === account.id) resetReelDraft("");
-                              setAccountRefresh((value) => value + 1);
-                              setHistoryRefresh((value) => value + 1);
-                              setNotice(`@${account.username} foi desconectada do Mousefy.`);
-                            },
-                          }
-                        : undefined
+            {tab === "contas" && (
+              <Panel title="Contas conectadas">
+                {tab === "contas" && (
+                  <button
+                    ref={connectAccountButton}
+                    type="button"
+                    disabled={
+                      !!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError
                     }
+                    className="mb-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                    onClick={() => {
+                      setConnectionTarget("reels");
+                      setTab("nova-conta");
+                    }}
+                  >
+                    Adicionar conta
+                  </button>
+                )}
+                {accountsLoadError || !accountsLoaded ? (
+                  <p role="status" className="text-sm text-muted-foreground">
+                    {accountsLoadError || "Carregando contas…"}
+                  </p>
+                ) : managedAccounts.length ? (
+                  <>
+                    <p className="mb-4 text-sm text-muted-foreground">
+                      Abra um perfil para enviar vídeos, agendar Reels ou acompanhar os resultados
+                      dessa conta.
+                    </p>
+                    <InstagramAccountCards
+                      accounts={managedAccounts}
+                      selected={tab === "contas" ? openedAccountId : selectedAccountId}
+                      videoCounts={videosLoaded ? videosByAccount : undefined}
+                      disabled={libraryBusy || loginWaiting || !!connecting}
+                      onSelect={tab === "contas" ? setOpenedAccountId : chooseReelAccount}
+                      management={
+                        tab === "contas"
+                          ? {
+                              workspaceId: workspace.id,
+                              fallbackFocus: connectAccountButton,
+                              onDisconnected: (account) => {
+                                setConnectedAccounts((accounts) =>
+                                  accounts.map((item) =>
+                                    item.id === account.id
+                                      ? {
+                                          ...item,
+                                          connection_status: "revoked",
+                                          scopes: [],
+                                          token_expires_at: null,
+                                        }
+                                      : item,
+                                  ),
+                                );
+                                setOpenedAccountId((id) => (id === account.id ? "" : id));
+                                if (selectedAccountId === account.id) resetReelDraft("");
+                                setAccountRefresh((value) => value + 1);
+                                setHistoryRefresh((value) => value + 1);
+                                setNotice(`@${account.username} foi desconectada do Mousefy.`);
+                              },
+                            }
+                          : undefined
+                      }
+                    />
+                    {tab === "contas" && openedAccount && (
+                      <section
+                        aria-label={`Opções de @${openedAccount.username}`}
+                        className="mt-5 space-y-4 rounded-xl border border-primary/30 bg-background/50 p-4 sm:p-5"
+                      >
+                        <InstagramConnectionDetails
+                          key={openedAccount.id}
+                          account={openedAccount}
+                          workspaceId={workspace.id}
+                          timeZone={workspace.timezone}
+                          disabled={!!connecting || loginWaiting}
+                          onChanged={() => setAccountRefresh((value) => value + 1)}
+                          onReconnect={() => {
+                            chooseReelAccount(openedAccount.id);
+                            setTab("nova-conta");
+                            void connectInstagram("instagram_unified_login");
+                          }}
+                        />
+                        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                          <button
+                            type="button"
+                            disabled={libraryBusy}
+                            className="rounded-lg border border-border px-3 py-3 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
+                            onClick={() => openAccountLibrary(openedAccount.id)}
+                          >
+                            Biblioteca de Reels
+                          </button>
+                          {openedAccount.connection_status === "connected" && (
+                            <>
+                              <button
+                                type="button"
+                                disabled={libraryBusy}
+                                className="rounded-lg bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                                onClick={() => startAccountReels(openedAccount.id)}
+                              >
+                                Agendar Reels
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-lg border border-border px-3 py-3 text-sm font-semibold hover:bg-secondary"
+                                onClick={() => {
+                                  setStoryAccount({
+                                    id: openedAccount.id,
+                                    request: crypto.randomUUID(),
+                                    productUrl: null,
+                                  });
+                                  setTab("stories");
+                                }}
+                              >
+                                Configurar Stories
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-lg border border-border px-3 py-3 text-sm font-semibold hover:bg-secondary"
+                                onClick={() => {
+                                  setTab("analytics");
+                                  setAnalyticsAccountId(openedAccount.id);
+                                }}
+                              >
+                                Ver resultados
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </section>
+                    )}
+                  </>
+                ) : (
+                  <Empty
+                    icon={Instagram}
+                    title="Nenhuma conta conectada"
+                    text="Depois da autorização, o nome de usuário da conta aparece aqui."
                   />
-                  {tab === "contas" && openedAccount && (
-                    <section
-                      aria-label={`Opções de @${openedAccount.username}`}
-                      className="mt-5 space-y-4 rounded-xl border border-primary/30 bg-background/50 p-4 sm:p-5"
-                    >
-                      <InstagramConnectionDetails
-                        key={openedAccount.id}
-                        account={openedAccount}
-                        workspaceId={workspace.id}
-                        timeZone={workspace.timezone}
-                        disabled={!!connecting || loginWaiting}
-                        onChanged={() => setAccountRefresh((value) => value + 1)}
-                        onReconnect={() => {
-                          chooseReelAccount(openedAccount.id);
-                          setTab("nova-conta");
-                          void connectInstagram("instagram_unified_login");
-                        }}
-                      />
-                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                        <button
-                          type="button"
-                          disabled={libraryBusy}
-                          className="rounded-lg border border-border px-3 py-3 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
-                          onClick={() => openAccountLibrary(openedAccount.id)}
-                        >
-                          Biblioteca de Reels
-                        </button>
-                        {openedAccount.connection_status === "connected" && (
-                          <>
-                            <button
-                              type="button"
-                              disabled={libraryBusy}
-                              className="rounded-lg bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-                              onClick={() => startAccountReels(openedAccount.id)}
-                            >
-                              Agendar Reels
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-lg border border-border px-3 py-3 text-sm font-semibold hover:bg-secondary"
-                              onClick={() => {
-                                setStoryAccount({
-                                  id: openedAccount.id,
-                                  request: crypto.randomUUID(),
-                                  productUrl: null,
-                                });
-                                setTab("stories");
-                              }}
-                            >
-                              Configurar Stories
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-lg border border-border px-3 py-3 text-sm font-semibold hover:bg-secondary"
-                              onClick={() => {
-                                setTab("analytics");
-                                setAnalyticsAccountId(openedAccount.id);
-                              }}
-                            >
-                              Ver resultados
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </section>
-                  )}
-                </>
-              ) : (
-                <Empty
-                  icon={Instagram}
-                  title="Nenhuma conta conectada"
-                  text="Depois da autorização, o nome de usuário da conta aparece aqui."
-                />
-              )}
-            </Panel>
+                )}
+              </Panel>
+            )}
           </section>
         )}
 
@@ -2943,18 +3085,6 @@ function InstagramWorkspacePage({
               </div>
             </Panel>
           </section>
-        )}
-        {guidedSetup && tab === "nova-conta" && (
-          <footer className="mt-6 flex justify-end rounded-xl border border-border bg-card p-4">
-            <button
-              type="button"
-              disabled={!reelAccount || loginWaiting}
-              onClick={() => openAccountLibrary(selectedAccountId)}
-              className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50"
-            >
-              Próximo: biblioteca de Reels <ArrowRight className="ml-2 inline size-4" aria-hidden />
-            </button>
-          </footer>
         )}
       </main>
     </AppShell>

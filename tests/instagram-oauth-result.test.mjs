@@ -9,6 +9,7 @@ test("OAuth result notifies the original tab through a nonce-bound script withou
   assert.equal(result.headers.get("location"), null);
   assert.match(html, /conectada/);
   assert.match(html, /aba original/);
+  assert.match(html, /href="\/automacao-instagram\?tab=contas">Voltar ao Mousefy/);
   assert.doesNotMatch(html, /Google/);
   const nonce = html.match(/<script nonce="([\da-f-]+)">/)[1];
   assert.match(result.headers.get("content-security-policy"), /default-src 'none'/);
@@ -36,6 +37,7 @@ test("OAuth failure and missing insights explain recovery without reflecting pro
   assert.match(result, /expirou/);
   assert.match(result, /Conectar Instagram/);
   assert.match(result, /success: false/);
+  assert.match(result, /instagram_reason=state_validation">Voltar ao Mousefy/);
   const warning = await instagramOAuthResult("insights_not_granted").text();
   assert.match(warning, /conectada/);
   assert.match(warning, /m.tricas/);

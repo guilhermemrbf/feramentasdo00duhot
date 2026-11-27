@@ -566,14 +566,12 @@ try {
   const openInvites = page.getByRole("link", { name: "Abrir convites no Instagram", exact: true });
   assert.equal(await openInvites.getAttribute("href"), inviteUrl);
   assert.equal(await openInvites.getAttribute("target"), "_blank");
-  await page
-    .context()
-    .route(inviteUrl, (route) =>
-      route.fulfill({
-        contentType: "text/html",
-        body: "<title>Instagram invitation fixture</title>",
-      }),
-    );
+  await page.context().route(inviteUrl, (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: "<title>Instagram invitation fixture</title>",
+    }),
+  );
   const invitePopupEvent = page.waitForEvent("popup");
   await openInvites.click();
   const invitePopup = await invitePopupEvent;
@@ -612,8 +610,21 @@ try {
   // Cross-origin opener isolation can prevent the parent from closing Meta's tab.
   // Cancellation must stop waiting; fixture cleanup closes any remaining tab.
   await professionalPopup.close();
+  const deniedPopupEvent = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).click();
+  const deniedPopup = await deniedPopupEvent;
+  await deniedPopup.waitForURL("https://www.facebook.com/**");
+  const deniedCallback = new URL(new URL(deniedPopup.url()).searchParams.get("redirect_uri"));
+  deniedCallback.searchParams.set("error", "access_denied");
+  await deniedPopup.goto(deniedCallback.href).catch((error) => {
+    if (!/closed/i.test(error.message)) throw error;
+  });
+  await page
+    .getByRole("alert")
+    .filter({ hasText: /autorização foi cancelada ou negada/ })
+    .waitFor();
   const popupEvent = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Conectar Instagram", exact: true }).first().click();
+  await page.getByRole("button", { name: "Tentar novamente", exact: true }).click();
   const popup = await popupEvent;
   // Local fixture stops external navigation; this proves the real button reaches OAuth.
   await page
@@ -622,6 +633,9 @@ try {
     .waitFor();
   assert.equal(await page.getByRole("region", { name: "Conectar navegador local" }).count(), 0);
   await popup.waitForURL("https://www.facebook.com/**");
+  await page
+    .getByRole("heading", { name: "Autorize no Instagram ou Facebook", exact: true })
+    .waitFor();
   const platformOAuth = new URL(popup.url());
   assert.equal(platformOAuth.searchParams.get("client_id"), env.META_APP_ID);
   assert.equal(platformOAuth.searchParams.get("config_id"), env.META_INSTAGRAM_LOGIN_CONFIG_ID);
@@ -687,6 +701,11 @@ try {
     channel.close();
   });
   await rechecked;
+  await page.getByRole("heading", { name: "Verificando a conexão", exact: true }).waitFor();
+  assert.equal(
+    await page.getByRole("heading", { name: "Instagram conectado", exact: true }).count(),
+    0,
+  );
   await page.getByRole("button", { name: "Cancelar esta tentativa", exact: true }).waitFor();
   assert.equal(
     await page
@@ -722,6 +741,10 @@ try {
     await page.getByRole("button", { name: "Cancelar esta tentativa", exact: true }).count(),
     0,
   );
+  await page.getByRole("heading", { name: "Instagram conectado", exact: true }).waitFor();
+  await page
+    .getByRole("button", { name: "Continuar para a biblioteca de Reels", exact: true })
+    .click();
   await page.getByRole("button", { name: "Próximo: configurar Reels", exact: true }).click();
   await page.getByRole("button", { name: "Próximo: legenda e capa", exact: true }).click();
   await page.getByRole("button", { name: "Próximo: dias e horários", exact: true }).click();
@@ -1055,8 +1078,10 @@ try {
   await page
     .getByRole("button", { name: "Conectar outra conta para Stories", exact: true })
     .click();
-  assert.equal(await page.getByRole("region", { name: "Passo a passo por conta" }).count(), 0);
-  await page.getByRole("button", { name: "Próximo: biblioteca de Stories", exact: true }).waitFor();
+  await page.getByRole("region", { name: "Passo a passo por conta" }).waitFor();
+  await page.getByRole("heading", { name: "Conectar conta para Stories", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Voltar para Stories", exact: true }).click();
+  await page.getByRole("region", { name: "Biblioteca exclusiva de Stories" }).waitFor();
   freshWorkspace = true;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(web + "/automacao-instagram?tab=stories");
@@ -1194,6 +1219,7 @@ try {
     .getByRole("status")
     .filter({ hasText: /@cliente_fixture conectada/ })
     .waitFor();
+  await page.getByRole("heading", { name: "Instagram conectado", exact: true }).waitFor();
   await page.goto(web + "/automacao-instagram");
   await page.getByRole("button", { name: "Abrir conta @cliente_fixture" }).waitFor();
   assert.equal(await firstSteps.getByRole("progressbar").getAttribute("value"), "2");
@@ -1366,7 +1392,7 @@ try {
     await page
       .locator(".app-workspace")
       .evaluate((element) => getComputedStyle(element).getPropertyValue("--background").trim()),
-    "#151114",
+    "#0c0f14",
   );
   await page.getByRole("link", { name: "Aprovações e convites", exact: true }).click();
   await page.getByRole("heading", { name: "Aprovações e convites", exact: true }).waitFor();
