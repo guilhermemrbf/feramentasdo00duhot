@@ -1,3 +1,5 @@
+// From Uiverse.io by zanina-yassine - https://uiverse.io/zanina-yassine/angry-shrimp-34
+// MIT License, Copyright (c) zanina-yassine (Yassine Zanina)
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -50,21 +52,11 @@ const paymentLabels: Record<string, string> = {
   pendente: "Pagamento pendente",
   bloqueado: "Acesso da assinatura suspenso",
 };
-const chargeLabels: Record<string, string> = {
-  pending: "Pendente",
-  paid: "Paga",
-  overdue: "Vencida",
-  failed: "Falhou",
-  expired: "Expirada",
-  cancelled: "Cancelada",
-  processing: "Processando",
-};
 const button = "saas-button saas-button-outline";
 const primary = "saas-button saas-button-primary";
 const field = "w-full rounded-lg border border-input bg-background px-3 py-2 text-foreground";
 const checkoutField =
-  field +
-  " min-h-12 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  "h-11 w-full rounded-[9px] border border-border bg-background px-4 text-foreground transition-[background-color,box-shadow] duration-300 ease-[cubic-bezier(0.15,0.83,0.66,1)] focus:bg-transparent focus:outline-none focus:ring-2 focus:ring-primary motion-reduce:transition-none";
 
 function PlanLimits({ details }: { details: (typeof planDetails)[string] }) {
   return (
@@ -76,6 +68,10 @@ function PlanLimits({ details }: { details: (typeof planDetails)[string] }) {
       <div>
         <dt className="text-muted-foreground">Traqueamento avançado</dt>
         <dd className="font-semibold">Até {details.ads} contas de anúncio</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">Telegram Sync</dt>
+        <dd className="font-semibold">Até 3 contas no Telegram</dd>
       </div>
     </dl>
   );
@@ -91,10 +87,25 @@ function PaymentInstructions({
   const [copy, setCopy] = useState("");
   const automatic = method === "pix_automatico";
   return (
-    <div className="grid items-center gap-6 rounded-2xl border border-border bg-card p-4 sm:p-6 md:grid-cols-[auto_minmax(0,1fr)] md:gap-8">
+    <div className="mx-auto max-w-md space-y-5 rounded-[26px] border border-border bg-card p-5 shadow-xl sm:p-6">
+      <div className="text-center">
+        <h3 className="text-lg font-semibold">
+          {automatic ? "Autorize no app do seu banco" : "Pague no app do seu banco"}
+        </h3>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+          {payment.image
+            ? "Abra a área Pix no celular e escaneie o QR Code."
+            : payment.code
+              ? "Copie o código e cole na área Pix do seu banco."
+              : "O QR Code ainda está indisponível. Atualize a assinatura e tente novamente."}
+          {automatic &&
+            payment.image &&
+            " Confira os dados e confirme a autorização do Pix Automático."}
+        </p>
+      </div>
       {payment.image && (
         <img
-          className="mx-auto aspect-square w-64 max-w-full rounded-xl bg-white object-contain p-3"
+          className="mx-auto aspect-square w-full max-w-72 rounded-xl bg-white object-contain p-3"
           width={320}
           height={320}
           alt="QR Code do pagamento Pix"
@@ -103,21 +114,6 @@ function PaymentInstructions({
         />
       )}
       <div className="min-w-0 space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold">
-            {automatic ? "Autorize no app do seu banco" : "Pague no app do seu banco"}
-          </h3>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            {payment.image
-              ? "Abra a área Pix no celular e escaneie o QR Code."
-              : payment.code
-                ? "Copie o código e cole na área Pix do seu banco."
-                : "O QR Code ainda está indisponível. Atualize a assinatura e tente novamente."}
-            {automatic &&
-              payment.image &&
-              " Confira os dados e confirme a autorização do Pix Automático."}
-          </p>
-        </div>
         {payment.code && (
           <div className="space-y-2">
             <label className="block space-y-2 text-sm font-medium">
@@ -131,7 +127,7 @@ function PaymentInstructions({
             </label>
             <button
               type="button"
-              className={button}
+              className={button + " w-full"}
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(payment.code ?? "");
@@ -210,7 +206,6 @@ function SubscriptionDetails({ user }: { user: string }) {
   const [method, setMethod] = useState<BillingMethod>("pix_automatico");
   const [accepted, setAccepted] = useState<BillingMethod[]>();
   const [message, setMessage] = useState("");
-  const [page, setPage] = useState(1);
   const [action, setAction] = useState<Action>();
   const [reason, setReason] = useState("");
   const subscriptionKey = ["mousefy-subscription", user];
@@ -228,10 +223,25 @@ function SubscriptionDetails({ user }: { user: string }) {
     enabled: subscription.isSuccess && canEnroll,
     staleTime: 60_000,
   });
-  const charges = useQuery({
-    queryKey: ["mousefy-charges", user, page, current?.paymentStatus],
-    queryFn: () => getMousefyCharges({ data: page }),
-    enabled: !!current?.hasSubscription,
+  const canPayRenewal =
+    !!current?.hasSubscription &&
+    !current.closed &&
+    current.method === "qr_code" &&
+    current.paymentStatus !== "aguardando";
+  const renewal = useQuery({
+    queryKey: ["mousefy-renewal", user, current?.paymentStatus, current?.nextChargeAt],
+    queryFn: async () => {
+      let page = 1;
+      let lastPage: number;
+      do {
+        const result = await getMousefyCharges({ data: page++ });
+        const payable = result.charges.find(({ payment }) => payment?.image || payment?.code);
+        if (payable?.payment) return payable;
+        lastPage = result.lastPage;
+      } while (page <= lastPage);
+      return null;
+    },
+    enabled: canPayRenewal,
     staleTime: 30_000,
   });
   const selected = plans.data?.find((entry) => entry.token === plan);
@@ -246,7 +256,7 @@ function SubscriptionDetails({ user }: { user: string }) {
   const refresh = async () => {
     await Promise.all([
       client.invalidateQueries({ queryKey: subscriptionKey }),
-      client.invalidateQueries({ queryKey: ["mousefy-charges", user] }),
+      client.invalidateQueries({ queryKey: ["mousefy-renewal", user] }),
       access.refresh(),
     ]);
   };
@@ -340,6 +350,21 @@ function SubscriptionDetails({ user }: { user: string }) {
               payment={current.payment ?? {}}
               method={current.method}
             />
+          )}
+          {canPayRenewal && renewal.data?.payment && (
+            <div className="space-y-3">
+              <p className="text-center text-sm font-semibold">
+                Pix da renovação · {money(renewal.data.amount)}
+              </p>
+              <PaymentInstructions
+                key={renewal.data.payment.code}
+                payment={renewal.data.payment}
+                method="qr_code"
+              />
+            </div>
+          )}
+          {canPayRenewal && renewal.isError && (
+            <p role="alert">Não foi possível consultar o Pix da renovação. Tente atualizar.</p>
           )}
           <div className="flex flex-wrap gap-2">
             <button type="button" className={button} onClick={() => void refresh()}>
@@ -537,7 +562,7 @@ function SubscriptionDetails({ user }: { user: string }) {
                                 <li key={tool.id} className="flex items-start gap-2">
                                   <CircleCheck
                                     aria-hidden="true"
-                                    className="mt-0.5 size-4 shrink-0 text-zinc-400"
+                                    className="mt-0.5 size-4 shrink-0 text-emerald-400"
                                   />
                                   <span>
                                     {tool.id === "social"
@@ -589,14 +614,14 @@ function SubscriptionDetails({ user }: { user: string }) {
                   >
                     Finalizar assinatura
                   </h2>
-                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,0.62fr)] lg:items-start">
+                  <div className="grid grid-cols-[minmax(0,450px)] justify-center gap-5 lg:grid-cols-[minmax(0,450px)_minmax(16rem,20rem)] lg:items-start">
                     <section
-                      className="space-y-6 rounded-2xl border border-border bg-card p-4 sm:p-6"
+                      className="flex min-w-0 flex-col gap-5 rounded-[26px] border border-border bg-card p-5 shadow-[0_12px_26px_rgba(0,0,0,0.24)]"
                       aria-label="Dados e forma de pagamento"
                     >
                       <div className="space-y-3">
                         <h3 className="text-base font-semibold">Dados de cobrança</h3>
-                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(10rem,0.65fr)]">
+                        <div className="grid gap-[15px]">
                           <label className="block space-y-2 text-sm font-medium">
                             <span>Nome completo ou razão social</span>
                             <input
@@ -632,12 +657,19 @@ function SubscriptionDetails({ user }: { user: string }) {
                           cobrança.
                         </p>
                       </div>
-                      <fieldset className="space-y-2 border-t border-border pt-4" disabled={busy}>
-                        <legend className="text-base font-semibold">Forma de pagamento</legend>
+                      <fieldset
+                        className="grid min-w-0 grid-cols-1 gap-2 min-[420px]:grid-cols-2"
+                        disabled={busy}
+                      >
+                        <legend className="mb-3 w-full text-center text-xs font-semibold text-muted-foreground">
+                          <span className="flex items-center gap-2.5 before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+                            Forma de pagamento
+                          </span>
+                        </legend>
                         {methods.map((item) => (
                           <label
                             key={item}
-                            className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-3.5 has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:disabled]:cursor-not-allowed"
+                            className="flex min-h-[55px] cursor-pointer items-start gap-2.5 rounded-[11px] border border-border bg-background p-3 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:disabled]:cursor-not-allowed motion-reduce:transition-none"
                           >
                             <input
                               type="radio"
@@ -665,7 +697,7 @@ function SubscriptionDetails({ user }: { user: string }) {
                       )}
                       <button
                         type="submit"
-                        className={primary + " w-full"}
+                        className="flex h-[55px] w-full items-center justify-center gap-2 rounded-[11px] bg-linear-to-b from-[#c62c3a] to-[#971b29] text-sm font-bold text-white transition-shadow duration-300 ease-[cubic-bezier(0.15,0.83,0.66,1)] hover:shadow-[0_0_0_2px_var(--card),0_0_0_4px_var(--primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none"
                         disabled={busy || !methods.includes(method)}
                       >
                         <ScanLine className="size-4" aria-hidden />
@@ -708,76 +740,6 @@ function SubscriptionDetails({ user }: { user: string }) {
         <p>Seu cadastro está indisponível para adesão.</p>
       )}
       {message && !selected && <p role="alert">{message}</p>}
-      {current?.hasSubscription && (
-        <section className="space-y-4 rounded-xl border border-border p-5">
-          <h2 className="text-xl font-semibold">Cobranças</h2>
-          {charges.isPending ? (
-            <p role="status">Consultando cobranças…</p>
-          ) : charges.isError ? (
-            <p role="alert">Não foi possível consultar as cobranças.</p>
-          ) : (
-            <>
-              {charges.data.charges.length ? (
-                <ul className="divide-y divide-border">
-                  {charges.data.charges.map((item, index) => (
-                    <li key={String(item.cycle ?? index)} className="space-y-2 py-3">
-                      <p>
-                        Gerada em {day(item.chargeAt)} · {money(item.amount)} ·{" "}
-                        {chargeLabels[String(item.status)] ?? "Em processamento"}
-                      </p>
-                      {item.paidAt && <p>Paga em {day(item.paidAt)}</p>}
-                      {(item.payment?.code || item.payment?.image) && (
-                        <PaymentInstructions
-                          key={item.payment.code}
-                          payment={item.payment}
-                          method="qr_code"
-                        />
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>Nenhuma cobrança neste período.</p>
-              )}
-              {charges.data.lastPage > 1 && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    className={button}
-                    disabled={page <= 1}
-                    onClick={() => setPage(page - 1)}
-                  >
-                    Anterior
-                  </button>
-                  <span>
-                    Página {page} de {charges.data.lastPage}
-                  </span>
-                  <button
-                    type="button"
-                    className={button}
-                    disabled={page >= charges.data.lastPage}
-                    onClick={() => setPage(page + 1)}
-                  >
-                    Próxima
-                  </button>
-                </div>
-              )}
-              {charges.data.upcoming.length > 0 && (
-                <>
-                  <h3 className="font-semibold">Próximas cobranças</h3>
-                  <ul>
-                    {charges.data.upcoming.map((item, index) => (
-                      <li key={String(item.cycle ?? index)}>
-                        {day(item.date)} · {money(item.amount)}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </>
-          )}
-        </section>
-      )}
     </div>
   );
 }

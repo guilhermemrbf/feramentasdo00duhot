@@ -179,12 +179,14 @@ try {
     const [instagram, ads] = limits[index];
     await card.getByText(`Até ${instagram} contas do Instagram`, { exact: true }).waitFor();
     await card.getByText(`Até ${ads} contas de anúncio`, { exact: true }).waitFor();
+    await card.getByText("Até 3 contas no Telegram", { exact: true }).waitFor();
     await card.getByText("Todas as ferramentas", { exact: true }).waitFor();
     await card.getByRole("button", { name: /Selecionar plano/ }).click();
     await page.getByRole("heading", { name: "Finalizar assinatura" }).waitFor();
     const summary = page.getByRole("complementary", { name: "Resumo do plano" });
     await summary.getByText(new RegExp(price + ".*30 dias")).waitFor();
     await summary.getByText(`Até ${instagram} contas do Instagram`, { exact: true }).waitFor();
+    await summary.getByText("Até 3 contas no Telegram", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Voltar aos planos" }).click();
   }
   assert.deepEqual(enrollments, []);
@@ -214,7 +216,12 @@ try {
     const qr = page.getByRole("img", { name: "QR Code do pagamento Pix" });
     await qr.waitFor({ timeout: 8000 });
     assert.ok(await qr.evaluate((img) => img.complete && img.naturalWidth >= 256));
-    await page.getByRole("button", { name: "Copiar código Pix" }).click();
+    const copyButton = page.getByRole("button", { name: "Copiar código Pix" });
+    const qrBox = await qr.boundingBox();
+    const copyBox = await copyButton.boundingBox();
+    assert.ok(copyBox.y >= qrBox.y + qrBox.height, "A ação de copiar deve ficar abaixo do QR");
+    await copyButton.click();
+    assert.equal(await page.getByRole("heading", { name: "Cobranças", exact: true }).count(), 0);
     assert.equal(await page.evaluate(() => navigator.clipboard.readText()), code);
     assert.deepEqual(enrollments.at(-1), [id, method]);
     if (process.env.CHECKOUT_SCREENSHOTS) {
@@ -229,9 +236,10 @@ try {
     if (method === "qr_code") {
       subscription.payment_status = "pendente";
       await page.reload();
-      const charges = page.getByRole("heading", { name: "Cobranças", exact: true }).locator("..");
-      const renewalQr = charges.getByRole("img", { name: "QR Code do pagamento Pix" });
+      const state = page.getByRole("region", { name: "Estado da assinatura" });
+      const renewalQr = state.getByRole("img", { name: "QR Code do pagamento Pix" });
       await renewalQr.waitFor();
+      assert.equal(await page.getByRole("heading", { name: "Cobranças", exact: true }).count(), 0);
       assert.equal(await renewalQr.count(), 1);
       assert.ok(await renewalQr.evaluate((img) => img.complete && img.naturalWidth >= 256));
     }
