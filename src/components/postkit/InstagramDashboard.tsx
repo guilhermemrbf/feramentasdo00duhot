@@ -309,13 +309,13 @@ export function InstagramDashboard({
   const { accountCount, videoCount } = data ?? (visiting ? { accountCount: 0, videoCount: 0 } : {});
 
   const steps = [
-    ...(!visiting && (appMode === "missing" || appMode === "own")
+    ...(appMode === "missing" || appMode === "own"
       ? [
           {
             title: "Cadastre seu aplicativo da Meta",
             done: appMode === "own",
             description: "Siga o tutorial com capturas para vincular o app da sua operação.",
-            action: "Cadastrar app Meta",
+            action: visiting ? "Ver passo a passo" : "Cadastrar app Meta",
             run: onAppSetup,
             onGuide: appMode === "own" ? onAppSetup : undefined,
           },

@@ -1522,6 +1522,7 @@ function InstagramWorkspacePage({
             onSaved={onAppSaved}
             onBack={() => setTab("dashboard")}
             onConnect={() => setTab("nova-conta", connectionTarget)}
+            onChoosePlan={visiting ? requirePlan : undefined}
           />
         )}
 
@@ -1760,13 +1761,22 @@ function InstagramWorkspacePage({
                           Conecte um perfil profissional para agendar publicações e acompanhar os
                           resultados.
                         </p>
-                        <button
-                          type="button"
-                          onClick={requirePlan}
-                          className="mt-3 min-h-11 rounded-lg bg-primary px-4 font-semibold text-primary-foreground"
-                        >
-                          Conectar Instagram
-                        </button>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setAppSetupOpen(true)}
+                            className="min-h-11 rounded-lg border border-border px-4 font-semibold"
+                          >
+                            Ver passo a passo do app Meta
+                          </button>
+                          <button
+                            type="button"
+                            onClick={requirePlan}
+                            className="min-h-11 rounded-lg bg-primary px-4 font-semibold text-primary-foreground"
+                          >
+                            Conectar Instagram
+                          </button>
+                        </div>
                       </div>
                     ) : app.mode === "missing" ? (
                       <div className="rounded-xl border border-border bg-card p-4 text-sm">

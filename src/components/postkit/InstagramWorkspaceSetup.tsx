@@ -14,6 +14,7 @@ export function InstagramWorkspaceSetup({
   initialGuideStep,
   onBack,
   onConnect,
+  onChoosePlan,
 }: {
   app: WorkspaceAppStatus;
   workspaceId: string;
@@ -21,6 +22,7 @@ export function InstagramWorkspaceSetup({
   initialGuideStep?: number;
   onBack: () => void;
   onConnect: () => void;
+  onChoosePlan?: () => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -31,7 +33,7 @@ export function InstagramWorkspaceSetup({
   const firstSetup = app.mode === "missing";
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (saving) return;
+    if (saving || onChoosePlan) return;
     const form = event.currentTarget;
     const fields = new FormData(form);
     const appId = String(fields.get("appId") ?? "").trim();
@@ -161,7 +163,7 @@ export function InstagramWorkspaceSetup({
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Cadastre o aplicativo da sua operação para conectar o Instagram e começar a publicar.
         </p>
-        {!app.canManage ? (
+        {!app.canManage && !onChoosePlan ? (
           <p className="mt-4 text-sm">
             Peça ao responsável pela operação para concluir o cadastro.
           </p>
@@ -201,7 +203,7 @@ export function InstagramWorkspaceSetup({
                 Abrir developers.facebook.com <ArrowUpRight className="size-4" aria-hidden />
               </a>
             )}
-            {guideStep === 4 && (
+            {guideStep === 4 && app.callbackUrl && (
               <div className="flex flex-wrap items-center gap-2">
                 <code className="break-all rounded-md bg-background px-2 py-1 text-xs">
                   {app.callbackUrl}
@@ -225,6 +227,11 @@ export function InstagramWorkspaceSetup({
                 )}
               </div>
             )}
+            {guideStep === 4 && onChoosePlan && !app.callbackUrl && (
+              <p className="text-sm text-muted-foreground">
+                O endereço para copiar aparece aqui quando você libera o cadastro do app.
+              </p>
+            )}
             <div className="grid gap-4 lg:grid-cols-2">
               {guide.images.map(([filename, alt]) => {
                 const src = `/tutorial-meta/meta-${filename}.webp`;
@@ -247,12 +254,17 @@ export function InstagramWorkspaceSetup({
               })}
             </div>
             {guide.tip && <p className="text-sm text-muted-foreground">{guide.tip}</p>}
-            {guideStep === 6 && firstSetup && (
+            {guideStep === 6 && firstSetup && !onChoosePlan && (
               <p className="text-sm text-muted-foreground">
                 Cadastre seu app na etapa anterior para liberar a conexão.
               </p>
             )}
-            {guideStep === 5 && credentialForm}
+            {guideStep === 5 && !onChoosePlan && credentialForm}
+            {guideStep === 5 && onChoosePlan && (
+              <p className="text-sm text-muted-foreground">
+                Escolha um plano para cadastrar o app com segurança no Mousefy.
+              </p>
+            )}
             <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
               <button
                 type="button"
@@ -262,8 +274,8 @@ export function InstagramWorkspaceSetup({
               >
                 <ArrowLeft className="size-4" aria-hidden /> Voltar
               </button>
-              {guideStep === 5 && saveButton}
-              {guideStep < metaGuide.length - 1 && guideStep !== 5 && (
+              {guideStep === 5 && !onChoosePlan && saveButton}
+              {guideStep < metaGuide.length - 1 && (guideStep !== 5 || onChoosePlan) && (
                 <button
                   type="button"
                   onClick={() => setGuideStep(guideStep + 1)}
@@ -275,10 +287,14 @@ export function InstagramWorkspaceSetup({
               {guideStep === 6 && (
                 <button
                   type="button"
-                  onClick={firstSetup ? () => setGuideStep(5) : onConnect}
+                  onClick={onChoosePlan ?? (firstSetup ? () => setGuideStep(5) : onConnect)}
                   className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
                 >
-                  {firstSetup ? "Ir para o cadastro" : "Conectar a primeira conta"}
+                  {onChoosePlan
+                    ? "Ver planos"
+                    : firstSetup
+                      ? "Ir para o cadastro"
+                      : "Conectar a primeira conta"}
                   <ArrowRight className="size-4 shrink-0" aria-hidden />
                 </button>
               )}
