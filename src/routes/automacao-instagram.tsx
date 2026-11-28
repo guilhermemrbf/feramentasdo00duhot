@@ -38,7 +38,6 @@ import { WorkspaceGate, type Workspace } from "@/components/postkit/WorkspaceGat
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { InstagramLocalLogin } from "@/components/postkit/InstagramLocalLogin";
-import { InstagramProfessionalSetup } from "@/components/postkit/InstagramProfessionalSetup";
 import {
   InstagramConnectionDetails,
   type InstagramConnectionDetailsAccount,
@@ -439,7 +438,6 @@ function InstagramWorkspacePage({
   );
   const [accountRefresh, setAccountRefresh] = useState(0);
   const [loginWaiting, setLoginWaiting] = useState(false);
-  const [needsMetaAssetSetup, setNeedsMetaAssetSetup] = useState(false);
   const [connectionProgress, setConnectionProgress] = useState<
     | { step: "verifying" }
     | { step: "error"; message: string }
@@ -453,13 +451,13 @@ function InstagramWorkspacePage({
       ? 3
       : connectionStep === "verifying"
         ? 2
-        : loginWaiting || needsMetaAssetSetup || connectionStep === "error"
+        : loginWaiting || connectionStep === "error"
           ? 1
           : 0;
   useEffect(() => {
-    if (requestedTab === "nova-conta" && (connectionStep || needsMetaAssetSetup || loginWaiting))
+    if (requestedTab === "nova-conta" && (connectionStep || loginWaiting))
       connectionHeading.current?.focus();
-  }, [requestedTab, connectionStep, needsMetaAssetSetup, loginWaiting]);
+  }, [requestedTab, connectionStep, loginWaiting]);
   const storiesChoice: StoriesChoice = "skip";
   const storyReviewCount = 0;
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
@@ -496,20 +494,14 @@ function InstagramWorkspacePage({
           setNotice("");
         } else {
           setLoginWaiting(false);
-          if (data.recovery === "meta_asset_setup") {
-            setNeedsMetaAssetSetup(true);
-            setConnectionProgress(null);
-            setNotice("");
-          } else {
-            setNotice("");
-            setConnectionProgress({
-              step: "error",
-              message:
-                data.reason === "meta_denied"
-                  ? "A autorização foi cancelada ou negada. Abra a Meta novamente para escolher a conta e confirmar as permissões."
-                  : "O Mousefy não conseguiu confirmar a autorização. Tente novamente com a conta profissional que deseja conectar.",
-            });
-          }
+          setNotice("");
+          setConnectionProgress({
+            step: "error",
+            message:
+              data.reason === "meta_denied"
+                ? "A autorização foi cancelada ou negada. Abra o Instagram novamente para confirmar o acesso."
+                : "O Mousefy não conseguiu confirmar a autorização. Tente novamente com a conta profissional que deseja conectar.",
+          });
         }
         channel.postMessage({ type: "ack", id: data.id });
       };
@@ -667,10 +659,6 @@ function InstagramWorkspacePage({
     if (result === "connection_failed") {
       setActiveTab("nova-conta");
       const reason = new URLSearchParams(window.location.search).get("instagram_reason");
-      if (reason === "unified_accounts_empty") {
-        setNeedsMetaAssetSetup(true);
-        return;
-      }
       const reasonLabels: Record<string, string> = {
         meta_denied: "a Meta não concluiu a autorização",
         state_validation: "a validação de segurança da autorização",
@@ -759,9 +747,7 @@ function InstagramWorkspacePage({
       setShowLocalLogin(false);
       setLoginWaiting(true);
       setNotice(
-        mode === "instagram_unified_login"
-          ? "Autorização aberta. Na Meta, escolha Continuar com Instagram e entre no perfil que quer conectar."
-          : "Autorização aberta. Entre no perfil desejado e confirme o acesso na Meta.",
+        "Autorização aberta. Entre no perfil desejado no Instagram e confirme o acesso solicitado.",
       );
     } catch (error) {
       const message =
@@ -1638,7 +1624,7 @@ function InstagramWorkspacePage({
                   aria-label="Etapas da conexão"
                   className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4"
                 >
-                  {["Preparar", "Autorizar na Meta", "Verificar", "Conectada"].map(
+                  {["Conectar", "Autorizar no Instagram", "Verificar", "Conectada"].map(
                     (label, index) => (
                       <li
                         key={label}
@@ -1713,8 +1699,7 @@ function InstagramWorkspacePage({
                         {platformMetaMessage}
                       </p>
                     ) : (
-                      !loginWaiting &&
-                      !needsMetaAssetSetup && (
+                      !loginWaiting && (
                         <div className="rounded-xl border border-border bg-background/40 p-4">
                           <h3 className="font-semibold">Como conectar seu Instagram</h3>
                           <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
@@ -1737,16 +1722,15 @@ function InstagramWorkspacePage({
                             </li>
                           </ol>
                           <p className="mt-3 text-xs text-muted-foreground">
-                            Se a Meta mostrar um portfólio empresarial, escolha o que contém o
-                            Instagram que você quer conectar.
+                            A conexão usa o Login do Instagram e não pede senha dentro do Mousefy.
                           </p>
                         </div>
                       )
                     )}
-                    {!loginWaiting && !needsMetaAssetSetup && (
+                    {!loginWaiting && (
                       <button
                         type="button"
-                        onClick={() => void connectInstagram("instagram_unified_login")}
+                        onClick={() => void connectInstagram("instagram_login")}
                         disabled={
                           platformMetaUnavailable ||
                           !!connecting ||
@@ -1757,7 +1741,7 @@ function InstagramWorkspacePage({
                         className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-base font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                       >
                         <Instagram aria-hidden="true" className="size-4" />
-                        {connecting === "instagram_unified_login"
+                        {connecting === "instagram_login"
                           ? "Abrindo autorização…"
                           : loginWaiting
                             ? "Aguardando seu Instagram…"
@@ -1768,74 +1752,6 @@ function InstagramWorkspacePage({
                                 : "Conectar Instagram"}
                       </button>
                     )}
-                    {connectionProgress?.step === "error" && !loginWaiting && !needsMetaAssetSetup && (
-                      <div className="mt-3 rounded-lg border border-border bg-secondary/20 p-3">
-                        <p className="text-xs text-muted-foreground">
-                          Se o Login Unificado da Meta não concluir, você pode tentar a autorização
-                          direta do Instagram. Esse segundo caminho não exige a seleção de ativos
-                          no portfólio da Meta.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => void connectInstagram("instagram_login")}
-                          disabled={
-                            !!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError
-                          }
-                          className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
-                        >
-                          Tentar conexão direta pelo Instagram
-                        </button>
-                      </div>
-                    )}
-                    {needsMetaAssetSetup && (
-                      <section
-                        aria-label="Adicionar conta na Meta"
-                        className="mt-4 rounded-lg border border-sky-400/30 bg-sky-400/5 p-4 text-sm"
-                      >
-                        <h3
-                          ref={connectionHeading}
-                          tabIndex={-1}
-                          className="font-semibold text-foreground"
-                        >
-                          Adicionar conta na Meta
-                        </h3>
-                        <p className="mt-1 text-muted-foreground">
-                          Na Meta, abra <strong>Contas do Instagram</strong>, selecione adicionar,
-                          entre no perfil que quer usar e conclua as confirmações. Depois, volte
-                          aqui para compartilhar a conta com o Mousefy.
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <a
-                            href="https://business.facebook.com/latest/settings/instagram-accounts"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex min-h-11 items-center rounded-md border border-sky-400/40 px-3 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          >
-                            Abrir contas do Instagram na Meta
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => void connectInstagram("instagram_unified_login")}
-                            disabled={
-                              !!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError
-                            }
-                            className="inline-flex min-h-11 items-center rounded-md bg-primary px-3 font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                          >
-                            Já adicionei — continuar
-                          </button>
-                        </div>
-                      </section>
-                    )}
-                    <InstagramProfessionalSetup
-                      disabled={
-                        platformMetaUnavailable ||
-                        !!connecting ||
-                        loginWaiting ||
-                        !accountsLoaded ||
-                        !!accountsLoadError
-                      }
-                      onConnect={() => void connectInstagram("instagram_unified_login")}
-                    />
                     {accountsLoadError && (
                       <p role="alert" className="mt-3 text-sm text-amber-200">
                         {accountsLoadError}{" "}
@@ -1867,11 +1783,6 @@ function InstagramWorkspacePage({
                           {connectionStep === "verifying"
                             ? "Conferindo se a conta já aparece conectada nesta operação."
                             : "A autorização abriu em outra janela. Entre no perfil desejado e confirme o acesso solicitado."}
-                        </p>
-                        <p className="mt-2 text-muted-foreground">
-                          Se a Meta pedir um portfólio, escolha aquele que contém o seu Instagram.
-                          Confira o perfil selecionado e confirme as permissões para voltar ao
-                          Mousefy.
                         </p>
                         <button
                           type="button"
