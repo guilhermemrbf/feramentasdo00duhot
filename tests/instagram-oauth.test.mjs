@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { platformInstagramAppRevision } from "../src/lib/instagram-workspace-app.server.ts";
 import {
   createInstagramOAuthState,
   decryptInstagramToken,
@@ -75,6 +76,14 @@ test("workspace app credentials and authorization are bound to the selected oper
     appRevision: "revision-1",
   });
   assert.equal((await verifyInstagramOAuthState(state)).appRevision, "revision-1");
+});
+
+
+test("platform OAuth revision is bound to the current Meta app and login configuration", () => {
+  assert.equal(
+    platformInstagramAppRevision("2201393490722211", "2579077412515904"),
+    "platform:2201393490722211:2579077412515904",
+  );
 });
 
 test("production OAuth cookie uses the host-only secure prefix", () => {
