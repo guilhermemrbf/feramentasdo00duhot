@@ -123,7 +123,11 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
           }
           const { workspaceAppForCallback } = await import("@/lib/instagram-workspace-app.server");
           const { config, configId } = await workspaceAppForCallback(workspaceId, appRevision);
-          if (configId && mode !== "instagram_unified_login")
+          if (
+            configId &&
+            mode !== "instagram_unified_login" &&
+            !appRevision?.startsWith("platform:")
+          )
             throw new Error("Instagram workspace app changed or is unavailable.");
           if (mode === "facebook_login") {
             return await connectViaFacebookLogin({ code, config, workspaceId, userId, analytics });
@@ -211,7 +215,7 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
                 account_type: profile.account_type ?? null,
                 connection_status: "pending",
                 auth_mode: "instagram_login",
-                scopes: ["instagram_business_basic", "instagram_business_content_publish"],
+                scopes: ["instagram_business_basic", "instagram_business_content_publishing"],
                 token_expires_at: expiry,
                 last_verified_at: new Date().toISOString(),
                 connected_by: userId,
