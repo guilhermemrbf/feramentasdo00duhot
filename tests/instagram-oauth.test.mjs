@@ -5,6 +5,7 @@ import {
   createInstagramOAuthState,
   decryptInstagramToken,
   encryptInstagramToken,
+  INSTAGRAM_LOGIN_SCOPES,
   instagramOAuthCookieName,
   verifyInstagramOAuthState,
 } from "../src/lib/instagram-oauth.server.ts";
@@ -84,6 +85,13 @@ test("platform OAuth revision is bound to the current Meta app and login configu
     platformInstagramAppRevision("2201393490722211", "2579077412515904"),
     "platform:2201393490722211:2579077412515904",
   );
+});
+
+test("Instagram Login requests only official Meta permission names", () => {
+  assert.deepEqual([...INSTAGRAM_LOGIN_SCOPES], [
+    "instagram_business_basic",
+    "instagram_business_content_publish",
+  ]);
 });
 
 test("production OAuth cookie uses the host-only secure prefix", () => {

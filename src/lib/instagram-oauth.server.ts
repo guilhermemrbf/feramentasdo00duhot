@@ -4,7 +4,7 @@ export type InstagramAuthMode = "instagram_login" | "facebook_login" | "instagra
 
 export const INSTAGRAM_LOGIN_SCOPES = [
   "instagram_business_basic",
-  "instagram_business_content_publishing",
+  "instagram_business_content_publish",
 ] as const;
 
 export const FACEBOOK_LOGIN_SCOPES = [

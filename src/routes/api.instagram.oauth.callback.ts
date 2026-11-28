@@ -215,7 +215,7 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
                 account_type: profile.account_type ?? null,
                 connection_status: "pending",
                 auth_mode: "instagram_login",
-                scopes: ["instagram_business_basic", "instagram_business_content_publishing"],
+                scopes: ["instagram_business_basic", "instagram_business_content_publish"],
                 token_expires_at: expiry,
                 last_verified_at: new Date().toISOString(),
                 connected_by: userId,

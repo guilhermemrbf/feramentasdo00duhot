@@ -4,8 +4,8 @@ import {
   decryptInstagramToken,
   getInstagramOAuthBaseConfig,
   getInstagramOAuthConfig,
-} from "./instagram-oauth.server";
-import { getMetaGraphBaseUrl } from "./social-publishing.server";
+} from "./instagram-oauth.server.ts";
+import { getMetaGraphBaseUrl } from "./social-publishing.server.ts";
 
 export async function workspaceAppDatabase() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

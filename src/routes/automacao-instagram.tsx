@@ -1727,7 +1727,7 @@ function InstagramWorkspacePage({
                     {!loginWaiting && (
                       <button
                         type="button"
-                        onClick={() => void connectInstagram("instagram_login")}
+                        onClick={() => void connectInstagram("instagram_unified_login")}
                         disabled={
                           platformMetaUnavailable ||
                           !!connecting ||
@@ -1738,7 +1738,7 @@ function InstagramWorkspacePage({
                         className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-base font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                       >
                         <Instagram aria-hidden="true" className="size-4" />
-                        {connecting === "instagram_login"
+                        {connecting === "instagram_unified_login"
                           ? "Abrindo autorização…"
                           : loginWaiting
                             ? "Aguardando seu Instagram…"
