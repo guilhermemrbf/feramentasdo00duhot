@@ -329,7 +329,7 @@ export function InstagramDashboard({
           ? "Siga o passo a passo para escolher o perfil e confirmar a conexão."
           : undefined,
       action: "Conectar Instagram",
-      run: appMode === "missing" && !visiting ? undefined : onAccounts,
+      run: onAccounts,
     },
     {
       title: instagramOnboardingSteps[1],

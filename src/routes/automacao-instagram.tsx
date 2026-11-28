@@ -40,6 +40,7 @@ import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { InstagramLocalLogin } from "@/components/postkit/InstagramLocalLogin";
 import {
+  InstagramAccountTutorial,
   InstagramConnectWizard,
   resetInstagramConnectWizard,
 } from "@/components/postkit/InstagramConnectWizard";
@@ -1756,41 +1757,33 @@ function InstagramWorkspacePage({
                       </div>
                     )}
                     {visiting ? (
-                      <div className="rounded-xl border border-border bg-card p-4 text-sm">
-                        <p className="text-muted-foreground">
-                          Conecte um perfil profissional para agendar publicações e acompanhar os
-                          resultados.
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setAppSetupOpen(true)}
-                            className="min-h-11 rounded-lg border border-border px-4 font-semibold"
-                          >
-                            Ver passo a passo do app Meta
-                          </button>
-                          <button
-                            type="button"
-                            onClick={requirePlan}
-                            className="min-h-11 rounded-lg bg-primary px-4 font-semibold text-primary-foreground"
-                          >
-                            Conectar Instagram
-                          </button>
-                        </div>
-                      </div>
-                    ) : app.mode === "missing" ? (
-                      <div className="rounded-xl border border-border bg-card p-4 text-sm">
-                        <p className="font-semibold">Configure o app Meta da operação</p>
-                        <p className="mt-1 text-muted-foreground">
-                          Use o guia com capturas para preparar o app e depois conectar o Instagram.
-                        </p>
+                      <div className="space-y-3">
+                        <InstagramAccountTutorial expanded />
                         <button
                           type="button"
-                          onClick={() => setAppSetupOpen(true)}
-                          className="mt-3 min-h-11 rounded-lg bg-primary px-4 font-semibold text-primary-foreground"
+                          onClick={requirePlan}
+                          className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
                         >
-                          Abrir guia do app Meta
+                          Conectar Instagram
                         </button>
+                      </div>
+                    ) : app.mode === "missing" ? (
+                      <div className="space-y-3">
+                        <div className="rounded-xl border border-border bg-card p-4 text-sm">
+                          <p className="font-semibold">Falta cadastrar o app Meta desta operação</p>
+                          <p className="mt-1 text-muted-foreground">
+                            Conclua a configuração inicial em Primeiros passos para autorizar um
+                            perfil.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setTab("dashboard")}
+                            className="mt-3 min-h-11 rounded-lg border border-border px-4 font-semibold"
+                          >
+                            Ir para Primeiros passos
+                          </button>
+                        </div>
+                        <InstagramAccountTutorial expanded />
                       </div>
                     ) : platformMetaUnavailable ? (
                       <p role="alert" className="text-sm text-amber-200">

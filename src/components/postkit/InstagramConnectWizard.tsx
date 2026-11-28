@@ -40,6 +40,77 @@ const STEP_TITLES = [
   "Conectar ao Mousefy",
 ];
 
+export function InstagramAccountTutorial({ expanded = false }: { expanded?: boolean }) {
+  return (
+    <details
+      open={expanded ? true : undefined}
+      className="rounded-lg border border-border bg-card px-4 py-3 text-sm"
+    >
+      <summary className="cursor-pointer font-semibold">
+        Tutorial: como conectar outra conta
+      </summary>
+      <p className="mt-2 text-muted-foreground">
+        Siga estes passos para adicionar um perfil a uma operação que já tem um app Meta
+        configurado.
+      </p>
+      <ol className="mt-4 space-y-4 text-muted-foreground">
+        <li>
+          <strong className="block text-foreground">1. Entre no perfil profissional.</strong>
+          No Instagram, confira o @. Se abriu em outra conta, use{" "}
+          <strong>Mais → Trocar de conta</strong>. O perfil que você vai adicionar precisa ser de
+          Criador ou Comercial.
+        </li>
+        <li>
+          <strong className="block text-foreground">
+            2. Libere o perfil no app existente, se necessário.
+          </strong>
+          Se o app estiver em desenvolvimento e o perfil ainda não tiver acesso, quem administra o
+          app abre <strong>Funções do app → Adicionar pessoas → Testador do Instagram</strong> e
+          envia o convite para o @. Se o perfil já tem acesso, vá para a etapa 4.
+        </li>
+        <li>
+          <strong className="block text-foreground">3. Aceite o convite no Instagram.</strong>
+          Com o mesmo @ ativo, abra{" "}
+          <a
+            href={INSTAGRAM_TESTER_INVITES_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-brand-red underline underline-offset-4"
+          >
+            Apps e sites
+          </a>
+          . Abra a aba <strong>Convites do testador</strong>, aceite o convite do app da operação e
+          volte ao Mousefy.
+        </li>
+        <li>
+          <strong className="block text-foreground">4. Autorize no Mousefy.</strong>
+          Clique em <strong>Conectar Instagram</strong> e depois em{" "}
+          <strong>Continuar com Instagram</strong>. Escolha o mesmo perfil. Se a Meta mostrar{" "}
+          <strong>Selecione os ativos do negócio para compartilhar</strong>, selecione o perfil que
+          quer autorizar e confirme.
+        </li>
+        <li>
+          <strong className="block text-foreground">5. Confira em Contas conectadas.</strong>
+          Quando aparecer <strong>Conta conectada</strong>, use <strong>Voltar ao Mousefy</strong> e
+          confirme que o @ aparece em <strong>Contas conectadas</strong>.
+          <a
+            href="/tutorial-meta/instagram-conta-conectada.png"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 block max-w-lg rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <img
+              src="/tutorial-meta/instagram-conta-conectada.png"
+              alt="Mousefy confirmando Conta conectada e oferecendo Voltar ao Mousefy"
+              loading="lazy"
+              className="w-full rounded-lg border border-border"
+            />
+          </a>
+        </li>
+      </ol>
+    </details>
+  );
+}
 export function InstagramConnectWizard({
   workspaceId,
   appId,
@@ -68,71 +139,6 @@ export function InstagramConnectWizard({
   const rolesUrl = appId
     ? `https://developers.facebook.com/apps/${encodeURIComponent(appId)}/roles/roles/`
     : META_APP_ROLES_URL;
-  const tutorial = (
-    <details className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
-      <summary className="cursor-pointer font-semibold">
-        Tutorial: como conectar outra conta
-      </summary>
-      <ol className="mt-3 space-y-4 text-muted-foreground">
-        <li>
-          <strong className="text-foreground">1. Escolha o perfil.</strong> No Instagram, use{" "}
-          <strong>Mais → Trocar de conta</strong> e confira o @. O perfil precisa ser de Criador ou
-          Comercial.
-        </li>
-        <li>
-          <strong className="text-foreground">
-            2. Envie o convite se o app estiver em desenvolvimento.
-          </strong>{" "}
-          Em <strong>Funções do app → Adicionar pessoas</strong>, selecione{" "}
-          <strong>Testador do Instagram</strong> e informe o @.
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            {[
-              ["meta-10-funcoes-testadores.webp", "Funções do app com o botão Adicionar pessoas"],
-              ["meta-11-testador-do-instagram.webp", "Janela com a opção Testador do Instagram"],
-            ].map(([file, alt]) => (
-              <a
-                key={file}
-                href={`/tutorial-meta/${file}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <img
-                  src={`/tutorial-meta/${file}`}
-                  alt={alt}
-                  loading="lazy"
-                  className="w-full rounded-lg border border-border"
-                />
-              </a>
-            ))}
-          </div>
-        </li>
-        <li>
-          <strong className="text-foreground">3. Aceite no mesmo perfil.</strong> Abra{" "}
-          <strong>Apps e sites → Convites de testador → Aceitar</strong> e volte a esta aba.
-        </li>
-        <li>
-          <strong className="text-foreground">4. Autorize e confira a lista.</strong> No Mousefy,
-          clique em <strong>Conectar Instagram</strong>. Na Meta, escolha o perfil e os ativos que
-          quer compartilhar. Ao ver <strong>Conta conectada</strong>, volte ao Mousefy.
-          <a
-            href="/tutorial-meta/instagram-conta-conectada.png"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 block max-w-lg rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <img
-              src="/tutorial-meta/instagram-conta-conectada.png"
-              alt="Mousefy confirmando Conta conectada e oferecendo Voltar ao Mousefy"
-              loading="lazy"
-              className="w-full rounded-lg border border-border"
-            />
-          </a>
-        </li>
-      </ol>
-    </details>
-  );
-
   if (step === 0) {
     return (
       <div className="space-y-3 rounded-xl border border-border bg-background/40 p-4 text-sm">
@@ -142,7 +148,7 @@ export function InstagramConnectWizard({
             Começar configuração
           </button>
         </div>
-        {tutorial}
+        <InstagramAccountTutorial />
       </div>
     );
   }
@@ -265,7 +271,7 @@ export function InstagramConnectWizard({
           <h3 className="font-semibold text-foreground">Aceitar convite no Instagram</h3>
           <p className="text-muted-foreground">
             Use <strong>o mesmo perfil da etapa 1</strong>. Em <strong>Apps e sites</strong> →{" "}
-            <strong>Convites de testador</strong>, confira o nome do aplicativo e toque em{" "}
+            <strong>Convites do testador</strong>, confira o nome do aplicativo e toque em{" "}
             <strong>Aceitar</strong>. Depois volte para esta aba.
           </p>
           <div className="flex flex-wrap gap-2">
@@ -310,7 +316,9 @@ export function InstagramConnectWizard({
           </button>
         </div>
       )}
-      <div className="mt-5">{tutorial}</div>
+      <div className="mt-5">
+        <InstagramAccountTutorial />
+      </div>
     </div>
   );
 }
