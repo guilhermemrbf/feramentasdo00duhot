@@ -1712,13 +1712,10 @@ function InstagramWorkspacePage({
                               <strong className="text-foreground">Conectar Instagram</strong> abaixo.
                             </li>
                             <li>
-                              <span className="font-semibold text-foreground">3.</span> Na janela da
-                              Meta, escolha <strong className="text-foreground">Continuar com Instagram</strong>,
-                              selecione o perfil correto e confirme as permissões solicitadas.
+                              <span className="font-semibold text-foreground">3.</span> No Instagram, entre no perfil que deseja conectar e confirme o acesso solicitado.
                             </li>
                             <li>
-                              <span className="font-semibold text-foreground">4.</span> Volte para o
-                              Mousefy e aguarde a confirmação da conexão.
+                              <span className="font-semibold text-foreground">4.</span> Depois da autorização, a janela fecha e o Mousefy confirma a conta automaticamente.
                             </li>
                           </ol>
                           <p className="mt-3 text-xs text-muted-foreground">
@@ -1777,7 +1774,7 @@ function InstagramWorkspacePage({
                           <LoaderCircle aria-hidden className="size-4 motion-safe:animate-spin" />
                           {connectionStep === "verifying"
                             ? "Verificando a conexão"
-                            : "Autorize no Instagram ou Facebook"}
+                            : "Autorize no Instagram"}
                         </h3>
                         <p className="mt-2 text-muted-foreground">
                           {connectionStep === "verifying"
@@ -1803,7 +1800,7 @@ function InstagramWorkspacePage({
                             loginPopup.current?.close();
                             loginPopup.current = null;
                             setNotice(
-                              "Acompanhamento encerrado. Feche a janela da Meta se ela continuar aberta. Você pode iniciar outra conexão.",
+                              "Acompanhamento encerrado. Feche a janela do Instagram se ela continuar aberta. Você pode iniciar outra conexão.",
                             );
                           }}
                         >
@@ -1812,8 +1809,8 @@ function InstagramWorkspacePage({
                       </div>
                     )}
                     <p className="mt-3 text-xs text-muted-foreground">
-                      Para conectar outro perfil, use <strong>Trocar de conta</strong> na tela da
-                      Meta. Seus vídeos e agendamentos ficam separados por conta.
+                      Para conectar outro perfil, use <strong>Trocar de conta</strong> na tela do
+                      Instagram. Seus vídeos e agendamentos ficam separados por conta.
                     </p>
                     <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">
                       <summary className="cursor-pointer font-medium">Opções de navegador</summary>
