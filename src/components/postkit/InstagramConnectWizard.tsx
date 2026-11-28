@@ -104,12 +104,20 @@ export function InstagramConnectWizard({
         <div className="mt-1 space-y-3 text-sm">
           <h3 className="font-semibold text-foreground">Entrar no Instagram</h3>
           <p className="text-muted-foreground">
-            Entre com o perfil que você quer conectar. Se o Instagram abrir com outra conta, troque
-            para o perfil certo. Deixe essa conta aberta para aceitar o convite depois.
+            Abra o Instagram em outra aba e confira o @ antes de continuar. Se já estiver no perfil
+            que quer conectar, volte para esta aba.
           </p>
+          <div className="rounded-lg border border-border p-3">
+            <p className="font-semibold text-foreground">Abriu em outra conta?</p>
+            <p className="mt-1 text-muted-foreground">
+              No Instagram, clique em <strong>Mais</strong>, no canto inferior esquerdo, e escolha{" "}
+              <strong>Trocar de conta</strong>. Selecione o perfil certo ou clique em{" "}
+              <strong>Entrar em uma conta existente</strong> para fazer login com outro @.
+            </p>
+          </div>
           <p className="text-muted-foreground">
-            Se o perfil for pessoal, mude para uma conta profissional de Criador ou Comercial antes
-            de continuar.
+            Deixe o perfil certo aberto para aceitar o convite. Se ele for pessoal, mude para
+            Criador ou Comercial antes de continuar.
           </p>
           <div className="flex flex-wrap gap-2">
             <a
@@ -118,10 +126,10 @@ export function InstagramConnectWizard({
               rel="noopener noreferrer"
               className={externalLinkClass}
             >
-              Abrir Instagram para entrar <ExternalLink aria-hidden className="size-4" />
+              Abrir Instagram para escolher o perfil <ExternalLink aria-hidden className="size-4" />
             </a>
             <button type="button" onClick={() => setStep(2)} className={continueClass}>
-              Já entrei no perfil certo · continuar
+              Estou no perfil certo · continuar
             </button>
           </div>
         </div>

@@ -12,8 +12,11 @@ test("connection wizard guides through Meta roles, tester invite and the officia
   );
   assert.match(wizard, /https:\/\/www\.instagram\.com\/accounts\/manage_access\//);
   for (const label of [
-    "Abrir Instagram para entrar",
-    "Já entrei no perfil certo · continuar",
+    "Abrir Instagram para escolher o perfil",
+    "Estou no perfil certo · continuar",
+    "Abriu em outra conta?",
+    "Trocar de conta",
+    "Entrar em uma conta existente",
     "Abrir configuração da Meta",
     "Abrir convites do Instagram",
     "Convite aceito · continuar conexão",
