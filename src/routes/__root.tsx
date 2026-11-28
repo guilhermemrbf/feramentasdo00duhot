@@ -78,6 +78,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { title: BRAND_NAME },
       { name: "application-name", content: BRAND_NAME },
+      { name: "facebook-domain-verification", content: "inkk8xexq4et0a8l2e05xo90u4ia91" },
       { name: "apple-mobile-web-app-title", content: BRAND_NAME },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "color-scheme", content: "dark" },
