@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { platformInstagramAppRevision } from "../src/lib/instagram-workspace-app.server.ts";
+import {
+  canUsePlatformInstagramApp,
+  platformInstagramAppRevision,
+} from "../src/lib/instagram-workspace-app.server.ts";
 import {
   createInstagramOAuthState,
   decryptInstagramToken,
@@ -15,6 +18,36 @@ const originalEncryptionKey = process.env.INSTAGRAM_TOKEN_ENCRYPTION_KEY;
 
 process.env.INSTAGRAM_OAUTH_STATE_SECRET = "a-test-only-secret-with-sufficient-entropy";
 process.env.INSTAGRAM_TOKEN_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64");
+
+test("new customers need their own Meta app while central workspaces retain access", async () => {
+  const db = (status, accounts) => ({
+    rpc: async (name) => {
+      assert.equal(name, "platform_access_status");
+      return { data: { status } };
+    },
+    from(table) {
+      assert.equal(table, "instagram_accounts");
+      return this;
+    },
+    select(columns) {
+      assert.equal(columns, "id");
+      return this;
+    },
+    eq(column, value) {
+      assert.equal(column, "workspace_id");
+      assert.equal(value, "workspace-1");
+      return this;
+    },
+    limit: async () => ({ data: accounts }),
+  });
+  assert.equal(await canUsePlatformInstagramApp(db("approved", []), "workspace-1", false), false);
+  assert.equal(await canUsePlatformInstagramApp(db("admin", []), "workspace-1", false), true);
+  assert.equal(
+    await canUsePlatformInstagramApp(db("approved", [{ id: "1" }]), "workspace-1", false),
+    true,
+  );
+  assert.equal(await canUsePlatformInstagramApp({}, "workspace-1", true), true);
+});
 
 test("Instagram OAuth state is signed and carries the authorized workspace and user", async () => {
   const state = await createInstagramOAuthState({ workspaceId: "workspace-1", userId: "user-1" });
@@ -79,7 +112,6 @@ test("workspace app credentials and authorization are bound to the selected oper
   assert.equal((await verifyInstagramOAuthState(state)).appRevision, "revision-1");
 });
 
-
 test("platform OAuth revision is bound to the current Meta app and login configuration", () => {
   assert.equal(
     platformInstagramAppRevision("2201393490722211", "2579077412515904"),
@@ -88,10 +120,10 @@ test("platform OAuth revision is bound to the current Meta app and login configu
 });
 
 test("Instagram Login requests only official Meta permission names", () => {
-  assert.deepEqual([...INSTAGRAM_LOGIN_SCOPES], [
-    "instagram_business_basic",
-    "instagram_business_content_publish",
-  ]);
+  assert.deepEqual(
+    [...INSTAGRAM_LOGIN_SCOPES],
+    ["instagram_business_basic", "instagram_business_content_publish"],
+  );
 });
 
 test("production OAuth cookie uses the host-only secure prefix", () => {

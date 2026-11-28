@@ -25,7 +25,7 @@ export const getInstagramWorkspaceApp = createServerFn({ method: "POST" })
       allowed_roles: ["owner", "admin", "editor", "viewer"],
     });
     if (error || !allowed) throw new Error("Acesso à operação indisponível.");
-    const [{ readWorkspaceApp }, oauth] = await Promise.all([
+    const [{ readWorkspaceApp, canUsePlatformInstagramApp }, oauth] = await Promise.all([
       import("@/lib/instagram-workspace-app.server"),
       import("@/lib/instagram-oauth.server"),
     ]);
@@ -38,13 +38,18 @@ export const getInstagramWorkspaceApp = createServerFn({ method: "POST" })
     ]);
     if (manage.error) throw new Error("Não foi possível verificar as permissões da operação.");
     let platformAppConfigured = false;
-    try {
-      const { getInstagramUnifiedConfigId } =
-        await import("@/lib/instagram-unified-login.server");
-      getInstagramUnifiedConfigId(oauth.getInstagramOAuthConfig().appId);
-      platformAppConfigured = true;
-    } catch {
-      // Keep the dashboard accessible while the operator restores the server configuration.
+    if (
+      !app?.app_id &&
+      (await canUsePlatformInstagramApp(context.supabase, data.workspaceId, !!app))
+    ) {
+      try {
+        const { getInstagramUnifiedConfigId } =
+          await import("@/lib/instagram-unified-login.server");
+        getInstagramUnifiedConfigId(oauth.getInstagramOAuthConfig().appId);
+        platformAppConfigured = true;
+      } catch {
+        // The dashboard stays accessible when the platform configuration is unavailable.
+      }
     }
     return {
       mode: !app

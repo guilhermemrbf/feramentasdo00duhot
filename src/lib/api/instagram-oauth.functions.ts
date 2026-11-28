@@ -30,9 +30,15 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
       instagramOAuthCookieOptions,
       instagramOAuthCookieName,
     } = await import("@/lib/instagram-oauth.server");
-    const { readWorkspaceApp, platformInstagramAppRevision } =
+    const { canUsePlatformInstagramApp, readWorkspaceApp, platformInstagramAppRevision } =
       await import("@/lib/instagram-workspace-app.server");
     const app = await readWorkspaceApp(data.workspaceId);
+    if (
+      !app?.app_id &&
+      !(await canUsePlatformInstagramApp(context.supabase, data.workspaceId, !!app))
+    ) {
+      throw new Error("Cadastre o app Meta da operação em Primeiros passos antes de conectar.");
+    }
     if (app?.app_id && data.mode !== "instagram_unified_login") {
       throw new Error("Use o Login Unificado para conectar com o app Meta da operação.");
     }

@@ -36,19 +36,20 @@ test("new profiles confirm Instagram sign-in before Meta setup, invite and conne
   const fourth = wizard.indexOf("{step === 4 &&");
   assert.ok(first >= 0 && first < second && second < third && third < fourth);
   assert.match(wizard.slice(first, second), /INSTAGRAM_SIGN_IN_URL[\s\S]*setStep\(2\)/);
-  assert.match(wizard.slice(second, third), /META_APP_ROLES_URL[\s\S]*setStep\(3\)/);
+  assert.match(wizard.slice(second, third), /rolesUrl[\s\S]*setStep\(3\)/);
   assert.match(wizard.slice(third, fourth), /INSTAGRAM_TESTER_INVITES_URL[\s\S]*setStep\(4\)/);
   assert.match(wizard.slice(fourth), /\{children\}/);
 });
 
-test("connect tab keeps the existing unified login and offers beta setup only for the platform app", () => {
+test("connect tab uses the operation app in the guide and keeps the official login", () => {
   const block = route.slice(
     route.indexOf("<InstagramConnectWizard"),
     route.indexOf("</InstagramConnectWizard>"),
   );
   assert.ok(block.includes('connectInstagram("instagram_unified_login")'));
-  assert.ok(block.includes('usePlatformApp={app.mode !== "own"}'));
-  assert.ok(wizard.includes("if (!usePlatformApp) return"));
+  assert.ok(block.includes('appId={app.mode === "own" ? app.appId : undefined}'));
+  assert.ok(wizard.includes("encodeURIComponent(appId)"));
+  assert.ok(wizard.includes("Tutorial: como conectar outra conta"));
   assert.ok(route.includes("resetInstagramConnectWizard(workspace.id, 1)"));
   assert.match(route, /if \(added\) \{\s*resetInstagramConnectWizard\(workspace.id\)/);
 });

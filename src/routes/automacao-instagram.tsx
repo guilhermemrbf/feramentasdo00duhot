@@ -42,6 +42,7 @@ import {
   InstagramConnectWizard,
   resetInstagramConnectWizard,
 } from "@/components/postkit/InstagramConnectWizard";
+import { InstagramWorkspaceSetup } from "@/components/postkit/InstagramWorkspaceSetup";
 import {
   InstagramConnectionDetails,
   type InstagramConnectionDetailsAccount,
@@ -305,13 +306,18 @@ function InstagramWorkspaceEntry({
     };
   }, [workspace.id, attempt]);
 
-  if (app && app.mode !== "missing") {
+  if (app) {
     return (
       <InstagramWorkspacePage
         workspace={workspace}
         workspaceControls={workspaceControls}
         initialTab={initialTab}
         app={app}
+        onAppSaved={async () => {
+          const updated = await getInstagramWorkspaceApp({ data: { workspaceId: workspace.id } });
+          if (updated.mode !== "own") throw new Error("App Meta indisponível.");
+          setApp(updated);
+        }}
       />
     );
   }
@@ -338,14 +344,6 @@ function InstagramWorkspaceEntry({
               Tentar novamente
             </button>
           </div>
-        ) : app?.mode === "missing" ? (
-          <div role="alert" className="rounded-xl border border-amber-400/30 bg-card p-4 text-sm">
-            <p className="font-semibold">A conexão do Instagram ainda não está disponível.</p>
-            <p className="mt-1 text-muted-foreground">
-              A integração do Mousefy precisa ser configurada no servidor. O usuário não precisa
-              criar ou cadastrar um aplicativo da Meta.
-            </p>
-          </div>
         ) : (
           <p role="status" className="text-sm text-muted-foreground">
             Verificando a conexão do Instagram…
@@ -361,13 +359,16 @@ function InstagramWorkspacePage({
   workspaceControls,
   initialTab,
   app,
+  onAppSaved,
 }: {
   workspace: Workspace;
   workspaceControls: ReactNode;
   initialTab?: Tab;
   app: WorkspaceAppStatus;
+  onAppSaved: () => Promise<void>;
 }) {
   const [requestedTab, setActiveTab] = useState<Tab>(initialTab ?? "dashboard");
+  const [appSetupOpen, setAppSetupOpen] = useState(false);
   const [isolatedLogin, setIsolatedLogin] = useState(false);
   const [connectionTarget, setConnectionTarget] = useState<"reels" | "stories">("reels");
   const loginAccountsBefore = useRef<InstagramConnectionAccount[]>([]);
@@ -386,6 +387,7 @@ function InstagramWorkspacePage({
     requestAnimationFrame(() => stepHeading.current?.focus());
   };
   const setTab = (next: Tab, target: "reels" | "stories" = "reels") => {
+    setAppSetupOpen(false);
     if (next === "nova-conta") {
       setConnectionTarget(target);
     }
@@ -886,7 +888,7 @@ function InstagramWorkspacePage({
   const readyAccounts = managedAccounts.filter(
     (account) => account.connection_status === "connected",
   );
-  const needsConnection = app.mode === "own" && !readyAccounts.length;
+  const needsConnection = (app.mode === "missing" || app.mode === "own") && !readyAccounts.length;
   const canOpenTab = (item: Tab) =>
     !needsConnection || item === "dashboard" || item === "nova-conta" || item === "contas";
   const tab = canOpenTab(requestedTab) ? requestedTab : "dashboard";
@@ -1474,7 +1476,18 @@ function InstagramWorkspacePage({
           />
         )}
 
-        {tab === "dashboard" && (
+        {appSetupOpen && (
+          <InstagramWorkspaceSetup
+            app={app}
+            workspaceId={workspace.id}
+            initialGuideStep={0}
+            onSaved={onAppSaved}
+            onBack={() => setTab("dashboard")}
+            onConnect={() => setTab("nova-conta", connectionTarget)}
+          />
+        )}
+
+        {tab === "dashboard" && !appSetupOpen && (
           <section className="mt-4 space-y-4">
             <InstagramDashboard
               workspaceId={workspace.id}
@@ -1485,6 +1498,7 @@ function InstagramWorkspacePage({
               refreshKey={historyRefresh}
               appMode={app.mode}
               platformAppConfigured={app.platformAppConfigured}
+              onAppSetup={() => setAppSetupOpen(true)}
               onAccounts={() => setTab("nova-conta")}
               onLibrary={!needsConnection ? () => setTab("biblioteca") : undefined}
               onSchedule={!needsConnection ? () => setTab("fila") : undefined}
@@ -1617,7 +1631,7 @@ function InstagramWorkspacePage({
             aria-label={tab === "nova-conta" ? "Passo a passo por conta" : undefined}
             className="mt-6 max-w-3xl"
           >
-            {tab === "nova-conta" && (
+            {tab === "nova-conta" && !appSetupOpen && (
               <Panel
                 title={
                   connectionTarget === "stories"
@@ -1625,22 +1639,24 @@ function InstagramWorkspacePage({
                     : "Conectar Instagram"
                 }
               >
-                <ol
-                  aria-label="Etapas da conexão"
-                  className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4"
-                >
-                  {["Conectar", "Autorizar no Instagram", "Verificar", "Conectada"].map(
-                    (label, index) => (
-                      <li
-                        key={label}
-                        aria-current={index === activeConnectionStep ? "step" : undefined}
-                        className={`rounded-lg border px-3 py-2 text-xs font-medium ${index <= activeConnectionStep ? "border-primary/40 bg-primary/10 text-foreground" : "border-border text-muted-foreground"}`}
-                      >
-                        {index + 1}. {label}
-                      </li>
-                    ),
-                  )}
-                </ol>
+                {(loginWaiting || connectionProgress) && (
+                  <ol
+                    aria-label="Etapas da conexão"
+                    className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4"
+                  >
+                    {["Conectar", "Autorizar no Instagram", "Verificar", "Conectada"].map(
+                      (label, index) => (
+                        <li
+                          key={label}
+                          aria-current={index === activeConnectionStep ? "step" : undefined}
+                          className={`rounded-lg border px-3 py-2 text-xs font-medium ${index <= activeConnectionStep ? "border-primary/40 bg-primary/10 text-foreground" : "border-border text-muted-foreground"}`}
+                        >
+                          {index + 1}. {label}
+                        </li>
+                      ),
+                    )}
+                  </ol>
+                )}
                 {connectionTarget === "stories" && !loginWaiting && !connectionProgress && (
                   <button
                     type="button"
@@ -1699,7 +1715,21 @@ function InstagramWorkspacePage({
                         <p className="mt-1">{connectionProgress.message}</p>
                       </div>
                     )}
-                    {platformMetaUnavailable ? (
+                    {app.mode === "missing" ? (
+                      <div className="rounded-xl border border-border bg-card p-4 text-sm">
+                        <p className="font-semibold">Configure o app Meta da operação</p>
+                        <p className="mt-1 text-muted-foreground">
+                          Use o guia com capturas para preparar o app e depois conectar o Instagram.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setAppSetupOpen(true)}
+                          className="mt-3 min-h-11 rounded-lg bg-primary px-4 font-semibold text-primary-foreground"
+                        >
+                          Abrir guia do app Meta
+                        </button>
+                      </div>
+                    ) : platformMetaUnavailable ? (
                       <p role="alert" className="text-sm text-amber-200">
                         {platformMetaMessage}
                       </p>
@@ -1708,7 +1738,7 @@ function InstagramWorkspacePage({
                         <InstagramConnectWizard
                           key={workspace.id}
                           workspaceId={workspace.id}
-                          usePlatformApp={app.mode !== "own"}
+                          appId={app.mode === "own" ? app.appId : undefined}
                         >
                           <button
                             type="button"
@@ -1768,7 +1798,7 @@ function InstagramWorkspacePage({
                             ? "Conferindo se a conta já aparece conectada nesta operação."
                             : "A autorização abriu em outra janela. Entre no perfil desejado e confirme o acesso solicitado."}
                         </p>
-                        {app.mode !== "own" && connectionStep !== "verifying" && (
+                        {connectionStep !== "verifying" && (
                           <p className="mt-2 text-muted-foreground">
                             Se a Meta disser que o aplicativo está indisponível, confirme se o
                             perfil escolhido aceitou o convite. Volte aqui e clique em{" "}
@@ -1798,19 +1828,17 @@ function InstagramWorkspacePage({
                         >
                           Cancelar esta tentativa
                         </button>
-                        {app.mode !== "own" && (
-                          <button
-                            type="button"
-                            className="ml-4 mt-2 font-medium underline underline-offset-4"
-                            onClick={() => {
-                              resetInstagramConnectWizard(workspace.id, 1);
-                              setLoginWaiting(false);
-                              setConnectionProgress(null);
-                            }}
-                          >
-                            Refazer configuração
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className="ml-4 mt-2 font-medium underline underline-offset-4"
+                          onClick={() => {
+                            resetInstagramConnectWizard(workspace.id, 1);
+                            setLoginWaiting(false);
+                            setConnectionProgress(null);
+                          }}
+                        >
+                          Refazer configuração
+                        </button>
                       </div>
                     )}
                     <p className="mt-3 text-xs text-muted-foreground">

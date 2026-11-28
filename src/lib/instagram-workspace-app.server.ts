@@ -23,6 +23,25 @@ export async function readWorkspaceApp(workspaceId: string) {
   return result.data;
 }
 
+// Preserve access for existing central workspaces and platform administrators.
+export async function canUsePlatformInstagramApp(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  legacy: boolean,
+) {
+  if (legacy) return true;
+  const { data, error } = await supabase.rpc("platform_access_status");
+  if (error) throw new Error("Não foi possível confirmar o acesso à integração.");
+  if (data?.status === "admin") return true;
+  const accounts = await supabase
+    .from("instagram_accounts")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .limit(1);
+  if (accounts.error) throw new Error("Não foi possível verificar as contas da operação.");
+  return !!accounts.data.length;
+}
+
 export function workspaceAppSecretBinding(workspaceId: string, appId: string, configId: string) {
   return ["instagram-workspace-app", workspaceId, appId, configId].join(":");
 }

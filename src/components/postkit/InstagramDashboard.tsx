@@ -98,7 +98,7 @@ function InstagramFirstSteps({
               <p className="text-sm font-medium">{title}</p>
               {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
             </div>
-            {!done && (action || onGuide) && (
+            {((!done && action) || onGuide) && (
               <div className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-auto sm:justify-end">
                 {onGuide && (
                   <button
@@ -109,7 +109,7 @@ function InstagramFirstSteps({
                     Ver guia
                   </button>
                 )}
-                {action && (
+                {!done && action && (
                   <button
                     type="button"
                     onClick={run}
@@ -306,16 +306,27 @@ export function InstagramDashboard({
   const { accountCount, videoCount } = data ?? {};
 
   const steps = [
+    ...(appMode === "missing" || appMode === "own"
+      ? [
+          {
+            title: "Cadastre seu aplicativo da Meta",
+            done: appMode === "own",
+            description: "Siga o tutorial com capturas para vincular o app da sua operação.",
+            action: "Cadastrar app Meta",
+            run: onAppSetup,
+            onGuide: appMode === "own" ? onAppSetup : undefined,
+          },
+        ]
+      : []),
     {
       title: instagramOnboardingSteps[0],
       done: !!accountCount,
       description:
         accountCount === 0
-          ? "Abra a autorização da Meta e escolha o perfil profissional que deseja usar."
+          ? "Siga o passo a passo para escolher o perfil e confirmar a conexão."
           : undefined,
       action: "Conectar Instagram",
-      run: onAccounts,
-      onGuide: onAccounts,
+      run: appMode === "missing" ? undefined : onAccounts,
     },
     {
       title: instagramOnboardingSteps[1],
@@ -423,7 +434,7 @@ export function InstagramDashboard({
             : "A configuração da conexão do Instagram está incompleta no servidor."}
         </div>
       )}
-      {(accountCount === 0 || (data && !steps.every(({ done }) => done))) &&
+      {(appMode === "missing" || accountCount === 0 || (data && !steps.every(({ done }) => done))) &&
         (dismissed ? (
           <button
             type="button"

@@ -42,11 +42,11 @@ const STEP_TITLES = [
 
 export function InstagramConnectWizard({
   workspaceId,
-  usePlatformApp,
+  appId,
   children,
 }: {
   workspaceId: string;
-  usePlatformApp: boolean;
+  appId?: string;
   children: ReactNode;
 }) {
   const [step, setStepState] = useState<WizardStep>(0);
@@ -65,40 +65,122 @@ export function InstagramConnectWizard({
   const continueClass =
     "min-h-11 rounded-lg border border-border px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-  if (!usePlatformApp) return <>{children}</>;
+  const rolesUrl = appId
+    ? `https://developers.facebook.com/apps/${encodeURIComponent(appId)}/roles/roles/`
+    : META_APP_ROLES_URL;
+  const tutorial = (
+    <details className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
+      <summary className="cursor-pointer font-semibold">
+        Tutorial: como conectar outra conta
+      </summary>
+      <ol className="mt-3 space-y-4 text-muted-foreground">
+        <li>
+          <strong className="text-foreground">1. Escolha o perfil.</strong> No Instagram, use{" "}
+          <strong>Mais → Trocar de conta</strong> e confira o @. O perfil precisa ser de Criador ou
+          Comercial.
+        </li>
+        <li>
+          <strong className="text-foreground">
+            2. Envie o convite se o app estiver em desenvolvimento.
+          </strong>{" "}
+          Em <strong>Funções do app → Adicionar pessoas</strong>, selecione{" "}
+          <strong>Testador do Instagram</strong> e informe o @.
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {[
+              ["meta-10-funcoes-testadores.webp", "Funções do app com o botão Adicionar pessoas"],
+              ["meta-11-testador-do-instagram.webp", "Janela com a opção Testador do Instagram"],
+            ].map(([file, alt]) => (
+              <a
+                key={file}
+                href={`/tutorial-meta/${file}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <img
+                  src={`/tutorial-meta/${file}`}
+                  alt={alt}
+                  loading="lazy"
+                  className="w-full rounded-lg border border-border"
+                />
+              </a>
+            ))}
+          </div>
+        </li>
+        <li>
+          <strong className="text-foreground">3. Aceite no mesmo perfil.</strong> Abra{" "}
+          <strong>Apps e sites → Convites de testador → Aceitar</strong> e volte a esta aba.
+        </li>
+        <li>
+          <strong className="text-foreground">4. Autorize e confira a lista.</strong> No Mousefy,
+          clique em <strong>Conectar Instagram</strong>. Na Meta, escolha o perfil e os ativos que
+          quer compartilhar. Ao ver <strong>Conta conectada</strong>, volte ao Mousefy.
+          <a
+            href="/tutorial-meta/instagram-conta-conectada.png"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 block max-w-lg rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <img
+              src="/tutorial-meta/instagram-conta-conectada.png"
+              alt="Mousefy confirmando Conta conectada e oferecendo Voltar ao Mousefy"
+              loading="lazy"
+              className="w-full rounded-lg border border-border"
+            />
+          </a>
+        </li>
+      </ol>
+    </details>
+  );
 
   if (step === 0) {
     return (
       <div className="space-y-3 rounded-xl border border-border bg-background/40 p-4 text-sm">
-        <p>Para conectar um perfil pela primeira vez durante o beta, ele precisa de um convite.</p>
+        <p>Prepare o perfil, libere o acesso se necessário e confirme a conexão.</p>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setStep(1)} className={externalLinkClass}>
             Começar configuração
           </button>
         </div>
+        {tutorial}
       </div>
     );
   }
 
   return (
     <div className="rounded-xl border border-border bg-background/40 p-4">
-      <ol aria-label="Configuração da conexão" className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold text-muted-foreground">Etapa {step} de 4</p>
+        <progress
+          value={step - 1}
+          max={4}
+          aria-label="Progresso da configuração"
+          className="h-2 w-28 accent-primary"
+        />
+      </div>
+      <ol aria-label="Configuração da conexão" className="mb-5 divide-y divide-border">
         {STEP_TITLES.map((title, index) => {
           const number = (index + 1) as WizardStep;
           return (
             <li
               key={title}
               aria-current={number === step ? "step" : undefined}
-              className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium ${number === step ? "border-primary/40 bg-primary/10 text-foreground" : number < step ? "border-emerald-400/30 text-emerald-300" : "border-border text-muted-foreground"}`}
+              className={`flex items-center gap-3 py-2 text-sm ${number === step ? "font-semibold text-foreground" : "text-muted-foreground"}`}
             >
-              {number < step && <CheckCircle2 aria-hidden className="size-3.5" />}
-              {number}. {title}
+              <span
+                className={`grid size-7 shrink-0 place-items-center rounded-full border text-xs ${number < step ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : number === step ? "border-primary/40 bg-primary/10" : "border-border"}`}
+              >
+                {number < step ? (
+                  <CheckCircle2 className="size-4" role="img" aria-label="Concluído" />
+                ) : (
+                  number
+                )}
+              </span>
+              {title}
             </li>
           );
         })}
       </ol>
-
-      <p className="text-xs font-semibold text-muted-foreground">Etapa {step} de 4</p>
 
       {step === 1 && (
         <div className="mt-1 space-y-3 text-sm">
@@ -139,9 +221,9 @@ export function InstagramConnectWizard({
         <div className="mt-1 space-y-3 text-sm">
           <h3 className="font-semibold text-foreground">Configurar acesso</h3>
           <p className="text-muted-foreground">
-            Para conectar uma conta pela primeira vez, ela precisa ser liberada no aplicativo da
-            Meta. Só quem administra o aplicativo pode enviar o convite. Se você não tiver acesso à
-            configuração, peça ao responsável pelo Mousefy para convidar o @ que você quer conectar.
+            Se o aplicativo estiver em desenvolvimento, só quem o administra pode enviar o convite.
+            Se você não tiver acesso à configuração, peça ao responsável pela integração para
+            convidar o @ que você quer conectar.
           </p>
           <p className="text-muted-foreground">
             Se você administra o aplicativo, abra a configuração, clique em{" "}
@@ -150,7 +232,7 @@ export function InstagramConnectWizard({
           </p>
           <div className="flex flex-wrap gap-2">
             <a
-              href={META_APP_ROLES_URL}
+              href={rolesUrl}
               target="_blank"
               rel="noopener noreferrer"
               className={externalLinkClass}
@@ -166,7 +248,7 @@ export function InstagramConnectWizard({
             onClick={() => setStep(4)}
             className="text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground"
           >
-            Este perfil já aceitou o convite · ir para a conexão
+            Este perfil já tem acesso · ir para a conexão
           </button>
           <button
             type="button"
@@ -213,7 +295,7 @@ export function InstagramConnectWizard({
         <div className="mt-1 space-y-2 text-sm">
           <h3 className="font-semibold text-foreground">Conectar conta</h3>
           <p className="text-muted-foreground">
-            Use o perfil que aceitou o convite. Clique em <strong>Conectar Instagram</strong>,
+            Use o mesmo perfil das etapas anteriores. Clique em <strong>Conectar Instagram</strong>,
             escolha <strong>Continuar com Instagram</strong> na janela da Meta, entre na conta
             liberada e confirme o acesso. Se a janela não fechar, use{" "}
             <strong>Voltar ao Mousefy</strong>.
@@ -228,6 +310,7 @@ export function InstagramConnectWizard({
           </button>
         </div>
       )}
+      <div className="mt-5">{tutorial}</div>
     </div>
   );
 }
