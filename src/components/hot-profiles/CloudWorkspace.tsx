@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { WorkspaceMode } from "./WorkspaceMode";
 import { downloadBlob } from "@/lib/media/files";
 import { profileReport } from "@/lib/profile-report";
@@ -61,6 +62,7 @@ async function call<T = unknown>(command: CloudCommand): Promise<T> {
 const iconButton =
   "inline-flex size-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30";
 export function CloudWorkspace() {
+  const { canExecute, requirePlan } = usePlanAccess();
   const [setup, setSetup] = useState<CloudSetup | null>(null),
     [account, setAccount] = useState<Session | null>(null);
   const [authLoaded, setAuthLoaded] = useState(false),
@@ -96,7 +98,7 @@ export function CloudWorkspace() {
 
   useEffect(() => {
     let alive = true;
-    void getHotCloudSetup()
+    if (canExecute) void getHotCloudSetup()
       .then((value) => {
         if (alive) setSetup(value);
       })
@@ -139,10 +141,10 @@ export function CloudWorkspace() {
       alive = false;
       data.subscription.unsubscribe();
     };
-  }, []);
+  }, [canExecute]);
   const refresh = useCallback(
     async (checkSessions = false) => {
-      if (!userId || refreshing.current) return;
+      if (!canExecute || !userId || refreshing.current) return;
       const revision = generation.current;
       refreshing.current = true;
       try {
@@ -175,7 +177,7 @@ export function CloudWorkspace() {
         refreshing.current = false;
       }
     },
-    [userId],
+    [userId, canExecute],
   );
   useEffect(() => {
     if (!userId) return;
@@ -186,6 +188,7 @@ export function CloudWorkspace() {
     return () => clearInterval(timer);
   }, [refresh, userId]);
   async function act(key: string, action: () => Promise<unknown>, success = "") {
+    if (key !== "logout" && !requirePlan()) return;
     const revision = generation.current;
     setBusy(key);
     setError("");
@@ -207,6 +210,7 @@ export function CloudWorkspace() {
       throw new Error("O banco de dados da nuvem ainda precisa ser configurado.");
   }
   async function start(profile: CloudProfile, confirmed = false) {
+    if (!requirePlan()) return;
     requireAccount();
     const active = workspace.sessions.find((s) => s.profile_id === profile.id && cloudActive(s));
     if (active) {
@@ -343,12 +347,12 @@ export function CloudWorkspace() {
               >
                 Relatório de perfis
               </button>
-              <button onClick={() => setProxyForm({})} className={hotButton}>
+              <button onClick={() => { if (requirePlan()) setProxyForm({}); }} className={hotButton}>
                 <ShieldCheck className="size-4" />
                 Adicionar proxy
               </button>
               <button
-                onClick={() => setProfileForm({ initialKind: "browser" })}
+                onClick={() => { if (requirePlan()) setProfileForm({ initialKind: "browser" }); }}
                 className={hotPrimary}
               >
                 <Plus className="size-4" />
@@ -500,14 +504,14 @@ export function CloudWorkspace() {
                   ))}
                 </div>
               ) : (
-                <button onClick={() => setProxyForm({})} className={hotPrimary}>
+                <button onClick={() => { if (requirePlan()) setProxyForm({}); }} className={hotPrimary}>
                   <Plus className="size-4" />
                   Adicionar proxy
                 </button>
               )}
             </div>
           )}
-          {account && !loaded ? (
+          {canExecute && account && !loaded ? (
             <div className="flex items-center justify-center gap-2 p-12 text-sm text-muted-foreground">
               {error ? (
                 <span>Dados indisponíveis. Confira a configuração da nuvem.</span>
@@ -665,7 +669,7 @@ export function CloudWorkspace() {
                   !search ? (
                     <button
                       className={hotPrimary}
-                      onClick={() => setProfileForm({ initialKind: "browser" })}
+                      onClick={() => { if (requirePlan()) setProfileForm({ initialKind: "browser" }); }}
                     >
                       <Plus className="size-4" />
                       Criar primeiro perfil
@@ -726,7 +730,7 @@ export function CloudWorkspace() {
                 title={search ? "Nenhuma proxy encontrada" : "Suas conexões, organizadas"}
                 detail="Adicione host, porta e credenciais. Depois escolha a proxy no perfil de navegador."
                 action={
-                  <button className={hotPrimary} onClick={() => setProxyForm({})}>
+                  <button className={hotPrimary} onClick={() => { if (requirePlan()) setProxyForm({}); }}>
                     <Plus className="size-4" />
                     Adicionar proxy
                   </button>

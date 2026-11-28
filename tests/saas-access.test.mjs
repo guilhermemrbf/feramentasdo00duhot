@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { accessForRoute, secondsRemaining, inviteFromHash } from "../src/lib/platform-access.ts";
+import {
+  accessForRoute,
+  canExecuteTools,
+  secondsRemaining,
+  inviteFromHash,
+} from "../src/lib/platform-access.ts";
 
 test("signed-in users can explore the workspace while execution remains server-gated", () => {
   assert.equal(accessForRoute("/automacao-instagram", "pending"), true);
@@ -14,6 +19,11 @@ test("signed-in users can explore the workspace while execution remains server-g
   assert.equal(accessForRoute("/aprovacoes", "approved"), false);
   assert.equal(accessForRoute("/aprovacoes", "admin"), true);
   assert.equal(accessForRoute("/automacao-instagram", "approved"), true);
+  for (const status of ["pending", "trial", "expired", "denied", "unverified", null]) {
+    assert.equal(canExecuteTools(status), false);
+  }
+  assert.equal(canExecuteTools("approved"), true);
+  assert.equal(canExecuteTools("admin"), true);
 });
 
 test("trial timing and invitation parsing reject invalid values", () => {

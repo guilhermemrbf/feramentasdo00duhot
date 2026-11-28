@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { usePlanAccess, usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import {
   beginMetaAdsConnection,
   disconnectMetaAds,
@@ -22,6 +22,7 @@ const date = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "U
 
 export function MetaAdsConnection({ result }: { result?: string }) {
   const { user } = usePlatformAccess();
+  const { canExecute, requirePlan } = usePlanAccess();
   const load = useServerFn(getMetaAdsStatus);
   const begin = useServerFn(beginMetaAdsConnection);
   const disconnect = useServerFn(disconnectMetaAds);
@@ -31,7 +32,7 @@ export function MetaAdsConnection({ result }: { result?: string }) {
   const status = useQuery({
     queryKey: ["scalehot-meta-ads", user?.id],
     queryFn: () => load(),
-    enabled: Boolean(user),
+    enabled: canExecute && Boolean(user),
   });
   const connection = status.data;
   const accounts = connection?.status === "connected" ? connection.accounts : [];
@@ -77,12 +78,12 @@ export function MetaAdsConnection({ result }: { result?: string }) {
           {callbackMessages[result]}
         </p>
       )}
-      {status.isPending && (
+      {canExecute && status.isPending && (
         <p role="status" className="text-sm text-muted-foreground">
           Verificando conexão…
         </p>
       )}
-      {status.isError && (
+      {canExecute && status.isError && (
         <button
           className="sales-button sales-button-outline"
           type="button"
@@ -96,7 +97,10 @@ export function MetaAdsConnection({ result }: { result?: string }) {
           A conexão com a Meta aguarda a configuração do app neste ambiente.
         </p>
       )}
-      {connection && connection.status !== "unconfigured" && (
+      {!canExecute && (
+        <button className="sales-button" type="button" onClick={requirePlan}>Conectar Meta Ads</button>
+      )}
+      {canExecute && connection && connection.status !== "unconfigured" && (
         <div className="flex flex-wrap gap-2">
           <button
             className={

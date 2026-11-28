@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { createFileRoute } from "@tanstack/react-router";
 import { CheckCircle2, Chrome, Download, FolderOpen, Puzzle } from "lucide-react";
 import { AppShell, PageIntro } from "@/components/AppShell";
@@ -36,6 +37,7 @@ const steps = [
 ] as const;
 
 function MouseHotDownloader() {
+  const { canExecute, requirePlan } = usePlanAccess();
   const { url, version } = downloads.mouseHotDownloader;
 
   return (
@@ -60,7 +62,7 @@ function MouseHotDownloader() {
             </div>
           </div>
           <Button asChild className="min-h-11 w-full shrink-0 sm:w-auto">
-            <a href={url} download>
+            <a href={canExecute ? url : "/assinatura"} download={canExecute} onClick={requirePlan} onAuxClick={requirePlan}>
               <Download className="size-4" aria-hidden />
               Baixar extensão (.zip)
             </a>

@@ -22,22 +22,22 @@ export function AccessStatusPanel() {
       : status === "expired"
         ? "Seu teste terminou"
         : status === "denied"
-          ? "Cadastro não aprovado"
+          ? "Explore o Mousefy"
           : status === "unverified"
             ? "Confirme seu e-mail"
-            : "Aguardando aprovação do administrador";
+            : "Explore o Mousefy";
 
   const detail = isError
     ? "Não foi possível verificar sua permissão agora. Tente novamente."
     : approved
       ? "Seu espaço de trabalho está pronto."
       : status === "expired"
-        ? "O período de 15 minutos acabou. O acesso completo depende da aprovação do administrador."
+        ? "Você pode continuar navegando. Escolha um plano para executar ferramentas."
         : status === "denied"
-          ? "O administrador não liberou o acesso para este cadastro."
+          ? "Escolha um plano para executar ferramentas e conectar contas."
           : status === "unverified"
             ? "Abra a mensagem de confirmação que enviamos ao seu endereço."
-            : "Escolha um plano para assinar ou aguarde a análise da sua solicitação.";
+            : "Escolha um plano para executar ferramentas e conectar contas.";
 
   const Icon = approved ? ShieldCheck : status === "denied" ? ShieldX : Clock3;
 
@@ -117,7 +117,7 @@ export function PlatformGate({ children }: { children: ReactNode }) {
       ) : (
         <div className="access-form-panel access-status-panel">
           <h1>Entre para usar o Mousefy</h1>
-          <p>Faça login ou crie uma conta para solicitar acesso às ferramentas.</p>
+          <p>Faça login ou crie uma conta para explorar as ferramentas.</p>
           <Link to="/" hash="acesso" className="saas-button saas-button-primary">
             Entrar ou criar conta
           </Link>

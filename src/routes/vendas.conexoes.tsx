@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Activity, Link2, Megaphone, RadioTower, Webhook } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { SalesPageHeader } from "@/components/sales/SalesLayout";
 import { MetaAdsConnection } from "@/components/sales/MetaAdsConnection";
 import { GoogleAdsConnection } from "@/components/sales/GoogleAdsConnection";
@@ -127,11 +128,13 @@ export function PixelIntegrations() {
 }
 
 function UtmSettings() {
+  const { requirePlan } = usePlanAccess();
   const { operation } = useScaleHotOperation("30d");
   const [copyStatus, setCopyStatus] = useState("");
   const template =
     "utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.name}}&mh_campaign_id={{campaign.id}}&mh_ad_id={{ad.id}}";
   const copyTemplate = async () => {
+    if (!requirePlan()) return;
     try {
       await navigator.clipboard.writeText(template);
       setCopyStatus("UTMs copiadas.");
@@ -202,6 +205,7 @@ function UtmSettings() {
 }
 
 function IntegrationTests() {
+  const { canExecute, requirePlan } = usePlanAccess();
   const { sales } = useScaleHotOperation("30d");
   const links = sales.data?.links.filter(({ active }) => active);
   return (
@@ -215,7 +219,9 @@ function IntegrationTests() {
           variant="outline"
           type="button"
           disabled={sales.isFetching}
-          onClick={() => void sales.refetch()}
+          onClick={() => {
+            if (requirePlan()) void sales.refetch();
+          }}
         >
           Atualizar status
         </Button>
@@ -241,7 +247,7 @@ function IntegrationTests() {
         </ul>
       ) : (
         <p className="scalehot-empty">
-          {sales.isPending
+          {canExecute && sales.isPending
             ? "Consultando…"
             : sales.isError
               ? "Status indisponível"

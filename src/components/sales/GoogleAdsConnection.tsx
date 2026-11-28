@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
-import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { usePlanAccess, usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import {
   beginGoogleAdsConnection,
   disconnectGoogleAds,
@@ -22,6 +22,7 @@ const date = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "U
 
 export function GoogleAdsConnection({ result }: { result?: string }) {
   const { user } = usePlatformAccess();
+  const { canExecute, requirePlan } = usePlanAccess();
   const load = useServerFn(getGoogleAdsStatus);
   const begin = useServerFn(beginGoogleAdsConnection);
   const disconnect = useServerFn(disconnectGoogleAds);
@@ -31,7 +32,7 @@ export function GoogleAdsConnection({ result }: { result?: string }) {
   const status = useQuery({
     queryKey: ["scalehot-google-ads", user?.id],
     queryFn: () => load(),
-    enabled: Boolean(user),
+    enabled: canExecute && Boolean(user),
   });
   const start = useMutation({
     mutationFn: () => begin(),
@@ -67,12 +68,12 @@ export function GoogleAdsConnection({ result }: { result?: string }) {
           {callbackMessages[result]}
         </p>
       )}
-      {status.isPending && (
+      {canExecute && status.isPending && (
         <p role="status" className="text-sm text-muted-foreground">
           Verificando conexão…
         </p>
       )}
-      {status.isError && (
+      {canExecute && status.isError && (
         <Button type="button" variant="outline" onClick={() => void status.refetch()}>
           Verificar conexão novamente
         </Button>
@@ -82,7 +83,8 @@ export function GoogleAdsConnection({ result }: { result?: string }) {
           A conexão aguarda a configuração do Google Ads neste ambiente.
         </p>
       )}
-      {connection && connection.status !== "unconfigured" && (
+      {!canExecute && <Button type="button" onClick={requirePlan}>Conectar Google Ads</Button>}
+      {canExecute && connection && connection.status !== "unconfigured" && (
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"

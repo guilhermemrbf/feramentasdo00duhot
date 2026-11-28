@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { mediaItemId } from "@/lib/media/files";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -56,6 +57,7 @@ interface Item {
 }
 
 function OtimizarCriativos() {
+  const { requirePlan } = usePlanAccess();
   const [type, setType] = useState<MediaType | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [overlayFile, setOverlayFile] = useState<File | null>(null);
@@ -160,6 +162,7 @@ function OtimizarCriativos() {
   };
 
   const optimizeAll = async () => {
+    if (!requirePlan()) return;
     if (!items.length || !type) return;
 
     if (busy) return;
@@ -190,6 +193,7 @@ function OtimizarCriativos() {
   };
 
   const download = (item: Item) => {
+    if (!requirePlan()) return;
     if (item.output)
       downloadBlob(item.output, outputName(item.file.name, "otimizado-", item.output.type));
   };

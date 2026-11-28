@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { SalesPageHeader } from "@/components/sales/SalesLayout";
 import { useScaleHotOperation } from "@/components/sales/useScaleHotOperation";
 import { SCALEHOT_PERIODS } from "@/lib/scalehot-period";
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/vendas/eventos")({
 });
 
 function Events() {
+  const { canExecute } = usePlanAccess();
   const [period, setPeriod] = useState<Exclude<SalesPeriod, "all">>("today");
   const [kind, setKind] = useState("");
   const { sales } = useScaleHotOperation(period);
@@ -90,7 +92,7 @@ function Events() {
           <p className="scalehot-empty" role={sales.isError ? "alert" : "status"}>
             {sales.isError
               ? "Não foi possível carregar os eventos."
-              : sales.isPending
+              : canExecute && sales.isPending
                 ? "Carregando eventos…"
                 : "Nenhum evento no período"}
           </p>

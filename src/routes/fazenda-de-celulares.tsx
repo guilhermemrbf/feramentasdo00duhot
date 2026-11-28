@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { createFileRoute } from "@tanstack/react-router";
 import { Download, MonitorSmartphone } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/fazenda-de-celulares")({
 });
 
 function FazendaDeCelulares() {
+  const { canExecute, requirePlan } = usePlanAccess();
   const download = downloads.fazendaDeCelulares;
   return (
     <AppShell>
@@ -38,7 +40,7 @@ function FazendaDeCelulares() {
             Desenvolvedor ativo.
           </p>
           <Button asChild size="lg" className="mt-6 min-h-12 w-full sm:w-auto">
-            <a href={download.url}>
+            <a href={canExecute ? download.url : "/assinatura"} onClick={requirePlan} onAuxClick={requirePlan}>
               <Download className="size-5" aria-hidden />
               Baixar instalador para Windows
             </a>

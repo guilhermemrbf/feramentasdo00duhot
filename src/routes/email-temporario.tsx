@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowUpRight, Mail } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/email-temporario")({
 });
 
 function TemporaryEmail() {
+  const { canExecute, requirePlan } = usePlanAccess();
   return (
     <AppShell>
       <main className="mx-auto max-w-4xl px-5 py-10 sm:px-8">
@@ -30,7 +32,9 @@ function TemporaryEmail() {
             </p>
             {TEMP_MAIL_URL ? (
               <a
-                href={TEMP_MAIL_URL}
+                href={canExecute ? TEMP_MAIL_URL : "/assinatura"}
+                onClick={requirePlan}
+                onAuxClick={requirePlan}
                 className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"
               >
                 Abrir caixa de entrada <ArrowUpRight className="size-4" aria-hidden />

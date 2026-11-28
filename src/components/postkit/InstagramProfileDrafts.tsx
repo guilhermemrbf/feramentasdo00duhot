@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CalendarDays, Instagram, UserRoundPlus } from "lucide-react";
@@ -91,7 +92,8 @@ export function InstagramProfileDrafts({
   const [form, setForm] = useState<DraftForm | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const { canExecute, requirePlan } = usePlanAccess();
+  const [loading, setLoading] = useState(canExecute);
   const [canEdit, setCanEdit] = useState(false);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState("");
@@ -128,6 +130,7 @@ export function InstagramProfileDrafts({
   }, [workspaceId, page]);
 
   useEffect(() => {
+    if (!canExecute) return;
     let active = true;
     void refresh();
     void supabase
@@ -141,9 +144,10 @@ export function InstagramProfileDrafts({
     return () => {
       active = false;
     };
-  }, [refresh, workspaceId]);
+  }, [refresh, workspaceId, canExecute]);
 
   function openForm(draft?: ProfileDraft) {
+    if (!requirePlan()) return;
     setError("");
     setNotice("");
     setForm({
@@ -329,7 +333,7 @@ export function InstagramProfileDrafts({
               publicações.
             </p>
           </div>
-          {canEdit && (
+          {(!canExecute || canEdit) && (
             <button
               type="button"
               className={primary}
@@ -632,7 +636,7 @@ export function InstagramProfileDrafts({
                   {draft.starter_reels.length} Reels selecionados · até {draft.reels_per_day} por
                   dia
                 </p>
-                {canEdit && (
+                {(!canExecute || canEdit) && (
                   <p className="rounded-md bg-secondary/40 px-3 py-2 text-xs text-muted-foreground">
                     {account
                       ? "A conta está vinculada. Escolha qual conteúdo quer preparar."
@@ -644,7 +648,7 @@ export function InstagramProfileDrafts({
                   </p>
                 )}
                 <div className="flex flex-wrap gap-2">
-                  {canEdit && (
+                  {(!canExecute || canEdit) && (
                     <button
                       type="button"
                       className={button}

@@ -1,9 +1,10 @@
 import type { User } from "@supabase/supabase-js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { platformRpc, rpcData } from "@/lib/platform-access-client";
-import { type AccessStatus, type PlatformAccess } from "@/lib/platform-access";
+import { canExecuteTools, type AccessStatus, type PlatformAccess } from "@/lib/platform-access";
 
 type AccessContext = {
   user: User | null;
@@ -21,6 +22,21 @@ export function usePlatformAccess() {
   const access = useContext(Context);
   if (!access) throw new Error("PlatformAccessProvider is missing");
   return access;
+}
+
+export function usePlanAccess() {
+  const { status, isError } = usePlatformAccess();
+  const navigate = useNavigate();
+  const canExecute = !isError && canExecuteTools(status);
+  return {
+    canExecute,
+    requirePlan(event?: { preventDefault(): void }) {
+      if (canExecute) return true;
+      event?.preventDefault();
+      void navigate({ to: "/assinatura" });
+      return false;
+    },
+  };
 }
 
 export function PlatformAccessProvider({ children }: { children: ReactNode }) {

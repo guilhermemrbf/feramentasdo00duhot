@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ArrowUpRight, Instagram, TrendingUp } from "lucide-react";
@@ -73,12 +74,14 @@ export function InstagramTopPosts({
   timezone: string;
   onAnalytics: () => void;
 }) {
+  const { canExecute } = usePlanAccess();
   const [account, setAccount] = useState("");
   const [snapshot, setSnapshot] = useState<{ account: string; report: Report }>();
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
 
   useEffect(() => {
+    if (!canExecute) return;
     let active = true;
     let loading = false;
     const load = async () => {
@@ -107,7 +110,7 @@ export function InstagramTopPosts({
       active = false;
       window.clearInterval(timer);
     };
-  }, [account, workspaceId, retry]);
+  }, [account, workspaceId, retry, canExecute]);
 
   const accounts = snapshot?.report.accounts ?? [];
   const report = snapshot?.account === account ? snapshot.report : undefined;
@@ -240,7 +243,8 @@ export function InstagramTopPosts({
                 : ""}
           </p>
         </div>
-        {!report && !error && (
+        {!canExecute && <p className="text-sm text-muted-foreground">Conecte uma conta para ver as melhores publicações.</p>}
+        {canExecute && !report && !error && (
           <p role="status" className="p-4 text-sm text-muted-foreground">
             Carregando ranking…
           </p>

@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Sparkles, Copy, Check, RotateCcw, Loader2 } from "lucide-react";
@@ -42,6 +43,7 @@ const inputClass =
   "w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary";
 
 function CriarPagina() {
+  const { canExecute, requirePlan } = usePlanAccess();
   const [data, setData] = useState<PageData>(EMPTY);
   const [stage, setStage] = useState<Stage>("form");
   const [prompt, setPrompt] = useState("");
@@ -58,6 +60,7 @@ function CriarPagina() {
     }
   }, []);
   const saveDraft = () => {
+    if (!requirePlan()) return;
     try {
       localStorage.setItem(draftKey, JSON.stringify(data));
       setHasDraft(true);
@@ -67,6 +70,7 @@ function CriarPagina() {
     }
   };
   const restoreDraft = () => {
+    if (!requirePlan()) return;
     try {
       const raw = JSON.parse(localStorage.getItem(draftKey) || "{}");
       if (
@@ -104,6 +108,7 @@ function CriarPagina() {
   );
 
   const generate = () => {
+    if (!requirePlan()) return;
     if (!ready) return;
     setPrompt(buildPrompt(data));
     setStage("done");
@@ -222,7 +227,7 @@ function CriarPagina() {
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <button
                   onClick={generate}
-                  disabled={!ready}
+                  disabled={canExecute && !ready}
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Sparkles className="size-4" /> Gerar meu prompt

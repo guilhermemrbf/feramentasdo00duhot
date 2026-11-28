@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { useServerFn } from "@tanstack/react-start";
 import { Copy, Link2, Power, Zap } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -249,6 +250,7 @@ function GatewayDialog({
   active: boolean;
   onConnect: (url: string) => void;
 }) {
+  const { requirePlan } = usePlanAccess();
   const [open, setOpen] = useState(false);
   const client = useQueryClient();
   const create = useServerFn(createSalesWebhook);
@@ -263,6 +265,7 @@ function GatewayDialog({
   });
 
   function submit(event: FormEvent<HTMLFormElement>) {
+    if (!requirePlan(event)) return;
     event.preventDefault();
     const label = String(new FormData(event.currentTarget).get("label") ?? "").trim() || name;
     mutation.mutate({ data: { provider, label } });
@@ -272,6 +275,7 @@ function GatewayDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
+        if (next && !active && !requirePlan()) return;
         if (!next && mutation.isPending) return;
         mutation.reset();
         setOpen(next);

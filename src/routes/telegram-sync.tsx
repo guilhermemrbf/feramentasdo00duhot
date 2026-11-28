@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { downloads } from "@/lib/downloads";
 import { createFileRoute } from "@tanstack/react-router";
 import { Download, Laptop, ShieldCheck, ArrowRight, Eye, Link2 } from "lucide-react";
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/telegram-sync")({
 const { url: download, release } = downloads.telegramSync;
 
 function TelegramSync() {
+  const { canExecute, requirePlan } = usePlanAccess();
   return (
     <AppShell>
       <main className="mx-auto max-w-5xl space-y-7 p-5 sm:p-8">
@@ -44,7 +46,9 @@ function TelegramSync() {
                 seu computador, com a sua conta e as permissões do seu canal.
               </p>
               <a
-                href={download}
+                href={canExecute ? download : "/assinatura"}
+                onClick={requirePlan}
+                onAuxClick={requirePlan}
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
               >
                 <Download className="size-4" /> Baixar para Windows
@@ -53,7 +57,9 @@ function TelegramSync() {
                 O ZIP inclui o executável e as instruções.{" "}
                 <a
                   className="underline underline-offset-4"
-                  href={release}
+                  href={canExecute ? release : "/assinatura"}
+                  onClick={requirePlan}
+                  onAuxClick={requirePlan}
                   target="_blank"
                   rel="noreferrer"
                 >

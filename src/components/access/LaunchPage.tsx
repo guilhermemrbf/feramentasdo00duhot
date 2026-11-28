@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, Navigate } from "@tanstack/react-router";
 import { OrganicLanding } from "@/components/landing/OrganicLanding";
 import { BRAND_MARK, BRAND_NAME } from "@/lib/brand";
 import { AccessStatusPanel } from "./AccessStatusPanel";
@@ -16,13 +15,9 @@ export function PublicBrand() {
 
 export function LaunchPage() {
   const access = usePlatformAccess();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!access.isError && access.user && access.status !== "unverified") {
-      void navigate({ to: "/painel", replace: true });
-    }
-  }, [access.user, access.status, access.isError, navigate]);
+  if (!access.isError && access.user && access.status !== "unverified") {
+    return <Navigate to="/painel" replace />;
+  }
 
   if (access.user) {
     return (

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { usePlanAccess, usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,7 @@ const costs = () => (supabase as unknown as SupabaseClient).from("scalehot_costs
 
 export function ScaleHotCosts({ expenses = false }: { expenses?: boolean }) {
   const { user, offsetMs } = usePlatformAccess();
+  const { canExecute, requirePlan } = usePlanAccess();
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState<Period>("month");
   const [term, setTerm] = useState("");
@@ -33,7 +34,7 @@ export function ScaleHotCosts({ expenses = false }: { expenses?: boolean }) {
   const range = scaleHotDateRange(period, new Date(Date.now() + offsetMs));
   const query = useQuery({
     queryKey: ["scalehot-costs", user?.id, expenses, range],
-    enabled: Boolean(user),
+    enabled: canExecute && Boolean(user),
     retry: false,
     queryFn: async () => {
       const table = costs()
@@ -75,6 +76,7 @@ export function ScaleHotCosts({ expenses = false }: { expenses?: boolean }) {
     onSuccess: refresh,
   });
   const edit = (kind: CostKind, row?: Cost) => {
+    if (!requirePlan()) return;
     save.reset();
     remove.reset();
     setFormError("");
@@ -152,7 +154,7 @@ export function ScaleHotCosts({ expenses = false }: { expenses?: boolean }) {
           {query.error.message}
         </p>
       )}
-      {query.isPending && (
+      {canExecute && query.isPending && (
         <p className="scalehot-notice" role="status">
           Carregando lançamentos…
         </p>
@@ -170,7 +172,7 @@ export function ScaleHotCosts({ expenses = false }: { expenses?: boolean }) {
                     : "—"}
                 </p>
               </div>
-              <Button type="button" disabled={!query.isSuccess} onClick={() => edit(kind)}>
+              <Button type="button" disabled={canExecute && !query.isSuccess} onClick={() => edit(kind)}>
                 <Plus size={16} />
                 {action}
               </Button>

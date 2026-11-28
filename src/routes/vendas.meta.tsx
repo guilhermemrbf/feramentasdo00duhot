@@ -4,7 +4,7 @@ import { SalesPageHeader } from "@/components/sales/SalesLayout";
 import { TrackingReport } from "@/components/sales/TrackingReport";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { usePlanAccess, usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import { trackingOverview } from "@/lib/api/tracking.functions";
 import { useState } from "react";
 import "@/components/sales/tracking-report.css";
@@ -53,12 +53,13 @@ function MetaPage() {
 
 function MetaAttribution({ breakdown }: { breakdown: "campaign" | "ad" }) {
   const { user } = usePlatformAccess();
+  const { canExecute } = usePlanAccess();
   const navigate = Route.useNavigate();
   const [days, setDays] = useState<7 | 14 | 30>(30);
   const load = useServerFn(trackingOverview);
   const query = useQuery({
     queryKey: ["sales-tracking", user?.id, days, breakdown],
-    enabled: Boolean(user),
+    enabled: canExecute && Boolean(user),
     queryFn: () => load({ data: { days, breakdown } }),
   });
   const data = query.data;
@@ -69,9 +70,9 @@ function MetaAttribution({ breakdown }: { breakdown: "campaign" | "ad" }) {
     <div className="tracking-workspace">
       <TrackingReport
         data={data && rows && { ...data, campaigns: rows }}
-        pending={query.isPending}
+        pending={canExecute && query.isPending}
         error={query.isError}
-        refresh={() => void query.refetch()}
+        refresh={() => { if (canExecute) void query.refetch(); }}
         refreshing={query.isFetching}
         days={days}
         changeDays={setDays}

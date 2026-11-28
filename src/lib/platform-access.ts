@@ -40,6 +40,10 @@ export function accessForRoute(path: string, status: AccessStatus) {
   return true;
 }
 
+export function canExecuteTools(status: AccessStatus | null) {
+  return status === "admin" || status === "approved";
+}
+
 export function secondsRemaining(expiresAt: string | null, now: number) {
   if (!expiresAt) return 0;
   const remaining = Date.parse(expiresAt) - now;

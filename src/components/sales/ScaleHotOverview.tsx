@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { usePlanAccess, usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import { readMouseHotSettings } from "@/lib/mousehot-settings";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -221,6 +221,7 @@ function selectedAd(value: string) {
 
 export function ScaleHotOverview() {
   const { user: profile } = usePlatformAccess();
+  const { canExecute, requirePlan } = usePlanAccess();
   const initialFilters = () => ({
     ...defaultFilters,
     period: readMouseHotSettings(profile?.user_metadata).period ?? defaultFilters.period,
@@ -240,13 +241,13 @@ export function ScaleHotOverview() {
   const meta = useQuery({
     queryKey: ["scalehot-meta-ads", user?.id],
     queryFn: () => loadMeta(),
-    enabled: Boolean(user),
+    enabled: canExecute && Boolean(user),
     retry: false,
   });
   const google = useQuery({
     queryKey: ["scalehot-google-ads", user?.id],
     queryFn: () => loadGoogle(),
-    enabled: Boolean(user),
+    enabled: canExecute && Boolean(user),
     retry: false,
   });
   const accounts = [
@@ -273,7 +274,7 @@ export function ScaleHotOverview() {
   const advertising = useQuery({
     queryKey: ["scalehot-operation-ads", user?.id, chosenAccounts, range],
     queryFn: () => loadAds({ data: { accounts: chosenAccounts, range } }),
-    enabled: Boolean(user && adReportAllowed),
+    enabled: canExecute && Boolean(user && adReportAllowed),
     retry: false,
     staleTime: 60_000,
   });
@@ -281,7 +282,7 @@ export function ScaleHotOverview() {
   const priorAdvertising = useQuery({
     queryKey: ["scalehot-operation-ads", user?.id, chosenAccounts, earlier],
     queryFn: () => loadAds({ data: { accounts: chosenAccounts, range: earlier } }),
-    enabled: Boolean(user && adReportAllowed && advertising.isSuccess),
+    enabled: canExecute && Boolean(user && adReportAllowed && advertising.isSuccess),
     retry: false,
     staleTime: 60_000,
   });
@@ -289,7 +290,7 @@ export function ScaleHotOverview() {
     queryKey: ["scalehot-operation-comparison", user?.id, earlier, filters.campaign],
     queryFn: () =>
       readOperation({ data: { range: earlier, campaign: filters.campaign || undefined } }),
-    enabled: Boolean(user && operation.isSuccess),
+    enabled: canExecute && Boolean(user && operation.isSuccess),
     retry: false,
   });
   const [preferences, setPreferences] = useState<{ order: MetricKey[]; hidden: MetricKey[] }>({
@@ -350,6 +351,7 @@ export function ScaleHotOverview() {
     priorAdvertising.isFetching ||
     comparison.isFetching;
   const sync = () => {
+    if (!requirePlan()) return;
     void operation.refetch();
     void sales.refetch();
     if (adReportAllowed) void advertising.refetch();

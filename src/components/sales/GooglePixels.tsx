@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { usePlanAccess, usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import {
   createGooglePixel,
   listGooglePixels,
@@ -12,12 +12,13 @@ import { IntegrationCopyField } from "./IntegrationCopyField";
 
 export function GooglePixels({ showCreate }: { showCreate: boolean }) {
   const { user } = usePlatformAccess();
+  const { canExecute, requirePlan } = usePlanAccess();
   const client = useQueryClient();
   const load = useServerFn(listGooglePixels);
   const create = useServerFn(createGooglePixel);
   const remove = useServerFn(removeGooglePixel);
   const key = ["scalehot-google-pixels", user?.id];
-  const query = useQuery({ queryKey: key, queryFn: () => load(), enabled: Boolean(user) });
+  const query = useQuery({ queryKey: key, queryFn: () => load(), enabled: canExecute && Boolean(user) });
   const refresh = () => client.invalidateQueries({ queryKey: key });
   const save = useMutation({
     mutationFn: (data: { label: string; tag: string; conversion: string }) => create({ data }),
@@ -41,6 +42,7 @@ export function GooglePixels({ showCreate }: { showCreate: boolean }) {
         <form
           className="mt-4 grid gap-3 rounded-xl border border-border bg-background/60 p-4 sm:grid-cols-3"
           onSubmit={(event) => {
+            if (!requirePlan(event)) return;
             event.preventDefault();
             const form = event.currentTarget;
             const fields = new FormData(form);
@@ -89,7 +91,7 @@ export function GooglePixels({ showCreate }: { showCreate: boolean }) {
           {error.message}
         </p>
       )}
-      {query.isPending && (
+      {canExecute && query.isPending && (
         <p role="status" className="mt-4 text-sm text-muted-foreground">
           Carregando tags…
         </p>

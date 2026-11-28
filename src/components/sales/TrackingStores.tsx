@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowUpRight, Copy, Link2 } from "lucide-react";
-import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { usePlanAccess, usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import { useSalesOverview } from "./SalesSummary";
 import {
   createTrackingSource,
@@ -21,6 +21,7 @@ const date = new Intl.DateTimeFormat("pt-BR", {
 
 export function TrackingStores() {
   const { user } = usePlatformAccess();
+  const { canExecute, requirePlan } = usePlanAccess();
   const load = useServerFn(trackingOverview);
   const create = useServerFn(createTrackingSource);
   const disable = useServerFn(disableTrackingSource);
@@ -31,7 +32,7 @@ export function TrackingStores() {
   const query = useQuery({
     queryKey: ["sales-tracking-sources", user?.id],
     queryFn: () => load({ data: { days: 30, breakdown: "campaign" } }),
-    enabled: Boolean(user),
+    enabled: canExecute && Boolean(user),
   });
   const setup = useMutation({
     gcTime: 0,
@@ -54,6 +55,7 @@ export function TrackingStores() {
   });
 
   function submit(event: FormEvent<HTMLFormElement>) {
+    if (!requirePlan(event)) return;
     event.preventDefault();
     if (gateway && origin.trim() && !setup.isPending && !setup.data) setup.mutate();
   }

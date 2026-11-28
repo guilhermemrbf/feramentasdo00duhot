@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { usePlanAccess, usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import { metaUrlParameters } from "@/lib/meta-ads/contract";
 import {
   configureMetaPixel,
@@ -19,11 +19,12 @@ import {
 
 export function Pixels({ showCreate }: { showCreate: boolean }) {
   const { user } = usePlatformAccess();
+  const { canExecute, requirePlan } = usePlanAccess();
   const load = useServerFn(listMetaPixels);
   const create = useServerFn(createMetaPixel);
   const client = useQueryClient();
   const key = ["meta-pixels", user?.id];
-  const query = useQuery({ queryKey: key, queryFn: () => load(), enabled: Boolean(user) });
+  const query = useQuery({ queryKey: key, queryFn: () => load(), enabled: canExecute && Boolean(user) });
   const mutation = useMutation({
     mutationFn: (data: {
       label: string;
@@ -37,6 +38,7 @@ export function Pixels({ showCreate }: { showCreate: boolean }) {
   });
 
   function register(event: FormEvent<HTMLFormElement>) {
+    if (!requirePlan(event)) return;
     event.preventDefault();
     const form = event.currentTarget;
     const fields = new FormData(form);
@@ -144,7 +146,7 @@ export function Pixels({ showCreate }: { showCreate: boolean }) {
               <CopyField label="Parâmetros de URL da Meta" value={metaUrlParameters} />
             </Card>
           )}
-          {query.isPending && user && (
+          {canExecute && query.isPending && user && (
             <p role="status" className="text-muted-foreground">
               Carregando Pixels…
             </p>

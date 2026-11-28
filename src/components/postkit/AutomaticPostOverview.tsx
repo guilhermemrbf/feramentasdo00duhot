@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, CalendarDays, Check, Clock3, Eye, Instagram, Trophy } from "lucide-react";
 import { DashboardMetrics, type DashboardMetric } from "@/components/DashboardMetrics";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { canExecuteTools } from "@/lib/platform-access";
 import {
   readPostkitDashboardWorkspace,
   readPostkitPerformance,
@@ -23,11 +24,12 @@ export function AutomaticPostOverview({
   period: SalesPeriod;
   salesMetrics: DashboardMetric[];
 }) {
-  const { user } = usePlatformAccess();
+  const { user, status } = usePlatformAccess();
+  const canExecute = canExecuteTools(status);
   const workspaceQuery = useQuery({
     queryKey: ["mousehot-postkit-workspace", user?.id],
     queryFn: readPostkitDashboardWorkspace,
-    enabled: Boolean(user),
+    enabled: Boolean(user) && canExecute,
   });
   const workspace = workspaceQuery.data;
   const queued = useQuery({
@@ -53,8 +55,8 @@ export function AutomaticPostOverview({
   });
   const data = performance.data;
   const queue = queued.data;
-  const noWorkspace = workspaceQuery.isSuccess && !workspace;
-  const waiting = workspaceQuery.isPending || (Boolean(workspace) && performance.isPending);
+  const noWorkspace = !canExecute || (workspaceQuery.isSuccess && !workspace);
+  const waiting = canExecute && (workspaceQuery.isPending || (Boolean(workspace) && performance.isPending));
   const retry = () => {
     void workspaceQuery.refetch();
     if (workspace) {

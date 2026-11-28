@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { mediaItemId } from "@/lib/media/files";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -62,6 +63,7 @@ const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime", ".mp4", ".webm", ".mov"];
 
 function LimparMetadados() {
+  const { requirePlan } = usePlanAccess();
   const [type, setType] = useState<MediaType | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [busy, setBusy] = useState(false);
@@ -148,6 +150,7 @@ function LimparMetadados() {
   };
 
   const cleanAll = async () => {
+    if (!requirePlan()) return;
     if (!items.length || !type || busy || batchBusy || operation.current) return;
 
     const controller = new AbortController();

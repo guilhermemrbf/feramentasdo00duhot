@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { KeyRound, Plus, Trash2, Webhook } from "lucide-react";
-import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { usePlanAccess, usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -46,6 +46,7 @@ const sampleSale = JSON.stringify(
 
 export function WebhookCredentials() {
   const { user } = usePlatformAccess();
+  const { canExecute, requirePlan } = usePlanAccess();
   const [open, setOpen] = useState(false);
   const [removing, setRemoving] = useState<{ id: string; label: string } | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
@@ -54,7 +55,7 @@ export function WebhookCredentials() {
   const load = useQuery({
     queryKey: ["sales-webhook-credentials", user?.id],
     queryFn: () => list(),
-    enabled: Boolean(user),
+    enabled: canExecute && Boolean(user),
   });
   const create = useServerFn(createSalesWebhook);
   const archive = useServerFn(archiveSalesWebhook);
@@ -93,6 +94,7 @@ export function WebhookCredentials() {
           <Dialog
             open={open}
             onOpenChange={(next) => {
+              if (next && !requirePlan()) return;
               if (!next && generated.isPending) return;
               if (!next) generated.reset();
               setOpen(next);
@@ -198,12 +200,12 @@ export function WebhookCredentials() {
           </Dialog>
         </div>
         <div className="mt-5 border-t border-border pt-4">
-          {load.isPending && (
+          {canExecute && load.isPending && (
             <p role="status" className="text-sm text-muted-foreground">
               Carregando credenciais…
             </p>
           )}
-          {load.isError && (
+          {canExecute && load.isError && (
             <Button variant="outline" onClick={() => void load.refetch()}>
               Tentar carregar novamente
             </Button>

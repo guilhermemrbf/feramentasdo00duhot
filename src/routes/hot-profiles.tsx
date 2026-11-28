@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LegacyLocalWorkspace } from "@/components/hot-profiles/LegacyLocalWorkspace";
 import { CloudWorkspace } from "@/components/hot-profiles/CloudWorkspace";
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 
 export const Route = createFileRoute("/hot-profiles")({
   head: () => ({
@@ -31,5 +32,10 @@ export const Route = createFileRoute("/hot-profiles")({
 
 function HotProfiles() {
   const { mode } = Route.useSearch();
-  return mode === "cloud" ? <CloudWorkspace /> : <LegacyLocalWorkspace />;
+  const { canExecute, requirePlan } = usePlanAccess();
+  return mode === "cloud" ? (
+    <CloudWorkspace />
+  ) : (
+    <LegacyLocalWorkspace key={String(canExecute)} canExecute={canExecute} requirePlan={requirePlan} />
+  );
 }

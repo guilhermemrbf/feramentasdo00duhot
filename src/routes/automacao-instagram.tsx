@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   AlertCircle,
@@ -265,6 +266,32 @@ const quickActions = [
 
 function AutomacaoInstagram() {
   const { tab } = Route.useSearch();
+  const { canExecute } = usePlanAccess();
+  if (!canExecute) {
+    return (
+      <InstagramWorkspacePage
+        key="visit"
+        workspace={{
+          id: "00000000-0000-0000-0000-000000000000",
+          name: "Sua operação",
+          timezone: "America/Sao_Paulo",
+          owner_id: "",
+        }}
+        workspaceControls={null}
+        initialTab={tab}
+        app={{
+          mode: "missing",
+          appId: "",
+          configId: "",
+          callbackUrl: "",
+          platformAppConfigured: false,
+          canManage: false,
+        }}
+        onAppSaved={async () => {}}
+        visiting
+      />
+    );
+  }
   return (
     <WorkspaceGate>
       {(workspace, workspaceControls) => (
@@ -360,13 +387,16 @@ function InstagramWorkspacePage({
   initialTab,
   app,
   onAppSaved,
+  visiting = false,
 }: {
   workspace: Workspace;
   workspaceControls: ReactNode;
   initialTab?: Tab;
   app: WorkspaceAppStatus;
   onAppSaved: () => Promise<void>;
+  visiting?: boolean;
 }) {
+  const { requirePlan } = usePlanAccess();
   const [requestedTab, setActiveTab] = useState<Tab>(initialTab ?? "dashboard");
   const [appSetupOpen, setAppSetupOpen] = useState(false);
   const [isolatedLogin, setIsolatedLogin] = useState(false);
@@ -546,6 +576,7 @@ function InstagramWorkspacePage({
   const reviewHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
+    if (visiting) return;
     let active = true;
     void postkit
       .from("instagram_accounts")
@@ -586,9 +617,10 @@ function InstagramWorkspacePage({
     return () => {
       active = false;
     };
-  }, [workspace.id, accountRefresh, loginWaiting]);
+  }, [workspace.id, accountRefresh, loginWaiting, visiting]);
 
   useEffect(() => {
+    if (visiting) return;
     let active = true;
     async function load() {
       const entries: VideoItem[] = [];
@@ -637,7 +669,7 @@ function InstagramWorkspacePage({
     return () => {
       active = false;
     };
-  }, [workspace.id, videoRefresh]);
+  }, [workspace.id, videoRefresh, visiting]);
 
   useEffect(() => {
     if (!cover) {
@@ -716,6 +748,7 @@ function InstagramWorkspacePage({
     setConnectionProgress(null);
   };
   const connectInstagram = async (mode: InstagramAuthMode, analytics = false) => {
+    if (!requirePlan()) return;
     if (platformMetaUnavailable) {
       setNotice(platformMetaMessage);
       return;
@@ -776,6 +809,7 @@ function InstagramWorkspacePage({
       : `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
 
   const uploadFiles = async (files: File[], folder = false) => {
+    if (!requirePlan()) return;
     if (uploadLock.current || !files.length || !reelAccount) return;
     const accountId = reelAccount.id;
     const batch = folder ? crypto.randomUUID() : null;
@@ -888,7 +922,8 @@ function InstagramWorkspacePage({
   const readyAccounts = managedAccounts.filter(
     (account) => account.connection_status === "connected",
   );
-  const needsConnection = (app.mode === "missing" || app.mode === "own") && !readyAccounts.length;
+  const needsConnection =
+    !visiting && (app.mode === "missing" || app.mode === "own") && !readyAccounts.length;
   const canOpenTab = (item: Tab) =>
     !needsConnection || item === "dashboard" || item === "nova-conta" || item === "contas";
   const tab = canOpenTab(requestedTab) ? requestedTab : "dashboard";
@@ -1105,6 +1140,7 @@ function InstagramWorkspacePage({
   const reviewPages = Math.ceil(queue.length / reviewPageSize);
 
   const generatePreview = () => {
+    if (!requirePlan()) return;
     setPreviewError("");
     if (!reelAccount) {
       setPreviewError("Escolha uma conta do Instagram.");
@@ -1207,6 +1243,7 @@ function InstagramWorkspacePage({
   });
 
   const saveQueue = async () => {
+    if (!requirePlan()) return;
     if (savingQueue || queueSaved || previewOutdated) return;
     if (scheduleErrors.length) {
       setNotice(scheduleErrors.join(" "));
@@ -1324,7 +1361,7 @@ function InstagramWorkspacePage({
   };
 
   useEffect(() => {
-    if (tab !== "config" && tab !== "fila") return;
+    if (visiting || (tab !== "config" && tab !== "fila")) return;
     let current = true;
     setWorkerStatus("checking");
     void getInstagramWorkerStatus({ data: { workspaceId: workspace.id } })
@@ -1337,9 +1374,10 @@ function InstagramWorkspacePage({
     return () => {
       current = false;
     };
-  }, [tab, workspace.id]);
+  }, [tab, workspace.id, visiting]);
 
   const activateWorker = async () => {
+    if (!requirePlan()) return;
     if (activatingWorker || workerStatus === "active" || workerStatus === "checking") return;
     setActivatingWorker(true);
     setNotice("");
@@ -1497,6 +1535,7 @@ function InstagramWorkspacePage({
               onOpenAccount={openAccount}
               refreshKey={historyRefresh}
               appMode={app.mode}
+              visiting={visiting}
               platformAppConfigured={app.platformAppConfigured}
               onAppSetup={() => setAppSetupOpen(true)}
               onAccounts={() => setTab("nova-conta")}
@@ -1715,7 +1754,21 @@ function InstagramWorkspacePage({
                         <p className="mt-1">{connectionProgress.message}</p>
                       </div>
                     )}
-                    {app.mode === "missing" ? (
+                    {visiting ? (
+                      <div className="rounded-xl border border-border bg-card p-4 text-sm">
+                        <p className="text-muted-foreground">
+                          Conecte um perfil profissional para agendar publicações e acompanhar os
+                          resultados.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={requirePlan}
+                          className="mt-3 min-h-11 rounded-lg bg-primary px-4 font-semibold text-primary-foreground"
+                        >
+                          Conectar Instagram
+                        </button>
+                      </div>
+                    ) : app.mode === "missing" ? (
                       <div className="rounded-xl border border-border bg-card p-4 text-sm">
                         <p className="font-semibold">Configure o app Meta da operação</p>
                         <p className="mt-1 text-muted-foreground">

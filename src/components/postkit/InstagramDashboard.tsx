@@ -171,6 +171,7 @@ export function InstagramDashboard({
   appMode,
   platformAppConfigured,
   onAppSetup,
+  visiting = false,
 }: {
   workspaceId: string;
   timezone: string;
@@ -188,6 +189,7 @@ export function InstagramDashboard({
   appMode: WorkspaceAppStatus["mode"];
   platformAppConfigured?: boolean;
   onAppSetup?: (guideStep?: number) => void;
+  visiting?: boolean;
 }) {
   const [period, setPeriod] = useState<Period>(periods[0]);
   const [choosingDates, setChoosingDates] = useState(false);
@@ -215,6 +217,7 @@ export function InstagramDashboard({
   };
 
   const report = useQuery({
+    enabled: !visiting,
     queryKey: ["mousehot-instagram-dashboard", workspaceId, timezone, periodKey, refreshKey],
     placeholderData: keepPreviousData,
     refetchInterval: 30_000,
@@ -303,10 +306,10 @@ export function InstagramDashboard({
   const data = report.data;
   const periodData = data?.period === periodKey ? data : undefined;
   const error = report.isError || Boolean(periodData?.incomplete);
-  const { accountCount, videoCount } = data ?? {};
+  const { accountCount, videoCount } = data ?? (visiting ? { accountCount: 0, videoCount: 0 } : {});
 
   const steps = [
-    ...(appMode === "missing" || appMode === "own"
+    ...(!visiting && (appMode === "missing" || appMode === "own")
       ? [
           {
             title: "Cadastre seu aplicativo da Meta",
@@ -326,7 +329,7 @@ export function InstagramDashboard({
           ? "Siga o passo a passo para escolher o perfil e confirmar a conexão."
           : undefined,
       action: "Conectar Instagram",
-      run: appMode === "missing" ? undefined : onAccounts,
+      run: appMode === "missing" && !visiting ? undefined : onAccounts,
     },
     {
       title: instagramOnboardingSteps[1],

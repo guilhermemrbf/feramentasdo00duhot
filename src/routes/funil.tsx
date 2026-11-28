@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -239,6 +240,7 @@ function FunnelPreview({ funnel }: { funnel: Funnel }) {
 }
 
 function FunilPage() {
+  const { canExecute, requirePlan } = usePlanAccess();
   const [funnels, setFunnels] = useState<Funnel[]>(() => createStarterFunnels());
   const [hydrated, setHydrated] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -403,7 +405,7 @@ function FunilPage() {
 
   const persistWorkspace = useCallback(
     (announce = false) => {
-      if (!hydrated) return;
+      if (!canExecute || !hydrated) return;
       try {
         saveFunnelWorkspace(window.localStorage, funnels);
         setSaveError("");
@@ -415,7 +417,7 @@ function FunilPage() {
         );
       }
     },
-    [funnels, hydrated],
+    [canExecute, funnels, hydrated],
   );
 
   useEffect(() => {
@@ -547,6 +549,7 @@ function FunilPage() {
   };
 
   const createFunnel = () => {
+    if (!requirePlan()) return;
     if (openId && canvasRef.current) savedViews.current[openId] = canvasRef.current.getViewport();
     canvasRef.current = null;
     const funnel = createNewFunnel(`Funil ${String(funnels.length + 1).padStart(2, "0")}`);
@@ -857,6 +860,7 @@ function FunilPage() {
     item.imageKey ? (imageSources[item.imageKey] ?? "") : (item.imageUrl ?? "");
 
   const importFunnel = async (source: Funnel) => {
+    if (!requirePlan()) return;
     const id = createId("funnel");
     const ids = new Map(source.nodes.map((node) => [node.id, createId("node")]));
     const media: { key: string; file: File }[] = [];
@@ -1140,14 +1144,18 @@ function FunilPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <button
-                    onClick={() => persistWorkspace(true)}
+                    onClick={() => {
+                      if (requirePlan()) persistWorkspace(true);
+                    }}
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/40 bg-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-primary/15 hover:bg-primary-hover"
                   >
                     <Save className="size-5" />
                     Salvar fluxo
                   </button>
                   <button
-                    onClick={() => setShareMode("export")}
+                    onClick={() => {
+                      if (requirePlan()) setShareMode("export");
+                    }}
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-brand-red hover:bg-primary/25"
                   >
                     <Share2 className="size-5" />
@@ -1406,7 +1414,9 @@ function FunilPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => setShareMode("export")}
+                    onClick={() => {
+                      if (requirePlan()) setShareMode("export");
+                    }}
                     aria-haspopup="dialog"
                     aria-label="Compartilhar fluxo"
                     title="Compartilhar em PDF, imagem ou código"

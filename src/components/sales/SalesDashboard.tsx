@@ -25,6 +25,7 @@ import {
   YAxis,
 } from "recharts";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { canExecuteTools } from "@/lib/platform-access";
 import { readMouseHotSettings } from "@/lib/mousehot-settings";
 import type { DashboardMetric } from "@/components/DashboardMetrics";
 import { SalesPageHeader } from "@/components/sales/SalesLayout";
@@ -66,7 +67,8 @@ export function SalesDashboard({
   children?: ReactNode;
   renderOverview?: (period: SalesPeriod, metrics: DashboardMetric[]) => ReactNode;
 }) {
-  const { user } = usePlatformAccess();
+  const { user, status } = usePlatformAccess();
+  const canExecute = canExecuteTools(status);
   const [chosenPeriod, setPeriod] = useState<SalesPeriod>();
   const period = chosenPeriod ?? readMouseHotSettings(user?.user_metadata).period ?? "month";
   const query = useSalesOverview(30, null, period);
@@ -93,7 +95,7 @@ export function SalesDashboard({
           </Link>
         </div>
       )}
-      {query.isPending && (
+      {canExecute && query.isPending && (
         <p
           className={embedded ? "sr-only" : "sales-panel p-6 text-sm text-muted-foreground"}
           role="status"
@@ -101,7 +103,7 @@ export function SalesDashboard({
           Carregando vendas…
         </p>
       )}
-      {query.isError && (
+      {canExecute && query.isError && (
         <div
           className={cn(
             "sales-panel flex flex-wrap items-center justify-between gap-3 p-5",
@@ -432,6 +434,8 @@ function ChartEmpty({ status }: { status: string }) {
 }
 
 function WeeklySales() {
+  const { status } = usePlatformAccess();
+  const canExecute = canExecuteTools(status);
   const query = useSalesOverview(7, null);
   const week = query.data;
   return (
@@ -454,6 +458,8 @@ function WeeklySales() {
             </div>
           ))}
         </dl>
+      ) : !canExecute ? (
+        <p className="mt-4 text-sm text-muted-foreground">Ainda sem vendas nesta operação.</p>
       ) : query.isError ? (
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <span>Dados da semana indisponíveis.</span>

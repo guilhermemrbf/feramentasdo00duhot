@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ArrowUpRight, BarChart3, Eye, RefreshCw, Users } from "lucide-react";
@@ -150,6 +151,7 @@ export function InstagramAnalytics({
   onAuthorize: (mode: Account["auth_mode"]) => void;
   onConnect: () => void;
 }) {
+  const { canExecute } = usePlanAccess();
   const [account, setAccount] = useState(initialAccountId);
   const [kind, setKind] = useState<Kind | "all">("all");
   const [range, setRange] = useState<Range>("30d");
@@ -167,7 +169,7 @@ export function InstagramAnalytics({
   const data = report?.key === key ? report.data : undefined;
 
   useEffect(() => {
-    if (invalid) return;
+    if (!canExecute || invalid) return;
     let active = true;
     let loading = false;
     const load = async () => {
@@ -204,7 +206,7 @@ export function InstagramAnalytics({
       active = false;
       window.clearInterval(timer);
     };
-  }, [workspaceId, timezone, account, from, to, page, key, invalid, reload]);
+  }, [workspaceId, timezone, account, from, to, page, key, invalid, reload, canExecute]);
 
   const current = data?.totals.filter((item) => kind === "all" || item.kind === kind);
   const posts = current?.reduce((sum, item) => sum + item.publications, 0);
@@ -324,7 +326,8 @@ export function InstagramAnalytics({
           {error}
         </p>
       )}
-      {!data && !error && !invalid && (
+      {!canExecute && <p className="text-sm text-muted-foreground">Conecte uma conta para acompanhar as métricas.</p>}
+      {canExecute && !data && !error && !invalid && (
         <p role="status" className="text-sm text-muted-foreground">
           Carregando métricas…
         </p>

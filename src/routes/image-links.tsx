@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { mediaItemId } from "@/lib/media/files";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -61,6 +62,7 @@ const FORMATS: [Format, string][] = [
 ];
 
 function ImageLinks() {
+  const { requirePlan } = usePlanAccess();
   const [uploads, setUploads] = useState<UploadedMedia[]>([]);
   const [format, setFormat] = useState<Format>("url");
   const [dragOver, setDragOver] = useState(false);
@@ -91,6 +93,7 @@ function ImageLinks() {
   const patch = (id: string, value: Partial<UploadedMedia>) =>
     setUploads((current) => current.map((item) => (item.id === id ? { ...item, ...value } : item)));
   const run = async (records: UploadedMedia[]) => {
+    if (!requirePlan()) return;
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -134,6 +137,7 @@ function ImageLinks() {
     }
   };
   const uploadFiles = (files: FileList | null) => {
+    if (!requirePlan()) return;
     if (!files) return;
     if (inFlight.current) {
       setNotice("Aguarde os envios ou cancele a operação antes de adicionar novos arquivos.");
@@ -217,6 +221,7 @@ function ImageLinks() {
 
         <div className="mt-8 space-y-6">
           <label
+            onClick={requirePlan}
             onDragOver={(e) => {
               e.preventDefault();
               setDragOver(true);

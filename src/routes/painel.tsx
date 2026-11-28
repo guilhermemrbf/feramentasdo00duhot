@@ -46,18 +46,14 @@ function WorkspaceHome() {
             )}
           </div>
         </header>
-        {status === "admin" || status === "approved" ? (
-          <SalesDashboard
-            embedded
-            renderOverview={(period, salesMetrics) => (
-              <AutomaticPostOverview period={period} salesMetrics={salesMetrics} />
-            )}
-          >
-            {toolsLink}
-          </SalesDashboard>
-        ) : (
-          toolsLink
-        )}
+        <SalesDashboard
+          embedded
+          renderOverview={(period, salesMetrics) => (
+            <AutomaticPostOverview period={period} salesMetrics={salesMetrics} />
+          )}
+        >
+          {toolsLink}
+        </SalesDashboard>
       </main>
     </AppShell>
   );

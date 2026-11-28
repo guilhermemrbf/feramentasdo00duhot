@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { ScanSearch } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -121,6 +122,7 @@ function InstagramIntelligence() {
 }
 
 function PrivateBatches({ userId, reviewMode }: { userId: string; reviewMode: boolean }) {
+  const { requirePlan } = usePlanAccess();
   const [text, setText] = useState("");
   const [submitted, setSubmitted] = useState<{ id: string; count: number; name: string }>();
   const [error, setError] = useState("");
@@ -139,6 +141,7 @@ function PrivateBatches({ userId, reviewMode }: { userId: string; reviewMode: bo
       : undefined);
 
   async function analyze() {
+    if (!requirePlan()) return;
     if (saving.current || !parsed.usernames.length || parsed.invalidLines.length || parsed.error)
       return;
     saving.current = true;

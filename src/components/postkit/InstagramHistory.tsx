@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,11 +59,13 @@ export function InstagramHistory({
   const [filter, setFilter] = useState<"all" | Status>("all");
   const [account, setAccount] = useState(initialAccountId);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const { canExecute } = usePlanAccess();
+  const [loading, setLoading] = useState(canExecute);
   const [refresh, setRefresh] = useState(0);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   useEffect(() => {
+    if (!canExecute) return;
     let active = true;
     const load = async () => {
       const client = supabase as unknown as SupabaseClient<PostkitDatabase>;
@@ -104,7 +107,7 @@ export function InstagramHistory({
       active = false;
       window.clearInterval(timer);
     };
-  }, [workspaceId, refreshKey, refresh, mode, filter, account]);
+  }, [workspaceId, refreshKey, refresh, mode, filter, account, canExecute]);
 
   const cancel = async (id: string) => {
     if (cancelling) return;

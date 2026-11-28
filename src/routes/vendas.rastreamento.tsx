@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Settings2 } from "lucide-react";
-import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { usePlanAccess, usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import { TrackingReport } from "@/components/sales/TrackingReport";
 import { trackingOverview } from "@/lib/api/tracking.functions";
 import "@/components/sales/tracking-report.css";
@@ -27,13 +27,14 @@ export const Route = createFileRoute("/vendas/rastreamento")({
 
 function TrackingPage() {
   const { user } = usePlatformAccess();
+  const { canExecute } = usePlanAccess();
   const load = useServerFn(trackingOverview);
   const [days, setDays] = useState<7 | 14 | 30>(30);
   const [breakdown, setBreakdown] = useState<"campaign" | "ad">("campaign");
   const query = useQuery({
     queryKey: ["sales-tracking", user?.id, days, breakdown],
     queryFn: () => load({ data: { days, breakdown } }),
-    enabled: Boolean(user),
+    enabled: canExecute && Boolean(user),
     refetchInterval: 15_000,
   });
   return (
@@ -55,9 +56,9 @@ function TrackingPage() {
       </nav>
       <TrackingReport
         data={query.data}
-        pending={query.isPending}
-        error={query.isError}
-        refresh={() => void query.refetch()}
+        pending={canExecute && query.isPending}
+        error={canExecute && query.isError}
+        refresh={() => { if (canExecute) void query.refetch(); }}
         refreshing={query.isFetching}
         days={days}
         changeDays={setDays}

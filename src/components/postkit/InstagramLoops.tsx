@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { useEffect, useState, type FormEvent } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ArrowRight, Pause, Play, Repeat2 } from "lucide-react";
@@ -44,6 +45,7 @@ export function InstagramLoops({
   const [loadError, setLoadError] = useState("");
   const [message, setMessage] = useState("");
   const [formError, setFormError] = useState("");
+  const { canExecute, requirePlan } = usePlanAccess();
   const [refreshKey, setRefreshKey] = useState(0);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState("");
@@ -68,6 +70,7 @@ export function InstagramLoops({
   });
 
   useEffect(() => {
+    if (!canExecute) return;
     let active = true;
     const refresh = async () => {
       try {
@@ -95,9 +98,10 @@ export function InstagramLoops({
       active = false;
       window.clearInterval(timer);
     };
-  }, [workspaceId, refreshKey]);
+  }, [workspaceId, refreshKey, canExecute]);
 
   useEffect(() => {
+    if (!canExecute) return;
     let active = true;
     void supabase
       .rpc("has_workspace_role", {
@@ -110,9 +114,10 @@ export function InstagramLoops({
     return () => {
       active = false;
     };
-  }, [workspaceId]);
+  }, [workspaceId, canExecute]);
 
   async function createLoop(event: FormEvent<HTMLFormElement>) {
+    if (!requirePlan(event)) return;
     event.preventDefault();
     if (busy || !canEdit) return;
     setFormError("");
@@ -407,7 +412,7 @@ export function InstagramLoops({
       )}
       <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
         <h2 className="font-semibold">Seus loops</h2>
-        {!rows && !loadError && (
+        {canExecute && !rows && !loadError && (
           <p role="status" className="mt-3 text-sm text-muted-foreground">
             Carregando loops…
           </p>

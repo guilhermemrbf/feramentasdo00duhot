@@ -59,7 +59,9 @@ function DesktopShell({ children }: { children: ReactNode }) {
 export function LegacyLocalWorkspace({
   standalone = false,
   desktopConnection,
-}: { standalone?: boolean; desktopConnection?: HotConnection } = {}) {
+  canExecute = true,
+  requirePlan,
+}: { standalone?: boolean; desktopConnection?: HotConnection; canExecute?: boolean; requirePlan?: () => boolean } = {}) {
   const [connection, setConnection] = useState<HotConnection | null>(null);
   const [workspace, setWorkspace] = useState<HotWorkspace>(EMPTY_WORKSPACE);
   const [devices, setDevices] = useState<HotDevices | null>(null);
@@ -98,6 +100,10 @@ export function LegacyLocalWorkspace({
     };
   }, [connection]);
   useEffect(() => {
+    if (!canExecute) {
+      setLoaded(true);
+      return;
+    }
     if (desktopConnection) {
       setConnection(desktopConnection);
       setLoaded(true);
@@ -116,7 +122,7 @@ export function LegacyLocalWorkspace({
       clearSavedConnection();
     }
     setLoaded(true);
-  }, [desktopConnection]);
+  }, [desktopConnection, canExecute]);
   const refresh = useCallback(async () => {
     if (!connection || refreshing.current) return;
     refreshing.current = true;
@@ -159,6 +165,7 @@ export function LegacyLocalWorkspace({
     if (connection) void refreshDevices().catch(() => {});
   }, [connection, refreshDevices]);
   async function connect(value: HotConnection) {
+    if (requirePlan && !requirePlan()) return;
     setConnecting(true);
     try {
       const next = await bridgeRequest<HotWorkspace>(value, "/v1/state");
@@ -183,6 +190,7 @@ export function LegacyLocalWorkspace({
     }
   }
   async function act(key: string, action: () => Promise<void>, success = "") {
+    if (requirePlan && !requirePlan()) return;
     setBusy(key);
     setError("");
     setMessage("");
@@ -197,6 +205,7 @@ export function LegacyLocalWorkspace({
     }
   }
   function create(kind: ProfileKind = "browser") {
+    if (requirePlan && !requirePlan()) return;
     if (!online) {
       setShowConnect(true);
       return;
@@ -205,6 +214,7 @@ export function LegacyLocalWorkspace({
     void refreshDevices().catch(() => {});
   }
   function createProxy() {
+    if (requirePlan && !requirePlan()) return;
     if (!online) {
       setShowConnect(true);
       return;
@@ -284,7 +294,7 @@ export function LegacyLocalWorkspace({
               </p>
             </div>
           </div>
-          <button disabled={standalone} onClick={() => setShowConnect(true)} className={hotButton}>
+          <button disabled={standalone} onClick={() => { if (!requirePlan || requirePlan()) setShowConnect(true); }} className={hotButton}>
             <Cable className="size-4" />
             <span>
               {standalone
@@ -327,7 +337,7 @@ export function LegacyLocalWorkspace({
                 </button>
               )}
               {!standalone && (
-                <button onClick={() => setShowConnect(true)} className={hotPrimary}>
+                <button onClick={() => { if (!requirePlan || requirePlan()) setShowConnect(true); }} className={hotPrimary}>
                   {connection ? "Novo código" : "Conectar agora"}
                   <ArrowRight className="size-4" />
                 </button>
@@ -976,7 +986,7 @@ export function LegacyLocalWorkspace({
                     : "As telas vêm do computador conectado. Abra o conector para continuar."}
                 </p>
                 <button
-                  onClick={() => (online ? setTab("profiles") : setShowConnect(true))}
+                  onClick={() => { if (online) setTab("profiles"); else if (!requirePlan || requirePlan()) setShowConnect(true); }}
                   className={`${hotPrimary} mt-5`}
                 >
                   {online ? "Escolher perfil" : "Conectar computador"}

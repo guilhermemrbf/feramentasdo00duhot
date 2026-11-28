@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { StoryLibrary } from "@/components/postkit/StoryLibrary";
@@ -281,11 +282,13 @@ export function InstagramStories({
   onConnect: () => void;
   profileAccount?: { id: string; request: string; productUrl: string | null };
 }) {
+  const { canExecute, requirePlan } = usePlanAccess();
   const [accountId, setAccountId] = useState("");
   const account = accountId ? accounts.find((item) => item.id === accountId) : accounts[0];
   const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
+    if (!canExecute) return;
     let active = true;
     void supabase
       .rpc("has_workspace_role", {
@@ -298,7 +301,7 @@ export function InstagramStories({
     return () => {
       active = false;
     };
-  }, [workspaceId]);
+  }, [workspaceId, canExecute]);
   const [media, setMedia] = useState<Media[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [layouts, setLayouts] = useState<Record<string, StoryStickers>>({});
@@ -378,6 +381,7 @@ export function InstagramStories({
     }).format(new Date(value));
 
   const refresh = useCallback(async () => {
+    if (!canExecute) return;
     const { data, error } = await storyClient
       .from("instagram_story_reminders")
       .select("*")
@@ -389,7 +393,7 @@ export function InstagramStories({
     }
     setLoadError("");
     setSaved(data ?? []);
-  }, [workspaceId]);
+  }, [workspaceId, canExecute]);
 
   useEffect(() => {
     void refresh();
@@ -549,6 +553,7 @@ export function InstagramStories({
   }
 
   async function savePlan() {
+    if (!requirePlan()) return;
     if (!canEdit || !account || !plan.length || busy) return;
     setBusy(true);
     setNotice("");
@@ -685,6 +690,7 @@ export function InstagramStories({
   }
 
   async function enableAlerts() {
+    if (!requirePlan()) return;
     if (typeof Notification === "undefined") {
       setNotice(
         "Este navegador não oferece avisos nesta página. Use a exportação para o calendário.",

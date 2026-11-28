@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Zap } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
+import { usePlanAccess, usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import { salesMoney, type SalesPeriod } from "@/lib/sales-events";
 import { postkitOverviewPeriod } from "@/lib/postkit-overview-period";
 const brl = (value: number) => salesMoney(Math.round(value * 100));
@@ -12,12 +12,13 @@ import { getMetaAdsReport } from "@/lib/meta-ads/functions";
 
 export function MetaSalesSummary({ period }: { period: SalesPeriod }) {
   const { user } = usePlatformAccess();
+  const { canExecute } = usePlanAccess();
   const load = useServerFn(getMetaAdsReport);
   const { start: from, end: until } = postkitOverviewPeriod("America/Sao_Paulo", period);
   const query = useQuery({
     queryKey: ["scalehot-meta-report", user?.id, from, until],
     queryFn: () => load({ data: { from, until } }),
-    enabled: Boolean(user),
+    enabled: canExecute && Boolean(user),
     retry: false,
     refetchInterval: 30_000,
   });

@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { mediaItemId } from "@/lib/media/files";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -60,6 +61,7 @@ const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 
 function GerarPreview() {
+  const { requirePlan } = usePlanAccess();
   const [type, setType] = useState<MediaType | null>(null);
   const [effect, setEffect] = useState<Effect>("blur");
   const [intensity, setIntensity] = useState<Intensity>("medium");
@@ -135,6 +137,7 @@ function GerarPreview() {
   };
 
   const processAll = async () => {
+    if (!requirePlan()) return;
     if (!items.length || !type) return;
     if (busy) return;
     operation.current = new AbortController();
@@ -162,6 +165,7 @@ function GerarPreview() {
   };
 
   const download = (item: Item) => {
+    if (!requirePlan()) return;
     if (item.output)
       downloadBlob(item.output, outputName(item.file.name, "preview-", item.output.type));
   };

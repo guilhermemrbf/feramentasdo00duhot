@@ -1,3 +1,4 @@
+import { usePlanAccess } from "@/components/access/PlatformAccessProvider";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Bell, BellRing, CheckCircle2, DollarSign, Send, Smartphone, Sparkles } from "lucide-react";
@@ -30,6 +31,7 @@ export function SalesNotifications({
 }: {
   renderSettings?: (parts: { device: ReactNode; approved: ReactNode }) => ReactNode;
 }) {
+  const { canExecute, requirePlan } = usePlanAccess();
   const query = useQueryClient();
   const status = useServerFn(salesPushStatus);
   const register = useServerFn(registerSalesPush);
@@ -39,7 +41,7 @@ export function SalesNotifications({
   const [registration, setRegistration] = useState<ServiceWorkerRegistration>();
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [key, setKey] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(!canExecute);
   const [compatible, setCompatible] = useState(false);
   const [active, setActive] = useState(false);
   const [notifyApproved, setNotifyApproved] = useState(false);
@@ -47,6 +49,7 @@ export function SalesNotifications({
   const [message, setMessage] = useState<{ text: string; error?: boolean }>();
 
   useEffect(() => {
+    if (!canExecute) return;
     let current = true;
     async function check() {
       if (
@@ -86,9 +89,10 @@ export function SalesNotifications({
     return () => {
       current = false;
     };
-  }, [status]);
+  }, [status, canExecute]);
 
   async function change(action: "enable" | "disable" | "test") {
+    if (!requirePlan()) return;
     setPending(true);
     setMessage(undefined);
     try {
@@ -136,6 +140,7 @@ export function SalesNotifications({
   }
 
   async function toggleApproved(enabled: boolean) {
+    if (!requirePlan()) return;
     if (!subscription || !active) return;
     setPending(true);
     setMessage(undefined);
@@ -186,7 +191,9 @@ export function SalesNotifications({
           <div className="settings-inset">
             <strong>Notificações neste dispositivo</strong>
             <p role="status">
-              {!ready
+              {!canExecute
+                ? "Desativadas"
+                : !ready
                 ? "Verificando o dispositivo…"
                 : active
                   ? "Ativadas"
@@ -196,7 +203,12 @@ export function SalesNotifications({
                       ? "Serviço de notificações indisponível neste ambiente."
                       : "Desativadas"}
             </p>
-            {ready && registration && key && (
+            {!canExecute && (
+              <button type="button" className="sales-button" onClick={requirePlan}>
+                Ativar notificações
+              </button>
+            )}
+            {canExecute && ready && registration && key && (
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -253,6 +265,11 @@ export function SalesNotifications({
           </div>
         </div>
         <div className="mt-6 space-y-3">
+          {!canExecute && (
+            <button type="button" className="sales-button" onClick={requirePlan}>
+              Ativar notificações
+            </button>
+          )}
           {!ready && (
             <p role="status" className="text-sm text-muted-foreground">
               Verificando o dispositivo…
