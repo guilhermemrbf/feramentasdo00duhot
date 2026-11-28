@@ -34,17 +34,17 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
       await import("@/lib/instagram-workspace-app.server");
     const app = await readWorkspaceApp(data.workspaceId);
     const platformConfig = getInstagramOAuthConfig();
-    if (app?.app_id && data.mode !== "instagram_unified_login")
-      throw new Error("Use o Login Unificado para conectar com o app Meta da operação.");
-
-    const appId = app?.app_id ?? platformConfig.appId;
-    const configId = app?.login_config_id;
-    const appRevision = app?.revision ?? platformInstagramAppRevision(
-      appId,
-      (
-        await import("@/lib/instagram-unified-login.server")
-      ).getInstagramUnifiedConfigId(appId),
-    );
+    const useWorkspaceApp = data.mode === "instagram_unified_login" && !!app?.app_id;
+    const appId = useWorkspaceApp ? app!.app_id! : platformConfig.appId;
+    const configId = useWorkspaceApp ? app!.login_config_id : undefined;
+    const appRevision = useWorkspaceApp
+      ? app!.revision
+      : platformInstagramAppRevision(
+          platformConfig.appId,
+          (
+            await import("@/lib/instagram-unified-login.server")
+          ).getInstagramUnifiedConfigId(platformConfig.appId),
+        );
 
     const state = await createInstagramOAuthState({
       workspaceId: data.workspaceId,
