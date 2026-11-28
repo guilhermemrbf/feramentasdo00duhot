@@ -7,16 +7,16 @@ export const META_APP_ROLES_URL =
   "https://developers.facebook.com/apps/2201393490722211/roles/roles/?business_id=1498873732174939";
 export const INSTAGRAM_TESTER_INVITES_URL = "https://www.instagram.com/accounts/manage_access/";
 
-type WizardStep = 1 | 2 | 3;
+type WizardStep = 0 | 1 | 2 | 3;
 
 const storageKey = (workspaceId: string) => `mousefy:instagram-connect-step:${workspaceId}`;
 
 function readStep(workspaceId: string): WizardStep {
   try {
     const value = Number(window.localStorage.getItem(storageKey(workspaceId)));
-    return value === 2 || value === 3 ? value : 1;
+    return value === 1 || value === 2 || value === 3 ? value : 0;
   } catch {
-    return 1;
+    return 0;
   }
 }
 
@@ -28,36 +28,54 @@ function writeStep(workspaceId: string, step: WizardStep) {
   }
 }
 
-export function resetInstagramConnectWizard(workspaceId: string) {
-  writeStep(workspaceId, 1);
+export function resetInstagramConnectWizard(workspaceId: string, step: 0 | 1 = 0) {
+  writeStep(workspaceId, step);
 }
 
 const STEP_TITLES = ["Configurar acesso", "Aceitar convite no Instagram", "Conectar conta"];
 
 export function InstagramConnectWizard({
   workspaceId,
+  usePlatformApp,
   children,
 }: {
   workspaceId: string;
+  usePlatformApp: boolean;
   children: ReactNode;
 }) {
-  const [step, setStepState] = useState<WizardStep>(1);
-  const [opened, setOpened] = useState(false);
+  const [step, setStepState] = useState<WizardStep>(0);
 
   useEffect(() => {
     setStepState(readStep(workspaceId));
   }, [workspaceId]);
 
   const setStep = (next: WizardStep) => {
-    setOpened(false);
     setStepState(next);
     writeStep(workspaceId, next);
   };
 
-  const openExternal = (url: string) => {
-    window.open(url, "_blank", "noopener,noreferrer");
-    setOpened(true);
-  };
+  const externalLinkClass =
+    "inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const continueClass =
+    "min-h-11 rounded-lg border border-border px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+  if (!usePlatformApp) return <>{children}</>;
+
+  if (step === 0) {
+    return (
+      <div className="space-y-3 rounded-xl border border-border bg-background/40 p-4 text-sm">
+        <p>Para conectar um perfil pela primeira vez durante o beta, ele precisa de um convite.</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setStep(1)} className={externalLinkClass}>
+            Começar configuração
+          </button>
+          <button type="button" onClick={() => setStep(3)} className={continueClass}>
+            Já aceitei o convite
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border border-border bg-background/40 p-4">
@@ -84,24 +102,25 @@ export function InstagramConnectWizard({
           <h3 className="font-semibold text-foreground">Configurar acesso</h3>
           <p className="text-muted-foreground">
             Para conectar uma conta pela primeira vez, ela precisa ser liberada no aplicativo da
-            Meta. Na página que vai abrir, vá em <strong>Testadores do Instagram</strong>, clique
-            em <strong>Adicionar testadores do Instagram</strong>, digite o @ da conta que você quer
-            conectar e envie o convite. Depois volte para esta aba.
+            Meta. Só quem administra o aplicativo pode enviar o convite. Se você não tiver acesso à
+            configuração, peça ao responsável pelo Mousefy para convidar o @ que você quer conectar.
+          </p>
+          <p className="text-muted-foreground">
+            Se você administra o aplicativo, abra a configuração, clique em{" "}
+            <strong>Adicionar pessoas</strong>, selecione <strong>Testador do Instagram</strong> e
+            informe o @. Depois volte para esta aba.
           </p>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => openExternal(META_APP_ROLES_URL)}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            <a
+              href={META_APP_ROLES_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={externalLinkClass}
             >
               Abrir configuração da Meta <ExternalLink aria-hidden className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setStep(2)}
-              className={`min-h-11 rounded-lg border px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${opened ? "border-primary/50 text-foreground" : "border-border"}`}
-            >
-              Já enviei o convite · continuar
+            </a>
+            <button type="button" onClick={() => setStep(2)} className={continueClass}>
+              O convite foi enviado · continuar
             </button>
           </div>
           <button
@@ -119,22 +138,19 @@ export function InstagramConnectWizard({
           <h3 className="font-semibold text-foreground">Aceitar convite no Instagram</h3>
           <p className="text-muted-foreground">
             Entre no Instagram <strong>com a conta que você quer conectar</strong>. Em{" "}
-            <strong>Apps e sites</strong> → <strong>Convites de testador</strong>, confira o nome
-            do aplicativo e toque em <strong>Aceitar</strong>. Depois volte para esta aba.
+            <strong>Apps e sites</strong> → <strong>Convites de testador</strong>, confira o nome do
+            aplicativo e toque em <strong>Aceitar</strong>. Depois volte para esta aba.
           </p>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => openExternal(INSTAGRAM_TESTER_INVITES_URL)}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            <a
+              href={INSTAGRAM_TESTER_INVITES_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={externalLinkClass}
             >
               Abrir convites do Instagram <ExternalLink aria-hidden className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setStep(3)}
-              className={`min-h-11 rounded-lg border px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${opened ? "border-primary/50 text-foreground" : "border-border"}`}
-            >
+            </a>
+            <button type="button" onClick={() => setStep(3)} className={continueClass}>
               Convite aceito · continuar conexão
             </button>
           </div>
@@ -152,10 +168,10 @@ export function InstagramConnectWizard({
         <div className="mt-1 space-y-2 text-sm">
           <h3 className="font-semibold text-foreground">Conectar conta</h3>
           <p className="text-muted-foreground">
-            Tudo certo. Clique em <strong>Conectar Instagram</strong>, escolha{" "}
-            <strong>Continuar com Instagram</strong> na janela da Meta, entre na conta liberada e
-            confirme o acesso. A janela fecha sozinha e o Mousefy confirma a conta. O Mousefy não
-            recebe sua senha.
+            Use o perfil que aceitou o convite. Clique em <strong>Conectar Instagram</strong>,
+            escolha <strong>Continuar com Instagram</strong> na janela da Meta, entre na conta
+            liberada e confirme o acesso. Se a janela não fechar, use{" "}
+            <strong>Voltar ao Mousefy</strong>.
           </p>
           {children}
           <button

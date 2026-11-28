@@ -566,6 +566,7 @@ function InstagramWorkspacePage({
               confirmedInstagramIds.current,
             );
             if (added) {
+              resetInstagramConnectWizard(workspace.id);
               setLoginWaiting(false);
               resetReelDraft(added.id);
               setConnectionProgress({ step: "success", id: added.id, username: added.username });
@@ -1704,7 +1705,11 @@ function InstagramWorkspacePage({
                       </p>
                     ) : (
                       !loginWaiting && (
-                        <InstagramConnectWizard workspaceId={workspace.id}>
+                        <InstagramConnectWizard
+                          key={workspace.id}
+                          workspaceId={workspace.id}
+                          usePlatformApp={app.mode !== "own"}
+                        >
                           <button
                             type="button"
                             onClick={() => void connectInstagram("instagram_unified_login")}
@@ -1763,12 +1768,13 @@ function InstagramWorkspacePage({
                             ? "Conferindo se a conta já aparece conectada nesta operação."
                             : "A autorização abriu em outra janela. Entre no perfil desejado e confirme o acesso solicitado."}
                         </p>
-                        <p className="mt-2 text-muted-foreground">
-                          Apareceu <strong>App not active</strong> na janela da Meta? Essa conta
-                          ainda não foi liberada no aplicativo. Clique em{" "}
-                          <strong>Refazer configuração</strong> e conclua as etapas 1 e 2 com a
-                          conta que você quer conectar.
-                        </p>
+                        {app.mode !== "own" && connectionStep !== "verifying" && (
+                          <p className="mt-2 text-muted-foreground">
+                            Se a Meta disser que o aplicativo está indisponível, confirme se o
+                            perfil escolhido aceitou o convite. Volte aqui e clique em{" "}
+                            <strong>Refazer configuração</strong> para revisar as etapas.
+                          </p>
+                        )}
                         <button
                           type="button"
                           className="mr-4 mt-2 font-medium underline underline-offset-4"
@@ -1792,17 +1798,19 @@ function InstagramWorkspacePage({
                         >
                           Cancelar esta tentativa
                         </button>
-                        <button
-                          type="button"
-                          className="ml-4 mt-2 font-medium underline underline-offset-4"
-                          onClick={() => {
-                            resetInstagramConnectWizard(workspace.id);
-                            setLoginWaiting(false);
-                            setConnectionProgress(null);
-                          }}
-                        >
-                          Refazer configuração
-                        </button>
+                        {app.mode !== "own" && (
+                          <button
+                            type="button"
+                            className="ml-4 mt-2 font-medium underline underline-offset-4"
+                            onClick={() => {
+                              resetInstagramConnectWizard(workspace.id, 1);
+                              setLoginWaiting(false);
+                              setConnectionProgress(null);
+                            }}
+                          >
+                            Refazer configuração
+                          </button>
+                        )}
                       </div>
                     )}
                     <p className="mt-3 text-xs text-muted-foreground">
