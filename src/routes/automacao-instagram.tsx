@@ -1794,6 +1794,25 @@ function InstagramWorkspacePage({
                                 : "Conectar Instagram"}
                       </button>
                     )}
+                    {connectionProgress?.step === "error" && !loginWaiting && !needsMetaAssetSetup && (
+                      <div className="mt-3 rounded-lg border border-border bg-secondary/20 p-3">
+                        <p className="text-xs text-muted-foreground">
+                          Se o Login Unificado da Meta não concluir, você pode tentar a autorização
+                          direta do Instagram. Esse segundo caminho não exige a seleção de ativos
+                          no portfólio da Meta.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => void connectInstagram("instagram_login")}
+                          disabled={
+                            !!connecting || loginWaiting || !accountsLoaded || !!accountsLoadError
+                          }
+                          className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
+                        >
+                          Tentar conexão direta pelo Instagram
+                        </button>
+                      </div>
+                    )}
                     {needsMetaAssetSetup && (
                       <section
                         aria-label="Adicionar conta na Meta"
