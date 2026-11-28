@@ -39,6 +39,10 @@ import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { InstagramLocalLogin } from "@/components/postkit/InstagramLocalLogin";
 import {
+  InstagramConnectWizard,
+  resetInstagramConnectWizard,
+} from "@/components/postkit/InstagramConnectWizard";
+import {
   InstagramConnectionDetails,
   type InstagramConnectionDetailsAccount,
 } from "@/components/postkit/InstagramConnectionDetails";
@@ -1700,54 +1704,32 @@ function InstagramWorkspacePage({
                       </p>
                     ) : (
                       !loginWaiting && (
-                        <div className="rounded-xl border border-border bg-background/40 p-4">
-                          <h3 className="font-semibold">Como conectar seu Instagram</h3>
-                          <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
-                            <li>
-                              <span className="font-semibold text-foreground">1.</span> Use uma conta
-                              profissional do Instagram (Criador ou Comercial).
-                            </li>
-                            <li>
-                              <span className="font-semibold text-foreground">2.</span> Clique em{" "}
-                              <strong className="text-foreground">Conectar Instagram</strong> abaixo.
-                            </li>
-                            <li>
-                              <span className="font-semibold text-foreground">3.</span> No Instagram, entre no perfil que deseja conectar e confirme o acesso solicitado.
-                            </li>
-                            <li>
-                              <span className="font-semibold text-foreground">4.</span> Depois da autorização, a janela fecha e o Mousefy confirma a conta automaticamente.
-                            </li>
-                          </ol>
-                          <p className="mt-3 text-xs text-muted-foreground">
-                            A conexão usa o Login do Instagram. O Mousefy não recebe sua senha.
-                          </p>
-                        </div>
+                        <InstagramConnectWizard workspaceId={workspace.id}>
+                          <button
+                            type="button"
+                            onClick={() => void connectInstagram("instagram_unified_login")}
+                            disabled={
+                              platformMetaUnavailable ||
+                              !!connecting ||
+                              loginWaiting ||
+                              !accountsLoaded ||
+                              !!accountsLoadError
+                            }
+                            className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-base font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                          >
+                            <Instagram aria-hidden="true" className="size-4" />
+                            {connecting === "instagram_unified_login"
+                              ? "Abrindo autorização…"
+                              : loginWaiting
+                                ? "Aguardando seu Instagram…"
+                                : !accountsLoaded && !accountsLoadError
+                                  ? "Carregando suas contas…"
+                                  : connectionStep === "error"
+                                    ? "Tentar novamente"
+                                    : "Conectar Instagram"}
+                          </button>
+                        </InstagramConnectWizard>
                       )
-                    )}
-                    {!loginWaiting && (
-                      <button
-                        type="button"
-                        onClick={() => void connectInstagram("instagram_unified_login")}
-                        disabled={
-                          platformMetaUnavailable ||
-                          !!connecting ||
-                          loginWaiting ||
-                          !accountsLoaded ||
-                          !!accountsLoadError
-                        }
-                        className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-base font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                      >
-                        <Instagram aria-hidden="true" className="size-4" />
-                        {connecting === "instagram_unified_login"
-                          ? "Abrindo autorização…"
-                          : loginWaiting
-                            ? "Aguardando seu Instagram…"
-                            : !accountsLoaded && !accountsLoadError
-                              ? "Carregando suas contas…"
-                              : connectionStep === "error"
-                                ? "Tentar novamente"
-                                : "Conectar Instagram"}
-                      </button>
                     )}
                     {accountsLoadError && (
                       <p role="alert" className="mt-3 text-sm text-amber-200">
@@ -1781,6 +1763,12 @@ function InstagramWorkspacePage({
                             ? "Conferindo se a conta já aparece conectada nesta operação."
                             : "A autorização abriu em outra janela. Entre no perfil desejado e confirme o acesso solicitado."}
                         </p>
+                        <p className="mt-2 text-muted-foreground">
+                          Apareceu <strong>App not active</strong> na janela da Meta? Essa conta
+                          ainda não foi liberada no aplicativo. Clique em{" "}
+                          <strong>Refazer configuração</strong> e conclua as etapas 1 e 2 com a
+                          conta que você quer conectar.
+                        </p>
                         <button
                           type="button"
                           className="mr-4 mt-2 font-medium underline underline-offset-4"
@@ -1803,6 +1791,17 @@ function InstagramWorkspacePage({
                           }}
                         >
                           Cancelar esta tentativa
+                        </button>
+                        <button
+                          type="button"
+                          className="ml-4 mt-2 font-medium underline underline-offset-4"
+                          onClick={() => {
+                            resetInstagramConnectWizard(workspace.id);
+                            setLoginWaiting(false);
+                            setConnectionProgress(null);
+                          }}
+                        >
+                          Refazer configuração
                         </button>
                       </div>
                     )}
