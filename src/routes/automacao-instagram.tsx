@@ -67,7 +67,7 @@ import {
   InstagramLibraryShelf,
   type ReelFolderOption,
 } from "@/components/postkit/InstagramLibraryShelf";
-import type { WorkspaceAppStatus } from "@/lib/api/instagram-workspace-app.functions";
+import { getInstagramWorkspaceApp } from "@/lib/api/instagram-workspace-app.functions";
 import { getInstagramWorkspaceApp } from "@/lib/api/instagram-workspace-app.functions";
 import { InstagramAnalytics } from "@/components/postkit/InstagramAnalytics";
 import { InstagramTopPosts } from "@/components/postkit/InstagramTopPosts";
@@ -92,6 +92,7 @@ import {
 } from "@/lib/postkit-reel-batch";
 
 const postkit = supabase as unknown as SupabaseClient<PostkitDatabase>;
+type WorkspaceAppStatus = Awaited<ReturnType<typeof getInstagramWorkspaceApp>>;
 
 export const Route = createFileRoute("/automacao-instagram")({
   validateSearch: (
