@@ -67,10 +67,7 @@ import {
   InstagramLibraryShelf,
   type ReelFolderOption,
 } from "@/components/postkit/InstagramLibraryShelf";
-import {
-  InstagramWorkspaceSetup,
-  type WorkspaceAppStatus,
-} from "@/components/postkit/InstagramWorkspaceSetup";
+import type { WorkspaceAppStatus } from "@/lib/api/instagram-workspace-app.functions";
 import { getInstagramWorkspaceApp } from "@/lib/api/instagram-workspace-app.functions";
 import { InstagramAnalytics } from "@/components/postkit/InstagramAnalytics";
 import { InstagramTopPosts } from "@/components/postkit/InstagramTopPosts";
@@ -291,8 +288,6 @@ function InstagramWorkspaceEntry({
   const [app, setApp] = useState<WorkspaceAppStatus>();
   const [loadingError, setLoadingError] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [setup, setSetup] = useState<{ guideStep?: number }>();
-  const [entryTab, setEntryTab] = useState(initialTab);
 
   useEffect(() => {
     let active = true;
@@ -308,64 +303,28 @@ function InstagramWorkspaceEntry({
     };
   }, [workspace.id, attempt]);
 
-  const openSetup = (guideStep?: number) => setSetup({ guideStep });
-
-  if (app && app.mode !== "missing" && !setup) {
+  if (app && app.mode !== "missing") {
     return (
       <InstagramWorkspacePage
         workspace={workspace}
         workspaceControls={workspaceControls}
-        initialTab={entryTab}
+        initialTab={initialTab}
         app={app}
-        onEditApp={app.mode === "own" && app.canManage ? openSetup : undefined}
       />
     );
   }
 
   return (
-    <AppShell dashboard={setup ? undefined : "instagram"}>
+    <AppShell dashboard="instagram">
       {workspaceControls}
       <main className="mx-auto w-full max-w-5xl space-y-4 px-4 py-5 sm:px-6">
         <header className="tool-section-heading rounded-xl border border-border px-4 py-4 sm:px-5">
           <p className="mb-1 text-xs font-semibold text-brand-red">Automação Instagram</p>
-          <h1 className="font-display text-2xl font-semibold">
-            {setup ? "Apps da Meta" : "Visão geral"}
-          </h1>
+          <h1 className="font-display text-2xl font-semibold">Conectar Instagram</h1>
         </header>
-        {app && setup ? (
-          <InstagramWorkspaceSetup
-            key={app.mode}
-            workspaceId={workspace.id}
-            app={app}
-            initialGuideStep={setup.guideStep}
-            onBack={() => {
-              setEntryTab("dashboard");
-              setSetup(undefined);
-            }}
-            onConnect={() => {
-              setEntryTab("nova-conta");
-              setSetup(undefined);
-            }}
-            onSaved={async (continueGuide) => {
-              const registered = await getInstagramWorkspaceApp({
-                data: { workspaceId: workspace.id },
-              });
-              setApp(registered);
-              setSetup(continueGuide && app.mode === "missing" ? { guideStep: 6 } : undefined);
-            }}
-          />
-        ) : app ? (
-          <InstagramDashboard
-            workspaceId={workspace.id}
-            timezone={workspace.timezone}
-            accounts={[]}
-            refreshKey={0}
-            appMode={app.mode}
-            onAppSetup={app.canManage ? openSetup : undefined}
-          />
-        ) : loadingError ? (
+        {loadingError ? (
           <div role="alert" className="rounded-xl border border-border bg-card p-4 text-sm">
-            Não foi possível verificar a configuração da sua operação.
+            Não foi possível verificar a configuração da conexão do Instagram.
             <button
               type="button"
               className="ml-2 min-h-10 font-semibold text-brand-red underline"
@@ -377,9 +336,17 @@ function InstagramWorkspaceEntry({
               Tentar novamente
             </button>
           </div>
+        ) : app?.mode === "missing" ? (
+          <div role="alert" className="rounded-xl border border-amber-400/30 bg-card p-4 text-sm">
+            <p className="font-semibold">A conexão do Instagram ainda não está disponível.</p>
+            <p className="mt-1 text-muted-foreground">
+              A integração do Mousefy precisa ser configurada no servidor. O usuário não precisa
+              criar ou cadastrar um aplicativo da Meta.
+            </p>
+          </div>
         ) : (
           <p role="status" className="text-sm text-muted-foreground">
-            Abrindo sua operação…
+            Verificando a conexão do Instagram…
           </p>
         )}
       </main>
@@ -392,13 +359,11 @@ function InstagramWorkspacePage({
   workspaceControls,
   initialTab,
   app,
-  onEditApp,
 }: {
   workspace: Workspace;
   workspaceControls: ReactNode;
   initialTab?: Tab;
   app: WorkspaceAppStatus;
-  onEditApp?: (guideStep?: number) => void;
 }) {
   const [requestedTab, setActiveTab] = useState<Tab>(initialTab ?? "dashboard");
   const [isolatedLogin, setIsolatedLogin] = useState(false);
@@ -1466,15 +1431,6 @@ function InstagramWorkspacePage({
           </div>
           {tab === "dashboard" && (
             <div className="flex flex-wrap items-center gap-2">
-              {onEditApp && (
-                <button
-                  type="button"
-                  onClick={() => onEditApp()}
-                  className="min-h-10 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-secondary"
-                >
-                  Gerenciar app Meta
-                </button>
-              )}
               {!needsConnection && (
                 <button
                   type="button"
@@ -1538,7 +1494,6 @@ function InstagramWorkspacePage({
               refreshKey={historyRefresh}
               appMode={app.mode}
               platformAppConfigured={app.platformAppConfigured}
-              onAppSetup={onEditApp}
               onAccounts={() => setTab("nova-conta")}
               onLibrary={!needsConnection ? () => setTab("biblioteca") : undefined}
               onSchedule={!needsConnection ? () => setTab("fila") : undefined}
@@ -1760,13 +1715,32 @@ function InstagramWorkspacePage({
                     ) : (
                       !loginWaiting &&
                       !needsMetaAssetSetup && (
-                        <p className="text-sm text-muted-foreground">
-                          Você precisa de um perfil profissional. A Meta pede acesso ao perfil e
-                          permissão de publicação. Na Meta, escolha{" "}
-                          <strong>Continuar com Instagram</strong>. Se aparecer{" "}
-                          <strong>Selecione os ativos do negócio para compartilhar</strong>, escolha
-                          apenas o perfil que quer conectar.
-                        </p>
+                        <div className="rounded-xl border border-border bg-background/40 p-4">
+                          <h3 className="font-semibold">Como conectar seu Instagram</h3>
+                          <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
+                            <li>
+                              <span className="font-semibold text-foreground">1.</span> Use uma conta
+                              profissional do Instagram (Criador ou Comercial).
+                            </li>
+                            <li>
+                              <span className="font-semibold text-foreground">2.</span> Clique em{" "}
+                              <strong className="text-foreground">Conectar Instagram</strong> abaixo.
+                            </li>
+                            <li>
+                              <span className="font-semibold text-foreground">3.</span> Na janela da
+                              Meta, escolha <strong className="text-foreground">Continuar com Instagram</strong>,
+                              selecione o perfil correto e confirme as permissões solicitadas.
+                            </li>
+                            <li>
+                              <span className="font-semibold text-foreground">4.</span> Volte para o
+                              Mousefy e aguarde a confirmação da conexão.
+                            </li>
+                          </ol>
+                          <p className="mt-3 text-xs text-muted-foreground">
+                            Se a Meta mostrar um portfólio empresarial, escolha o que contém o
+                            Instagram que você quer conectar.
+                          </p>
+                        </div>
                       )
                     )}
                     {!loginWaiting && !needsMetaAssetSetup && (
@@ -1930,32 +1904,6 @@ function InstagramWorkspacePage({
                       Para conectar outro perfil, use <strong>Trocar de conta</strong> na tela da
                       Meta. Seus vídeos e agendamentos ficam separados por conta.
                     </p>
-                    <details className="mt-4 rounded-md border border-border px-3 py-2 text-sm">
-                      <summary className="min-h-7 cursor-pointer font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                        Recebi um convite de teste
-                      </summary>
-                      <p className="mt-2 text-muted-foreground">
-                        Abra o Instagram com o perfil convidado. Em{" "}
-                        <strong>Convites do testador</strong>, confira o nome do app e clique em{" "}
-                        <strong>Aceitar</strong>.
-                      </p>
-                      <a
-                        className="mt-3 inline-flex min-h-11 items-center rounded-md border border-border px-3 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        href="https://www.instagram.com/accounts/manage_access/"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Abrir convites no Instagram
-                      </a>
-                      <p className="mt-2 text-muted-foreground">
-                        Depois, volte a esta aba. Se houver uma tentativa em andamento, cancele-a e
-                        clique em <strong>Conectar Instagram</strong> novamente.
-                      </p>
-                      <p className="mt-2 text-muted-foreground">
-                        Se aparecer <strong>App not active</strong>, confirme com a equipe se o
-                        convite foi enviado para o perfil certo.
-                      </p>
-                    </details>
                     <details className="mt-4 rounded-md border border-border px-3 py-2 text-xs">
                       <summary className="cursor-pointer font-medium">Opções de navegador</summary>
                       <label className="mt-3 flex items-start gap-2 text-sm">
