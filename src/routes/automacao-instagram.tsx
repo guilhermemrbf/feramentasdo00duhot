@@ -739,10 +739,13 @@ function InstagramWorkspacePage({
         const connection = JSON.parse(saved) as HotConnection;
         await bridgeRequest(connection, "/v1/instagram-login", await authorize());
       } else {
-        loginPopup.current = await openInstagramAuthorization(
-          () => window.open("about:blank", "_blank"),
-          authorize,
+        const { authorizationUrl } = await authorize();
+        setLoginWaiting(true);
+        setNotice(
+          "Abrindo a autorização do Instagram… Você será redirecionado e voltará ao Mousefy automaticamente.",
         );
+        window.location.assign(authorizationUrl);
+        return;
       }
       setShowLocalLogin(false);
       setLoginWaiting(true);
