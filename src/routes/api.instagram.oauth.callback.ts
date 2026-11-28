@@ -142,10 +142,9 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
               configId,
             );
             const postkit = supabaseAdmin as unknown as SupabaseClient<PostkitDatabase>;
-            const { error, data: saved } = await postkit.rpc("save_workspace_instagram_grant", {
+            const grantInput = {
               p_workspace_id: workspaceId,
               p_user_id: userId,
-              p_revision: appRevision,
               p_accounts: grant.accounts.map((account) => ({
                 ...account,
                 client_business_id: grant.businessId,
@@ -154,7 +153,13 @@ export const Route = createFileRoute("/api/instagram/oauth/callback")({
               p_scopes: grant.scopes,
               p_token_ciphertext: await encryptInstagramToken(grant.token),
               p_expires_at: grant.expiry,
-            });
+            };
+            const { error, data: saved } = appRevision.startsWith("platform:")
+              ? await postkit.rpc("save_platform_instagram_grant", grantInput)
+              : await postkit.rpc("save_workspace_instagram_grant", {
+                  ...grantInput,
+                  p_revision: appRevision,
+                });
             if (error) throw new Error("Instagram account could not be saved.");
             if (!saved) throw new Error("Instagram workspace app changed or is unavailable.");
             return redirectToApp(config.appBaseUrl, "connected", undefined, {

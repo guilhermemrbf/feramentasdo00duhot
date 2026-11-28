@@ -10,7 +10,7 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
       workspaceId: z.string().uuid(),
       mode: z
         .enum(["instagram_login", "facebook_login", "instagram_unified_login"])
-        .default("instagram_login"),
+        .default("instagram_unified_login"),
       analytics: z.boolean().optional(),
     }),
   )
@@ -33,18 +33,14 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
     const { readWorkspaceApp, platformInstagramAppRevision } =
       await import("@/lib/instagram-workspace-app.server");
     const app = await readWorkspaceApp(data.workspaceId);
-    const platformConfig = getInstagramOAuthConfig();
-    const useWorkspaceApp = data.mode === "instagram_unified_login" && !!app?.app_id;
-    const appId = useWorkspaceApp ? app!.app_id! : platformConfig.appId;
-    const configId = useWorkspaceApp ? app!.login_config_id : undefined;
-    const appRevision = useWorkspaceApp
-      ? app!.revision
-      : platformInstagramAppRevision(
-          platformConfig.appId,
-          (
-            await import("@/lib/instagram-unified-login.server")
-          ).getInstagramUnifiedConfigId(platformConfig.appId),
-        );
+    if (app?.app_id && data.mode !== "instagram_unified_login") {
+      throw new Error("Use o Login Unificado para conectar com o app Meta da operação.");
+    }
+    const { getInstagramUnifiedConfigId, instagramUnifiedAuthorizationUrl } =
+      await import("@/lib/instagram-unified-login.server");
+    const appId = app?.app_id ?? getInstagramOAuthConfig().appId;
+    const configId = app?.login_config_id ?? getInstagramUnifiedConfigId(appId);
+    const appRevision = app?.app_id ? app.revision : platformInstagramAppRevision(appId, configId);
 
     const state = await createInstagramOAuthState({
       workspaceId: data.workspaceId,
@@ -55,13 +51,11 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
     });
     let authorizationUrl: string;
     if (data.mode === "instagram_unified_login") {
-      const { instagramUnifiedAuthorizationUrl } =
-        await import("@/lib/instagram-unified-login.server");
       const { callbackUrl } = getInstagramOAuthBaseConfig();
       authorizationUrl = instagramUnifiedAuthorizationUrl(
         state,
         { appId, callbackUrl },
-        configId ?? undefined,
+        configId,
       );
     } else {
       authorizationUrl =

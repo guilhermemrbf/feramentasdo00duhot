@@ -191,6 +191,13 @@ export type PostkitDatabase = Omit<Database, "public"> & {
         };
         Returns: boolean;
       };
+      save_platform_instagram_grant: {
+        Args: Omit<
+          PostkitDatabase["public"]["Functions"]["save_workspace_instagram_grant"]["Args"],
+          "p_revision"
+        >;
+        Returns: boolean;
+      };
       disconnect_instagram_account: {
         Args: { p_account_id: string };
         Returns: Json;
