@@ -38,18 +38,22 @@ export const getInstagramWorkspaceApp = createServerFn({ method: "POST" })
     ]);
     if (manage.error) throw new Error("Não foi possível verificar as permissões da operação.");
     let platformAppConfigured = false;
-    if (app?.app_id === null) {
-      try {
-        const { getInstagramUnifiedConfigId } =
-          await import("@/lib/instagram-unified-login.server");
-        getInstagramUnifiedConfigId(oauth.getInstagramOAuthConfig().appId);
-        platformAppConfigured = true;
-      } catch {
-        // Keep the dashboard accessible while the operator restores the server configuration.
-      }
+    try {
+      const { getInstagramUnifiedConfigId } =
+        await import("@/lib/instagram-unified-login.server");
+      getInstagramUnifiedConfigId(oauth.getInstagramOAuthConfig().appId);
+      platformAppConfigured = true;
+    } catch {
+      // Keep the dashboard accessible while the operator restores the server configuration.
     }
     return {
-      mode: !app ? ("missing" as const) : app.app_id ? ("own" as const) : ("legacy" as const),
+      mode: !app
+        ? platformAppConfigured
+          ? ("platform" as const)
+          : ("missing" as const)
+        : app.app_id
+          ? ("own" as const)
+          : ("legacy" as const),
       appId: app?.app_id ?? "",
       configId: app?.login_config_id ?? "",
       callbackUrl: oauth.getInstagramOAuthBaseConfig().callbackUrl,
