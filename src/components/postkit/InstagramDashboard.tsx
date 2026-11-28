@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   ArrowRight,
   CalendarDays,
+  Check,
   CheckCircle2,
   Clock3,
   Eye,
@@ -14,12 +15,7 @@ import {
 } from "lucide-react";
 import { InstagramAccountCards } from "./InstagramAccountCards";
 import type { InstagramAnalyticsReport } from "./InstagramAnalytics";
-import {
-  InstagramFirstSteps,
-  instagramAppStepTitle,
-  instagramOnboardingSteps,
-  type WorkspaceAppStatus,
-} from "./InstagramWorkspaceSetup";
+import { getInstagramWorkspaceApp } from "@/lib/api/instagram-workspace-app.functions";
 import type { InstagramConnectionDetailsAccount } from "./InstagramConnectionDetails";
 import { supabase } from "@/integrations/supabase/client";
 import { calendarDateInZone, zonedDateTimeToIso } from "@/lib/scheduling";
@@ -27,6 +23,110 @@ import type { PostkitDatabase } from "@/lib/postkit-database";
 import { readPostkitQueue } from "@/lib/postkit-dashboard-data";
 
 const database = supabase as unknown as SupabaseClient<PostkitDatabase>;
+
+type WorkspaceAppStatus = Awaited<ReturnType<typeof getInstagramWorkspaceApp>>;
+const instagramOnboardingSteps = [
+  "Conecte uma conta profissional do Instagram",
+  "Adicione seu primeiro vídeo",
+  "Agende uma publicação",
+  "Confira a primeira publicação no ar",
+] as const;
+
+function InstagramFirstSteps({
+  steps,
+  onHide,
+}: {
+  steps: Array<{
+    title: string;
+    done: boolean;
+    description?: string;
+    action?: string;
+    run?: () => void;
+    onGuide?: () => void;
+  }>;
+  onHide: () => void;
+}) {
+  const completed = steps.filter((step) => step.done).length;
+
+  return (
+    <section
+      aria-labelledby="instagram-first-steps"
+      className="rounded-2xl border border-border bg-card p-4 sm:p-5"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="instagram-first-steps" className="font-display text-lg font-semibold">
+            Primeiros passos
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Conecte sua conta, publique o primeiro conteúdo e acompanhe a operação no Mousefy.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-medium">
+          <progress
+            value={completed}
+            max={steps.length}
+            aria-label="Progresso dos primeiros passos"
+            className="h-2 w-24 accent-primary sm:w-36"
+          />
+          {completed} de {steps.length}
+          <button
+            type="button"
+            onClick={onHide}
+            className="min-h-10 rounded-md px-2 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            Ocultar primeiros passos
+          </button>
+        </div>
+      </div>
+      <ol className="mt-3 divide-y divide-border">
+        {steps.map(({ title, done, description, action, run, onGuide }, index) => (
+          <li
+            key={title}
+            className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
+          >
+            <span
+              className={
+                done
+                  ? "grid size-7 place-items-center rounded-full bg-emerald-500/10 text-emerald-300"
+                  : "grid size-7 place-items-center rounded-full border border-border text-xs text-muted-foreground"
+              }
+            >
+              {done ? <Check className="size-4" role="img" aria-label="Concluído" /> : index + 1}
+            </span>
+            <div>
+              <p className="text-sm font-medium">{title}</p>
+              {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
+            </div>
+            {!done && (action || onGuide) && (
+              <div className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-auto sm:justify-end">
+                {onGuide && (
+                  <button
+                    type="button"
+                    onClick={onGuide}
+                    className="min-h-10 rounded-md px-2 text-sm font-medium text-brand-red hover:bg-primary/10"
+                  >
+                    Ver guia
+                  </button>
+                )}
+                {action && (
+                  <button
+                    type="button"
+                    onClick={run}
+                    disabled={!run}
+                    className="min-h-10 rounded-lg border border-primary/40 bg-primary/10 px-3 text-sm font-semibold text-brand-red hover:bg-primary/20 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground"
+                  >
+                    {action}
+                  </button>
+                )}
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
 const numbers = new Intl.NumberFormat("pt-BR");
 const showNumber = (value: number | null | undefined) =>
   value == null ? "—" : numbers.format(value);
@@ -207,38 +307,40 @@ export function InstagramDashboard({
 
   const steps = [
     {
-      title: instagramAppStepTitle,
-      done: appMode !== "missing",
-      description:
-        appMode === "missing"
-          ? "Vincule o app da sua operação para conectar o Instagram."
-          : undefined,
-      action: "Cadastrar app Meta",
-      run: onAppSetup && (() => onAppSetup(0)),
-      onGuide: onAppSetup && (() => onAppSetup(0)),
-    },
-    {
       title: instagramOnboardingSteps[0],
       done: !!accountCount,
+      description:
+        accountCount === 0
+          ? "Abra a autorização da Meta e escolha o perfil profissional que deseja usar."
+          : undefined,
       action: "Conectar Instagram",
       run: onAccounts,
-      onGuide: appMode !== "missing" && onAppSetup ? () => onAppSetup(6) : undefined,
+      onGuide: onAccounts,
     },
     {
       title: instagramOnboardingSteps[1],
       done: !!videoCount,
+      description: videoCount === 0 ? "Envie seus Reels para a biblioteca do Mousefy." : undefined,
       action: "Adicionar vídeo",
       run: accountCount ? onLibrary : undefined,
     },
     {
       title: instagramOnboardingSteps[2],
       done: (data?.queued ?? 0) > 0 || (data?.allPublished ?? 0) > 0,
+      description:
+        (data?.queued ?? 0) === 0 && (data?.allPublished ?? 0) === 0
+          ? "Escolha os vídeos e defina quando o Mousefy deve publicar."
+          : undefined,
       action: "Agendar Reel",
       run: accountCount && videoCount ? onSchedule : undefined,
     },
     {
       title: instagramOnboardingSteps[3],
       done: !!data?.allPublished,
+      description:
+        !data?.allPublished
+          ? "Acompanhe o resultado da publicação pela fila e pelo histórico."
+          : undefined,
       action: "Ver fila",
       run: onQueue,
     },
@@ -317,13 +419,11 @@ export function InstagramDashboard({
         <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm">
           <Instagram className="size-4 shrink-0 text-brand-red" aria-hidden />
           {platformAppConfigured
-            ? "App Meta da plataforma vinculado à operação"
-            : "Vínculo com o app Meta da plataforma registrado. A configuração do servidor está incompleta."}
+            ? "Conexão Instagram usando a integração oficial do Mousefy."
+            : "A configuração da conexão do Instagram está incompleta no servidor."}
         </div>
       )}
-      {(appMode === "missing" ||
-        accountCount === 0 ||
-        (appMode === "own" && data && !steps.every(({ done }) => done))) &&
+      {(accountCount === 0 || (data && !steps.every(({ done }) => done))) &&
         (dismissed ? (
           <button
             type="button"
