@@ -68,7 +68,6 @@ import {
   type ReelFolderOption,
 } from "@/components/postkit/InstagramLibraryShelf";
 import { getInstagramWorkspaceApp } from "@/lib/api/instagram-workspace-app.functions";
-import { getInstagramWorkspaceApp } from "@/lib/api/instagram-workspace-app.functions";
 import { InstagramAnalytics } from "@/components/postkit/InstagramAnalytics";
 import { InstagramTopPosts } from "@/components/postkit/InstagramTopPosts";
 import { WorkspaceSelect } from "@/components/ui/workspace-select";
