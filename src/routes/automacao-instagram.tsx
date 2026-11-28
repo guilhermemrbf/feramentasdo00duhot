@@ -717,7 +717,6 @@ function InstagramWorkspacePage({
     loginLock.current = true;
     setConnecting(mode);
     setNotice("");
-    setNeedsMetaAssetSetup(false);
     setConnectionProgress(null);
     loginAccountsBefore.current = connectedAccounts.map((account) => ({ ...account }));
     confirmedInstagramIds.current = [];
