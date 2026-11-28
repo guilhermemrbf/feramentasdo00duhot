@@ -52,11 +52,7 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
     let authorizationUrl: string;
     if (data.mode === "instagram_unified_login") {
       const { callbackUrl } = getInstagramOAuthBaseConfig();
-      authorizationUrl = instagramUnifiedAuthorizationUrl(
-        state,
-        { appId, callbackUrl },
-        configId,
-      );
+      authorizationUrl = instagramUnifiedAuthorizationUrl(state, { appId, callbackUrl }, configId);
     } else {
       authorizationUrl =
         data.mode === "facebook_login"

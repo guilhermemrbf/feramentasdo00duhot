@@ -89,7 +89,9 @@ try {
     insert into instagram_story_reminders(id,workspace_id,instagram_account_id,storage_path,filename,mime_type,link_url,link_title,sticker_x,sticker_y,scheduled_at)
       values('${id(40)}','${w}','${account}','${w}/${id(40)}/fixture.png','fixture.png','image/png','https://example.test','Fixture',50,50,now()+interval '1 day');`);
   await db.exec(await sql("supabase/migrations/20261120100000_instagram_workspace_apps.sql"));
-  await db.exec(await sql("supabase/migrations/20261128010000corrige_gravacao_oauth_instagram.sql"));
+  await db.exec(
+    await sql("supabase/migrations/20261128010000corrige_gravacao_oauth_instagram.sql"),
+  );
   const newWorkspace = id(4);
   const recoveredWorkspace = id(5);
   await db.query("insert into workspaces(id,name,owner_id) values($1,'Nova operação',$2)", [
@@ -132,13 +134,11 @@ try {
   await assert.rejects(platformGrant(recoveredWorkspace, stranger), /Workspace access denied/);
   await db.exec("begin");
   assert.deepEqual(await platformGrant(recoveredWorkspace, owner), { ok: true });
-  assert.equal(
-    (await one(
-      "select t.access_token_ciphertext from instagram_accounts a join instagram_tokens t on t.account_id=a.id where a.workspace_id=$1 and a.instagram_user_id='424'",
-      [recoveredWorkspace],
-    )).access_token_ciphertext,
-    "v1.central",
+  const centralToken = await one(
+    "select t.access_token_ciphertext from instagram_accounts a join instagram_tokens t on t.account_id=a.id where a.workspace_id=$1 and a.instagram_user_id='424'",
+    [recoveredWorkspace],
   );
+  assert.equal(centralToken.access_token_ciphertext, "v1.central");
   await db.exec("rollback");
   const legacy = await one(
     "select app_id, revision from instagram_workspace_apps where workspace_id=$1",
