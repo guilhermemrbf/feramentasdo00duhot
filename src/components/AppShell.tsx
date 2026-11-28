@@ -136,7 +136,6 @@ export function AppShell({
   const dashboardKind =
     dashboard ?? (isHome ? "home" : pathname === "/vendas" ? "scalehot" : undefined);
   const available = TOOL_CATALOG.filter((tool) => status && accessForRoute(tool.path, status));
-  const visitMode = status && !["admin", "approved"].includes(status);
   const directoryTools = available.filter(({ id }) => id !== "social" && id !== "sales");
   const [mobile, setMobile] = useState(false),
     [query, setQuery] = useState("");
@@ -319,8 +318,15 @@ export function AppShell({
                   ? "Administração"
                   : status === "approved"
                     ? "Plano ativo"
-                    : "Modo de visita"}
+                    : "Modo Free"}
               </span>
+              <Link
+                to="/assinatura"
+                onClick={closeMenu}
+                className="mt-1 inline-flex font-medium text-brand-red hover:underline"
+              >
+                Ver planos
+              </Link>
             </div>
             <button
               type="button"
@@ -426,19 +432,6 @@ export function AppShell({
           )}
         </header>
         <div id="workspace-main" tabIndex={-1}>
-          {visitMode && (
-            <div className="mx-auto max-w-7xl px-5 pt-4 sm:px-8">
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
-                <p>
-                  Você está no modo de visita. Explore o Mousefy; para conectar contas e executar
-                  ferramentas, escolha um plano.
-                </p>
-                <Link to="/assinatura" className="font-semibold text-brand-red hover:underline">
-                  Ver planos
-                </Link>
-              </div>
-            </div>
-          )}
           {current && (current.id === "profiles" || current.id === "funnels") && (
             <div className="mx-auto max-w-7xl px-5 pt-4 sm:px-8">
               <ToolGuide tool={current} />

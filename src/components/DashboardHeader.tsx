@@ -1,16 +1,18 @@
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Bell, Globe, RefreshCw, Search, Settings2 } from "lucide-react";
+import { Bell, CreditCard, Globe, RefreshCw, Search, Settings2 } from "lucide-react";
 import { usePlatformAccess } from "@/components/access/PlatformAccessProvider";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { readMouseHotSettings } from "@/lib/mousehot-settings";
+import { canExecuteTools } from "@/lib/platform-access";
 import "./dashboard-header.css";
 
 const dashboardQueries = {
@@ -49,7 +51,8 @@ export function DashboardHeader({
   kind: DashboardHeaderKind;
   onSearch: () => void;
 }) {
-  const { user } = usePlatformAccess();
+  const { user, status } = usePlatformAccess();
+  const isFree = !!user && !!status && !canExecuteTools(status);
   const client = useQueryClient();
   const cache = client.getQueryCache();
   const roots = dashboardQueries[kind];
@@ -168,12 +171,19 @@ export function DashboardHeader({
             <button
               className="dashboard-header-control dashboard-header-account"
               type="button"
-              aria-label={`Menu da conta: ${name}`}
+              aria-label={`Menu da conta: ${name}${isFree ? ", Modo Free" : ""}`}
             >
               <span className="dashboard-header-avatar" aria-hidden>
                 {[...name][0]?.toLocaleUpperCase("pt-BR")}
               </span>
-              <span className="dashboard-header-name">{name}</span>
+              <span className="grid min-w-0 gap-0.5 text-left leading-tight">
+                <span className="dashboard-header-name">{name}</span>
+                {isFree && (
+                  <span className="text-[0.6875rem] font-medium text-muted-foreground">
+                    Modo Free
+                  </span>
+                )}
+              </span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-44">
@@ -184,6 +194,12 @@ export function DashboardHeader({
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onSearch}>
               <Search aria-hidden /> Buscar ferramenta
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/assinatura">
+                <CreditCard aria-hidden /> Ver planos
+              </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
