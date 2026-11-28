@@ -30,28 +30,42 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
       instagramOAuthCookieOptions,
       instagramOAuthCookieName,
     } = await import("@/lib/instagram-oauth.server");
-    const { readWorkspaceApp } = await import("@/lib/instagram-workspace-app.server");
+    const { readWorkspaceApp, platformInstagramAppRevision } =
+      await import("@/lib/instagram-workspace-app.server");
     const app = await readWorkspaceApp(data.workspaceId);
-    if (!app) throw new Error("Cadastre o app Meta em Primeiros passos antes de conectar.");
-    if (app.app_id && data.mode !== "instagram_unified_login")
+    const platformConfig = getInstagramOAuthConfig();
+    if (app?.app_id && data.mode !== "instagram_unified_login")
       throw new Error("Use o Login Unificado para conectar com o app Meta da operação.");
+
+    const appId = app?.app_id ?? platformConfig.appId;
+    const configId = app?.login_config_id;
+    const appRevision = app?.revision ?? (
+      data.mode === "instagram_unified_login"
+        ? platformInstagramAppRevision(
+            appId,
+            (
+              await import("@/lib/instagram-unified-login.server")
+            ).getInstagramUnifiedConfigId(appId),
+          )
+        : "platform:instagram-login"
+    );
+
     const state = await createInstagramOAuthState({
       workspaceId: data.workspaceId,
       userId: context.userId,
       mode: data.mode,
       analytics: data.analytics,
-      appRevision: app.revision,
+      appRevision,
     });
     let authorizationUrl: string;
     if (data.mode === "instagram_unified_login") {
       const { instagramUnifiedAuthorizationUrl } =
         await import("@/lib/instagram-unified-login.server");
       const { callbackUrl } = getInstagramOAuthBaseConfig();
-      const appId = app.app_id ?? getInstagramOAuthConfig().appId;
       authorizationUrl = instagramUnifiedAuthorizationUrl(
         state,
         { appId, callbackUrl },
-        app.login_config_id ?? undefined,
+        configId ?? undefined,
       );
     } else {
       authorizationUrl =
