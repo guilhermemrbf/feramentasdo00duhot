@@ -27,9 +27,28 @@ export function workspaceAppSecretBinding(workspaceId: string, appId: string, co
   return ["instagram-workspace-app", workspaceId, appId, configId].join(":");
 }
 
+export function platformInstagramAppRevision(appId: string, configId: string) {
+  return ["platform", appId, configId].join(":");
+}
+
 export async function workspaceAppForCallback(workspaceId: string, revision?: string) {
   const failure = "Instagram workspace app changed or is unavailable.";
   if (!revision) throw new Error(failure);
+
+  if (revision.startsWith("platform:")) {
+    const [, appId, configId] = revision.split(":");
+    const globalConfig = getInstagramOAuthConfig();
+    const { getInstagramUnifiedConfigId } = await import("./instagram-unified-login.server");
+    if (
+      appId !== globalConfig.appId ||
+      !configId ||
+      configId !== getInstagramUnifiedConfigId(globalConfig.appId)
+    ) {
+      throw new Error(failure);
+    }
+    return { config: globalConfig, configId };
+  }
+
   const db = await workspaceAppDatabase();
   const { data, error } = await db
     .from("instagram_workspace_apps")
