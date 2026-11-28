@@ -1720,7 +1720,7 @@ function InstagramWorkspacePage({
                             </li>
                           </ol>
                           <p className="mt-3 text-xs text-muted-foreground">
-                            A conexão usa o Login do Instagram e não pede senha dentro do Mousefy.
+                            A conexão usa o Login do Instagram. O Mousefy não recebe sua senha.
                           </p>
                         </div>
                       )
@@ -1798,8 +1798,6 @@ function InstagramWorkspacePage({
                           onClick={() => {
                             setLoginWaiting(false);
                             setConnectionProgress(null);
-                            loginPopup.current?.close();
-                            loginPopup.current = null;
                             setNotice(
                               "Acompanhamento encerrado. Feche a janela do Instagram se ela continuar aberta. Você pode iniciar outra conexão.",
                             );
