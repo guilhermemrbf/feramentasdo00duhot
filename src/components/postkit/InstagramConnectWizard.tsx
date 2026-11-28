@@ -6,15 +6,16 @@ import { CheckCircle2, ExternalLink } from "lucide-react";
 export const META_APP_ROLES_URL =
   "https://developers.facebook.com/apps/2201393490722211/roles/roles/?business_id=1498873732174939";
 export const INSTAGRAM_TESTER_INVITES_URL = "https://www.instagram.com/accounts/manage_access/";
+const INSTAGRAM_SIGN_IN_URL = "https://www.instagram.com/accounts/login/";
 
-type WizardStep = 0 | 1 | 2 | 3;
+type WizardStep = 0 | 1 | 2 | 3 | 4;
 
-const storageKey = (workspaceId: string) => `mousefy:instagram-connect-step:${workspaceId}`;
+const storageKey = (workspaceId: string) => `mousefy:instagram-connect-step:v2:${workspaceId}`;
 
 function readStep(workspaceId: string): WizardStep {
   try {
     const value = Number(window.localStorage.getItem(storageKey(workspaceId)));
-    return value === 1 || value === 2 || value === 3 ? value : 0;
+    return value === 1 || value === 2 || value === 3 || value === 4 ? value : 0;
   } catch {
     return 0;
   }
@@ -32,7 +33,12 @@ export function resetInstagramConnectWizard(workspaceId: string, step: 0 | 1 = 0
   writeStep(workspaceId, step);
 }
 
-const STEP_TITLES = ["Configurar acesso", "Aceitar convite no Instagram", "Conectar conta"];
+const STEP_TITLES = [
+  "Entrar no Instagram",
+  "Configurar acesso na Meta",
+  "Aceitar convite",
+  "Conectar ao Mousefy",
+];
 
 export function InstagramConnectWizard({
   workspaceId,
@@ -69,9 +75,6 @@ export function InstagramConnectWizard({
           <button type="button" onClick={() => setStep(1)} className={externalLinkClass}>
             Começar configuração
           </button>
-          <button type="button" onClick={() => setStep(3)} className={continueClass}>
-            Já aceitei o convite
-          </button>
         </div>
       </div>
     );
@@ -95,9 +98,36 @@ export function InstagramConnectWizard({
         })}
       </ol>
 
-      <p className="text-xs font-semibold text-muted-foreground">Etapa {step} de 3</p>
+      <p className="text-xs font-semibold text-muted-foreground">Etapa {step} de 4</p>
 
       {step === 1 && (
+        <div className="mt-1 space-y-3 text-sm">
+          <h3 className="font-semibold text-foreground">Entrar no Instagram</h3>
+          <p className="text-muted-foreground">
+            Entre com o perfil que você quer conectar. Se o Instagram abrir com outra conta, troque
+            para o perfil certo. Deixe essa conta aberta para aceitar o convite depois.
+          </p>
+          <p className="text-muted-foreground">
+            Se o perfil for pessoal, mude para uma conta profissional de Criador ou Comercial antes
+            de continuar.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={INSTAGRAM_SIGN_IN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={externalLinkClass}
+            >
+              Abrir Instagram para entrar <ExternalLink aria-hidden className="size-4" />
+            </a>
+            <button type="button" onClick={() => setStep(2)} className={continueClass}>
+              Já entrei no perfil certo · continuar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 2 && (
         <div className="mt-1 space-y-3 text-sm">
           <h3 className="font-semibold text-foreground">Configurar acesso</h3>
           <p className="text-muted-foreground">
@@ -119,27 +149,34 @@ export function InstagramConnectWizard({
             >
               Abrir configuração da Meta <ExternalLink aria-hidden className="size-4" />
             </a>
-            <button type="button" onClick={() => setStep(2)} className={continueClass}>
+            <button type="button" onClick={() => setStep(3)} className={continueClass}>
               O convite foi enviado · continuar
             </button>
           </div>
           <button
             type="button"
-            onClick={() => setStep(3)}
+            onClick={() => setStep(4)}
             className="text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground"
           >
-            Esta conta já foi liberada antes · ir direto para a conexão
+            Este perfil já aceitou o convite · ir para a conexão
+          </button>
+          <button
+            type="button"
+            onClick={() => setStep(1)}
+            className="block text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            Voltar para o login no Instagram
           </button>
         </div>
       )}
 
-      {step === 2 && (
+      {step === 3 && (
         <div className="mt-1 space-y-3 text-sm">
           <h3 className="font-semibold text-foreground">Aceitar convite no Instagram</h3>
           <p className="text-muted-foreground">
-            Entre no Instagram <strong>com a conta que você quer conectar</strong>. Em{" "}
-            <strong>Apps e sites</strong> → <strong>Convites de testador</strong>, confira o nome do
-            aplicativo e toque em <strong>Aceitar</strong>. Depois volte para esta aba.
+            Use <strong>o mesmo perfil da etapa 1</strong>. Em <strong>Apps e sites</strong> →{" "}
+            <strong>Convites de testador</strong>, confira o nome do aplicativo e toque em{" "}
+            <strong>Aceitar</strong>. Depois volte para esta aba.
           </p>
           <div className="flex flex-wrap gap-2">
             <a
@@ -150,21 +187,21 @@ export function InstagramConnectWizard({
             >
               Abrir convites do Instagram <ExternalLink aria-hidden className="size-4" />
             </a>
-            <button type="button" onClick={() => setStep(3)} className={continueClass}>
+            <button type="button" onClick={() => setStep(4)} className={continueClass}>
               Convite aceito · continuar conexão
             </button>
           </div>
           <button
             type="button"
-            onClick={() => setStep(1)}
+            onClick={() => setStep(2)}
             className="text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground"
           >
-            Voltar para a etapa 1
+            Voltar para a configuração da Meta
           </button>
         </div>
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <div className="mt-1 space-y-2 text-sm">
           <h3 className="font-semibold text-foreground">Conectar conta</h3>
           <p className="text-muted-foreground">

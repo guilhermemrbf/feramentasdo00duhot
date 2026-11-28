@@ -12,6 +12,8 @@ test("connection wizard guides through Meta roles, tester invite and the officia
   );
   assert.match(wizard, /https:\/\/www\.instagram\.com\/accounts\/manage_access\//);
   for (const label of [
+    "Abrir Instagram para entrar",
+    "Já entrei no perfil certo · continuar",
     "Abrir configuração da Meta",
     "Abrir convites do Instagram",
     "Convite aceito · continuar conexão",
@@ -21,6 +23,19 @@ test("connection wizard guides through Meta roles, tester invite and the officia
   assert.ok(
     !/OAuth|redirect_uri|access token|App ID|callback/i.test(wizard.replace(/\/\/.*$/gm, "")),
   );
+});
+
+test("new profiles confirm Instagram sign-in before Meta setup, invite and connection", () => {
+  assert.match(wizard, /https:\/\/www\.instagram\.com\/accounts\/login\//);
+  const first = wizard.indexOf("{step === 1 &&");
+  const second = wizard.indexOf("{step === 2 &&");
+  const third = wizard.indexOf("{step === 3 &&");
+  const fourth = wizard.indexOf("{step === 4 &&");
+  assert.ok(first >= 0 && first < second && second < third && third < fourth);
+  assert.match(wizard.slice(first, second), /INSTAGRAM_SIGN_IN_URL[\s\S]*setStep\(2\)/);
+  assert.match(wizard.slice(second, third), /META_APP_ROLES_URL[\s\S]*setStep\(3\)/);
+  assert.match(wizard.slice(third, fourth), /INSTAGRAM_TESTER_INVITES_URL[\s\S]*setStep\(4\)/);
+  assert.match(wizard.slice(fourth), /\{children\}/);
 });
 
 test("connect tab keeps the existing unified login and offers beta setup only for the platform app", () => {
