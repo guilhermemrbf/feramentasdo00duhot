@@ -39,15 +39,11 @@ export const startInstagramOAuth = createServerFn({ method: "POST" })
 
     const appId = app?.app_id ?? platformConfig.appId;
     const configId = app?.login_config_id;
-    const appRevision = app?.revision ?? (
-      data.mode === "instagram_unified_login"
-        ? platformInstagramAppRevision(
-            appId,
-            (
-              await import("@/lib/instagram-unified-login.server")
-            ).getInstagramUnifiedConfigId(appId),
-          )
-        : "platform:instagram-login"
+    const appRevision = app?.revision ?? platformInstagramAppRevision(
+      appId,
+      (
+        await import("@/lib/instagram-unified-login.server")
+      ).getInstagramUnifiedConfigId(appId),
     );
 
     const state = await createInstagramOAuthState({
