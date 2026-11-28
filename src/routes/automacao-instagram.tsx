@@ -48,7 +48,6 @@ import { bridgeRequest, HOT_CONNECTION_KEY, type HotConnection } from "@/lib/hot
 import {
   findUpdatedInstagramAccount,
   INSTAGRAM_CONNECTION_CHANNEL,
-  openInstagramAuthorization,
   type InstagramConnectionAccount,
 } from "@/lib/instagram-connect";
 import { startInstagramOAuth } from "@/lib/api/instagram-oauth.functions";
@@ -370,7 +369,6 @@ function InstagramWorkspacePage({
   const loginAccountsBefore = useRef<InstagramConnectionAccount[]>([]);
   const loginLock = useRef(false);
   const confirmedInstagramIds = useRef<string[]>([]);
-  const loginPopup = useRef<Awaited<ReturnType<typeof openInstagramAuthorization>> | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [openedAccountId, setOpenedAccountId] = useState("");
   const connectAccountButton = useRef<HTMLButtonElement>(null);
